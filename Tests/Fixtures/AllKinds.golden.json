@@ -784,16 +784,7 @@
       "isTest" : false,
       "name" : "AllKinds",
       "path" : "Sources/AllKinds",
-      "type" : "regular"
-    },
-    {
-      "files" : [
-        "Sources/Tool/main.swift"
-      ],
-      "isTest" : false,
-      "name" : "Tool",
-      "path" : "Sources/Tool",
-      "type" : "executable"
+      "type" : "library"
     },
     {
       "files" : [
@@ -804,6 +795,15 @@
       "name" : "AllKindsTests",
       "path" : "Tests/AllKindsTests",
       "type" : "test"
+    },
+    {
+      "files" : [
+        "Sources/Tool/main.swift"
+      ],
+      "isTest" : false,
+      "name" : "Tool",
+      "path" : "Sources/Tool",
+      "type" : "executable"
     }
   ],
   "tool" : {

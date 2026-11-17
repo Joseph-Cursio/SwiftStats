@@ -2,9 +2,9 @@
 //  PackageScanner.swift
 //  SwiftStatsCore
 //
-//  The T0 scan (PRD M0): find the package's targets, parse every Swift file
-//  once, and derive both the function records and the Sitrep-compatible
-//  counts from the same trees.
+//  The T0 scan (PRD M0): ask SwiftPM for the package's targets and their
+//  source files, parse every Swift file once, and derive both the function
+//  records and the Sitrep-compatible counts from the same trees.
 //
 
 import Foundation
@@ -13,17 +13,17 @@ import SwiftSyntax
 
 /// Scans a SwiftPM package at the syntax level.
 public struct PackageScanner {
-    /// Where manifests come from.
-    private let manifestLoader: any ManifestLoader
+    /// Where package descriptions come from.
+    private let describer: any PackageDescriber
 
-    /// Creates a scanner that reads manifests through `manifestLoader`.
-    public init(manifestLoader: any ManifestLoader) {
-        self.manifestLoader = manifestLoader
+    /// Creates a scanner that learns a package's targets through `describer`.
+    public init(describer: any PackageDescriber) {
+        self.describer = describer
     }
 
-    /// Creates a scanner that asks SwiftPM for manifests.
+    /// Creates a scanner that asks SwiftPM for package descriptions.
     public init() {
-        self.init(manifestLoader: SwiftPMManifestLoader())
+        self.init(describer: SwiftPMPackageDescriber())
     }
 
     /// Records by file, then start position, then key.
@@ -51,8 +51,8 @@ public struct PackageScanner {
         guard FileManager.default.fileExists(atPath: root.appendingPathComponent("Package.swift").path) else {
             throw ScanError.notAPackage(root.path)
         }
-        let manifest = try manifestLoader.loadManifest(at: root)
-        let targets = TargetResolver().resolve(manifest, packageRoot: root)
+        let package = try describer.describePackage(at: root)
+        let targets = TargetResolver.resolve(package)
 
         var warnings: [ScanWarning] = []
         var parsedByTarget: [[ParsedFile]] = []
@@ -92,7 +92,7 @@ public struct PackageScanner {
         return ScanReport(
             schemaVersion: ScanReport.currentSchemaVersion,
             tool: .current,
-            package: manifest.name,
+            package: package.name,
             targets: targets,
             records: uniqueRecords.sorted(by: Self.recordOrder),
             sitrep: SitrepCounter.report(for: sitrepFiles),

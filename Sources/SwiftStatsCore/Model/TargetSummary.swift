@@ -10,8 +10,8 @@
 public struct TargetSummary: Codable, Hashable, Sendable {
     /// The target name, which is also its module name.
     public let name: String
-    /// The target type from `Package.swift` (`regular`, `executable`, `test`,
-    /// `macro`, `plugin`).
+    /// The target type as SwiftPM describes it (`library`, `executable`,
+    /// `test`, `macro`, `plugin`).
     public let type: String
     /// Whether the target holds tests (`true` for `test` targets).
     public let isTest: Bool

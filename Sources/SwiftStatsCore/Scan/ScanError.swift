@@ -12,9 +12,9 @@ public enum ScanError: Error, Equatable, CustomStringConvertible {
     /// An external command exited non-zero: the command, its exit code and
     /// its standard error.
     case commandFailed(String, Int32, String)
-    /// `swift package dump-package` output could not be decoded: the package
+    /// `swift package describe` output could not be decoded: the package
     /// path and the decoding error.
-    case manifestUnreadable(String, String)
+    case descriptionUnreadable(String, String)
     /// The given path is not a directory containing `Package.swift`.
     case notAPackage(String)
 
@@ -23,8 +23,8 @@ public enum ScanError: Error, Equatable, CustomStringConvertible {
         switch self {
         case let .commandFailed(command, status, message):
             return "`\(command)` exited with status \(status): \(message)"
-        case let .manifestUnreadable(path, reason):
-            return "could not read the manifest of \(path): \(reason)"
+        case let .descriptionUnreadable(path, reason):
+            return "could not read SwiftPM's description of \(path): \(reason)"
         case .notAPackage(let path):
             return "\(path) does not contain a Package.swift"
         }

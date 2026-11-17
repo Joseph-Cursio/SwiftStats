@@ -19,7 +19,7 @@ public struct ScanReport: Codable, Hashable, Sendable {
     public let tool: ToolInfo
     /// The package name from `Package.swift`.
     public let package: String
-    /// The scanned targets, in manifest order.
+    /// The scanned targets, sorted by name.
     public let targets: [TargetSummary]
     /// Function records, sorted by file, then position, then key.
     public let records: [FunctionRecord]

@@ -2,152 +2,56 @@
 //  TargetResolver.swift
 //  SwiftStatsCore
 //
-//  Turns manifest targets into the Swift files each one compiles, following
-//  SwiftPM's layout rules: a custom `path` or the default source directory,
-//  an explicit `sources` list, `exclude`, hidden files skipped, and files of a
-//  target nested inside another target's directory left to the nested one.
+//  Turns SwiftPM's description of a package into the Swift files each target
+//  compiles, with paths relative to the package root. SwiftPM has already
+//  chosen the files; this only keeps the Swift ones, joins paths cleanly and
+//  orders everything deterministically.
 //
 
-import Foundation
-
-/// Resolves which Swift files belong to which target.
-public struct TargetResolver {
-    /// Target types that contain no Swift source to scan.
-    private static let sourcelessTypes: Set<String> = ["binary", "system"]
-
-    /// Directory extensions SwiftPM treats as resource bundles: Swift files
-    /// inside them (for example DocC tutorial code) are never compiled.
-    private static let bundleExtensions: Set<String> = [
-        "bundle", "docc", "lproj", "playground", "xcassets", "xcdatamodeld", "xcmappingmodel"
-    ]
-
-    /// Default parent directories SwiftPM searches for non-test targets.
-    private static let sourceDirectories = ["Sources", "Source", "src", "srcs"]
-
-    /// The file manager used to walk directories.
-    private let fileManager: FileManager
-
-    /// Creates a resolver that reads the file system through `fileManager`.
-    public init(fileManager: FileManager = .default) {
-        self.fileManager = fileManager
-    }
-
-    /// `path` without a leading `./` or trailing `/`.
-    private static func normalised(_ path: String) -> String {
-        var result = path
-        while result.hasPrefix("./") {
-            result.removeFirst("./".count)
-        }
-        while result.hasSuffix("/") {
-            result.removeLast()
-        }
-        return result
-    }
-
-    /// Returns one summary per scannable target, in manifest order, with
-    /// paths relative to `packageRoot` and files sorted.
-    public func resolve(_ manifest: PackageManifest, packageRoot: URL) -> [TargetSummary] {
-        let root = packageRoot.standardizedFileURL
-        let located: [(target: ManifestTarget, directory: String)] = manifest.targets.compactMap { target in
-            guard Self.sourcelessTypes.contains(target.type) == false,
-                  let directory = directory(for: target, root: root) else {
-                return nil
-            }
-            return (target, directory)
-        }
-        let allDirectories = located.map(\.directory)
-
-        return located.map { entry in
-            let nestedDirectories = allDirectories.filter { other in
-                other != entry.directory && other.hasPrefix(entry.directory + "/")
-            }
-            let files = swiftFiles(for: entry.target, directory: entry.directory, root: root)
-                .filter { file in
-                    nestedDirectories.contains { file.hasPrefix($0 + "/") } == false
+/// Maps described targets to scanned targets.
+public enum TargetResolver {
+    /// One summary per target with Swift sources, sorted by name, each with
+    /// its files sorted.
+    public static func resolve(_ package: DescribedPackage) -> [TargetSummary] {
+        package.targets
+            .compactMap { target -> TargetSummary? in
+                let directory = normalised(target.path)
+                let files = target.sources
+                    .filter { $0.hasSuffix(".swift") }
+                    .map { normalised(directory.isEmpty ? $0 : directory + "/" + $0) }
+                    .sorted()
+                guard files.isEmpty == false else {
+                    return nil
                 }
-            return TargetSummary(
-                name: entry.target.name,
-                type: entry.target.type,
-                isTest: entry.target.type == "test",
-                path: entry.directory,
-                files: files
-            )
-        }
-    }
-
-    /// The target's source directory relative to the root, or nil if it
-    /// doesn't exist.
-    private func directory(for target: ManifestTarget, root: URL) -> String? {
-        if let path = target.path {
-            let trimmed = Self.normalised(path)
-            return isDirectory(root.appendingPathComponent(trimmed)) ? trimmed : nil
-        }
-        let parents: [String]
-        switch target.type {
-        case "test":
-            parents = ["Tests"]
-
-        case "plugin":
-            parents = ["Plugins"]
-
-        default:
-            parents = Self.sourceDirectories
-        }
-        return parents
-            .map { "\($0)/\(target.name)" }
-            .first { isDirectory(root.appendingPathComponent($0)) }
-    }
-
-    /// Sorted Swift files of the target, relative to the package root.
-    private func swiftFiles(for target: ManifestTarget, directory: String, root: URL) -> [String] {
-        let excluded = target.exclude.map { "\(directory)/\(Self.normalised($0))" }
-        let starts = (target.sources.isEmpty ? [""] : target.sources).map { source in
-            source.isEmpty ? directory : "\(directory)/\(Self.normalised(source))"
-        }
-        var files = Set<String>()
-        for start in starts {
-            files.formUnion(walk(start, root: root))
-        }
-        return files
-            .filter { file in
-                excluded.contains { file == $0 || file.hasPrefix($0 + "/") } == false
+                return TargetSummary(
+                    name: target.name,
+                    type: target.type,
+                    isTest: target.type == "test",
+                    path: directory,
+                    files: files
+                )
             }
-            .sorted()
+            .sorted { $0.name < $1.name }
     }
 
-    /// Swift files at or under `relativePath`, skipping hidden entries.
-    private func walk(_ relativePath: String, root: URL) -> [String] {
-        let url = root.appendingPathComponent(relativePath)
-        guard isDirectory(url) else {
-            return relativePath.hasSuffix(".swift") && fileManager.fileExists(atPath: url.path)
-                ? [relativePath]
-                : []
-        }
-        // The path-based enumerator yields paths relative to `url`, which keeps
-        // results independent of symlinks such as /tmp → /private/tmp.
-        guard let enumerator = fileManager.enumerator(atPath: url.path) else {
-            return []
-        }
-        var found = [String]()
-        while let item = enumerator.nextObject() as? String {
-            let name = item.split(separator: "/").last.map(String.init) ?? item
-            let pathExtension = name.split(separator: ".").last.map(String.init) ?? ""
-            if name.hasPrefix(".")
-                || (Self.bundleExtensions.contains(pathExtension) && isDirectory(url.appendingPathComponent(item))) {
-                enumerator.skipDescendants()
+    /// `path` with `.` and empty segments removed and `..` applied, so the
+    /// package root is "" and no path starts with "./".
+    static func normalised(_ path: String) -> String {
+        var segments: [Substring] = []
+        for segment in path.split(separator: "/", omittingEmptySubsequences: true) {
+            switch segment {
+            case ".":
                 continue
-            }
-            guard item.hasSuffix(".swift"), isDirectory(url.appendingPathComponent(item)) == false else {
-                continue
-            }
-            found.append("\(relativePath)/\(item)")
-        }
-        return found
-    }
 
-    /// Whether `url` names an existing directory.
-    private func isDirectory(_ url: URL) -> Bool {
-        var isDirectory: ObjCBool = false
-        return fileManager.fileExists(atPath: url.path, isDirectory: &isDirectory) && isDirectory.boolValue
+            case "..":
+                if segments.isEmpty == false {
+                    segments.removeLast()
+                }
+
+            default:
+                segments.append(segment)
+            }
+        }
+        return segments.joined(separator: "/")
     }
 }
