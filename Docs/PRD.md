@@ -1,6 +1,6 @@
 # SwiftStats — Product Requirements Document
 
-**Status:** Draft v0.2 (2026-11-17). Reviewed against the source of every tool it names; see §16 for what changed and `Docs/prd-review-2026-11-17.md` in the repo for the evidence.
+**Status:** Draft v0.2.1 (2026-11-17). Reviewed against the source of every tool it names; see §16 for what changed and `Docs/prd-review-2026-11-17.md` in the repo for the evidence. M0 is built; see `Docs/m0-results.md`.
 **Owner:** Joseph Cursio
 **Repo:** `~/xcode_projects/SwiftStats` (SwiftPM, `SwiftStatsCore` library + `swiftstats` CLI)
 **Inspired by:** [Sitrep](https://github.com/twostraws/Sitrep) (Paul Hudson / Hacking with Swift)
@@ -178,7 +178,11 @@ At T0, module structure comes from SwiftProjectLint's `undeclaredTargetDependenc
 
 ### 7.6a Dead code (T1; commented-out code T0)
 
-Use **Periphery** as the primary source. It needs a build and an index store. Run it as `periphery scan --format json --index-store-path <store>` after SwiftStats' own build, rather than letting Periphery build: version 2.21.2 looks for the old native index path and fails with Swift 6.4's default build system. For libraries pass `--retain-public`; that hides Periphery's redundant-public findings, so run once without it if those are wanted for §7.5. Its JSON gives kind, accessibility, `hints` (`unused`, `redundantPublicAccessibility`, …), USRs (`ids`) and `file:line:col`.
+Use **Periphery** as the primary source. It needs a build and an index store.
+
+**Which Periphery.** Upstream `peripheryapp/periphery` (MIT) was archived on GitHub in August 2026. A maintained fork, `tiny-earth-moon/periphery`, now renamed **outskirts** (outskirts.dev, MIT), continues from the last 3.x release and keeps it building with Swift 6.4 / Xcode 27; it was three weeks old with one maintainer when checked (2026-11-17), so pin a version. Homebrew's `periphery` on this machine is **2.21.2**, older than 3.0, and the limits below marked "2.21.2" were measured with it; recheck them against the fork before building the adapter in M7.
+
+Run it as `scan --format json --index-store-path <store>` after SwiftStats' own build, rather than letting it build: 2.21.2 looks for the old native index path and fails with Swift 6.4's default build system (the fork's notes describe `--index-store-path` support for Swift package index stores). For libraries pass `--retain-public`; that hides Periphery's redundant-public findings, so run once without it if those are wanted for §7.5. Its JSON gives kind, accessibility, `hints` (`unused`, `redundantPublicAccessibility`, …), USRs (`ids`) and `file:line:col`.
 
 A naive "fan-in = 0" check from indexstore-db is only a fallback, because many declarations with no callers in the index are still live:
 
@@ -190,7 +194,7 @@ A naive "fan-in = 0" check from indexstore-db is only a fallback, because many d
 Metrics:
 
 - **Unused declarations** by kind (function, type, property, enum case)
-- **Test-only code**: production declarations whose only references come from test targets. Periphery doesn't report this (it treats XCTest methods as roots), so SwiftStats works it out from the index. Periphery 2.21.2 also doesn't recognise Swift Testing `@Test` functions: it reports them, and code only they use, as unused. Drop results inside test targets, and treat "unused" in a Swift Testing package as "unused or test-only" until checked against the index.
+- **Test-only code**: production declarations whose only references come from test targets. Periphery doesn't report this (it treats tests as roots), so SwiftStats works it out from the index. Swift Testing: Periphery 3.0 and the fork retain `@Test` functions, their enclosing types and `@Suite` types (`SwiftTestingRetainer`), but only in files that `import Testing` directly; 2.21.2 doesn't, and reports them and code only they use as unused. Drop results inside test targets either way.
 - **Unused parameters** and **unused imports** (Periphery reports imports only of the package's own modules; unused imports of Foundation, system or third-party modules are not detected)
 - **Unreachable code** (compiler warnings after `return` / `throw` / `fatalError`)
 - **Commented-out code blocks** (T0 heuristic: comment blocks that parse as Swift)
@@ -314,7 +318,7 @@ Source: the local clone's `git log`, not the GitHub API. PR reviews, linked issu
 
 ### 7.14 Dependencies (T0)
 
-- Direct dependencies from `Package.swift` (`swift package dump-package`).
+- Direct dependencies from `Package.swift` (`swift package describe --type json` or `dump-package`).
 - The full graph, with transitive edges, from `swift package show-dependencies --format json`.
 - Pinned versions from `Package.resolved` when it exists. It is a flat list of remote pins, with no edges, no direct/transitive flag and no `path:` dependencies, and many libraries don't commit it (swift-algorithms ignores it; swift-collections has none at the root).
 - Resolving dependencies may need the network, so this collector is T0 only when `.build` already holds resolved checkouts.
@@ -435,7 +439,7 @@ Reports lead with the derived-signal lists, then roll-ups, then per-module detai
 
 | Milestone | Scope | Done when |
 |---|---|---|
-| **M0** | `swiftstats scan --format json`, T0 only, no store, no git. Find targets with `swift package dump-package`; walk them with swift-syntax 603.0.2. Emit one record per §6.1a kind: key, kind, file, start and end line and column, stripped lines, body hash, parent key, `#if` condition, role (production / test / helper). Plus a `sitrep` block of Sitrep-compatible project counts (§7.1). Output carries `schemaVersion: 1`. | (1) A fixture package covering every §6.1a kind produces checked-in golden JSON exactly. (2) On Sitrep's test inputs (`Tests/SitrepCoreTests/Inputs`, wrapped in a fixture package since they are loose files) and on swift-algorithms, the `sitrep` block matches `sitrep -f json` field by field, with each deliberate difference listed. (3) Inserting lines above a function or reformatting it leaves its key and body hash unchanged; moving its file leaves a non-private function's key unchanged; changing its signature changes the key. (4) Two runs on the same tree give byte-identical output. (5) Scan time on swift-collections is recorded as the §12 baseline. |
+| **M0** | `swiftstats scan --format json`, T0 only, no store, no git. Find targets and their source files with `swift package describe --type json` (SwiftPM's own source selection, no dependency resolution); walk them with swift-syntax 603.0.2. Emit one record per §6.1a kind: key, kind, file, start and end line and column, stripped lines, body hash, parent key, `#if` condition, role (production / test / helper). Plus a `sitrep` block of Sitrep-compatible project counts (§7.1). Output carries `schemaVersion: 1`. | (1) A fixture package covering every §6.1a kind produces checked-in golden JSON exactly. (2) On Sitrep's test inputs (`Tests/SitrepCoreTests/Inputs`, wrapped in a fixture package since they are loose files) and on swift-algorithms, the `sitrep` block matches `sitrep -f json` field by field, with each deliberate difference listed. (3) Inserting lines above a function or reformatting it leaves its key and body hash unchanged; moving its file leaves a non-private function's key unchanged; changing its signature changes the key. (4) Two runs on the same tree give byte-identical output. (5) Scan time on swift-collections is recorded as the §12 baseline. |
 | **M1** | T0: size, shape, complexity, risk markers, API surface, test inventory and test-to-code ratios (no dead-code exclusion yet); SwiftLint violations (normal rules); dependencies; `.swiftstats.yml`. **SwiftProjectLint adapter** (moved here from M4, since risk markers, over-exposure and assertion-free tests depend on it). | Cyclomatic complexity matches SwiftLint on swift-algorithms: SwiftLint run with `only_rules: [cyclomatic_complexity]` and `warning: 0`; for every `func` and `init`, SwiftLint's value (0 when it reports nothing) equals SwiftStats'. SwiftProjectLint findings joined to functions, with unmapped ones listed. |
 | **M2** | Snapshot store (SQLite, migrations) + `report` + `diff` | Diffing a snapshot with itself is empty. On a fixture commit that adds, changes, moves and deletes one function each, the diff shows exactly those four, and the move shows as a move. Re-running `report` gives byte-identical output. |
 | **M3** | TH: churn, stability, change-coupling pairs, bug-fix density, reverts; `backfill`; signals: hotspot, bug-prone, unstable fixes, safe to leave, tests not keeping up (naming-based) | On two repos, I label the top 20 hotspots and at least 12 are judged worth attention; the labels are kept as a test fixture. A backfilled trend of stripped lines and median complexity is produced for one repo. |
@@ -501,7 +505,7 @@ Small changes upstream would remove adapter work here. None blocks SwiftStats.
 | SwiftCloneDetector | Add `pass` (exact / renamed / near-miss / sequence) to each class in the JSON; real version string | Running passes separately or linking the Kit |
 | SwiftInferProperties | `discover --format json`, or `index --resolve-effects` plus the "why" text and partner locations in `index.json` | Empty reason fields, name-only partner links, and tool disagreements that are expected by construction |
 | SwiftEffectInference | Report when body inference hit its time budget | Silent non-repeatable tiers |
-| Periphery (third-party) | Recognise Swift Testing `@Test`; find the Swift Build index store | Post-filtering and `--index-store-path` |
+| Periphery / outskirts (third-party) | Recognise `@Test` when `Testing` is imported indirectly; confirm it finds the Swift Build index store | Post-filtering and `--index-store-path` |
 
 ## 16. Changes in v0.2
 
@@ -512,3 +516,8 @@ Reviewed on 2026-11-17 by checking every claim against the tools' source (full f
 - **Signals:** "tool agreement" dropped (the tools aren't independent); "tool disagreement", "untested property", "missing template?", "unchecked laws", "divergent clones" redefined; each signal given a first milestone (§8).
 - **Milestones:** M0 rescoped with testable done-when; SwiftProjectLint adapter moved to M1; hidden coupling moved to M7; every done-when made pass/fail.
 - **Open questions:** six proposed as decisions (§14), four left open.
+
+### v0.2.1 (2026-11-17, after M0)
+
+- **§7.6a Periphery:** upstream is archived; the maintained fork (outskirts) and Periphery 3.0+ retain Swift Testing `@Test` functions, so the "unused or test-only" caveat applied only to the old 2.21.2 installed here. Pin a fork version and recheck the 2.21.2 limits in M7.
+- **M0 discovery:** targets and sources come from `swift package describe --type json` instead of `dump-package` plus hand-written layout rules. The M0 review found eight ways those rules disagreed with SwiftPM (resources, symlinked directories, bundle directories, test targets under `Sources/`, `path: "."`, `..` in `exclude`).

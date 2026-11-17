@@ -1,0 +1,26 @@
+//
+//  FunctionRecord+Keys.swift
+//  SwiftStatsCore
+//
+//  Copying a record with new keys, for collision handling.
+//
+
+extension FunctionRecord {
+    /// This record with `key` and `parentKey` replaced.
+    func replacingKeys(key: String, parentKey: String?) -> Self {
+        Self(
+            key: key,
+            module: module,
+            kind: kind,
+            name: name,
+            accessorKind: accessorKind,
+            file: file,
+            range: range,
+            strippedLines: strippedLines,
+            bodyHash: bodyHash,
+            parentKey: parentKey,
+            ifConfig: ifConfig,
+            role: role
+        )
+    }
+}
