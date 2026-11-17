@@ -15,6 +15,12 @@ public struct TargetResolver {
     /// Target types that contain no Swift source to scan.
     private static let sourcelessTypes: Set<String> = ["binary", "system"]
 
+    /// Directory extensions SwiftPM treats as resource bundles: Swift files
+    /// inside them (for example DocC tutorial code) are never compiled.
+    private static let bundleExtensions: Set<String> = [
+        "bundle", "docc", "lproj", "playground", "xcassets", "xcdatamodeld", "xcmappingmodel"
+    ]
+
     /// Default parent directories SwiftPM searches for non-test targets.
     private static let sourceDirectories = ["Sources", "Source", "src", "srcs"]
 
@@ -125,7 +131,9 @@ public struct TargetResolver {
         var found = [String]()
         while let item = enumerator.nextObject() as? String {
             let name = item.split(separator: "/").last.map(String.init) ?? item
-            if name.hasPrefix(".") {
+            let pathExtension = name.split(separator: ".").last.map(String.init) ?? ""
+            if name.hasPrefix(".")
+                || (Self.bundleExtensions.contains(pathExtension) && isDirectory(url.appendingPathComponent(item))) {
                 enumerator.skipDescendants()
                 continue
             }

@@ -120,4 +120,17 @@ struct TargetResolverTests {
 
         #expect(targets.map(\.name) == ["Lib"])
     }
+
+    @Test("Swift files inside resource bundles such as .docc are not sources")
+    func bundlesSkipped() throws {
+        let root = try Self.makePackage(files: [
+            "Sources/Lib/A.swift",
+            "Sources/Lib/Lib.docc/Resources/Step1.swift",
+            "Sources/Lib/Demo.playground/Contents.swift"
+        ])
+        defer { try? FileManager.default.removeItem(at: root) }
+        let manifest = PackageManifest(name: "Pkg", targets: [Self.target("Lib")])
+
+        #expect(TargetResolver().resolve(manifest, packageRoot: root).first?.files == ["Sources/Lib/A.swift"])
+    }
 }
