@@ -1,0 +1,816 @@
+{
+  "package" : "AllKinds",
+  "records" : [
+    {
+      "bodyHash" : "d302450fc4435c11",
+      "file" : "Sources/AllKinds/Resources.swift",
+      "key" : "AllKinds::Resource::init(handle: Int)",
+      "kind" : "init",
+      "module" : "AllKinds",
+      "name" : "init",
+      "range" : {
+        "end" : {
+          "column" : 5,
+          "line" : 10
+        },
+        "start" : {
+          "column" : 5,
+          "line" : 8
+        }
+      },
+      "role" : "production",
+      "strippedLines" : 3
+    },
+    {
+      "bodyHash" : "76e73a0efe72fb6f",
+      "file" : "Sources/AllKinds/Resources.swift",
+      "key" : "AllKinds::Resource::deinit",
+      "kind" : "deinit",
+      "module" : "AllKinds",
+      "name" : "deinit",
+      "range" : {
+        "end" : {
+          "column" : 5,
+          "line" : 14
+        },
+        "start" : {
+          "column" : 5,
+          "line" : 12
+        }
+      },
+      "role" : "production",
+      "strippedLines" : 3
+    },
+    {
+      "bodyHash" : "01050d5baa8152d6",
+      "file" : "Sources/AllKinds/Resources.swift",
+      "ifConfig" : "DEBUG",
+      "key" : "AllKinds::Resource::func describe() -> String #if DEBUG",
+      "kind" : "func",
+      "module" : "AllKinds",
+      "name" : "describe",
+      "range" : {
+        "end" : {
+          "column" : 58,
+          "line" : 17
+        },
+        "start" : {
+          "column" : 5,
+          "line" : 17
+        }
+      },
+      "role" : "production",
+      "strippedLines" : 1
+    },
+    {
+      "bodyHash" : "f93d215aaebf61e1",
+      "file" : "Sources/AllKinds/Resources.swift",
+      "ifConfig" : "!(DEBUG)",
+      "key" : "AllKinds::Resource::func describe() -> String #if !(DEBUG)",
+      "kind" : "func",
+      "module" : "AllKinds",
+      "name" : "describe",
+      "range" : {
+        "end" : {
+          "column" : 52,
+          "line" : 19
+        },
+        "start" : {
+          "column" : 5,
+          "line" : 19
+        }
+      },
+      "role" : "production",
+      "strippedLines" : 1
+    },
+    {
+      "bodyHash" : "00eccaff1575bd06",
+      "file" : "Sources/AllKinds/Resources.swift",
+      "key" : "AllKinds::Resource::func load() async throws -> Int",
+      "kind" : "func",
+      "module" : "AllKinds",
+      "name" : "load",
+      "range" : {
+        "end" : {
+          "column" : 53,
+          "line" : 22
+        },
+        "start" : {
+          "column" : 5,
+          "line" : 22
+        }
+      },
+      "role" : "production",
+      "strippedLines" : 1
+    },
+    {
+      "bodyHash" : "00eccaff1575bd06",
+      "file" : "Sources/AllKinds/Resources.swift",
+      "key" : "AllKinds::Resource::func load() -> Int",
+      "kind" : "func",
+      "module" : "AllKinds",
+      "name" : "load",
+      "range" : {
+        "end" : {
+          "column" : 40,
+          "line" : 23
+        },
+        "start" : {
+          "column" : 5,
+          "line" : 23
+        }
+      },
+      "role" : "production",
+      "strippedLines" : 1
+    },
+    {
+      "bodyHash" : "6689c84557597491",
+      "file" : "Sources/AllKinds/Resources.swift",
+      "key" : "AllKinds::Counter::func increment() -> Int",
+      "kind" : "func",
+      "module" : "AllKinds",
+      "name" : "increment",
+      "range" : {
+        "end" : {
+          "column" : 5,
+          "line" : 32
+        },
+        "start" : {
+          "column" : 5,
+          "line" : 29
+        }
+      },
+      "role" : "production",
+      "strippedLines" : 4
+    },
+    {
+      "bodyHash" : "28acf588cce0bbf3",
+      "file" : "Sources/AllKinds/Resources.swift",
+      "key" : "AllKinds::func secretHelper() -> Int @ Sources/AllKinds/Resources.swift",
+      "kind" : "func",
+      "module" : "AllKinds",
+      "name" : "secretHelper",
+      "range" : {
+        "end" : {
+          "column" : 41,
+          "line" : 35
+        },
+        "start" : {
+          "column" : 1,
+          "line" : 35
+        }
+      },
+      "role" : "production",
+      "strippedLines" : 1
+    },
+    {
+      "bodyHash" : "ea9cee6726fed6ca",
+      "file" : "Sources/AllKinds/Resources.swift",
+      "key" : "AllKinds::String::func shouted() -> String @ Sources/AllKinds/Resources.swift",
+      "kind" : "func",
+      "module" : "AllKinds",
+      "name" : "shouted",
+      "range" : {
+        "end" : {
+          "column" : 45,
+          "line" : 38
+        },
+        "start" : {
+          "column" : 5,
+          "line" : 38
+        }
+      },
+      "role" : "production",
+      "strippedLines" : 1
+    },
+    {
+      "bodyHash" : "5fdcc8f30e1643a0",
+      "file" : "Sources/AllKinds/Resources.swift",
+      "key" : "AllKinds::func generic<Element: Comparable>(_: [Element]) -> Element? where Element: Sendable",
+      "kind" : "func",
+      "module" : "AllKinds",
+      "name" : "generic",
+      "range" : {
+        "end" : {
+          "column" : 1,
+          "line" : 43
+        },
+        "start" : {
+          "column" : 1,
+          "line" : 41
+        }
+      },
+      "role" : "production",
+      "strippedLines" : 3
+    },
+    {
+      "bodyHash" : "3f8b898d82805994",
+      "file" : "Sources/AllKinds/Shapes.swift",
+      "key" : "AllKinds::Square::init(side: Double)",
+      "kind" : "init",
+      "module" : "AllKinds",
+      "name" : "init",
+      "range" : {
+        "end" : {
+          "column" : 5,
+          "line" : 15
+        },
+        "start" : {
+          "column" : 5,
+          "line" : 13
+        }
+      },
+      "role" : "production",
+      "strippedLines" : 3
+    },
+    {
+      "bodyHash" : "52444d006a85cad9",
+      "file" : "Sources/AllKinds/Shapes.swift",
+      "key" : "AllKinds::Square::init?(text: String)",
+      "kind" : "init",
+      "module" : "AllKinds",
+      "name" : "init",
+      "range" : {
+        "end" : {
+          "column" : 5,
+          "line" : 20
+        },
+        "start" : {
+          "column" : 5,
+          "line" : 17
+        }
+      },
+      "role" : "production",
+      "strippedLines" : 4
+    },
+    {
+      "accessorKind" : "get",
+      "bodyHash" : "09725b45265f8a1c",
+      "file" : "Sources/AllKinds/Shapes.swift",
+      "key" : "AllKinds::Square::var area: Double { get }",
+      "kind" : "accessor",
+      "module" : "AllKinds",
+      "name" : "area",
+      "range" : {
+        "end" : {
+          "column" : 5,
+          "line" : 25
+        },
+        "start" : {
+          "column" : 29,
+          "line" : 23
+        }
+      },
+      "role" : "production",
+      "strippedLines" : 3
+    },
+    {
+      "accessorKind" : "get",
+      "bodyHash" : "8a99a5d863fda516",
+      "file" : "Sources/AllKinds/Shapes.swift",
+      "key" : "AllKinds::Square::var perimeter: Double { get }",
+      "kind" : "accessor",
+      "module" : "AllKinds",
+      "name" : "perimeter",
+      "range" : {
+        "end" : {
+          "column" : 24,
+          "line" : 29
+        },
+        "start" : {
+          "column" : 9,
+          "line" : 29
+        }
+      },
+      "role" : "production",
+      "strippedLines" : 1
+    },
+    {
+      "accessorKind" : "set",
+      "bodyHash" : "5368c61801c21901",
+      "file" : "Sources/AllKinds/Shapes.swift",
+      "key" : "AllKinds::Square::var perimeter: Double { set }",
+      "kind" : "accessor",
+      "module" : "AllKinds",
+      "name" : "perimeter",
+      "range" : {
+        "end" : {
+          "column" : 35,
+          "line" : 30
+        },
+        "start" : {
+          "column" : 9,
+          "line" : 30
+        }
+      },
+      "role" : "production",
+      "strippedLines" : 1
+    },
+    {
+      "accessorKind" : "willSet",
+      "bodyHash" : "c189433aeaffa6d4",
+      "file" : "Sources/AllKinds/Shapes.swift",
+      "key" : "AllKinds::Square::var label { willSet }",
+      "kind" : "accessor",
+      "module" : "AllKinds",
+      "name" : "label",
+      "range" : {
+        "end" : {
+          "column" : 49,
+          "line" : 35
+        },
+        "start" : {
+          "column" : 9,
+          "line" : 35
+        }
+      },
+      "role" : "production",
+      "strippedLines" : 1
+    },
+    {
+      "accessorKind" : "didSet",
+      "bodyHash" : "7fcbf629310ed9fe",
+      "file" : "Sources/AllKinds/Shapes.swift",
+      "key" : "AllKinds::Square::var label { didSet }",
+      "kind" : "accessor",
+      "module" : "AllKinds",
+      "name" : "label",
+      "range" : {
+        "end" : {
+          "column" : 47,
+          "line" : 36
+        },
+        "start" : {
+          "column" : 9,
+          "line" : 36
+        }
+      },
+      "role" : "production",
+      "strippedLines" : 1
+    },
+    {
+      "bodyHash" : "35fa00fd868a1146",
+      "file" : "Sources/AllKinds/Shapes.swift",
+      "key" : "AllKinds::Square::func scaled(by: Double) -> Square",
+      "kind" : "func",
+      "module" : "AllKinds",
+      "name" : "scaled",
+      "range" : {
+        "end" : {
+          "column" : 5,
+          "line" : 45
+        },
+        "start" : {
+          "column" : 5,
+          "line" : 39
+        }
+      },
+      "role" : "production",
+      "strippedLines" : 6
+    },
+    {
+      "bodyHash" : "09a0815c161093d1",
+      "file" : "Sources/AllKinds/Shapes.swift",
+      "key" : "AllKinds::Square::func scaled(by: Double) -> Square / func clamp(_: Double) -> Double",
+      "kind" : "func",
+      "module" : "AllKinds",
+      "name" : "clamp",
+      "parentKey" : "AllKinds::Square::func scaled(by: Double) -> Square",
+      "range" : {
+        "end" : {
+          "column" : 9,
+          "line" : 43
+        },
+        "start" : {
+          "column" : 9,
+          "line" : 41
+        }
+      },
+      "role" : "production",
+      "strippedLines" : 3
+    },
+    {
+      "bodyHash" : "1271d829fcb30ae7",
+      "file" : "Sources/AllKinds/Shapes.swift",
+      "key" : "AllKinds::Square::subscript(_: Int) -> Double",
+      "kind" : "subscript",
+      "module" : "AllKinds",
+      "name" : "subscript",
+      "range" : {
+        "end" : {
+          "column" : 5,
+          "line" : 49
+        },
+        "start" : {
+          "column" : 5,
+          "line" : 47
+        }
+      },
+      "role" : "production",
+      "strippedLines" : 3
+    },
+    {
+      "bodyHash" : "9288593763a41083",
+      "file" : "Sources/AllKinds/Shapes.swift",
+      "key" : "AllKinds::Square::subscript(row: Int, column: Int) -> Double",
+      "kind" : "subscript",
+      "module" : "AllKinds",
+      "name" : "subscript",
+      "range" : {
+        "end" : {
+          "column" : 5,
+          "line" : 54
+        },
+        "start" : {
+          "column" : 5,
+          "line" : 51
+        }
+      },
+      "role" : "production",
+      "strippedLines" : 4
+    },
+    {
+      "accessorKind" : "get",
+      "bodyHash" : "7c827398f29d478a",
+      "file" : "Sources/AllKinds/Shapes.swift",
+      "key" : "AllKinds::Square::subscript(row: Int, column: Int) -> Double / { get }",
+      "kind" : "accessor",
+      "module" : "AllKinds",
+      "name" : "subscript",
+      "parentKey" : "AllKinds::Square::subscript(row: Int, column: Int) -> Double",
+      "range" : {
+        "end" : {
+          "column" : 36,
+          "line" : 52
+        },
+        "start" : {
+          "column" : 9,
+          "line" : 52
+        }
+      },
+      "role" : "production",
+      "strippedLines" : 1
+    },
+    {
+      "accessorKind" : "set",
+      "bodyHash" : "dfefe169ea596b24",
+      "file" : "Sources/AllKinds/Shapes.swift",
+      "key" : "AllKinds::Square::subscript(row: Int, column: Int) -> Double / { set }",
+      "kind" : "accessor",
+      "module" : "AllKinds",
+      "name" : "subscript",
+      "parentKey" : "AllKinds::Square::subscript(row: Int, column: Int) -> Double",
+      "range" : {
+        "end" : {
+          "column" : 31,
+          "line" : 53
+        },
+        "start" : {
+          "column" : 9,
+          "line" : 53
+        }
+      },
+      "role" : "production",
+      "strippedLines" : 1
+    },
+    {
+      "bodyHash" : "1c668c24725fa618",
+      "file" : "Sources/AllKinds/Shapes.swift",
+      "key" : "AllKinds::Square::static func +(lhs: Square, rhs: Square) -> Square",
+      "kind" : "func",
+      "module" : "AllKinds",
+      "name" : "+",
+      "range" : {
+        "end" : {
+          "column" : 5,
+          "line" : 58
+        },
+        "start" : {
+          "column" : 5,
+          "line" : 56
+        }
+      },
+      "role" : "production",
+      "strippedLines" : 3
+    },
+    {
+      "bodyHash" : "95a772b146cd45e4",
+      "file" : "Sources/AllKinds/Shapes.swift",
+      "key" : "AllKinds::Square::static prefix func -(shape: Square) -> Square",
+      "kind" : "func",
+      "module" : "AllKinds",
+      "name" : "-",
+      "range" : {
+        "end" : {
+          "column" : 5,
+          "line" : 62
+        },
+        "start" : {
+          "column" : 5,
+          "line" : 60
+        }
+      },
+      "role" : "production",
+      "strippedLines" : 3
+    },
+    {
+      "bodyHash" : "0c104affe8d872ca",
+      "file" : "Sources/AllKinds/Shapes.swift",
+      "key" : "AllKinds::Shape where Self: Equatable::func isSame(as: Self) -> Bool",
+      "kind" : "func",
+      "module" : "AllKinds",
+      "name" : "isSame",
+      "range" : {
+        "end" : {
+          "column" : 5,
+          "line" : 68
+        },
+        "start" : {
+          "column" : 5,
+          "line" : 66
+        }
+      },
+      "role" : "production",
+      "strippedLines" : 3
+    },
+    {
+      "bodyHash" : "69885c1f90bb7575",
+      "file" : "Sources/Tool/main.swift",
+      "key" : "Tool::<top-level code> @ Sources/Tool/main.swift",
+      "kind" : "topLevel",
+      "module" : "Tool",
+      "name" : "<top-level>",
+      "range" : {
+        "end" : {
+          "column" : 24,
+          "line" : 10
+        },
+        "start" : {
+          "column" : 1,
+          "line" : 4
+        }
+      },
+      "role" : "production",
+      "strippedLines" : 2
+    },
+    {
+      "bodyHash" : "195a029cd0d6aa32",
+      "file" : "Sources/Tool/main.swift",
+      "key" : "Tool::func report(_: Double)",
+      "kind" : "func",
+      "module" : "Tool",
+      "name" : "report",
+      "range" : {
+        "end" : {
+          "column" : 1,
+          "line" : 8
+        },
+        "start" : {
+          "column" : 1,
+          "line" : 6
+        }
+      },
+      "role" : "production",
+      "strippedLines" : 3
+    },
+    {
+      "bodyHash" : "955bc4c18b8575e8",
+      "file" : "Tests/AllKindsTests/SwiftTestingTests.swift",
+      "key" : "AllKindsTests::func areaOfSquare()",
+      "kind" : "func",
+      "module" : "AllKindsTests",
+      "name" : "areaOfSquare",
+      "range" : {
+        "end" : {
+          "column" : 1,
+          "line" : 6
+        },
+        "start" : {
+          "column" : 1,
+          "line" : 4
+        }
+      },
+      "role" : "test",
+      "strippedLines" : 3
+    },
+    {
+      "bodyHash" : "1ed093fb4c5263a3",
+      "file" : "Tests/AllKindsTests/SwiftTestingTests.swift",
+      "key" : "AllKindsTests::SquareSuite::func perimeter()",
+      "kind" : "func",
+      "module" : "AllKindsTests",
+      "name" : "perimeter",
+      "range" : {
+        "end" : {
+          "column" : 5,
+          "line" : 11
+        },
+        "start" : {
+          "column" : 5,
+          "line" : 9
+        }
+      },
+      "role" : "test",
+      "strippedLines" : 3
+    },
+    {
+      "bodyHash" : "ad81e916dbc88acb",
+      "file" : "Tests/AllKindsTests/SwiftTestingTests.swift",
+      "key" : "AllKindsTests::SquareSuite::func makeSquare() -> Square",
+      "kind" : "func",
+      "module" : "AllKindsTests",
+      "name" : "makeSquare",
+      "range" : {
+        "end" : {
+          "column" : 51,
+          "line" : 13
+        },
+        "start" : {
+          "column" : 5,
+          "line" : 13
+        }
+      },
+      "role" : "helper",
+      "strippedLines" : 1
+    },
+    {
+      "bodyHash" : "25eca6c5d0fe726a",
+      "file" : "Tests/AllKindsTests/XCTestTests.swift",
+      "key" : "AllKindsTests::BaseTestCase::func makeResource() -> Resource",
+      "kind" : "func",
+      "module" : "AllKindsTests",
+      "name" : "makeResource",
+      "range" : {
+        "end" : {
+          "column" : 59,
+          "line" : 5
+        },
+        "start" : {
+          "column" : 5,
+          "line" : 5
+        }
+      },
+      "role" : "helper",
+      "strippedLines" : 1
+    },
+    {
+      "bodyHash" : "5fca41c2d4d2c7fb",
+      "file" : "Tests/AllKindsTests/XCTestTests.swift",
+      "key" : "AllKindsTests::ResourceTests::func testDescribe()",
+      "kind" : "func",
+      "module" : "AllKindsTests",
+      "name" : "testDescribe",
+      "range" : {
+        "end" : {
+          "column" : 5,
+          "line" : 11
+        },
+        "start" : {
+          "column" : 5,
+          "line" : 9
+        }
+      },
+      "role" : "test",
+      "strippedLines" : 3
+    },
+    {
+      "bodyHash" : "257c1be96ae69f4b",
+      "file" : "Tests/AllKindsTests/XCTestTests.swift",
+      "key" : "AllKindsTests::ResourceTests::func testWithArgument(_: Int)",
+      "kind" : "func",
+      "module" : "AllKindsTests",
+      "name" : "testWithArgument",
+      "range" : {
+        "end" : {
+          "column" : 43,
+          "line" : 13
+        },
+        "start" : {
+          "column" : 5,
+          "line" : 13
+        }
+      },
+      "role" : "helper",
+      "strippedLines" : 1
+    },
+    {
+      "bodyHash" : "8d5a9ce96bb9fddd",
+      "file" : "Tests/AllKindsTests/XCTestTests.swift",
+      "key" : "AllKindsTests::ResourceTests::func testFromExtension()",
+      "kind" : "func",
+      "module" : "AllKindsTests",
+      "name" : "testFromExtension",
+      "range" : {
+        "end" : {
+          "column" : 5,
+          "line" : 19
+        },
+        "start" : {
+          "column" : 5,
+          "line" : 17
+        }
+      },
+      "role" : "test",
+      "strippedLines" : 3
+    }
+  ],
+  "schemaVersion" : 1,
+  "sitrep" : {
+    "imports" : [
+      {
+        "name" : "AllKinds",
+        "value" : 3
+      },
+      {
+        "name" : "Darwin",
+        "value" : 1
+      },
+      {
+        "name" : "Foundation",
+        "value" : 1
+      },
+      {
+        "name" : "Testing",
+        "value" : 1
+      },
+      {
+        "name" : "XCTest",
+        "value" : 1
+      }
+    ],
+    "inheritances" : [
+      {
+        "name" : "UIViewController",
+        "value" : 0
+      },
+      {
+        "name" : "UIView",
+        "value" : 0
+      },
+      {
+        "name" : "SwiftUI.View",
+        "value" : 0
+      }
+    ],
+    "objects" : {
+      "classes" : 3,
+      "enums" : 0,
+      "extensions" : 3,
+      "protocols" : 1,
+      "structs" : 2
+    },
+    "scanStats" : {
+      "longestFile" : {
+        "name" : "Shapes.swift",
+        "value" : 56
+      },
+      "longestType" : {
+        "name" : "Square",
+        "value" : 44
+      },
+      "scannedFiles" : 5,
+      "swiftUILinesOfCode" : 0,
+      "totalLinesOfCode" : 157,
+      "totalStrippedLinesOfCode" : 119,
+      "uiKitLinesOfCode" : 0
+    }
+  },
+  "targets" : [
+    {
+      "files" : [
+        "Sources/AllKinds/Resources.swift",
+        "Sources/AllKinds/Shapes.swift"
+      ],
+      "isTest" : false,
+      "name" : "AllKinds",
+      "path" : "Sources/AllKinds",
+      "type" : "regular"
+    },
+    {
+      "files" : [
+        "Sources/Tool/main.swift"
+      ],
+      "isTest" : false,
+      "name" : "Tool",
+      "path" : "Sources/Tool",
+      "type" : "executable"
+    },
+    {
+      "files" : [
+        "Tests/AllKindsTests/SwiftTestingTests.swift",
+        "Tests/AllKindsTests/XCTestTests.swift"
+      ],
+      "isTest" : true,
+      "name" : "AllKindsTests",
+      "path" : "Tests/AllKindsTests",
+      "type" : "test"
+    }
+  ],
+  "tool" : {
+    "name" : "swiftstats",
+    "version" : "0.0.1"
+  },
+  "warnings" : [
+
+  ]
+}
