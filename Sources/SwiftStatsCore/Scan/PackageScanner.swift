@@ -109,6 +109,14 @@ public struct PackageScanner {
             .sorted { $0.path < $1.path }
             .map { SitrepFileVisitor.facts(for: $0.tree, source: $0.source, path: $0.path) }
 
+        let sitrepWarnings = SitrepCounter.namesWithConflictingParents(in: sitrepFiles).map { name in
+            ScanWarning(
+                file: nil,
+                message: "sitrep: \(name) is declared with different first parents; "
+                    + "its UIKit and SwiftUI line counts follow the first declaration in path order"
+            )
+        }
+
         return ScanReport(
             schemaVersion: ScanReport.currentSchemaVersion,
             tool: .current,
@@ -116,7 +124,7 @@ public struct PackageScanner {
             targets: targets,
             records: records.sorted(by: Self.recordOrder),
             sitrep: SitrepCounter.report(for: sitrepFiles),
-            warnings: (readWarnings + collisionWarnings).sorted(by: Self.warningOrder)
+            warnings: (readWarnings + collisionWarnings + sitrepWarnings).sorted(by: Self.warningOrder)
         )
     }
 }

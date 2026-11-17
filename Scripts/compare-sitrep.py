@@ -39,11 +39,17 @@ def run_json(command, cwd=None):
     return json.loads(result.stdout)
 
 
-def compare(ours, theirs):
+def compare(ours, theirs, order_dependent):
+    """order_dependent: type names Sitrep resolves in file-system order."""
     differences = []
     for field in ("scannedFiles", "totalLinesOfCode", "totalStrippedLinesOfCode",
                   "uiKitLinesOfCode", "swiftUILinesOfCode"):
-        if ours["scanStats"][field] != theirs["scanStats"][field]:
+        if ours["scanStats"][field] != theirs["scanStats"][field] and field.endswith("LinesOfCode") \
+                and field.startswith(("uiKit", "swiftUI")) and order_dependent:
+            print(f"  note: {field} differs (swiftstats {ours['scanStats'][field]}, "
+                  f"sitrep {theirs['scanStats'][field]}); depends on declaration order of "
+                  f"{', '.join(order_dependent)}")
+        elif ours["scanStats"][field] != theirs["scanStats"][field]:
             differences.append(f"scanStats.{field}: swiftstats {ours['scanStats'][field]}, "
                                f"sitrep {theirs['scanStats'][field]}")
     for field in TIE_FIELDS:
@@ -83,7 +89,10 @@ def main():
             os.symlink(os.path.join(package, file), link)
         theirs = run_json([args.sitrep, "-f", "json", "-p", tree])
 
-    differences = compare(scan["sitrep"], theirs)
+    prefix = "sitrep: "
+    order_dependent = [warning["message"][len(prefix):].split(" ", 1)[0]
+                       for warning in scan["warnings"] if warning["message"].startswith(prefix)]
+    differences = compare(scan["sitrep"], theirs, order_dependent)
     print(f"{os.path.basename(package)}: {len(files)} files")
     if differences:
         for difference in differences:

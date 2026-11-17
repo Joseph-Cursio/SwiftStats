@@ -6,7 +6,8 @@
 //  `Scan.collate` and `Results` rules, quirks included (PRD §7.1). Where
 //  Sitrep's result depends on dictionary or file-system order, ties are
 //  broken deterministically instead: longest file by path order, longest
-//  type and import order by name.
+//  type and import order by name, and a type name declared with different
+//  first parents by its first declaration in path order.
 //
 
 /// Builds Sitrep-compatible counts.
@@ -122,13 +123,30 @@ enum SitrepCounter {
         return lineTotal(uiTypes) + lineTotal(extensions.filter { extensionTypes.contains($0.name) })
     }
 
+    /// Class and struct names declared more than once with different first
+    /// parents. Sitrep keeps whichever declaration it reads last, which
+    /// depends on file-system order, so its UIKit and SwiftUI line counts
+    /// for these names can't be reproduced exactly.
+    static func namesWithConflictingParents(in files: [SitrepFileFacts]) -> [String] {
+        let types = files.flatMap(\.types)
+        var conflicting = Set<String>()
+        for kind in ["class", "struct"] {
+            let inheriting = types.filter { $0.kind == kind && $0.inheritance.isEmpty == false }
+            let parents = Dictionary(grouping: inheriting, by: \.name)
+                .mapValues { Set($0.compactMap(\.inheritance.first)) }
+            conflicting.formUnion(parents.filter { $0.value.count > 1 }.keys)
+        }
+        return conflicting.sorted()
+    }
+
     /// Sitrep's `extending(from:)`: for each base name in order, the types
     /// whose chain of first inherited types reaches it. A type can appear
-    /// once per base it reaches, as in Sitrep.
+    /// once per base it reaches, as in Sitrep. When a name is declared with
+    /// different first parents, the first declaration in path order wins.
     private static func extending(_ types: [SitrepTypeFact], from bases: [String]) -> [SitrepTypeFact] {
         var firstParent: [String: String] = [:]
         for type in types {
-            if let parent = type.inheritance.first {
+            if let parent = type.inheritance.first, firstParent[type.name] == nil {
                 firstParent[type.name] = parent
             }
         }

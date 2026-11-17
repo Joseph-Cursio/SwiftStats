@@ -72,4 +72,17 @@ struct SitrepCounterTests {
         #expect(report.inheritances[2] == SitrepStat(name: "SwiftUI.View", value: 2))
         #expect(report.scanStats.swiftUILinesOfCode == 1)
     }
+
+    @Test("a name declared with different first parents follows its first declaration")
+    func conflictingParents() {
+        let iOSSource = "class ViewBase: UIView { }\nclass Leaf: ViewBase {\n    func a() { }\n}\n"
+        let iOS = Self.facts(iOSSource, path: "iOS/Base.swift")
+        let macOS = Self.facts("class ViewBase: NSView { }\n", path: "macOS/Base.swift")
+
+        #expect(SitrepCounter.namesWithConflictingParents(in: [iOS, macOS]) == ["ViewBase"])
+        // ViewBase resolves to UIView, and Sitrep matches by name, so both
+        // ViewBase declarations count with Leaf: 1 + 3 + 1 lines.
+        #expect(SitrepCounter.report(for: [iOS, macOS]).scanStats.uiKitLinesOfCode == 5)
+        #expect(SitrepCounter.namesWithConflictingParents(in: [iOS]).isEmpty)
+    }
 }
