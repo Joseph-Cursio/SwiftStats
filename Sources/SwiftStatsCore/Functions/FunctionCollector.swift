@@ -25,6 +25,10 @@ final class FunctionCollector: SyntaxVisitor {
     var nestedKeyCounts: [String: Int] = [:]
     /// Types this file declares `private` or `fileprivate`.
     var fileScopedTypes: Set<String> = []
+    /// Key of the file's top-level-code record, if it has one.
+    var topLevelKey: String?
+    /// The top-level statements that record covers.
+    var topLevelItems: Set<SyntaxIdentifier> = []
 
     /// Creates a collector for the file described by `context`.
     init(context: FileContext) {
@@ -108,6 +112,35 @@ final class FunctionCollector: SyntaxVisitor {
     }
 
     override func visitPost(_ node: ExtensionDeclSyntax) {
+        popScope(owner: node.id)
+    }
+
+    // MARK: - Contexts for local declarations
+
+    /// A top-level statement: declarations inside it (`do { func f() }`)
+    /// belong to the file's top-level-code record.
+    override func visit(_ node: CodeBlockItemSyntax) -> SyntaxVisitorContinueKind {
+        if let topLevelKey, topLevelItems.contains(node.id) {
+            scopes.append(.record(RecordScope(owner: node.id, key: topLevelKey, conditionDepth: 0, isRecord: true)))
+        }
+        return .visitChildren
+    }
+
+    override func visitPost(_ node: CodeBlockItemSyntax) {
+        popScope(owner: node.id)
+    }
+
+    /// A stored property's or global's initialiser outside any record:
+    /// declarations in its closures are keyed under the property, so they
+    /// can't collide with members or globals of the same name.
+    override func visit(_ node: InitializerClauseSyntax) -> SyntaxVisitorContinueKind {
+        if let binding = node.parent?.as(PatternBindingSyntax.self), isInsideRecordScope == false {
+            pushInitializerContext(for: binding, owner: node.id)
+        }
+        return .visitChildren
+    }
+
+    override func visitPost(_ node: InitializerClauseSyntax) {
         popScope(owner: node.id)
     }
 

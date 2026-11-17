@@ -63,6 +63,15 @@ enum DeclarationRenderer {
         return prefix + "var " + name + type
     }
 
+    /// `[static ]let name[: Type] = <initializer>`: the context for
+    /// declarations inside a stored property's or global's initialiser.
+    static func initializerContext(_ binding: PatternBindingSyntax, variable: VariableDeclSyntax?) -> String {
+        let prefix = variable.map { typeLevelPrefix($0.modifiers) } ?? ""
+        let specifier = variable?.bindingSpecifier.text ?? "var"
+        let type = binding.typeAnnotation.map { ": " + CanonicalText.render($0.type) } ?? ""
+        return prefix + specifier + " " + CanonicalText.render(binding.pattern) + type + " = <initializer>"
+    }
+
     /// `<owner> { <accessor> }`, for example `var count: Int { get }`.
     static func accessor(owner: String, kind: String) -> String {
         owner.isEmpty ? "{ \(kind) }" : "\(owner) { \(kind) }"

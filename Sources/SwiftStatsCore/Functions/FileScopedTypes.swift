@@ -88,6 +88,17 @@ final class FileScopedTypes: SyntaxVisitor {
         stack.removeLast()
     }
 
+    /// An extension's nested types live under the extended type's path. A
+    /// `private extension` makes them file-scoped, but not the extended type.
+    override func visit(_ node: ExtensionDeclSyntax) -> SyntaxVisitorContinueKind {
+        stack.append((CanonicalText.render(node.extendedType), FunctionCollector.isFileScoped(node.modifiers)))
+        return .visitChildren
+    }
+
+    override func visitPost(_: ExtensionDeclSyntax) {
+        stack.removeLast()
+    }
+
     /// Local types inside function bodies are already scoped by their
     /// parent record's key.
     override func visit(_: CodeBlockSyntax) -> SyntaxVisitorContinueKind {

@@ -15,61 +15,21 @@ extension FunctionCollector {
         context.isTestTarget ? .helper : .production
     }
 
-    /// Whether the modifiers make a declaration `private` or `fileprivate`.
-    /// `private(set)` restricts only the setter, so it doesn't count.
-    static func isFileScoped(_ modifiers: DeclModifierListSyntax) -> Bool {
-        modifiers.contains { modifier in
-            modifier.detail == nil
-                && (modifier.name.tokenKind == .keyword(.private) || modifier.name.tokenKind == .keyword(.fileprivate))
-        }
-    }
-
-    /// Whether an accessor block has code, as opposed to a protocol
-    /// requirement such as `{ get set }`.
-    static func hasBody(_ block: AccessorBlockSyntax) -> Bool {
-        switch block.accessors {
-        case .getter:
+    /// Whether the innermost scope is a record or context.
+    var isInsideRecordScope: Bool {
+        if case .record? = scopes.last {
             return true
-
-        case .accessors(let accessors):
-            return accessors.contains { $0.body != nil }
         }
+        return false
     }
 
-    /// The `var`/`let` declaration a binding belongs to.
-    static func variable(of binding: PatternBindingSyntax) -> VariableDeclSyntax? {
-        binding.parent?.parent?.as(VariableDeclSyntax.self)
-    }
-
-    /// The condition under which a clause's body is compiled: its own
-    /// condition, after the negation of every earlier clause's.
-    static func condition(of clause: IfConfigClauseSyntax) -> String {
-        var parts: [String] = []
-        if let clauses = clause.parent?.as(IfConfigClauseListSyntax.self) {
-            for sibling in clauses {
-                if sibling.id == clause.id {
-                    break
-                }
-                if let condition = sibling.condition {
-                    parts.append("!(" + CanonicalText.render(condition) + ")")
-                }
-            }
-        }
-        if let condition = clause.condition {
-            parts.append(CanonicalText.render(condition))
-        }
-        return parts.joined(separator: " && ")
-    }
-
-    /// Conditions joined with `&&`, each parenthesised when there are
-    /// several and it contains a space.
-    static func conjunction(_ conditions: [String]) -> String {
-        guard conditions.count > 1 else {
-            return conditions.first ?? ""
-        }
-        return conditions
-            .map { $0.contains(" ") ? "(\($0))" : $0 }
-            .joined(separator: " && ")
+    /// Opens a key context for a binding's initialiser.
+    func pushInitializerContext(for binding: PatternBindingSyntax, owner: SyntaxIdentifier) {
+        let variable = Self.variable(of: binding)
+        let declaration = DeclarationRenderer.initializerContext(binding, variable: variable)
+        let isFileScoped = variable.map { Self.isFileScoped($0.modifiers) } ?? false
+        let key = makeKey(declaration: declaration, isFileScoped: isFileScoped).key
+        scopes.append(.record(RecordScope(owner: owner, key: key, conditionDepth: conditions.count, isRecord: false)))
     }
 
     /// Opens a type scope.
@@ -107,8 +67,10 @@ extension FunctionCollector {
 
     /// Records the draft under the current scopes and opens its own scope.
     func addRecord(_ draft: RecordDraft) {
-        var (key, parentKey) = makeKey(declaration: draft.declaration, isFileScoped: draft.isFileScoped)
-        if parentKey != nil {
+        let assembled = makeKey(declaration: draft.declaration, isFileScoped: draft.isFileScoped)
+        var key = assembled.key
+        let parentKey = assembled.parentKey
+        if assembled.isNested {
             // Swift allows local functions of the same name in sibling blocks
             // (`if … { func f() } else { func f() }`); number the repeats.
             let occurrence = nestedKeyCounts[key, default: 0] + 1
@@ -135,32 +97,21 @@ extension FunctionCollector {
             ifConfig: conditions.isEmpty ? nil : Self.conjunction(conditions),
             role: draft.role
         ))
-        scopes.append(.record(RecordScope(owner: draft.node.id, key: key, conditionDepth: conditions.count)))
+        scopes.append(.record(RecordScope(
+            owner: draft.node.id,
+            key: key,
+            conditionDepth: conditions.count,
+            isRecord: true
+        )))
     }
 
     /// Adds the file's synthetic top-level-code record when the file has
-    /// top-level statements (PRD §6.1a). Declarations don't count: global
-    /// variable initialisers attach to the file instead.
+    /// top-level statements (PRD §6.1a), including those in every branch of a
+    /// top-level `#if`. Declarations don't count: global variable initialisers
+    /// attach to the file instead.
     func addTopLevelCode(_ file: SourceFileSyntax) {
-        // A plain loop, not `filter`: filtering a syntax collection builds a
-        // detached copy whose positions no longer match the file.
         var statements: [CodeBlockItemSyntax] = []
-        for item in file.statements {
-            switch item.item {
-            case .expr(let expression):
-                // A top-level `#Preview { … }` parses as an expression but is
-                // a declaration macro, not code that runs.
-                if expression.is(MacroExpansionExprSyntax.self) == false {
-                    statements.append(item)
-                }
-
-            case .stmt:
-                statements.append(item)
-
-            case .decl:
-                continue
-            }
-        }
+        Self.collectStatements(file.statements, into: &statements)
         guard let first = statements.first, let last = statements.last else {
             return
         }
@@ -168,7 +119,9 @@ extension FunctionCollector {
         for statement in statements {
             lines.formUnion(lineSet(of: Syntax(statement), from: statement.position))
         }
-        let (key, _) = makeKey(declaration: "<top-level code>", isFileScoped: true)
+        let key = makeKey(declaration: "<top-level code>", isFileScoped: true).key
+        topLevelKey = key
+        topLevelItems = Set(statements.map(\.id))
         records.append(FunctionRecord(
             key: key,
             module: context.module,
@@ -185,9 +138,10 @@ extension FunctionCollector {
         ))
     }
 
-    /// Assembles a key from the open scopes (PRD §6.1). Inside a record the
-    /// record's key is the prefix; otherwise the module is.
-    private func makeKey(declaration: String, isFileScoped: Bool) -> (key: String, parentKey: String?) {
+    /// Assembles a key from the open scopes (PRD §6.1). Inside a record or
+    /// context its key is the prefix; otherwise the module is. `parentKey`
+    /// is set only when the innermost prefix is a record.
+    private func makeKey(declaration: String, isFileScoped: Bool) -> AssembledKey {
         var parent: RecordScope?
         var typeScopes: [TypeScope] = []
         for scope in scopes {
@@ -213,15 +167,17 @@ extension FunctionCollector {
         if parent == nil, isFileScoped || typeScopes.contains(where: \.isFileScoped) {
             key += " @ " + context.file
         }
-        return (key, parent?.key)
+        return AssembledKey(key: key, parentKey: parent?.isRecord == true ? parent?.key : nil, isNested: parent != nil)
     }
 
     /// Whether `node` is an XCTest test method: an instance `func` named
     /// `test…` with no parameters, directly inside an `XCTestCase` subclass
     /// or an extension of one.
     private func isXCTestMethod(_ node: FunctionDeclSyntax) -> Bool {
+        let returnType = node.signature.returnClause.map { CanonicalText.render($0.type) }
         guard node.name.text.hasPrefix("test"),
               node.signature.parameterClause.parameters.isEmpty,
+              returnType == nil || returnType == "Void" || returnType == "()",
               DeclarationRenderer.typeLevelPrefix(node.modifiers).isEmpty,
               case .type(let owner)? = scopes.last else {
             return false

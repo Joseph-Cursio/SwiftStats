@@ -22,7 +22,7 @@ enum CanonicalText {
     static func render(tokens: some Sequence<TokenSyntax>) -> String {
         var text = ""
         var previous: TokenKind?
-        for token in tokens where token.presence == .present {
+        for token in significant(tokens) {
             let kind = token.tokenKind
             if let previous, needsSpace(between: previous, and: kind) {
                 text += " "
@@ -36,10 +36,28 @@ enum CanonicalText {
     /// The node's token texts joined by single spaces: the input to the body
     /// hash, where readability doesn't matter but formatting must not.
     static func tokenStream(_ node: some SyntaxProtocol) -> String {
-        node.tokens(viewMode: .sourceAccurate)
-            .filter { $0.presence == .present }
+        significant(node.tokens(viewMode: .sourceAccurate))
             .map(\.text)
             .joined(separator: " ")
+    }
+
+    /// The present tokens, without trailing commas: since SE-0439 a comma
+    /// before `)`, `>` or `]` is a formatting choice, not code.
+    private static func significant(_ tokens: some Sequence<TokenSyntax>) -> [TokenSyntax] {
+        let present = tokens.filter { $0.presence == .present }
+        return present.indices.compactMap { index in
+            let token = present[index]
+            if token.tokenKind == .comma, index + 1 < present.count {
+                switch present[index + 1].tokenKind {
+                case .rightAngle, .rightParen, .rightSquare:
+                    return nil
+
+                default:
+                    break
+                }
+            }
+            return token
+        }
     }
 
     /// Whether the canonical form puts a space between two adjacent tokens.
