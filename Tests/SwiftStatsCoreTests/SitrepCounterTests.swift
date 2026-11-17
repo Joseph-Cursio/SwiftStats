@@ -84,5 +84,11 @@ struct SitrepCounterTests {
         // ViewBase declarations count with Leaf: 1 + 3 + 1 lines.
         #expect(SitrepCounter.report(for: [iOS, macOS]).scanStats.uiKitLinesOfCode == 5)
         #expect(SitrepCounter.namesWithConflictingParents(in: [iOS]).isEmpty)
+
+        // Different parents that don't change the UIKit or SwiftUI counts
+        // aren't flagged.
+        let codable = Self.facts("struct Model: Codable { }\n", path: "A.swift")
+        let hashable = Self.facts("struct Model: Hashable { }\n", path: "B.swift")
+        #expect(SitrepCounter.namesWithConflictingParents(in: [codable, hashable]).isEmpty)
     }
 }

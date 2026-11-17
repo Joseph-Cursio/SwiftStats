@@ -124,19 +124,50 @@ enum SitrepCounter {
     }
 
     /// Class and struct names declared more than once with different first
-    /// parents. Sitrep keeps whichever declaration it reads last, which
-    /// depends on file-system order, so its UIKit and SwiftUI line counts
-    /// for these names can't be reproduced exactly.
+    /// parents, where the choice changes the UIKit or SwiftUI line counts:
+    /// one parent leads to a UIKit class (or SwiftUI protocol) and another
+    /// doesn't. Sitrep keeps whichever declaration it reads last, in
+    /// file-system order, so for these names its counts can't be reproduced.
     static func namesWithConflictingParents(in files: [SitrepFileFacts]) -> [String] {
         let types = files.flatMap(\.types)
         var conflicting = Set<String>()
-        for kind in ["class", "struct"] {
+        for (kind, bases) in [("class", uiKitClasses), ("struct", swiftUIProtocols)] {
             let inheriting = types.filter { $0.kind == kind && $0.inheritance.isEmpty == false }
-            let parents = Dictionary(grouping: inheriting, by: \.name)
+            let firstParent = firstParents(of: inheriting)
+            let options = Dictionary(grouping: inheriting, by: \.name)
                 .mapValues { Set($0.compactMap(\.inheritance.first)) }
-            conflicting.formUnion(parents.filter { $0.value.count > 1 }.keys)
+            for (name, parents) in options where parents.count > 1 {
+                let outcomes = Set(parents.map { reaches($0, bases: Set(bases), firstParent: firstParent) })
+                if outcomes.count > 1 {
+                    conflicting.insert(name)
+                }
+            }
         }
         return conflicting.sorted()
+    }
+
+    /// Each name's first parent, the first declaration in path order winning.
+    private static func firstParents(of types: [SitrepTypeFact]) -> [String: String] {
+        var firstParent: [String: String] = [:]
+        for type in types {
+            if let parent = type.inheritance.first, firstParent[type.name] == nil {
+                firstParent[type.name] = parent
+            }
+        }
+        return firstParent
+    }
+
+    /// Whether the chain of first parents starting at `name` reaches a base.
+    private static func reaches(_ name: String, bases: Set<String>, firstParent: [String: String]) -> Bool {
+        var current: String? = name
+        var visited = Set<String>()
+        while let next = current, visited.insert(next).inserted {
+            if bases.contains(next) {
+                return true
+            }
+            current = firstParent[next]
+        }
+        return false
     }
 
     /// Sitrep's `extending(from:)`: for each base name in order, the types
@@ -144,12 +175,7 @@ enum SitrepCounter {
     /// once per base it reaches, as in Sitrep. When a name is declared with
     /// different first parents, the first declaration in path order wins.
     private static func extending(_ types: [SitrepTypeFact], from bases: [String]) -> [SitrepTypeFact] {
-        var firstParent: [String: String] = [:]
-        for type in types {
-            if let parent = type.inheritance.first, firstParent[type.name] == nil {
-                firstParent[type.name] = parent
-            }
-        }
+        let firstParent = firstParents(of: types)
         return bases.flatMap { base in
             types.filter { type in
                 var current: String? = type.name
