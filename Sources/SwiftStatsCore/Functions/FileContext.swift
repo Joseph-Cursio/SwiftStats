@@ -20,4 +20,7 @@ struct FileContext {
     let testCaseClasses: Set<String>
     /// Converts positions in the file's tree to lines and columns.
     let converter: SourceLocationConverter
+    /// Columns to add on line 1: 3 when the file starts with a byte order
+    /// mark, which the tree doesn't contain but the compiler counts.
+    let firstLineColumnOffset: Int
 }

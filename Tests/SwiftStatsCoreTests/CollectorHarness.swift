@@ -34,7 +34,8 @@ enum CollectorHarness {
             file: file,
             isTestTarget: isTestTarget,
             testCaseClasses: testCaseClasses,
-            converter: SourceLocationConverter(fileName: file, tree: tree)
+            converter: SourceLocationConverter(fileName: file, tree: tree),
+            firstLineColumnOffset: 0
         )
         return FunctionCollector.collect(tree, context: context)
     }

@@ -15,4 +15,7 @@ struct ParsedFile {
     let source: String
     /// The parsed tree.
     let tree: SourceFileSyntax
+    /// Whether the file starts with a UTF-8 byte order mark, which decoding
+    /// removed from `source`.
+    let hasByteOrderMark: Bool
 }

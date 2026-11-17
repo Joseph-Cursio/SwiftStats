@@ -13,6 +13,9 @@ import SwiftSyntax
 
 /// Scans a SwiftPM package at the syntax level.
 public struct PackageScanner {
+    /// The UTF-8 byte order mark.
+    private static let byteOrderMark = Array("\u{FEFF}".utf8)
+
     /// Where package descriptions come from.
     private let describer: any PackageDescriber
 
@@ -45,30 +48,34 @@ public struct PackageScanner {
         return lhs.message < rhs.message
     }
 
-    /// Scans the package rooted at `packageRoot`.
-    public func scan(packageAt packageRoot: URL) throws -> ScanReport {
-        let root = packageRoot.standardizedFileURL
-        guard FileManager.default.fileExists(atPath: root.appendingPathComponent("Package.swift").path) else {
-            throw ScanError.notAPackage(root.path)
-        }
-        let package = try describer.describePackage(at: root)
-        let targets = TargetResolver.resolve(package)
-
+    /// Reads and parses each target's files, warning about unreadable ones.
+    private static func parseFiles(of targets: [TargetSummary], root: URL) -> ([[ParsedFile]], [ScanWarning]) {
         var warnings: [ScanWarning] = []
-        var parsedByTarget: [[ParsedFile]] = []
-        for target in targets {
-            var parsed: [ParsedFile] = []
-            for file in target.files {
-                let url = root.appendingPathComponent(file)
-                guard let source = try? String(contentsOf: url, encoding: .utf8) else {
+        let parsedByTarget = targets.map { target in
+            target.files.compactMap { file -> ParsedFile? in
+                // Decoding drops a UTF-8 byte order mark, as Sitrep's reading
+                // does; the compiler still counts its 3 bytes on line 1.
+                guard let data = try? Data(contentsOf: root.appendingPathComponent(file)),
+                      let source = String(data: data, encoding: .utf8) else {
                     warnings.append(ScanWarning(file: file, message: "not readable as UTF-8; skipped"))
-                    continue
+                    return nil
                 }
-                parsed.append(ParsedFile(path: file, source: source, tree: Parser.parse(source: source)))
+                return ParsedFile(
+                    path: file,
+                    source: source,
+                    tree: Parser.parse(source: source),
+                    hasByteOrderMark: data.starts(with: byteOrderMark)
+                )
             }
-            parsedByTarget.append(parsed)
         }
+        return (parsedByTarget, warnings)
+    }
 
+    /// The function records of every parsed file, target by target.
+    private static func collectRecords(
+        _ targets: [TargetSummary],
+        _ parsedByTarget: [[ParsedFile]]
+    ) -> [FunctionRecord] {
         var records: [FunctionRecord] = []
         for (target, parsed) in zip(targets, parsedByTarget) {
             let testCaseClasses = target.isTest ? TestCaseClassIndex.testCaseClasses(in: parsed.map(\.tree)) : []
@@ -78,12 +85,25 @@ public struct PackageScanner {
                     file: file.path,
                     isTestTarget: target.isTest,
                     testCaseClasses: testCaseClasses,
-                    converter: SourceLocationConverter(fileName: file.path, tree: file.tree)
+                    converter: SourceLocationConverter(fileName: file.path, tree: file.tree),
+                    firstLineColumnOffset: file.hasByteOrderMark ? byteOrderMark.count : 0
                 )
                 records += FunctionCollector.collect(file.tree, context: context)
             }
         }
-        let (uniqueRecords, collisionWarnings) = KeyCollisions.resolve(records)
+        return records
+    }
+
+    /// Scans the package rooted at `packageRoot`.
+    public func scan(packageAt packageRoot: URL) throws -> ScanReport {
+        let root = packageRoot.standardizedFileURL
+        guard FileManager.default.fileExists(atPath: root.appendingPathComponent("Package.swift").path) else {
+            throw ScanError.notAPackage(root.path)
+        }
+        let package = try describer.describePackage(at: root)
+        let targets = TargetResolver.resolve(package)
+        let (parsedByTarget, readWarnings) = Self.parseFiles(of: targets, root: root)
+        let (records, collisionWarnings) = KeyCollisions.resolve(Self.collectRecords(targets, parsedByTarget))
 
         let sitrepFiles = parsedByTarget.flatMap(\.self)
             .sorted { $0.path < $1.path }
@@ -94,9 +114,9 @@ public struct PackageScanner {
             tool: .current,
             package: package.name,
             targets: targets,
-            records: uniqueRecords.sorted(by: Self.recordOrder),
+            records: records.sorted(by: Self.recordOrder),
             sitrep: SitrepCounter.report(for: sitrepFiles),
-            warnings: (warnings + collisionWarnings).sorted(by: Self.warningOrder)
+            warnings: (readWarnings + collisionWarnings).sorted(by: Self.warningOrder)
         )
     }
 }

@@ -202,9 +202,12 @@ extension FunctionCollector {
         let startLocation = context.converter.location(for: start)
         let lastCharacter = AbsolutePosition(utf8Offset: max(start.utf8Offset, end.utf8Offset - 1))
         let endLocation = context.converter.location(for: lastCharacter)
-        return SourceSpan(
-            start: SourcePosition(line: startLocation.line, column: startLocation.column),
-            end: SourcePosition(line: endLocation.line, column: endLocation.column)
-        )
+        return SourceSpan(start: position(startLocation), end: position(endLocation))
+    }
+
+    /// A position as external tools report it, BOM bytes included on line 1.
+    private func position(_ location: SourceLocation) -> SourcePosition {
+        let offset = location.line == 1 ? context.firstLineColumnOffset : 0
+        return SourcePosition(line: location.line, column: location.column + offset)
     }
 }
