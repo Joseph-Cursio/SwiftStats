@@ -19,6 +19,12 @@ let kPackage = Package(
         )
     ],
     dependencies: [
+        // Pinned exactly to match SwiftEffectInference, SwiftProjectLint and
+        // SwiftInferProperties, so SwiftEffectInference can be linked (PRD D3).
+        .package(
+            url: "https://github.com/swiftlang/swift-syntax.git",
+            exact: "603.0.2"
+        ),
         .package(
             url: "https://github.com/apple/swift-argument-parser.git",
             from: "1.5.0"
@@ -27,6 +33,10 @@ let kPackage = Package(
     targets: [
         .target(
             name: "SwiftStatsCore",
+            dependencies: [
+                .product(name: "SwiftSyntax", package: "swift-syntax"),
+                .product(name: "SwiftParser", package: "swift-syntax")
+            ],
             swiftSettings: kSwiftSettings
         ),
         .executableTarget(

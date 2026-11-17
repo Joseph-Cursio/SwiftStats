@@ -1,0 +1,32 @@
+//
+//  ScanError.swift
+//  SwiftStatsCore
+//
+//  Errors that stop a scan outright. Problems with a single file are reported
+//  as warnings in the scan output instead, so one bad file doesn't lose the
+//  rest of the package.
+//
+
+/// A failure that prevents a scan from producing any output.
+public enum ScanError: Error, Equatable, CustomStringConvertible {
+    /// An external command exited non-zero: the command, its exit code and
+    /// its standard error.
+    case commandFailed(String, Int32, String)
+    /// `swift package dump-package` output could not be decoded: the package
+    /// path and the decoding error.
+    case manifestUnreadable(String, String)
+    /// The given path is not a directory containing `Package.swift`.
+    case notAPackage(String)
+
+    /// A one-line explanation for the command line.
+    public var description: String {
+        switch self {
+        case let .commandFailed(command, status, message):
+            return "`\(command)` exited with status \(status): \(message)"
+        case let .manifestUnreadable(path, reason):
+            return "could not read the manifest of \(path): \(reason)"
+        case .notAPackage(let path):
+            return "\(path) does not contain a Package.swift"
+        }
+    }
+}
