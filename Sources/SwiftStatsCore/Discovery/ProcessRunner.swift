@@ -12,6 +12,9 @@ import Foundation
 
 /// Runs external commands for collectors and loaders.
 enum ProcessRunner {
+    /// How many lines of a failing command's output to keep (PRD §6.5).
+    private static let maximumReasonLines = 20
+
     /// Runs `executable` with `arguments` in `directory` and returns its
     /// standard output. Throws `ScanError.commandFailed` on a non-zero exit.
     static func run(executable: String, arguments: [String], in directory: URL) throws -> Data {
@@ -38,10 +41,23 @@ enum ProcessRunner {
         errorReading.wait()
 
         guard process.terminationStatus == 0 else {
-            let message = String(bytes: errorBox.data, encoding: .utf8) ?? ""
+            // Some tools (swiftly, for one) explain failures on standard
+            // output, so fall back to it when standard error is empty.
+            let errorText = String(bytes: errorBox.data, encoding: .utf8) ?? ""
+            let outputText = String(bytes: output, encoding: .utf8) ?? ""
+            let reason = errorText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? outputText : errorText
             let command = ([executable] + arguments).joined(separator: " ")
-            throw ScanError.commandFailed(command, process.terminationStatus, message)
+            throw ScanError.commandFailed(command, process.terminationStatus, lastLines(of: reason))
         }
         return output
+    }
+
+    /// The last `maximumReasonLines` non-empty lines of `text`, joined.
+    private static func lastLines(of text: String) -> String {
+        text.split(whereSeparator: \.isNewline)
+            .map { $0.trimmingCharacters(in: .whitespaces) }
+            .filter { $0.isEmpty == false }
+            .suffix(maximumReasonLines)
+            .joined(separator: "\n")
     }
 }

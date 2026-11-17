@@ -23,8 +23,14 @@ struct ScanCommand: ParsableCommand {
         let report: ScanReport
         do {
             report = try PackageScanner().scan(packageAt: root)
+        } catch ScanError.notAPackage(let path) {
+            // A wrong path is a usage error: exit 64 with the usage text.
+            throw ValidationError(ScanError.notAPackage(path).description)
         } catch let error as ScanError {
-            throw ValidationError(error.description)
+            // Anything else went wrong in the environment, not on the command
+            // line: report it and exit 1 without the usage text.
+            FileHandle.standardError.write(Data("Error: \(error.description)\n".utf8))
+            throw ExitCode.failure
         }
         let data = try ScanReportEncoder.encode(report)
         if let output {
