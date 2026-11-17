@@ -1,6 +1,6 @@
 # SwiftStats — Product Requirements Document
 
-**Status:** Draft v0.2.1 (2026-11-17). Reviewed against the source of every tool it names; see §16 for what changed and `Docs/prd-review-2026-11-17.md` in the repo for the evidence. M0 is built; see `Docs/m0-results.md`.
+**Status:** Draft v0.2.2 (2026-11-17). Reviewed against the source of every tool it names; see §16 for what changed and `Docs/prd-review-2026-11-17.md` in the repo for the evidence. M0 is built; see `Docs/m0-results.md`.
 **Owner:** Joseph Cursio
 **Repo:** `~/xcode_projects/SwiftStats` (SwiftPM, `SwiftStatsCore` library + `swiftstats` CLI)
 **Inspired by:** [Sitrep](https://github.com/twostraws/Sitrep) (Paul Hudson / Hacking with Swift)
@@ -144,8 +144,11 @@ Sitrep declares function-count and documented-function-count fields but never fi
 
 ### 7.3 Complexity (T0)
 
-- **Cyclomatic complexity**, counted the way SwiftLint's `cyclomatic_complexity` counts it so the numbers agree: start at 0; +1 for each `if`, `else if`, `guard`, `for`, `while`, `repeat`, `catch` and `case` (including `default`); −1 for each `fallthrough`. `&&`, `||`, `??`, `?:` and `#if` are not counted. Closures count towards the function that contains them; nested functions are scored separately. Honour `ignores_case_statements` from the package's `.swiftlint.yml`. SwiftLint scores only `func` and `init`, so accessors, subscripts and `deinit` get a SwiftStats-only score, marked as such. Record the SwiftLint version used for comparison, since the counting has changed between releases.
-- **Cognitive complexity** (SonarSource's specification, v1.7, 2023). It counts a whole `switch` once rather than per case, adds a penalty for nesting, and ignores optional chaining and `??`. The spec doesn't cover several Swift constructs, starting with `guard`; those choices are made under §14 Q3 and listed in a table in the code.
+Computed by **SwiftCodeMetrics**, a shared library that SwiftProjectLint also uses, so both tools report the same numbers. Its specification (`Docs/Spec.md` in that repo) defines every rule, with worked examples; SwiftStats doesn't restate them. Each function record gets three scores, plus the library's definition version:
+
+- **Cognitive complexity**, Swift-specific, built on SonarSource's specification (v1.7, 2023). Sonar removed its own Swift rule, so the Swift constructs (`guard`, condition lists, `if case`, `try`/`await`, result builders, `#if`) are decided in the spec.
+- **Decision count**, McCabe's: every branch point, including `&&`, `||`, `??` and the ternary. Compared as `mccabe` (decisions + 1).
+- **SwiftLint-compatible count**, matching SwiftLint's `cyclomatic_complexity` exactly, for parity checks: start at 0; +1 for each `if`, `else if`, `guard`, `for`, `while`, `repeat`, `catch` and `case` (including `default`); −1 for each `fallthrough`; no operators. Honour `ignores_case_statements` from the package's `.swiftlint.yml`. SwiftLint scores only `func` and `init`, so accessors, subscripts and `deinit` get a score marked as SwiftLint-unscored. Record the SwiftLint release the library was checked against.
 - Optional: NPath, Halstead volume
 
 ### 7.4 Swift risk markers (T0)
@@ -167,14 +170,17 @@ The adapter runs SwiftProjectLint with a SwiftStats-owned config (§7.15), so th
 - **Documentation coverage of the public API** (new; Sitrep tracks doc comments on types only and reports no documentation figures). SwiftStats counts documented and undocumented public declarations itself. SwiftProjectLint's `missingDocumentation` is a cross-check only: it flags undocumented `public` structs, classes and functions, and skips `open`, enums, protocols, actors and properties.
 - **Over-exposed declarations**: implicitly `internal` declarations used only in their own file (SwiftProjectLint `couldBePrivate` for types, `couldBePrivateMember` for functions and properties, `protocolCouldBePrivate`), as a count and as a share of implicitly internal declarations. Over-exposed `public` API needs Periphery's redundant-public analysis (§7.6a, T1).
 
-### 7.6 Coupling and structure (T1, via indexstore-db)
+### 7.6 Coupling and structure (T0 via SwiftCodeMetrics; T1 cross-check via indexstore-db)
 
-- Fan-in / fan-out per function and type
-- Afferent / efferent coupling and instability per module
-- LCOM (cohesion of a type's methods)
-- Cycles in the type and module dependency graphs, from indexstore-db.
+SwiftCodeMetrics computes these from syntax alone, using swift-syntax's lexical lookup and a per-module symbol table; its spec says what syntax can and can't resolve. That moves them from T1 to T0:
 
-At T0, module structure comes from SwiftProjectLint's `undeclaredTargetDependency` and `unusedTargetDependency` (imports compared with `Package.swift`). Its `circularDependency` finds only two-type cycles through stored properties and parameters, and `layerDependency` checks folder layers only when `architectural_layers` is configured, so neither replaces the index for cycles.
+- Per function: fan-out (with implicit-member and chained calls reported separately), parameter counts, static and singleton references.
+- Per type: efferent coupling (concrete, view and namespace targets split out), afferent coupling within the module, WMC, LCOM4 cohesion, type cycles.
+- Per module: efferent and afferent coupling from imports, instability, and Martin's abstractness and distance where they apply.
+
+indexstore-db (M7) adds what syntax can't see: fan-in across modules, calls resolved through overloads and protocols, and USR-based cycles. Where the two disagree, both are kept and the difference is listed.
+
+At T0, module structure comes from SwiftProjectLint's `undeclaredTargetDependency` and `unusedTargetDependency` (imports compared with `Package.swift`). Its `circularDependency` finds only two-type cycles through stored properties (its visitor collects parameter types but skips them), and `layerDependency` checks folder layers only when `architectural_layers` is configured, so neither is used for cycles; type cycles come from SwiftCodeMetrics.
 
 ### 7.6a Dead code (T1; commented-out code T0)
 
@@ -289,7 +295,7 @@ SwiftEffectInference has no single per-function call. Resolve in this order: dec
 
 ### 7.12 Duplication (T0, SwiftCloneDetector)
 
-- **Clone classes** (SwiftCloneDetector's term), broken down by kind: exact (type 1), renamed identifiers or literals (type 2), near-miss (type 3) and sequence (runs of statements or members). The tool's JSON doesn't label a class's kind (only near-miss classes have a non-null `similarity`), so the adapter runs each pass on its own through the CLI: `--type1` for exact, the default pass minus the `--type1` results for renamed, `--type3` for near-miss and `--sequence` for sequence (D3: only SwiftEffectInference is linked).
+- **Clone classes** (SwiftCloneDetector's term), broken down by kind: exact (type 1), renamed identifiers or literals (type 2), near-miss (type 3) and sequence (runs of statements or members). The tool's JSON doesn't label a class's kind (only near-miss classes have a non-null `similarity`), so the adapter runs each pass on its own through the CLI: `--type1` for exact, the default pass minus the `--type1` results for renamed, `--type3` for near-miss and `--sequence` for sequence (D3: SwiftCloneDetector isn't linked).
 - Size in lines (`lineSpan`) and mass (AST nodes); the tool doesn't count tokens.
 - **Percentage of code in clones**: stripped lines covered by any clone instance (merged, counted once), divided by the module's or project's stripped lines. Also store the tool's own `duplicatedLines` (redundant copies only, raw lines) for comparison with its output.
 - **For each function**: the clone classes whose instances overlap it, with the share of its lines covered. A function's twins are the functions that overlap the other instances of the same class. Mark whether the instance is the whole function or part of it; fragments are rooted at 14 anchor kinds (statements, `if`/`guard`/`switch`, closures, members, …), not only functions.
@@ -395,12 +401,13 @@ Notes:
 flowchart LR
     SRC[Sources] --> T0[T0 syntax collectors]
     SRC --> SEI[SwiftEffectInference, linked]
+    SRC --> SCM[SwiftCodeMetrics, linked]
     SRC --> AD[T0 tool adapters: SwiftProjectLint / SwiftInferProperties / SwiftCloneDetector / SwiftLint]
     BUILD[Build / index store] --> T1[T1 collectors: indexstore-db / Periphery / type-check timing]
     TESTS[swift test + llvm-cov] --> T2[Coverage collector]
     MUT[SwiftMutator results.jsonl] --> T3[Mutation adapter]
     GIT[git log] --> TH[History collector]
-    T0 & SEI & AD & T1 & T2 & T3 & TH --> ID[Identity resolver]
+    T0 & SEI & SCM & AD & T1 & T2 & T3 & TH --> ID[Identity resolver]
     ID --> STORE[(Snapshot store)]
     STORE --> DER[Derived signals]
     DER --> REP[Reports: JSON / Markdown / HTML]
@@ -409,7 +416,7 @@ flowchart LR
 
 - **Collectors** produce metrics against either a syntactic key, a USR or a source range.
 - **Identity resolver** maps every result onto function records (innermost enclosing record), and reports what it couldn't map rather than dropping it.
-- **Adapters.** SwiftEffectInference is library-only (no CLI, no JSON), so it is linked. Linking it fixes SwiftStats to swift-syntax `exact: "603.0.2"` via the `swiftlang/swift-syntax` URL, and to a pinned SEI commit (it has no version tags). Every other tool is read through its output, so it can move independently: SwiftProjectLint (JSON + pbt-seeds), SwiftInferProperties (`.swiftinfer/*.json`), SwiftCloneDetector (JSON, one run per pass), SwiftMutator (`results.jsonl`), Periphery (JSON) and SwiftLint (JSON). See §14 D3.
+- **Adapters.** SwiftEffectInference is library-only (no CLI, no JSON), so it is linked. SwiftCodeMetrics is linked too: it takes a parsed tree, so it reuses SwiftStats' parse, and SwiftStats and SwiftProjectLint can't drift apart on complexity or coupling. Linking them fixes SwiftStats to swift-syntax `exact: "603.0.2"` via the `swiftlang/swift-syntax` URL, and to a pinned SEI commit (it has no version tags) and a SwiftCodeMetrics release. Every other tool is read through its output, so it can move independently: SwiftProjectLint (JSON + pbt-seeds), SwiftInferProperties (`.swiftinfer/*.json`), SwiftCloneDetector (JSON, one run per pass), SwiftMutator (`results.jsonl`), Periphery (JSON) and SwiftLint (JSON). See §14 D3.
 - **Store:** one SQLite database per package, so derived signals are queries and trends are cheap. It records its schema version in `PRAGMA user_version` and upgrades with forward-only migrations (e.g. GRDB's `DatabaseMigrator`); migrations change the schema, never the measured values. `report --format json` gives a git-diffable file per snapshot for anyone who wants one.
 - **Output contract.** Every JSON output carries `schemaVersion`. Reports are deterministic: records sort by signal score, then key; JSON keys are sorted; percentiles use nearest-rank; the only timestamp is the snapshot's own date. Running a report twice on the same snapshot gives byte-identical output.
 - **Reuse of expensive results.**
@@ -440,13 +447,13 @@ Reports lead with the derived-signal lists, then roll-ups, then per-module detai
 | Milestone | Scope | Done when |
 |---|---|---|
 | **M0** | `swiftstats scan --format json`, T0 only, no store, no git. Find targets and their source files with `swift package describe --type json` (SwiftPM's own source selection, no dependency resolution); walk them with swift-syntax 603.0.2. Emit one record per §6.1a kind: key, kind, file, start and end line and column, stripped lines, body hash, parent key, `#if` condition, role (production / test / helper). Plus a `sitrep` block of Sitrep-compatible project counts (§7.1). Output carries `schemaVersion: 1`. | (1) A fixture package covering every §6.1a kind produces checked-in golden JSON exactly. (2) On Sitrep's test inputs (`Tests/SitrepCoreTests/Inputs`, wrapped in a fixture package since they are loose files) and on swift-algorithms, the `sitrep` block matches `sitrep -f json` field by field, with each deliberate difference listed. (3) Inserting lines above a function or reformatting it leaves its key and body hash unchanged; moving its file leaves a non-private function's key unchanged; changing its signature changes the key. (4) Two runs on the same tree give byte-identical output. (5) Scan time on swift-collections is recorded as the §12 baseline. |
-| **M1** | T0: size, shape, complexity, risk markers, API surface, test inventory and test-to-code ratios (no dead-code exclusion yet); SwiftLint violations (normal rules); dependencies; `.swiftstats.yml`. **SwiftProjectLint adapter** (moved here from M4, since risk markers, over-exposure and assertion-free tests depend on it). | Cyclomatic complexity matches SwiftLint on swift-algorithms: SwiftLint run with `only_rules: [cyclomatic_complexity]` and `warning: 0`; for every `func` and `init`, SwiftLint's value (0 when it reports nothing) equals SwiftStats'. SwiftProjectLint findings joined to functions, with unmapped ones listed. |
+| **M1** | T0: size, shape, complexity (SwiftCodeMetrics v0.1), risk markers, API surface, test inventory and test-to-code ratios (no dead-code exclusion yet); SwiftLint violations (normal rules); dependencies; `.swiftstats.yml`. **SwiftProjectLint adapter** (moved here from M4, since risk markers, over-exposure and assertion-free tests depend on it). | The SwiftLint-compatible count matches SwiftLint on swift-algorithms: SwiftLint run with `only_rules: [cyclomatic_complexity]` and `warning: 0`; for every `func` and `init`, SwiftLint's value (0 when it reports nothing) equals SwiftStats'. (SwiftCodeMetrics runs the same test; this one checks the join.) SwiftProjectLint findings joined to functions, with unmapped ones listed. |
 | **M2** | Snapshot store (SQLite, migrations) + `report` + `diff` | Diffing a snapshot with itself is empty. On a fixture commit that adds, changes, moves and deletes one function each, the diff shows exactly those four, and the move shows as a move. Re-running `report` gives byte-identical output. |
 | **M3** | TH: churn, stability, change-coupling pairs, bug-fix density, reverts; `backfill`; signals: hotspot, bug-prone, unstable fixes, safe to leave, tests not keeping up (naming-based) | On two repos, I label the top 20 hotspots and at least 12 are judged worth attention; the labels are kept as a test fixture. A backfilled trend of stripped lines and median complexity is produced for one repo. |
 | **M4** | Adapters: SwiftEffectInference (linked), SwiftInferProperties, SwiftPropertyLaws detection, SwiftCloneDetector; signals: untested property, tool disagreement, missing template, unchecked laws, divergent clones, clone hotspot | Tool-disagreement table and divergent-clones list produced on two packages; every SwiftInferProperties suggestion maps to a record or is listed as unmapped. |
 | **M5** | T2: coverage join (line + region, closures folded into their parent); tests per public function; signals: risky + untested, uneven clone testing (coverage part) | Per-function line and region coverage on two packages, with unmapped regions listed; "risky + untested" list produced. |
 | **M6** | T3: SwiftMutator join via `results.jsonl`, with `--reuse` / `--since` runs; signals: weak tests, best property-test target, genuinely under-tested, uneven clone testing | Weak-tests and best-property-target lists produced; a `--since` run on a branch updates only the changed functions' results. |
-| **M7** | T1: indexstore-db (USR as an attribute; coupling; cycles), type-check timing, compiler warnings, Periphery dead-code adapter; dead-code exclusion in ratios; signals: hidden coupling, dead but tested, test-only production code | On two packages, every record for code compiled in the build configuration gets a USR; records without one are listed with the reason (e.g. inactive `#if` branch); every case where USR and syntactic key disagree is listed. Dead-but-tested list produced. |
+| **M7** | T1: indexstore-db (USR as an attribute; cross-module coupling and cycles, checked against §7.6's syntax values), type-check timing, compiler warnings, Periphery dead-code adapter; dead-code exclusion in ratios; signals: hidden coupling, dead but tested, test-only production code | On two packages, every record for code compiled in the build configuration gets a USR; records without one are listed with the reason (e.g. inactive `#if` branch); every case where USR and syntactic key disagree is listed. Dead-but-tested list produced. |
 | Later | HTML trend charts, SwiftUI viewer, Xcode-project support | — |
 
 ## 12. Success criteria
@@ -470,7 +477,7 @@ Reports lead with the derived-signal lists, then roll-ups, then per-module detai
 | Fix-commit detection from messages is a guess | Configurable patterns; report precision on a hand-labelled sample per repo |
 | Squash-merged or bulk-commit history gives coarse results | Detect merge style; warn in the report; prefer recent time windows |
 | Function-level history is expensive on long histories | Limit to a time window; cache per-commit parse results |
-| swift-syntax pinned exactly by linked tools | Link only SwiftEffectInference; record the pins; move swift-syntax in step with the sibling tools |
+| swift-syntax pinned exactly by linked tools | Link only SwiftEffectInference and SwiftCodeMetrics; record the pins; move swift-syntax in step with the sibling tools |
 | Tool versions change between snapshots | Record each tool's commit or binary hash and options; mark trend breaks where a collector changed; `backfill --rerun` with current tools |
 | Relative thresholds shift when other code changes | `diff` compares raw scores, not signal membership |
 | Manifest evaluation per backfilled commit is slow, runs repo code and can fail on old manifests | Cache target layout per `Package.swift` hash; fall back to `Sources/` and `Tests/` with a warning |
@@ -482,8 +489,8 @@ Reports lead with the derived-signal lists, then roll-ups, then per-module detai
 
 - **D1. Reimplement Sitrep's counts; don't fork or extend.** Using Sitrep as a dependency doesn't work: its data model is internal (the public API offers the aggregate `Report` and a debug JSON dump of each file's tree, with no source locations), and it requires `apple/swift-syntax` 602.x while SwiftEffectInference and the other tools pin 603.0.2, so the two can't share a package graph. Extending upstream means PRs to a project that merges a few times a year (last commits 2026-04-16 and 2026-09-11), and per-function records are outside its scope. A fork is small (about 1,140 lines in 12 files) but needs a swift-syntax bump, Swift 6 language mode and Apache-2.0 attribution, and brings Yams, the report code and the disabled stripper. Reimplementing the ten or so counts in SwiftStats' own visitor, with `sitrep -f json` as a test oracle, avoids all of that. Credit Sitrep in the README; offer source ranges upstream separately if wanted.
 - **D2. The syntactic key is the permanent primary key** (§6.1). USRs are an attribute from M7; no stored key is ever rewritten.
-- **D3. Link only SwiftEffectInference** (it has no CLI) and pin swift-syntax `exact: "603.0.2"` to match it. Read every other tool through its output files. SwiftInferProperties pins SEI by revision, so depending on it as a library would also force SwiftStats onto branch/revision/path dependencies; parsing `.swiftinfer/index.json` avoids that, at the cost of the explanation text and open RefactorBridge proposals.
-- **D4. SwiftProjectLint is the source of truth** for every measure it has a rule for; §7.4 lists the exceptions. Without it, those metrics show as "not collected".
+- **D3. Link only SwiftEffectInference and SwiftCodeMetrics** (neither has a CLI; SwiftCodeMetrics is shared with SwiftProjectLint so the numbers agree) and pin swift-syntax `exact: "603.0.2"` to match them. Read every other tool through its output files. SwiftInferProperties pins SEI by revision, so depending on it as a library would also force SwiftStats onto branch/revision/path dependencies; parsing `.swiftinfer/index.json` avoids that, at the cost of the explanation text and open RefactorBridge proposals.
+- **D4. SwiftProjectLint is the source of truth** for every measure it has a rule for; §7.4 lists the exceptions. Without it, those metrics show as "not collected". Complexity and coupling (§7.3, §7.6) are the other exception: SwiftStats calls SwiftCodeMetrics directly, the library SwiftProjectLint's rules use, so it gets every function's score rather than only those over a threshold.
 - **D5. SQLite store**, plus `report --format json` for git-diffable snapshots.
 - **D6. Store raw counts; normalise per 1k stripped lines at report time**, so corpora can be compared without losing the raw numbers.
 
@@ -491,7 +498,7 @@ Reports lead with the derived-signal lists, then roll-ups, then per-module detai
 
 1. **Where snapshots live.** Recommended: `.swiftstats/stats.sqlite` in the package, git-ignored, with `--store <path>` for research corpora. But I work on two machines and sync through GitHub, so a git-ignored store keeps separate history on each; T0 history can be rebuilt with `backfill`, T1–T3 can't. Alternatives: commit the JSON exports, or keep a central store in a synced folder. Needed by M2.
 2. **Generated-code globs.** Which paths count as generated by default, beyond the known headers (§7.8)? Needed by M1.
-3. **Cognitive complexity for Swift.** SonarSource's spec already covers closures (no increment, but they raise the nesting level), `?.` and `??` (ignored), `catch`, `else`/`else if`, `#if`, labelled `break`/`continue` and runs of `&&`/`||`. Still to decide: does `guard` count like an `if` or as a free early exit? Is a comma-separated condition list one run of `&&`? Do optional binding, `if case`, `try?` and `defer` add anything? Do the `if`/`switch` inside result-builder bodies (e.g. SwiftUI `body`) count in full? Needed by M1.
+3. ~~**Cognitive complexity for Swift.**~~ Moved to the SwiftCodeMetrics spec (v0.2.2), which decides `guard`, condition lists, optional binding, `if case`, `try?`, `defer` and result-builder bodies, with worked examples.
 4. **Census rules in SwiftProjectLint's reports.** Its text report already counts the census rules without listing them (since July 2026). Should the HTML report do the same, and should the census counts leave the human-facing summary entirely? This is a SwiftProjectLint backlog item, not a SwiftStats one.
 
 ## 15. Changes worth making in the sibling tools
@@ -505,6 +512,7 @@ Small changes upstream would remove adapter work here. None blocks SwiftStats.
 | SwiftCloneDetector | Add `pass` (exact / renamed / near-miss / sequence) to each class in the JSON; real version string | Running passes separately or linking the Kit |
 | SwiftInferProperties | `discover --format json`, or `index --resolve-effects` plus the "why" text and partner locations in `index.json` | Empty reason fields, name-only partner links, and tool disagreements that are expected by construction |
 | SwiftEffectInference | Report when body inference hit its time budget | Silent non-repeatable tiers |
+| SwiftProjectLint | Add cognitive-complexity and decision-count rules, and move `circularDependency` and `singleImplementationProtocol` onto SwiftCodeMetrics' type graph | Two definitions of the same number |
 | Periphery / outskirts (third-party) | Recognise `@Test` when `Testing` is imported indirectly; confirm it finds the Swift Build index store | Post-filtering and `--index-store-path` |
 
 ## 16. Changes in v0.2
@@ -521,3 +529,7 @@ Reviewed on 2026-11-17 by checking every claim against the tools' source (full f
 
 - **§7.6a Periphery:** upstream is archived; the maintained fork (outskirts) and Periphery 3.0+ retain Swift Testing `@Test` functions, so the "unused or test-only" caveat applied only to the old 2.21.2 installed here. Pin a fork version and recheck the 2.21.2 limits in M7.
 - **M0 discovery:** targets and sources come from `swift package describe --type json` instead of `dump-package` plus hand-written layout rules. The M0 review found eight ways those rules disagreed with SwiftPM (resources, symlinked directories, bundle directories, test targets under `Sources/`, `path: "."`, `..` in `exclude`).
+
+### v0.2.2 (2026-11-17)
+
+- **SwiftCodeMetrics:** complexity and coupling move into a shared library, also used by SwiftProjectLint, specified in its own repo. §7.3 now names three scores (cognitive, decision count, SwiftLint-compatible); §7.6's syntax-only coupling moves from T1 to T0, with indexstore-db as the M7 cross-check; D3 and D4 name the library; §14 Q3 is answered by the spec.
