@@ -107,7 +107,16 @@ extension FunctionCollector {
 
     /// Records the draft under the current scopes and opens its own scope.
     func addRecord(_ draft: RecordDraft) {
-        let (key, parentKey) = makeKey(declaration: draft.declaration, isFileScoped: draft.isFileScoped)
+        var (key, parentKey) = makeKey(declaration: draft.declaration, isFileScoped: draft.isFileScoped)
+        if parentKey != nil {
+            // Swift allows local functions of the same name in sibling blocks
+            // (`if … { func f() } else { func f() }`); number the repeats.
+            let occurrence = nestedKeyCounts[key, default: 0] + 1
+            nestedKeyCounts[key] = occurrence
+            if occurrence > 1 {
+                key += " #\(occurrence)"
+            }
+        }
         let lines = lineSet(of: draft.node, from: draft.countFrom)
         records.append(FunctionRecord(
             key: key,
@@ -138,7 +147,14 @@ extension FunctionCollector {
         var statements: [CodeBlockItemSyntax] = []
         for item in file.statements {
             switch item.item {
-            case .expr, .stmt:
+            case .expr(let expression):
+                // A top-level `#Preview { … }` parses as an expression but is
+                // a declaration macro, not code that runs.
+                if expression.is(MacroExpansionExprSyntax.self) == false {
+                    statements.append(item)
+                }
+
+            case .stmt:
                 statements.append(item)
 
             case .decl:

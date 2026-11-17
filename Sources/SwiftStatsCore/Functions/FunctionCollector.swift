@@ -20,6 +20,11 @@ final class FunctionCollector: SyntaxVisitor {
     var scopes: [CollectorScope] = []
     /// Open `#if` conditions, outermost first.
     var conditions: [String] = []
+    /// How often each nested key has been seen, to number local functions
+    /// that share a name in sibling blocks of one function.
+    var nestedKeyCounts: [String: Int] = [:]
+    /// Types this file declares `private` or `fileprivate`.
+    var fileScopedTypes: Set<String> = []
 
     /// Creates a collector for the file described by `context`.
     init(context: FileContext) {
@@ -37,6 +42,7 @@ final class FunctionCollector: SyntaxVisitor {
     // MARK: - Files and types
 
     override func visit(_ node: SourceFileSyntax) -> SyntaxVisitorContinueKind {
+        fileScopedTypes = FileScopedTypes.paths(in: node)
         addTopLevelCode(node)
         return .visitChildren
     }
@@ -90,17 +96,31 @@ final class FunctionCollector: SyntaxVisitor {
         let extended = CanonicalText.render(node.extendedType)
         let whereClause = node.genericWhereClause.map { " " + CanonicalText.render($0) } ?? ""
         let simpleName = extended.split(separator: ".").last.map(String.init) ?? extended
+        let isFileScoped = Self.isFileScoped(node.modifiers)
+            || FileScopedTypes.isFileScoped(extended, in: fileScopedTypes)
         scopes.append(.type(TypeScope(
             owner: node.id,
             pathComponent: extended + whereClause,
             simpleName: simpleName,
-            isFileScoped: Self.isFileScoped(node.modifiers)
+            isFileScoped: isFileScoped
         )))
         return .visitChildren
     }
 
     override func visitPost(_ node: ExtensionDeclSyntax) {
         popScope(owner: node.id)
+    }
+
+    // MARK: - Macros
+
+    /// Code passed to a freestanding macro is the macro's input, not code
+    /// the compiler builds as written, so it gets no records (PRD §6.1a).
+    override func visit(_: MacroExpansionExprSyntax) -> SyntaxVisitorContinueKind {
+        .skipChildren
+    }
+
+    override func visit(_: MacroExpansionDeclSyntax) -> SyntaxVisitorContinueKind {
+        .skipChildren
     }
 
     // MARK: - #if
