@@ -82,10 +82,13 @@ public struct PackageScanner {
         return (parsedByTarget, warnings)
     }
 
-    /// The function, type and file records of every parsed file, target by target.
+    /// The function, type and file records of every parsed file, target by
+    /// target; files matching `generated` or carrying a known header are
+    /// marked generated.
     private static func collect(
         _ targets: [TargetSummary],
-        _ parsedByTarget: [[ParsedFile]]
+        _ parsedByTarget: [[ParsedFile]],
+        generated: [GlobPattern]
     ) -> CollectedRecords {
         var collected = CollectedRecords()
         for (target, parsed) in zip(targets, parsedByTarget) {
@@ -101,7 +104,11 @@ public struct PackageScanner {
                 )
                 collected.records += FunctionCollector.collect(file.tree, context: context)
                 collected.types += TypeCollector.collect(file.tree, context: context)
-                collected.files.append(FileMeasure.record(of: file, module: target.name))
+                collected.files.append(FileMeasure.record(
+                    of: file,
+                    module: target.name,
+                    generated: GeneratedCode.isGenerated(file, globs: generated)
+                ))
             }
         }
         return collected
@@ -181,7 +188,11 @@ public struct PackageScanner {
         let package = try describer.describePackage(at: root)
         let (targets, excludedFiles) = Self.excluding(TargetResolver.resolve(package), by: configuration)
         let (parsedByTarget, readWarnings) = Self.parseFiles(of: targets, root: root)
-        let collected = Self.collect(targets, parsedByTarget)
+        let collected = Self.collect(
+            targets,
+            parsedByTarget,
+            generated: configuration.generated.map(GlobPattern.init)
+        )
         let (resolved, collisionWarnings) = KeyCollisions.resolve(collected.records)
         let ignoresCases = SwiftLintSettings.ignoresCaseStatements(packageRoot: root)
         let modules = zip(targets, parsedByTarget).flatMap { target, files in files.map { (target.name, $0) } }
@@ -198,7 +209,11 @@ public struct PackageScanner {
             tool: .current,
             metrics: ComplexityScorer.metricsInfo(ignoresCaseStatements: ignoresCases),
             package: package.name,
-            configuration: ScanConfigurationSummary(excluded: configuration.excluded, excludedFiles: excludedFiles),
+            configuration: ScanConfigurationSummary(
+                excluded: configuration.excluded,
+                excludedFiles: excludedFiles,
+                generated: configuration.generated
+            ),
             targets: targets,
             records: records.sorted(by: Self.recordOrder),
             types: collected.types.sorted(by: Self.typeOrder),

@@ -10,7 +10,7 @@ import SwiftSyntax
 /// Measures one parsed file.
 enum FileMeasure {
     /// The file's record.
-    static func record(of file: ParsedFile, module: String) -> FileRecord {
+    static func record(of file: ParsedFile, module: String, generated: Bool) -> FileRecord {
         let converter = SourceLocationConverter(fileName: file.path, tree: file.tree)
         var stripped = Set<Int>()
         for token in file.tree.tokens(viewMode: .sourceAccurate)
@@ -24,7 +24,8 @@ enum FileMeasure {
             path: file.path,
             module: module,
             lines: physicalLines(in: file.source),
-            strippedLines: stripped.count
+            strippedLines: stripped.count,
+            generated: generated
         )
     }
 

@@ -5,34 +5,45 @@
     ],
     "excludedFiles" : [
 
+    ],
+    "generated" : [
+      "**/*.generated.swift",
+      "**/*.pb.swift",
+      "**/*.grpc.swift",
+      "**/Generated/**"
     ]
   },
   "files" : [
     {
+      "generated" : false,
       "lines" : 43,
       "module" : "AllKinds",
       "path" : "Sources/AllKinds/Resources.swift",
       "strippedLines" : 33
     },
     {
+      "generated" : false,
       "lines" : 69,
       "module" : "AllKinds",
       "path" : "Sources/AllKinds/Shapes.swift",
       "strippedLines" : 51
     },
     {
+      "generated" : false,
       "lines" : 10,
       "module" : "Tool",
       "path" : "Sources/Tool/main.swift",
       "strippedLines" : 7
     },
     {
+      "generated" : false,
       "lines" : 14,
       "module" : "AllKindsTests",
       "path" : "Tests/AllKindsTests/SwiftTestingTests.swift",
       "strippedLines" : 11
     },
     {
+      "generated" : false,
       "lines" : 20,
       "module" : "AllKindsTests",
       "path" : "Tests/AllKindsTests/XCTestTests.swift",
@@ -1529,7 +1540,7 @@
       }
     }
   ],
-  "schemaVersion" : 2,
+  "schemaVersion" : 3,
   "sitrep" : {
     "imports" : [
       {

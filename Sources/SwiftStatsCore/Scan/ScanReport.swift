@@ -11,8 +11,10 @@
 /// The result of scanning one package.
 public struct ScanReport: Codable, Hashable, Sendable {
     /// The version of this output format. Bumped on any change a reader
-    /// would notice: 2 adds complexity, size and shape (M1a).
-    public static let currentSchemaVersion = 2
+    /// would notice: 2 adds complexity, size and shape (M1a); 3 adds
+    /// generated files, findings, risk markers, API surface, the test
+    /// inventory and dependencies (M1b).
+    public static let currentSchemaVersion = 3
 
     /// The output format version (`currentSchemaVersion` when written).
     public let schemaVersion: Int
