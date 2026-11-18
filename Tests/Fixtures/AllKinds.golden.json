@@ -5,7 +5,8 @@
       "options" : [
 
       ],
-      "state" : "ran"
+      "reason" : "`swift` not found on PATH; set collectors.dependencies.path",
+      "state" : "skipped"
     },
     {
       "name" : "swiftlint",
@@ -41,12 +42,7 @@
   "dependencies" : {
     "direct" : [
 
-    ],
-    "resolved" : {
-      "packages" : [
-
-      ]
-    }
+    ]
   },
   "files" : [
     {

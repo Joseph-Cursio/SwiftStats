@@ -5,7 +5,9 @@
 //  The resolved dependency graph from `swift package show-dependencies
 //  --format json` (PRD §7.14). That command resolves dependencies, which
 //  may need the network, so it runs only when the package is already
-//  resolved, or has no dependencies to resolve.
+//  resolved, or has no dependencies to resolve, and with
+//  `--disable-automatic-resolution`, so it neither fetches (a dependency
+//  added since the last resolve fails the run) nor writes `Package.resolved`.
 //
 
 import Foundation
@@ -24,7 +26,7 @@ enum DependencyGraphAdapter {
     /// The collector's name.
     static let name = "dependencies"
     /// The command's arguments after `swift`.
-    static let arguments = ["package", "show-dependencies", "--format", "json"]
+    static let arguments = ["package", "--disable-automatic-resolution", "show-dependencies", "--format", "json"]
 
     /// The graph of the package at `root`, run with `swift` when it is resolved.
     static func run(
@@ -34,6 +36,14 @@ enum DependencyGraphAdapter {
     ) -> (status: CollectorStatus, graph: ResolvedGraph?) {
         let options = [arguments.joined(separator: " ")]
         let workspace = root.appendingPathComponent(".build/workspace-state.json")
+        let executable: URL
+        switch swift {
+        case .skip(let reason):
+            return (CollectorStatus(name: name, state: .skipped, version: nil, reason: reason, options: []), nil)
+
+        case .found(let found):
+            executable = found
+        }
         guard direct.isEmpty == false else {
             let status = CollectorStatus(name: name, state: .ran, version: nil, reason: nil, options: [])
             return (status, ResolvedGraph(packages: []))
@@ -43,20 +53,14 @@ enum DependencyGraphAdapter {
                 + "run `swift package resolve` first, since resolving may need the network"
             return (CollectorStatus(name: name, state: .skipped, version: nil, reason: reason, options: []), nil)
         }
-        switch swift {
-        case .skip(let reason):
-            return (CollectorStatus(name: name, state: .skipped, version: nil, reason: reason, options: []), nil)
-
-        case .found(let executable):
-            do {
-                let output = try ProcessRunner.run(executable: executable.path, arguments: arguments, in: root)
-                let graph = ResolvedGraph(packages: try flatten(decode(output), direct: Set(direct.map(\.identity))))
-                let status = CollectorStatus(name: name, state: .ran, version: nil, reason: nil, options: options)
-                return (status, graph)
-            } catch {
-                let failed = AdapterResult.failed(name, error: error, options: options).status
-                return (failed, nil)
-            }
+        do {
+            let output = try ProcessRunner.run(executable: executable.path, arguments: arguments, in: root)
+            let graph = ResolvedGraph(packages: try flatten(decode(output), direct: Set(direct.map(\.identity))))
+            let status = CollectorStatus(name: name, state: .ran, version: nil, reason: nil, options: options)
+            return (status, graph)
+        } catch {
+            let failed = AdapterResult.failed(name, error: error, options: options).status
+            return (failed, nil)
         }
     }
 

@@ -118,6 +118,42 @@ struct DependencyTests {
         #expect(unresolved.graph == nil)
         #expect(resolved.status.state == .ran)
         #expect(resolved.graph?.packages.map(\.identity) == ["left"])
-        #expect(FakeTool.arguments(of: swift) == ["package show-dependencies --format json"])
+        let command = "package --disable-automatic-resolution show-dependencies --format json"
+        #expect(FakeTool.arguments(of: swift) == [command])
+    }
+
+    @Test("a disabled collector is skipped for that reason, with or without dependencies")
+    func disabled() {
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent("Deps-\(UUID().uuidString)")
+        let reason = "disabled by collectors.dependencies.enabled"
+        let dependency = DescribedDependency(identity: "left", type: "sourceControl", location: "x", requirement: nil)
+
+        let none = DependencyGraphAdapter.run(swift: .skip(reason), root: directory, direct: [])
+        let some = DependencyGraphAdapter.run(swift: .skip(reason), root: directory, direct: [dependency])
+
+        #expect([none.status.state, some.status.state] == [.skipped, .skipped])
+        #expect([none.status.reason, some.status.reason] == [reason, reason])
+        #expect(none.graph == nil && some.graph == nil)
+    }
+
+    @Test("a Package.resolved that can't be read gives a warning, not an absent lockfile")
+    func unreadableLockfile() throws {
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent("Deps-\(UUID().uuidString)")
+        // A directory where the file should be: present, but not readable as a file.
+        try FileManager.default.createDirectory(
+            at: directory.appendingPathComponent("Package.resolved"),
+            withIntermediateDirectories: true
+        )
+        defer { try? FileManager.default.removeItem(at: directory) }
+
+        let (lockfile, warning) = PackageResolvedReader.lockfile(root: directory)
+        let (missing, noWarning) = PackageResolvedReader.lockfile(
+            root: FileManager.default.temporaryDirectory.appendingPathComponent("Absent-\(UUID().uuidString)")
+        )
+
+        #expect(lockfile == nil)
+        #expect(warning?.file == "Package.resolved")
+        #expect(warning?.message.hasPrefix("not readable: ") == true)
+        #expect(missing == nil && noWarning == nil)
     }
 }

@@ -48,11 +48,11 @@ enum PackageResolvedReader {
     /// file, and a warning when it can't be read.
     static func lockfile(root: URL) -> (lockfile: Lockfile?, warning: ScanWarning?) {
         let file = root.appendingPathComponent("Package.resolved")
-        guard let data = try? Data(contentsOf: file) else {
+        guard FileManager.default.fileExists(atPath: file.path) else {
             return (nil, nil)
         }
         do {
-            return (Lockfile(pins: try pins(in: data)), nil)
+            return (Lockfile(pins: try pins(in: Data(contentsOf: file))), nil)
         } catch {
             return (nil, ScanWarning(file: "Package.resolved", message: "not readable: \(error)"))
         }
