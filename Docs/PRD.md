@@ -1,6 +1,6 @@
 # SwiftStats — Product Requirements Document
 
-**Status:** Draft v0.2.2 (2026-11-17). Reviewed against the source of every tool it names; see §16 for what changed and `Docs/prd-review-2026-11-17.md` in the repo for the evidence. M0 is built; see `Docs/m0-results.md`.
+**Status:** Draft v0.2.3 (2026-11-18). Reviewed against the source of every tool it names; see §16 for what changed and `Docs/prd-review-2026-11-17.md` in the repo for the evidence. M0 is built; see `Docs/m0-results.md`.
 **Owner:** Joseph Cursio
 **Repo:** `~/xcode_projects/SwiftStats` (SwiftPM, `SwiftStatsCore` library + `swiftstats` CLI)
 **Inspired by:** [Sitrep](https://github.com/twostraws/Sitrep) (Paul Hudson / Hacking with Swift)
@@ -186,7 +186,7 @@ At T0, module structure comes from SwiftProjectLint's `undeclaredTargetDependenc
 
 Use **Periphery** as the primary source. It needs a build and an index store.
 
-**Which Periphery.** Upstream `peripheryapp/periphery` (MIT) was archived on GitHub in August 2026. A maintained fork, `tiny-earth-moon/periphery`, now renamed **outskirts** (outskirts.dev, MIT), continues from the last 3.x release and keeps it building with Swift 6.4 / Xcode 27; it was three weeks old with one maintainer when checked (2026-11-17), so pin a version. Homebrew's `periphery` on this machine is **2.21.2**, older than 3.0, and the limits below marked "2.21.2" were measured with it; recheck them against the fork before building the adapter in M7.
+**Which Periphery.** Upstream `peripheryapp/periphery` (MIT) was archived on GitHub in August 2026. A maintained fork, `tiny-earth-moon/periphery`, now renamed **outskirts** (outskirts.dev, MIT), continues from the last 3.x release and keeps it building with Swift 6.4 / Xcode 27; it was three weeks old with one maintainer when checked (2026-11-17), so pin a version (D7: SwiftStats sends it patches rather than taking it on). Homebrew's `periphery` on this machine is **2.21.2**, older than 3.0, and the limits below marked "2.21.2" were measured with it; recheck them against the fork before building the adapter in M7.
 
 Run it as `scan --format json --index-store-path <store>` after SwiftStats' own build, rather than letting it build: 2.21.2 looks for the old native index path and fails with Swift 6.4's default build system (the fork's notes describe `--index-store-path` support for Swift package index stores). For libraries pass `--retain-public`; that hides Periphery's redundant-public findings, so run once without it if those are wanted for §7.5. Its JSON gives kind, accessibility, `hints` (`unused`, `redundantPublicAccessibility`, …), USRs (`ids`) and `file:line:col`.
 
@@ -493,6 +493,7 @@ Reports lead with the derived-signal lists, then roll-ups, then per-module detai
 - **D4. SwiftProjectLint is the source of truth** for every measure it has a rule for; §7.4 lists the exceptions. Without it, those metrics show as "not collected". Complexity and coupling (§7.3, §7.6) are the other exception: SwiftStats calls SwiftCodeMetrics directly, the library SwiftProjectLint's rules use, so it gets every function's score rather than only those over a threshold.
 - **D5. SQLite store**, plus `report --format json` for git-diffable snapshots.
 - **D6. Store raw counts; normalise per 1k stripped lines at report time**, so corpora can be compared without losing the raw numbers.
+- **D7. Don't make Periphery a sibling project; pin outskirts and send it patches** (decided 2026-11-18). Every other tool SwiftStats reads is the owner's, so changing one is cheap. Periphery isn't: it works from the index store and the compiler's build output, which tend to break with each Swift and Xcode release. Keeping it building is the cost that outskirts already carries, and the reason upstream was archived. SwiftStats needs only the two small changes in §15, and both have workarounds. So at M7: pin an outskirts release, recheck the 2.21.2 limits (§7.6a), and send the two changes to outskirts as pull requests. If they stall, keep a thin GitHub fork of outskirts, never of the archived upstream, only to carry those patches rebased on its releases. Keep reading its JSON rather than linking it (D3), so its swift-syntax and index-store dependencies stay out of SwiftStats' package graph. Revisit only if outskirts goes quiet, or if SwiftStats comes to need deep changes, such as native test-only reporting or a reason for each retained declaration. Either way the maintenance would then be SwiftStats' to carry, so it may as well own the code.
 
 ### Still open
 
@@ -513,7 +514,7 @@ Small changes upstream would remove adapter work here. None blocks SwiftStats.
 | SwiftInferProperties | `discover --format json`, or `index --resolve-effects` plus the "why" text and partner locations in `index.json` | Empty reason fields, name-only partner links, and tool disagreements that are expected by construction |
 | SwiftEffectInference | Report when body inference hit its time budget | Silent non-repeatable tiers |
 | SwiftProjectLint | Add cognitive-complexity and decision-count rules, and move `circularDependency` and `singleImplementationProtocol` onto SwiftCodeMetrics' type graph | Two definitions of the same number |
-| Periphery / outskirts (third-party) | Recognise `@Test` when `Testing` is imported indirectly; confirm it finds the Swift Build index store | Post-filtering and `--index-store-path` |
+| Periphery / outskirts (third-party; sent as pull requests to outskirts, D7) | Recognise `@Test` when `Testing` is imported indirectly; confirm it finds the Swift Build index store | Post-filtering and `--index-store-path` |
 
 ## 16. Changes in v0.2
 
@@ -533,3 +534,7 @@ Reviewed on 2026-11-17 by checking every claim against the tools' source (full f
 ### v0.2.2 (2026-11-17)
 
 - **SwiftCodeMetrics:** complexity and coupling move into a shared library, also used by SwiftProjectLint, specified in its own repo. §7.3 now names three scores (cognitive, decision count, SwiftLint-compatible); §7.6's syntax-only coupling moves from T1 to T0, with indexstore-db as the M7 cross-check; D3 and D4 name the library; §14 Q3 is answered by the spec.
+
+### v0.2.3 (2026-11-18)
+
+- **D7 Periphery:** Periphery stays a third-party tool, not a sibling project. SwiftStats pins an outskirts release, sends it the two §15 changes as pull requests, and forks outskirts only to carry those patches if they stall. §7.6a and §15 point to D7.
