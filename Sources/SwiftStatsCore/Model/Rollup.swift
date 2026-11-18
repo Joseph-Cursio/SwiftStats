@@ -18,6 +18,8 @@ public struct Rollup: Codable, Hashable, Sendable {
     public let functions: [String: Int]
     /// Function records with a doc comment.
     public let documentedFunctions: Int
+    /// `async` function records (PRD §7.4, concurrency shape).
+    public let asyncFunctions: Int
     /// Type records by kind (`TypeKind` raw values), nested and local ones included.
     public let types: [String: Int]
     /// Stripped lines of every function record.
@@ -42,4 +44,6 @@ public struct Rollup: Codable, Hashable, Sendable {
     public let findings: [String: [String: Int]]
     /// Findings by tool, then kind (`census`, `defect`); only tools that ran have an entry.
     public let findingKinds: [String: [String: Int]]
+    /// Declarations by access level, documentation and `final` (PRD §7.5).
+    public let api: APISurface
 }

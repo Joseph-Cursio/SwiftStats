@@ -121,6 +121,8 @@ public struct PackageScanner {
                 )
                 collected.records += FunctionCollector.collect(file.tree, context: context)
                 collected.types += TypeCollector.collect(file.tree, context: context)
+                collected.declarations += DeclarationCollector.collect(file.tree, module: target.name)
+                collected.markers += RiskMarkerCollector.collect(file.tree, context: context)
                 collected.files.append(FileMeasure.record(
                     of: file,
                     module: target.name,
@@ -205,6 +207,8 @@ public struct PackageScanner {
             records: records,
             types: collected.types,
             files: collected.files,
+            declarations: collected.declarations,
+            markers: collected.markers,
             parsed: parsed,
             sitrep: sitrep,
             metrics: ComplexityScorer.metricsInfo(ignoresCaseStatements: ignoresCases),
@@ -235,8 +239,9 @@ public struct PackageScanner {
         let measured = Self.measure(targets, root: root, configuration: configuration)
         let adapters = CollectorRun.run(root: root, configuration: configuration, locator: tools)
         let mapper = FindingMapper(records: measured.records, types: measured.types, files: measured.files)
-        let findings = adapters.flatMap(\.findings).map(mapper.finding(for:))
+        let findings = (measured.markers + adapters.flatMap(\.findings)).map(mapper.finding(for:))
         let ranTools = Set(adapters.filter { $0.status.state == .ran }.map(\.status.name))
+            .union([RiskMarkerCollector.tool])
         let warnings = measured.warnings + Self.unusedKeyWarnings(configuration) + adapters.flatMap(\.warnings)
         return ScanReport(
             schemaVersion: ScanReport.currentSchemaVersion,
@@ -258,6 +263,7 @@ public struct PackageScanner {
                     records: measured.records,
                     types: measured.types,
                     files: measured.files,
+                    declarations: measured.declarations,
                     findings: FindingTally(findings: findings, tools: ranTools)
                 )
             ),

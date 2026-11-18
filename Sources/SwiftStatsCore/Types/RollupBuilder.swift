@@ -35,6 +35,7 @@ enum RollupBuilder {
             files: files.count,
             functions: counts(records.map(\.kind.rawValue)),
             documentedFunctions: records.filter(\.isDocumented).count,
+            asyncFunctions: records.filter(\.isAsync).count,
             types: counts(types.map(\.kind.rawValue)),
             functionLength: Distribution(records.map(\.strippedLines)),
             parameterCount: Distribution(records.compactMap(\.parameterCount)),
@@ -46,7 +47,8 @@ enum RollupBuilder {
             typeMemberCount: Distribution(types.map(\.memberCount)),
             fileLength: Distribution(files.map(\.strippedLines)),
             findings: input.findings.byRule(in: paths),
-            findingKinds: input.findings.byKind(in: paths)
+            findingKinds: input.findings.byKind(in: paths),
+            api: APISurface(input.declarations, overExposed: input.findings.overExposed(in: paths))
         )
     }
 

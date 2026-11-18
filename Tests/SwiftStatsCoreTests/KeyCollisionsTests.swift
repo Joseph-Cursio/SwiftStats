@@ -31,6 +31,7 @@ struct KeyCollisionsTests {
             strippedLines: 1,
             parameterCount: 0,
             isDocumented: false,
+            isAsync: false,
             bodyHash: "0",
             parentKey: parent,
             ifConfig: nil,

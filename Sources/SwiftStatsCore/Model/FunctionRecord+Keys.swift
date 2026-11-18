@@ -19,6 +19,7 @@ extension FunctionRecord {
             strippedLines: strippedLines,
             parameterCount: parameterCount,
             isDocumented: isDocumented,
+            isAsync: isAsync,
             bodyHash: bodyHash,
             parentKey: parentKey,
             ifConfig: ifConfig,

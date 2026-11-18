@@ -33,6 +33,9 @@ public struct FunctionRecord: Codable, Hashable, Sendable {
     /// Whether the declaration has a doc comment (`///` or `/** */`); for an
     /// accessor, the property or subscript it belongs to.
     public let isDocumented: Bool
+    /// Whether the declaration is `async`: a `func` or `init` marked so, or
+    /// an `async` getter (PRD §7.4, concurrency shape).
+    public let isAsync: Bool
     /// Complexity scores from SwiftCodeMetrics (PRD §7.3). Nil for a
     /// `subscript` with explicit accessors, which carry the scores, and when
     /// the library gave no score for the record, which the scan warns about.
@@ -60,6 +63,7 @@ public struct FunctionRecord: Codable, Hashable, Sendable {
         strippedLines: Int,
         parameterCount: Int?,
         isDocumented: Bool,
+        isAsync: Bool,
         bodyHash: String,
         parentKey: String?,
         ifConfig: String?,
@@ -75,6 +79,7 @@ public struct FunctionRecord: Codable, Hashable, Sendable {
         self.strippedLines = strippedLines
         self.parameterCount = parameterCount
         self.isDocumented = isDocumented
+        self.isAsync = isAsync
         self.bodyHash = bodyHash
         self.parentKey = parentKey
         self.ifConfig = ifConfig

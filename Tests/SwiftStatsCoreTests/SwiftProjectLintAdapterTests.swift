@@ -121,8 +121,8 @@ struct SwiftProjectLintAdapterTests {
 
         let module = try #require(try package.scan(tools: Self.locator(tool)).rollups.first { $0.name == "Lib" })
 
-        #expect(module.findings == ["swiftprojectlint": ["forceUnwrap": 1, "pureFunctionCandidate": 1]])
-        #expect(module.findingKinds == ["swiftprojectlint": ["census": 1, "defect": 1]])
+        #expect(module.findings["swiftprojectlint"] == ["forceUnwrap": 1, "pureFunctionCandidate": 1])
+        #expect(module.findingKinds["swiftprojectlint"] == ["census": 1, "defect": 1])
     }
 
     @Test("a tool that isn't found, is disabled or fails gives no counts, and says why")
@@ -138,7 +138,8 @@ struct SwiftProjectLintAdapterTests {
 
         for report in [missing, failed, unknown] {
             #expect(report.findings.isEmpty)
-            #expect(report.rollups.allSatisfy { $0.findings.isEmpty && $0.findingKinds.isEmpty })
+            #expect(report.rollups.allSatisfy { $0.findings["swiftprojectlint"] == nil })
+            #expect(report.rollups.allSatisfy { $0.findingKinds["swiftprojectlint"] == nil })
         }
         let states = [missing, failed, unknown].compactMap { Self.status($0)?.state }
         #expect(states == [.skipped, .failed, .failed])

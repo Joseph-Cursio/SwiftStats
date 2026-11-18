@@ -18,6 +18,19 @@ struct FindingTally {
         counts(in: files, by: \.rule)
     }
 
+    /// The number of SwiftProjectLint over-exposure findings (PRD §7.5)
+    /// whose first location is in `files`; nil when it didn't run.
+    func overExposed(in files: Set<String>) -> Int? {
+        guard tools.contains(SwiftProjectLintAdapter.name) else {
+            return nil
+        }
+        let rules: Set<String> = ["couldBePrivate", "couldBePrivateMember", "protocolCouldBePrivate"]
+        return findings.filter { finding in
+            finding.tool == SwiftProjectLintAdapter.name && rules.contains(finding.rule)
+                && finding.locations.first.map { files.contains($0.file) } == true
+        }.count
+    }
+
     /// Counts by tool, then kind, of the findings whose first location is in `files`.
     func byKind(in files: Set<String>) -> [String: [String: Int]] {
         counts(in: files) { $0.kind.rawValue }
