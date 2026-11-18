@@ -12,6 +12,8 @@ public enum ScanError: Error, Equatable, CustomStringConvertible {
     /// An external command exited non-zero: the command, its exit code and
     /// its standard error.
     case commandFailed(String, Int32, String)
+    /// `.swiftstats.yml` could not be used: its path and the reason.
+    case configurationInvalid(String, String)
     /// `swift package describe` output could not be decoded: the package
     /// path and the decoding error.
     case descriptionUnreadable(String, String)
@@ -23,6 +25,9 @@ public enum ScanError: Error, Equatable, CustomStringConvertible {
         switch self {
         case let .commandFailed(command, status, message):
             return "`\(command)` exited with status \(status): \(message)"
+        case let .configurationInvalid(path, reason):
+            return "\(path): \(reason)"
+
         case let .descriptionUnreadable(path, reason):
             return "could not read SwiftPM's description of \(path): \(reason)"
         case .notAPackage(let path):

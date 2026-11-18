@@ -8,7 +8,7 @@
 extension FunctionRecord {
     /// This record with `key` and `parentKey` replaced.
     func replacingKeys(key: String, parentKey: String?) -> Self {
-        Self(
+        var copy = Self(
             key: key,
             module: module,
             kind: kind,
@@ -17,10 +17,14 @@ extension FunctionRecord {
             file: file,
             range: range,
             strippedLines: strippedLines,
+            parameterCount: parameterCount,
+            isDocumented: isDocumented,
             bodyHash: bodyHash,
             parentKey: parentKey,
             ifConfig: ifConfig,
             role: role
         )
+        copy.complexity = complexity
+        return copy
     }
 }

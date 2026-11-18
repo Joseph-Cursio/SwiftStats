@@ -24,9 +24,19 @@ public struct FunctionRecord: Codable, Hashable, Sendable {
     public let file: String
     /// The declaration's source range, attributes included.
     public let range: SourceSpan
-    /// Lines that hold at least one token of the declaration, attributes and
-    /// comments excluded (PRD §7.2).
+    /// Lines that hold at least one token of the declaration, attributes
+    /// (nested ones included) and comments excluded (PRD §7.2).
     public let strippedLines: Int
+    /// Parameters in the declaration's own parameter list, for `func`, `init`
+    /// and `subscript`; nil for kinds without one.
+    public let parameterCount: Int?
+    /// Whether the declaration has a doc comment (`///` or `/** */`); for an
+    /// accessor, the property or subscript it belongs to.
+    public let isDocumented: Bool
+    /// Complexity scores from SwiftCodeMetrics (PRD §7.3). Nil for a
+    /// `subscript` with explicit accessors, which carry the scores, and when
+    /// the library gave no score for the record, which the scan warns about.
+    public internal(set) var complexity: FunctionComplexity?
     /// Hash of the body's tokens with comments and whitespace removed, so
     /// reformatting leaves it unchanged.
     public let bodyHash: String
@@ -48,6 +58,8 @@ public struct FunctionRecord: Codable, Hashable, Sendable {
         file: String,
         range: SourceSpan,
         strippedLines: Int,
+        parameterCount: Int?,
+        isDocumented: Bool,
         bodyHash: String,
         parentKey: String?,
         ifConfig: String?,
@@ -61,6 +73,8 @@ public struct FunctionRecord: Codable, Hashable, Sendable {
         self.file = file
         self.range = range
         self.strippedLines = strippedLines
+        self.parameterCount = parameterCount
+        self.isDocumented = isDocumented
         self.bodyHash = bodyHash
         self.parentKey = parentKey
         self.ifConfig = ifConfig

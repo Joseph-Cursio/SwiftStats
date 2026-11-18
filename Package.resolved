@@ -1,5 +1,5 @@
 {
-  "originHash" : "d74c7a079b63e873164f8757e6ecde912c19f63d8ebe0aaa74b216d2e6c3f6e7",
+  "originHash" : "78b2c786c4dbcae7e23a3886cb724a759709831fdd655b2ff34e0509d660619c",
   "pins" : [
     {
       "identity" : "swift-argument-parser",
@@ -17,6 +17,24 @@
       "state" : {
         "revision" : "79e4b74a295b6eb74a8b585e3a39d29e70c1dbd1",
         "version" : "603.0.2"
+      }
+    },
+    {
+      "identity" : "swiftcodemetrics",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/Joseph-Cursio/SwiftCodeMetrics.git",
+      "state" : {
+        "revision" : "ee99260e33141210fb2ceb79f9be7110592a3d23",
+        "version" : "0.3.0"
+      }
+    },
+    {
+      "identity" : "yams",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/jpsim/Yams.git",
+      "state" : {
+        "revision" : "a27b21e0c81c5bf42049b897a62aaf387e80f279",
+        "version" : "6.2.2"
       }
     }
   ],
