@@ -25,7 +25,11 @@ enum TestSummaryBuilder {
             },
             generatedTests: tests.count - counted.count,
             helpers: scan.records.filter { modules.contains($0.module) && $0.role == .helper }.count,
-            parameterizedCases: parameterized.compactMap(\.cases).reduce(0, +),
+            parameterizedCases: parameterized.compactMap(\.cases).reduce(0) { total, cases in
+                // Saturates rather than trapping on absurd literal ranges.
+                let (sum, overflow) = total.addingReportingOverflow(cases)
+                return overflow ? Int.max : sum
+            },
             parameterizedUnknownCases: parameterized.filter { $0.cases == nil }.count,
             assertionsPerTest: Distribution(counted.map(\.assertions)),
             xctestWithoutAssertions: counted.filter { $0.framework == .xctest && $0.assertions == 0 }.count,

@@ -15,8 +15,9 @@ enum ParameterCases {
     private static let zipArity = 2
     /// A range's parts: lower bound, operator, upper bound.
     private static let rangeParts = 3
-    /// The cases `attribute` runs, or nil when it has no `arguments:` or a
-    /// collection's size can't be read from the source.
+    /// The cases `attribute` runs, or nil when it has no `arguments:`, a
+    /// collection's size can't be read from the source, or the count
+    /// overflows `Int`.
     static func count(in attribute: AttributeSyntax) -> Int? {
         guard case .argumentList(let list) = attribute.arguments,
               let start = list.firstIndex(where: { $0.label?.text == "arguments" }) else {
@@ -28,7 +29,11 @@ enum ParameterCases {
             guard let size = size(of: collection) else {
                 return nil
             }
-            total *= size
+            let (product, overflow) = total.multipliedReportingOverflow(by: size)
+            guard overflow == false else {
+                return nil
+            }
+            total = product
         }
         return total
     }
@@ -67,8 +72,9 @@ enum ParameterCases {
         return rangeSize(expression)
     }
 
-    /// The size of an integer-literal range `a...b` or `a..<b`. The parser
-    /// leaves operators unfolded, so the range is a three-element sequence.
+    /// The size of an integer-literal range `a...b` or `a..<b`, or nil when
+    /// it overflows `Int`. The parser leaves operators unfolded, so the
+    /// range is a three-element sequence.
     private static func rangeSize(_ expression: ExprSyntax) -> Int? {
         let parts: [ExprSyntax]
         if let sequence = expression.as(SequenceExprSyntax.self) {
@@ -84,16 +90,26 @@ enum ParameterCases {
               let upper = parts.last.flatMap(integer) else {
             return nil
         }
+        let isClosed: Bool
         switch operation.operator.text {
         case "...":
-            return max(0, upper - lower + 1)
+            isClosed = true
 
         case "..<":
-            return max(0, upper - lower)
+            isClosed = false
 
         default:
             return nil
         }
+        let (difference, overflow) = upper.subtractingReportingOverflow(lower)
+        guard overflow == false else {
+            return nil
+        }
+        guard isClosed, difference >= 0 else {
+            return max(0, difference)
+        }
+        let (size, sizeOverflow) = difference.addingReportingOverflow(1)
+        return sizeOverflow ? nil : size
     }
 
     /// The value of an integer literal, negative ones included.

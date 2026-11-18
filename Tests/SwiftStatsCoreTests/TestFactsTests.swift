@@ -15,7 +15,8 @@ struct TestFactsTests {
 
     @Test("literal arguments give a case count; others don't", arguments: [
         ("[1, 2, 3]", 3), ("[\"a\": 1, \"b\": 2]", 2), ("[:]", 0), ("1...4", 4), ("-2..<2", 4),
-        ("zip([1, 2, 3], [4, 5])", 2), ("[1, 2], [true, false, true]", 6), ("([1, 2])", 2)
+        ("zip([1, 2, 3], [4, 5])", 2), ("[1, 2], [true, false, true]", 6), ("([1, 2])", 2), ("3...1", 0),
+        ("0...9_223_372_036_854_775_806", Int.max)
     ])
     func literalCases(arguments: String, expected: Int) throws {
         let facts = try Self.facts("@Test(arguments: \(arguments)) func check(value: Int) { }")
@@ -24,7 +25,10 @@ struct TestFactsTests {
     }
 
     @Test("arguments it can't size leave the count unknown", arguments: [
-        "Mode.allCases", "1...count", "zip(names, [1])", "stride(from: 0, to: 9, by: 3)"
+        "Mode.allCases", "1...count", "zip(names, [1])", "stride(from: 0, to: 9, by: 3)",
+        // Counts past Int.max are unknown rather than a crash.
+        "0...9_223_372_036_854_775_807", "-9_000_000_000_000_000_000..<9_000_000_000_000_000_000",
+        "0..<4_294_967_296, 0..<4_294_967_296"
     ])
     func unknownCases(arguments: String) throws {
         let facts = try Self.facts("@Test(\"named\", arguments: \(arguments)) func check(value: Int) { }")
