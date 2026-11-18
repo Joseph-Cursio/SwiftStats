@@ -193,4 +193,44 @@ struct FunctionCollectorEdgeCaseTests {
         let records = CollectorHarness.collect(source, isTestTarget: true, testCaseClasses: ["MathTests"])
         #expect(records.map(\.role) == [.test, .test, .helper])
     }
+
+    @Test("requirements without bodies get no record; a class method's key says class")
+    func requirementsAndClassMethods() {
+        let source = """
+        protocol Source {
+            init(name: String)
+            func next() -> Int
+        }
+        class Factory {
+            class func make() -> Factory { Factory() }
+        }
+        """
+        #expect(CollectorHarness.keys(source) == ["Lib::Factory::class func make() -> Factory"])
+    }
+
+    @Test("declarations inside a member-level freestanding macro get no record")
+    func memberMacro() {
+        let source = """
+        struct Screen {
+            #hidden { func helper() { } }
+            func show() { }
+        }
+        """
+        #expect(CollectorHarness.keys(source) == ["Lib::Screen::func show()"])
+    }
+
+    @Test("an #if in the attribute list doesn't hide the @Test after it")
+    func conditionalAttributeBeforeTest() {
+        let source = """
+        struct MathTests {
+            #if DEBUG
+            @available(*, deprecated)
+            #endif
+            @Test
+            func adds() { }
+        }
+        """
+        let records = CollectorHarness.collect(source, isTestTarget: true, testCaseClasses: [])
+        #expect(records.map(\.role) == [.test])
+    }
 }

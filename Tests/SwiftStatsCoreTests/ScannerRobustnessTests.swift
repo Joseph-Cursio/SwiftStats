@@ -74,6 +74,60 @@ struct ScannerRobustnessTests {
         #expect(report.warnings == [expected])
     }
 
+    @Test("a type declared with different first parents gets a Sitrep warning, sorted before file warnings")
+    func sitrepConflictingParents() throws {
+        let root = try Self.makePackage([
+            "Sources/Lib/A.swift": Data("struct Row: View { var body: some View { Text(\"row\") } }\n".utf8),
+            "Sources/Lib/B.swift": Data("struct Row: Codable { }\n".utf8),
+            ".swiftstats.yml": Data("store: stats.sqlite\n".utf8)
+        ])
+        defer { try? FileManager.default.removeItem(at: root) }
+
+        let warnings = try Self.scan(root, sources: ["A.swift", "B.swift"]).warnings
+
+        #expect(warnings.map(\.file) == [nil, ".swiftstats.yml"])
+        #expect(warnings.first?.message == "sitrep: Row is declared with different first parents; "
+            + "its UIKit and SwiftUI line counts follow the first declaration in path order")
+    }
+
+    @Test("records and types at the same position sort by key and name; on one line, by column")
+    func orderTieBreakers() throws {
+        let records = CollectorHarness.collect("struct Pair { func first() { }; func second() { } }")
+        let first = try #require(records.first)
+        let renamed = first.replacingKeys(key: first.key + " #2", parentKey: first.parentKey)
+
+        #expect(records.map(\.name) == ["first", "second"])
+        #expect(PackageScanner.recordOrder(records[0], records[1]))
+        #expect(PackageScanner.recordOrder(first, renamed))
+        #expect(PackageScanner.recordOrder(renamed, first) == false)
+
+        let type = try #require(CollectorHarness.types("struct Pair { }").first)
+        let twin = TypeRecord(
+            module: type.module,
+            kind: type.kind,
+            name: "Pairs",
+            file: type.file,
+            range: type.range,
+            strippedLines: type.strippedLines,
+            memberCount: type.memberCount,
+            isLocal: type.isLocal,
+            ifConfig: type.ifConfig
+        )
+        #expect(PackageScanner.typeOrder(type, twin))
+        #expect(PackageScanner.typeOrder(twin, type) == false)
+    }
+
+    @Test("SwiftPM output that doesn't decode is an error naming the package")
+    func undecodableDescription() {
+        let root = URL(fileURLWithPath: "/tmp/Probe")
+        do {
+            _ = try SwiftPMPackageDescriber.decode(Data("{\"name\": 1}".utf8), packageRoot: root)
+            Issue.record("a description without targets should not decode")
+        } catch {
+            #expect("\(error)".hasPrefix("could not read SwiftPM's description of /tmp/Probe: "))
+        }
+    }
+
     @Test("a failing command's reason comes from stdout when stderr is empty")
     func failureReason() {
         let directory = FileManager.default.temporaryDirectory

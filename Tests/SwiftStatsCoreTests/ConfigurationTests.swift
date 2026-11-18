@@ -62,6 +62,23 @@ struct ConfigurationTests {
         }
     }
 
+    @Test("a key given twice, and a file that isn't UTF-8, are errors that say so")
+    func moreErrorMessages() throws {
+        do {
+            _ = try SwiftStatsConfiguration.parse("excluded:\n  - A\nexcluded:\n  - B\n", path: "c.yml")
+            Issue.record("a repeated key should not parse")
+        } catch {
+            // Yams rejects the repeat before SwiftStats sees the mapping.
+            #expect("\(error)".hasPrefix("c.yml: not valid YAML: "))
+            #expect("\(error)".contains("duplicated key(s): 'excluded'"))
+        }
+        let latin1 = try Self.temporaryFile(".swiftstats.yml", "")
+        try Data([0x65, 0x78, 0xFF, 0x3A]).write(to: latin1)
+        #expect(throws: ScanError.configurationInvalid(latin1.path, "not readable as UTF-8")) {
+            try SwiftStatsConfiguration.load(latin1, root: latin1.deletingLastPathComponent())
+        }
+    }
+
     @Test("a scan leaves excluded files out, lists them, and warns about unused keys")
     func scanExcludes() throws {
         let config = try Self.temporaryFile(
@@ -85,9 +102,13 @@ struct ConfigurationTests {
             "cyclomatic_complexity:\n  ignores_case_statements: true\n"
         )
         let unset = try Self.temporaryFile(".swiftlint.yml", "opt_in_rules: [missing_docs]\n")
+        let otherOptions = try Self.temporaryFile(".swiftlint.yml", "cyclomatic_complexity:\n  warning: 12\n")
+        let invalid = try Self.temporaryFile(".swiftlint.yml", "cyclomatic_complexity: [\n")
 
         #expect(SwiftLintSettings.ignoresCaseStatements(packageRoot: enabled.deletingLastPathComponent()))
         #expect(SwiftLintSettings.ignoresCaseStatements(packageRoot: unset.deletingLastPathComponent()) == false)
         #expect(SwiftLintSettings.ignoresCaseStatements(packageRoot: Self.fixture) == false)
+        #expect(SwiftLintSettings.ignoresCaseStatements(packageRoot: otherOptions.deletingLastPathComponent()) == false)
+        #expect(SwiftLintSettings.ignoresCaseStatements(packageRoot: invalid.deletingLastPathComponent()) == false)
     }
 }

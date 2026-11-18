@@ -30,7 +30,7 @@ public struct PackageScanner {
     }
 
     /// Records by file, then start position, then key.
-    private static func recordOrder(_ lhs: FunctionRecord, _ rhs: FunctionRecord) -> Bool {
+    static func recordOrder(_ lhs: FunctionRecord, _ rhs: FunctionRecord) -> Bool {
         if lhs.file != rhs.file {
             return lhs.file < rhs.file
         }
@@ -41,7 +41,7 @@ public struct PackageScanner {
     }
 
     /// Types by file, then start position, then name.
-    private static func typeOrder(_ lhs: TypeRecord, _ rhs: TypeRecord) -> Bool {
+    static func typeOrder(_ lhs: TypeRecord, _ rhs: TypeRecord) -> Bool {
         if lhs.file != rhs.file {
             return lhs.file < rhs.file
         }
@@ -52,7 +52,7 @@ public struct PackageScanner {
     }
 
     /// Warnings by file, then message.
-    private static func warningOrder(_ lhs: ScanWarning, _ rhs: ScanWarning) -> Bool {
+    static func warningOrder(_ lhs: ScanWarning, _ rhs: ScanWarning) -> Bool {
         if lhs.file != rhs.file {
             return (lhs.file ?? "") < (rhs.file ?? "")
         }
