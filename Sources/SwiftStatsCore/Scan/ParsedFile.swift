@@ -9,6 +9,9 @@ import SwiftSyntax
 
 /// A file's path, text and syntax tree.
 struct ParsedFile {
+    /// Bytes in a UTF-8 byte order mark, which the compiler counts in line-1 columns.
+    static let byteOrderMarkLength = 3
+
     /// Path relative to the package root.
     let path: String
     /// The file's text.

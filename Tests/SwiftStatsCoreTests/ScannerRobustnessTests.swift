@@ -37,7 +37,7 @@ struct ScannerRobustnessTests {
             sources: sources
         )
         let describer = FixedDescriber(package: DescribedPackage(name: "Probe", targets: [target]))
-        return try PackageScanner(describer: describer).scan(packageAt: root)
+        return try PackageScanner(describer: describer, tools: .nowhere).scan(packageAt: root)
     }
 
     @Test("line-1 columns count a byte order mark's 3 bytes, as the compiler does")
@@ -138,5 +138,38 @@ struct ScannerRobustnessTests {
         #expect(throws: ScanError.commandFailed("/bin/sh -c \(script)", 1, "err")) {
             try ProcessRunner.run(executable: "/bin/sh", arguments: ["-c", script], in: directory)
         }
+    }
+
+    @Test("a Swift file left in Tests/Generated/ and in no target is reported as never built")
+    func unbuiltGeneratedTests() throws {
+        let package = try TemporaryPackage([
+            "Sources/Lib/Lib.swift": "func run() { }\n",
+            "Tests/Generated/SwiftInfer/OldStubs.swift": "func testOld() { }\n",
+            "Tests/Generated/notes.md": "not Swift\n"
+        ])
+        defer { package.remove() }
+
+        let report = try package.scan(tools: .nowhere)
+
+        let expected = ScanWarning(
+            file: "Tests/Generated/SwiftInfer/OldStubs.swift",
+            message: "in Tests/Generated/ but in no target, so never built or run"
+        )
+        #expect(report.warnings == [expected])
+    }
+
+    @Test("a test case whose XCTestCase base class is in another target is still a test case")
+    func crossTargetTestCaseBase() throws {
+        let package = try TemporaryPackage([
+            "Sources/Lib/Support.swift": "import XCTest\nopen class CollectionTestCase: XCTestCase { }\n",
+            "Tests/LibTests/DequeTests.swift":
+                "final class DequeTests: CollectionTestCase {\n    func testAppend() { }\n}\n"
+        ])
+        defer { package.remove() }
+
+        let report = try package.scan(tools: .nowhere)
+
+        #expect(report.records.filter { $0.module == "LibTests" }.map(\.role) == [.test])
+        #expect(report.tests.map(\.framework) == [.xctest])
     }
 }

@@ -1,43 +1,88 @@
 {
+  "collectors" : [
+    {
+      "name" : "dependencies",
+      "options" : [
+
+      ],
+      "reason" : "`swift` not found on PATH; set collectors.dependencies.path",
+      "state" : "skipped"
+    },
+    {
+      "name" : "swiftlint",
+      "options" : [
+
+      ],
+      "reason" : "`swiftlint` not found on PATH; set collectors.swiftlint.path",
+      "state" : "skipped"
+    },
+    {
+      "name" : "swiftprojectlint",
+      "options" : [
+
+      ],
+      "reason" : "`swiftprojectlint` not found on PATH; set collectors.swiftprojectlint.path",
+      "state" : "skipped"
+    }
+  ],
   "configuration" : {
     "excluded" : [
 
     ],
     "excludedFiles" : [
 
+    ],
+    "generated" : [
+      "**/*.generated.swift",
+      "**/*.pb.swift",
+      "**/*.grpc.swift",
+      "**/Generated/**"
+    ]
+  },
+  "dependencies" : {
+    "direct" : [
+
     ]
   },
   "files" : [
     {
+      "generated" : false,
       "lines" : 43,
       "module" : "AllKinds",
       "path" : "Sources/AllKinds/Resources.swift",
       "strippedLines" : 33
     },
     {
+      "generated" : false,
       "lines" : 69,
       "module" : "AllKinds",
       "path" : "Sources/AllKinds/Shapes.swift",
       "strippedLines" : 51
     },
     {
+      "generated" : false,
       "lines" : 10,
       "module" : "Tool",
       "path" : "Sources/Tool/main.swift",
       "strippedLines" : 7
     },
     {
+      "generated" : false,
       "lines" : 14,
       "module" : "AllKindsTests",
       "path" : "Tests/AllKindsTests/SwiftTestingTests.swift",
       "strippedLines" : 11
     },
     {
+      "generated" : false,
       "lines" : 20,
       "module" : "AllKindsTests",
       "path" : "Tests/AllKindsTests/XCTestTests.swift",
       "strippedLines" : 16
     }
+  ],
+  "findings" : [
+
   ],
   "metrics" : {
     "complexityDefinition" : "complexity-1",
@@ -58,6 +103,7 @@
         "swiftLintScored" : true
       },
       "file" : "Sources/AllKinds/Resources.swift",
+      "isAsync" : false,
       "isDocumented" : false,
       "key" : "AllKinds::Resource::init(handle: Int)",
       "kind" : "init",
@@ -88,6 +134,7 @@
         "swiftLintScored" : false
       },
       "file" : "Sources/AllKinds/Resources.swift",
+      "isAsync" : false,
       "isDocumented" : false,
       "key" : "AllKinds::Resource::deinit",
       "kind" : "deinit",
@@ -118,6 +165,7 @@
       },
       "file" : "Sources/AllKinds/Resources.swift",
       "ifConfig" : "DEBUG",
+      "isAsync" : false,
       "isDocumented" : false,
       "key" : "AllKinds::Resource::func describe() -> String #if DEBUG",
       "kind" : "func",
@@ -149,6 +197,7 @@
       },
       "file" : "Sources/AllKinds/Resources.swift",
       "ifConfig" : "!(DEBUG)",
+      "isAsync" : false,
       "isDocumented" : false,
       "key" : "AllKinds::Resource::func describe() -> String #if !(DEBUG)",
       "kind" : "func",
@@ -179,6 +228,7 @@
         "swiftLintScored" : true
       },
       "file" : "Sources/AllKinds/Resources.swift",
+      "isAsync" : true,
       "isDocumented" : false,
       "key" : "AllKinds::Resource::func load() async throws -> Int",
       "kind" : "func",
@@ -209,6 +259,7 @@
         "swiftLintScored" : true
       },
       "file" : "Sources/AllKinds/Resources.swift",
+      "isAsync" : false,
       "isDocumented" : false,
       "key" : "AllKinds::Resource::func load() -> Int",
       "kind" : "func",
@@ -239,6 +290,7 @@
         "swiftLintScored" : true
       },
       "file" : "Sources/AllKinds/Resources.swift",
+      "isAsync" : false,
       "isDocumented" : false,
       "key" : "AllKinds::Counter::func increment() -> Int",
       "kind" : "func",
@@ -269,6 +321,7 @@
         "swiftLintScored" : true
       },
       "file" : "Sources/AllKinds/Resources.swift",
+      "isAsync" : false,
       "isDocumented" : false,
       "key" : "AllKinds::func secretHelper() -> Int @ Sources/AllKinds/Resources.swift",
       "kind" : "func",
@@ -299,6 +352,7 @@
         "swiftLintScored" : true
       },
       "file" : "Sources/AllKinds/Resources.swift",
+      "isAsync" : false,
       "isDocumented" : false,
       "key" : "AllKinds::String::func shouted() -> String @ Sources/AllKinds/Resources.swift",
       "kind" : "func",
@@ -329,6 +383,7 @@
         "swiftLintScored" : true
       },
       "file" : "Sources/AllKinds/Resources.swift",
+      "isAsync" : false,
       "isDocumented" : false,
       "key" : "AllKinds::func generic<Element: Comparable>(_: [Element]) -> Element? where Element: Sendable",
       "kind" : "func",
@@ -359,6 +414,7 @@
         "swiftLintScored" : true
       },
       "file" : "Sources/AllKinds/Shapes.swift",
+      "isAsync" : false,
       "isDocumented" : false,
       "key" : "AllKinds::Square::init(side: Double)",
       "kind" : "init",
@@ -389,6 +445,7 @@
         "swiftLintScored" : true
       },
       "file" : "Sources/AllKinds/Shapes.swift",
+      "isAsync" : false,
       "isDocumented" : false,
       "key" : "AllKinds::Square::init?(text: String)",
       "kind" : "init",
@@ -420,6 +477,7 @@
         "swiftLintScored" : false
       },
       "file" : "Sources/AllKinds/Shapes.swift",
+      "isAsync" : false,
       "isDocumented" : false,
       "key" : "AllKinds::Square::var area: Double { get }",
       "kind" : "accessor",
@@ -450,6 +508,7 @@
         "swiftLintScored" : false
       },
       "file" : "Sources/AllKinds/Shapes.swift",
+      "isAsync" : false,
       "isDocumented" : false,
       "key" : "AllKinds::Square::var perimeter: Double { get }",
       "kind" : "accessor",
@@ -480,6 +539,7 @@
         "swiftLintScored" : false
       },
       "file" : "Sources/AllKinds/Shapes.swift",
+      "isAsync" : false,
       "isDocumented" : false,
       "key" : "AllKinds::Square::var perimeter: Double { set }",
       "kind" : "accessor",
@@ -510,6 +570,7 @@
         "swiftLintScored" : false
       },
       "file" : "Sources/AllKinds/Shapes.swift",
+      "isAsync" : false,
       "isDocumented" : false,
       "key" : "AllKinds::Square::var label { willSet }",
       "kind" : "accessor",
@@ -540,6 +601,7 @@
         "swiftLintScored" : false
       },
       "file" : "Sources/AllKinds/Shapes.swift",
+      "isAsync" : false,
       "isDocumented" : false,
       "key" : "AllKinds::Square::var label { didSet }",
       "kind" : "accessor",
@@ -569,6 +631,7 @@
         "swiftLintScored" : true
       },
       "file" : "Sources/AllKinds/Shapes.swift",
+      "isAsync" : false,
       "isDocumented" : false,
       "key" : "AllKinds::Square::func scaled(by: Double) -> Square",
       "kind" : "func",
@@ -599,6 +662,7 @@
         "swiftLintScored" : true
       },
       "file" : "Sources/AllKinds/Shapes.swift",
+      "isAsync" : false,
       "isDocumented" : false,
       "key" : "AllKinds::Square::func scaled(by: Double) -> Square / func clamp(_: Double) -> Double",
       "kind" : "func",
@@ -630,6 +694,7 @@
         "swiftLintScored" : false
       },
       "file" : "Sources/AllKinds/Shapes.swift",
+      "isAsync" : false,
       "isDocumented" : false,
       "key" : "AllKinds::Square::subscript(_: Int) -> Double",
       "kind" : "subscript",
@@ -652,6 +717,7 @@
     {
       "bodyHash" : "9288593763a41083",
       "file" : "Sources/AllKinds/Shapes.swift",
+      "isAsync" : false,
       "isDocumented" : false,
       "key" : "AllKinds::Square::subscript(row: Int, column: Int) -> Double",
       "kind" : "subscript",
@@ -683,6 +749,7 @@
         "swiftLintScored" : false
       },
       "file" : "Sources/AllKinds/Shapes.swift",
+      "isAsync" : false,
       "isDocumented" : false,
       "key" : "AllKinds::Square::subscript(row: Int, column: Int) -> Double / { get }",
       "kind" : "accessor",
@@ -714,6 +781,7 @@
         "swiftLintScored" : false
       },
       "file" : "Sources/AllKinds/Shapes.swift",
+      "isAsync" : false,
       "isDocumented" : false,
       "key" : "AllKinds::Square::subscript(row: Int, column: Int) -> Double / { set }",
       "kind" : "accessor",
@@ -744,6 +812,7 @@
         "swiftLintScored" : true
       },
       "file" : "Sources/AllKinds/Shapes.swift",
+      "isAsync" : false,
       "isDocumented" : false,
       "key" : "AllKinds::Square::static func +(lhs: Square, rhs: Square) -> Square",
       "kind" : "func",
@@ -774,6 +843,7 @@
         "swiftLintScored" : true
       },
       "file" : "Sources/AllKinds/Shapes.swift",
+      "isAsync" : false,
       "isDocumented" : false,
       "key" : "AllKinds::Square::static prefix func -(shape: Square) -> Square",
       "kind" : "func",
@@ -804,6 +874,7 @@
         "swiftLintScored" : true
       },
       "file" : "Sources/AllKinds/Shapes.swift",
+      "isAsync" : false,
       "isDocumented" : false,
       "key" : "AllKinds::Shape where Self: Equatable::func isSame(as: Self) -> Bool",
       "kind" : "func",
@@ -834,6 +905,7 @@
         "swiftLintScored" : false
       },
       "file" : "Sources/Tool/main.swift",
+      "isAsync" : false,
       "isDocumented" : false,
       "key" : "Tool::<top-level code> @ Sources/Tool/main.swift",
       "kind" : "topLevel",
@@ -863,6 +935,7 @@
         "swiftLintScored" : true
       },
       "file" : "Sources/Tool/main.swift",
+      "isAsync" : false,
       "isDocumented" : false,
       "key" : "Tool::func report(_: Double)",
       "kind" : "func",
@@ -893,6 +966,7 @@
         "swiftLintScored" : true
       },
       "file" : "Tests/AllKindsTests/SwiftTestingTests.swift",
+      "isAsync" : false,
       "isDocumented" : false,
       "key" : "AllKindsTests::func areaOfSquare()",
       "kind" : "func",
@@ -923,6 +997,7 @@
         "swiftLintScored" : true
       },
       "file" : "Tests/AllKindsTests/SwiftTestingTests.swift",
+      "isAsync" : false,
       "isDocumented" : false,
       "key" : "AllKindsTests::SquareSuite::func perimeter()",
       "kind" : "func",
@@ -953,6 +1028,7 @@
         "swiftLintScored" : true
       },
       "file" : "Tests/AllKindsTests/SwiftTestingTests.swift",
+      "isAsync" : false,
       "isDocumented" : false,
       "key" : "AllKindsTests::SquareSuite::func makeSquare() -> Square",
       "kind" : "func",
@@ -983,6 +1059,7 @@
         "swiftLintScored" : true
       },
       "file" : "Tests/AllKindsTests/XCTestTests.swift",
+      "isAsync" : false,
       "isDocumented" : false,
       "key" : "AllKindsTests::BaseTestCase::func makeResource() -> Resource",
       "kind" : "func",
@@ -1013,6 +1090,7 @@
         "swiftLintScored" : true
       },
       "file" : "Tests/AllKindsTests/XCTestTests.swift",
+      "isAsync" : false,
       "isDocumented" : false,
       "key" : "AllKindsTests::ResourceTests::func testDescribe()",
       "kind" : "func",
@@ -1043,6 +1121,7 @@
         "swiftLintScored" : true
       },
       "file" : "Tests/AllKindsTests/XCTestTests.swift",
+      "isAsync" : false,
       "isDocumented" : false,
       "key" : "AllKindsTests::ResourceTests::func testWithArgument(_: Int)",
       "kind" : "func",
@@ -1073,6 +1152,7 @@
         "swiftLintScored" : true
       },
       "file" : "Tests/AllKindsTests/XCTestTests.swift",
+      "isAsync" : false,
       "isDocumented" : false,
       "key" : "AllKindsTests::ResourceTests::func testFromExtension()",
       "kind" : "func",
@@ -1095,6 +1175,19 @@
   ],
   "rollups" : [
     {
+      "api" : {
+        "accessLevels" : {
+          "fileprivate" : 1,
+          "private" : 3,
+          "public" : 23
+        },
+        "classes" : 1,
+        "documentedPublicDeclarations" : 1,
+        "finalClasses" : 1,
+        "implicitlyInternal" : 0,
+        "publicDeclarations" : 23
+      },
+      "asyncFunctions" : 1,
       "cognitive" : {
         "count" : 25,
         "max" : 1,
@@ -1121,6 +1214,16 @@
         "total" : 84
       },
       "files" : 2,
+      "findingKinds" : {
+        "swiftstats" : {
+
+        }
+      },
+      "findings" : {
+        "swiftstats" : {
+
+        }
+      },
       "functionLength" : {
         "count" : 26,
         "max" : 6,
@@ -1162,6 +1265,28 @@
         "p90" : 0,
         "total" : 1
       },
+      "tests" : {
+        "assertionsPerTest" : {
+          "count" : 0,
+          "total" : 0
+        },
+        "generatedTests" : 0,
+        "helpers" : 0,
+        "lineRatio" : {
+          "deadCodeExcluded" : false,
+          "productionLines" : 84,
+          "testLines" : 12,
+          "testLinesByKind" : {
+            "example" : 12
+          }
+        },
+        "parameterizedCases" : 0,
+        "parameterizedUnknownCases" : 0,
+        "tests" : {
+
+        },
+        "xctestWithoutAssertions" : 0
+      },
       "typeBodyLength" : {
         "count" : 6,
         "max" : 40,
@@ -1187,6 +1312,17 @@
       }
     },
     {
+      "api" : {
+        "accessLevels" : {
+          "internal" : 10
+        },
+        "classes" : 2,
+        "documentedPublicDeclarations" : 0,
+        "finalClasses" : 1,
+        "implicitlyInternal" : 10,
+        "publicDeclarations" : 0
+      },
+      "asyncFunctions" : 0,
       "cognitive" : {
         "count" : 7,
         "max" : 0,
@@ -1213,6 +1349,16 @@
         "total" : 27
       },
       "files" : 2,
+      "findingKinds" : {
+        "swiftstats" : {
+
+        }
+      },
+      "findings" : {
+        "swiftstats" : {
+
+        }
+      },
       "functionLength" : {
         "count" : 7,
         "max" : 3,
@@ -1250,6 +1396,37 @@
         "p90" : 0,
         "total" : 0
       },
+      "tests" : {
+        "assertionsPerTest" : {
+          "count" : 4,
+          "max" : 1,
+          "median" : 1,
+          "min" : 1,
+          "p90" : 1,
+          "total" : 4
+        },
+        "generatedTests" : 0,
+        "helpers" : 3,
+        "lineRatio" : {
+          "deadCodeExcluded" : false,
+          "productionLines" : 84,
+          "testLines" : 12,
+          "testLinesByKind" : {
+            "example" : 12
+          }
+        },
+        "parameterizedCases" : 0,
+        "parameterizedUnknownCases" : 0,
+        "tests" : {
+          "swift-testing" : {
+            "example" : 2
+          },
+          "xctest" : {
+            "example" : 2
+          }
+        },
+        "xctestWithoutAssertions" : 0
+      },
       "typeBodyLength" : {
         "count" : 4,
         "max" : 6,
@@ -1273,6 +1450,17 @@
       }
     },
     {
+      "api" : {
+        "accessLevels" : {
+          "internal" : 2
+        },
+        "classes" : 0,
+        "documentedPublicDeclarations" : 0,
+        "finalClasses" : 0,
+        "implicitlyInternal" : 2,
+        "publicDeclarations" : 0
+      },
+      "asyncFunctions" : 0,
       "cognitive" : {
         "count" : 2,
         "max" : 0,
@@ -1299,6 +1487,16 @@
         "total" : 7
       },
       "files" : 1,
+      "findingKinds" : {
+        "swiftstats" : {
+
+        }
+      },
+      "findings" : {
+        "swiftstats" : {
+
+        }
+      },
       "functionLength" : {
         "count" : 2,
         "max" : 3,
@@ -1337,6 +1535,28 @@
         "p90" : 0,
         "total" : 0
       },
+      "tests" : {
+        "assertionsPerTest" : {
+          "count" : 0,
+          "total" : 0
+        },
+        "generatedTests" : 0,
+        "helpers" : 0,
+        "lineRatio" : {
+          "deadCodeExcluded" : false,
+          "productionLines" : 7,
+          "testLines" : 0,
+          "testLinesByKind" : {
+
+          }
+        },
+        "parameterizedCases" : 0,
+        "parameterizedUnknownCases" : 0,
+        "tests" : {
+
+        },
+        "xctestWithoutAssertions" : 0
+      },
       "typeBodyLength" : {
         "count" : 0,
         "total" : 0
@@ -1350,6 +1570,20 @@
       }
     },
     {
+      "api" : {
+        "accessLevels" : {
+          "fileprivate" : 1,
+          "internal" : 2,
+          "private" : 3,
+          "public" : 23
+        },
+        "classes" : 1,
+        "documentedPublicDeclarations" : 1,
+        "finalClasses" : 1,
+        "implicitlyInternal" : 2,
+        "publicDeclarations" : 23
+      },
+      "asyncFunctions" : 1,
       "cognitive" : {
         "count" : 27,
         "max" : 1,
@@ -1376,6 +1610,16 @@
         "total" : 91
       },
       "files" : 3,
+      "findingKinds" : {
+        "swiftstats" : {
+
+        }
+      },
+      "findings" : {
+        "swiftstats" : {
+
+        }
+      },
       "functionLength" : {
         "count" : 28,
         "max" : 6,
@@ -1418,6 +1662,28 @@
         "p90" : 0,
         "total" : 1
       },
+      "tests" : {
+        "assertionsPerTest" : {
+          "count" : 0,
+          "total" : 0
+        },
+        "generatedTests" : 0,
+        "helpers" : 0,
+        "lineRatio" : {
+          "deadCodeExcluded" : false,
+          "productionLines" : 91,
+          "testLines" : 12,
+          "testLinesByKind" : {
+            "example" : 12
+          }
+        },
+        "parameterizedCases" : 0,
+        "parameterizedUnknownCases" : 0,
+        "tests" : {
+
+        },
+        "xctestWithoutAssertions" : 0
+      },
       "typeBodyLength" : {
         "count" : 6,
         "max" : 40,
@@ -1443,6 +1709,17 @@
       }
     },
     {
+      "api" : {
+        "accessLevels" : {
+          "internal" : 10
+        },
+        "classes" : 2,
+        "documentedPublicDeclarations" : 0,
+        "finalClasses" : 1,
+        "implicitlyInternal" : 10,
+        "publicDeclarations" : 0
+      },
+      "asyncFunctions" : 0,
       "cognitive" : {
         "count" : 7,
         "max" : 0,
@@ -1469,6 +1746,16 @@
         "total" : 27
       },
       "files" : 2,
+      "findingKinds" : {
+        "swiftstats" : {
+
+        }
+      },
+      "findings" : {
+        "swiftstats" : {
+
+        }
+      },
       "functionLength" : {
         "count" : 7,
         "max" : 3,
@@ -1506,6 +1793,37 @@
         "p90" : 0,
         "total" : 0
       },
+      "tests" : {
+        "assertionsPerTest" : {
+          "count" : 4,
+          "max" : 1,
+          "median" : 1,
+          "min" : 1,
+          "p90" : 1,
+          "total" : 4
+        },
+        "generatedTests" : 0,
+        "helpers" : 3,
+        "lineRatio" : {
+          "deadCodeExcluded" : false,
+          "productionLines" : 91,
+          "testLines" : 12,
+          "testLinesByKind" : {
+            "example" : 12
+          }
+        },
+        "parameterizedCases" : 0,
+        "parameterizedUnknownCases" : 0,
+        "tests" : {
+          "swift-testing" : {
+            "example" : 2
+          },
+          "xctest" : {
+            "example" : 2
+          }
+        },
+        "xctestWithoutAssertions" : 0
+      },
       "typeBodyLength" : {
         "count" : 4,
         "max" : 6,
@@ -1529,7 +1847,7 @@
       }
     }
   ],
-  "schemaVersion" : 2,
+  "schemaVersion" : 3,
   "sitrep" : {
     "imports" : [
       {
@@ -1592,6 +1910,9 @@
   },
   "targets" : [
     {
+      "dependencies" : [
+
+      ],
       "files" : [
         "Sources/AllKinds/Resources.swift",
         "Sources/AllKinds/Shapes.swift"
@@ -1602,6 +1923,9 @@
       "type" : "library"
     },
     {
+      "dependencies" : [
+        "AllKinds"
+      ],
       "files" : [
         "Tests/AllKindsTests/SwiftTestingTests.swift",
         "Tests/AllKindsTests/XCTestTests.swift"
@@ -1612,6 +1936,9 @@
       "type" : "test"
     },
     {
+      "dependencies" : [
+        "AllKinds"
+      ],
       "files" : [
         "Sources/Tool/main.swift"
       ],
@@ -1619,6 +1946,44 @@
       "name" : "Tool",
       "path" : "Sources/Tool",
       "type" : "executable"
+    }
+  ],
+  "tests" : [
+    {
+      "assertions" : 1,
+      "file" : "Tests/AllKindsTests/SwiftTestingTests.swift",
+      "framework" : "swift-testing",
+      "generated" : false,
+      "key" : "AllKindsTests::SquareSuite::func perimeter()",
+      "kind" : "example",
+      "module" : "AllKindsTests"
+    },
+    {
+      "assertions" : 1,
+      "file" : "Tests/AllKindsTests/SwiftTestingTests.swift",
+      "framework" : "swift-testing",
+      "generated" : false,
+      "key" : "AllKindsTests::func areaOfSquare()",
+      "kind" : "example",
+      "module" : "AllKindsTests"
+    },
+    {
+      "assertions" : 1,
+      "file" : "Tests/AllKindsTests/XCTestTests.swift",
+      "framework" : "xctest",
+      "generated" : false,
+      "key" : "AllKindsTests::ResourceTests::func testDescribe()",
+      "kind" : "example",
+      "module" : "AllKindsTests"
+    },
+    {
+      "assertions" : 1,
+      "file" : "Tests/AllKindsTests/XCTestTests.swift",
+      "framework" : "xctest",
+      "generated" : false,
+      "key" : "AllKindsTests::ResourceTests::func testFromExtension()",
+      "kind" : "example",
+      "module" : "AllKindsTests"
     }
   ],
   "tool" : {

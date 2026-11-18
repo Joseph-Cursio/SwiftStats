@@ -22,7 +22,7 @@ struct SwiftLintParityTests {
     @Test("every func and init matches SwiftLint on swift-algorithms")
     func swiftAlgorithms() throws {
         try #require(FileManager.default.fileExists(atPath: Self.corpus.path), "corpus missing: \(Self.corpus.path)")
-        let report = try PackageScanner().scan(packageAt: Self.corpus)
+        let report = try PackageScanner(tools: .nowhere).scan(packageAt: Self.corpus)
         let root = Self.corpus.standardizedFileURL.path
         let scannedFiles = report.targets.flatMap(\.files).sorted()
         let paths = scannedFiles.map { root + "/" + $0 }
@@ -66,5 +66,25 @@ struct SwiftLintParityTests {
         // SwiftLint's paths matched ours: most functions it reports score above 0.
         #expect(nonZero > checked / 4, "only \(nonZero) of \(checked) matched a SwiftLint report")
         #expect(mismatches.isEmpty, "\(mismatches.prefix(40).joined(separator: "\n"))")
+    }
+
+    /// PRD M1b done-when (2): the SwiftLint adapter's counts per rule equal
+    /// `swiftlint lint --reporter json` run on the targets' directories.
+    @Test("violation counts per rule match swiftlint lint on swift-algorithms")
+    func violationCounts() throws {
+        try #require(FileManager.default.fileExists(atPath: Self.corpus.path), "corpus missing: \(Self.corpus.path)")
+        let binary = try #require(SwiftLintRunner.binary)
+        let report = try PackageScanner(tools: ToolLocator { $0 == "swiftlint" ? binary : nil })
+            .scan(packageAt: Self.corpus)
+        let violations = report.findings.filter { $0.tool == "swiftlint" }
+        let counts = violations.reduce(into: [String: Int]()) { counts, finding in
+            counts[finding.rule, default: 0] += 1
+        }
+
+        #expect(report.collectors.first { $0.name == "swiftlint" }?.state == .ran)
+        #expect(counts.isEmpty == false)
+        let paths = Set(report.targets.map(\.path)).sorted()
+        #expect(counts == (try SwiftLintRunner.violationCounts(in: Self.corpus, paths: paths)))
+        #expect(report.findings.allSatisfy { $0.locations.allSatisfy { $0.attachedTo != .unscanned } })
     }
 }

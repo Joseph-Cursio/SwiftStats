@@ -54,6 +54,25 @@ enum CollectorHarness {
         return TypeCollector.collect(tree, context: context)
     }
 
+    /// Risk markers of a production file at the default path.
+    static func markers(_ source: String) -> [RawFinding] {
+        let tree = Parser.parse(source: source)
+        let context = FileContext(
+            module: "Lib",
+            file: defaultFile,
+            isTestTarget: false,
+            testCaseClasses: [],
+            converter: SourceLocationConverter(fileName: defaultFile, tree: tree),
+            firstLineColumnOffset: 0
+        )
+        return MarkerCollector.collect(tree, context: context)
+    }
+
+    /// API declarations of a file of module `Lib`.
+    static func declarations(_ source: String) -> [APIDeclaration] {
+        DeclarationCollector.collect(Parser.parse(source: source), module: "Lib")
+    }
+
     /// Keys of a production file at the default path.
     static func keys(_ source: String) -> [String] {
         collect(source).map(\.key)

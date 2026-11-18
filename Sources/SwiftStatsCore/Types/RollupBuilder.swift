@@ -11,12 +11,7 @@
 enum RollupBuilder {
     /// One roll-up per module, by name, then `production` and `tests` for
     /// the project when the package has modules of that kind.
-    static func rollups(
-        targets: [TargetSummary],
-        records: [FunctionRecord],
-        types: [TypeRecord],
-        files: [FileRecord]
-    ) -> [Rollup] {
+    static func rollups(targets: [TargetSummary], input: RollupInput) -> [Rollup] {
         let scopes = targets.sorted { $0.name < $1.name }.map { (RollupScope.module, $0.name, Set([$0.name])) }
             + [("production", false), ("tests", true)].compactMap { name, isTest in
                 let modules = Set(targets.filter { $0.isTest == isTest }.map(\.name))
@@ -26,28 +21,26 @@ enum RollupBuilder {
             rollup(
                 scope: scope,
                 name: name,
-                records: records.filter { modules.contains($0.module) },
-                types: types.filter { modules.contains($0.module) },
-                files: files.filter { modules.contains($0.module) }
+                input: input.narrowed(to: modules),
+                tests: TestSummaryBuilder.summary(of: modules, scope: scope, targets: targets, scan: input)
             )
         }
     }
 
-    /// The roll-up of these records, types and files.
-    private static func rollup(
-        scope: RollupScope,
-        name: String,
-        records: [FunctionRecord],
-        types: [TypeRecord],
-        files: [FileRecord]
-    ) -> Rollup {
+    /// The roll-up of `input`, with its test summary.
+    private static func rollup(scope: RollupScope, name: String, input: RollupInput, tests: TestSummary) -> Rollup {
+        let records = input.records
+        let types = input.types
+        let files = input.files
         let scores = records.compactMap(\.complexity)
+        let paths = Set(files.map(\.path))
         return Rollup(
             scope: scope,
             name: name,
             files: files.count,
             functions: counts(records.map(\.kind.rawValue)),
             documentedFunctions: records.filter(\.isDocumented).count,
+            asyncFunctions: records.filter(\.isAsync).count,
             types: counts(types.map(\.kind.rawValue)),
             functionLength: Distribution(records.map(\.strippedLines)),
             parameterCount: Distribution(records.compactMap(\.parameterCount)),
@@ -57,7 +50,11 @@ enum RollupBuilder {
             swiftLintCompatible: Distribution(scores.filter(\.swiftLintScored).map(\.swiftLintCompatible)),
             typeBodyLength: Distribution(types.map(\.strippedLines)),
             typeMemberCount: Distribution(types.map(\.memberCount)),
-            fileLength: Distribution(files.map(\.strippedLines))
+            fileLength: Distribution(files.map(\.strippedLines)),
+            findings: input.findings.byRule(in: paths),
+            findingKinds: input.findings.byKind(in: paths),
+            api: APISurface(input.declarations, overExposed: input.findings.overExposed(in: paths)),
+            tests: tests
         )
     }
 

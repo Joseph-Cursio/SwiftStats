@@ -11,8 +11,10 @@
 /// The result of scanning one package.
 public struct ScanReport: Codable, Hashable, Sendable {
     /// The version of this output format. Bumped on any change a reader
-    /// would notice: 2 adds complexity, size and shape (M1a).
-    public static let currentSchemaVersion = 2
+    /// would notice: 2 adds complexity, size and shape (M1a); 3 adds
+    /// generated files, findings, risk markers, API surface, the test
+    /// inventory and dependencies (M1b).
+    public static let currentSchemaVersion = 3
 
     /// The output format version (`currentSchemaVersion` when written).
     public let schemaVersion: Int
@@ -36,6 +38,14 @@ public struct ScanReport: Codable, Hashable, Sendable {
     public let rollups: [Rollup]
     /// Sitrep-compatible project counts (PRD §7.1).
     public let sitrep: SitrepReport
+    /// Each external collector's run, sorted by name (PRD §6.5).
+    public let collectors: [CollectorStatus]
+    /// Every finding, sorted by first location, then tool and rule (PRD §7.16).
+    public let findings: [Finding]
+    /// The test inventory, sorted by file, then key (PRD §7.8).
+    public let tests: [TestRecord]
+    /// Direct dependencies, pins and the resolved graph (PRD §7.14).
+    public let dependencies: DependencyReport
     /// Non-fatal problems, sorted.
     public let warnings: [ScanWarning]
 }

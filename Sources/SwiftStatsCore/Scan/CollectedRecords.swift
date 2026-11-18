@@ -14,4 +14,10 @@ struct CollectedRecords {
     var types: [TypeRecord] = []
     /// File records.
     var files: [FileRecord] = []
+    /// Declarations the API surface counts.
+    var declarations: [APIDeclaration] = []
+    /// SwiftStats' own risk markers.
+    var markers: [RawFinding] = []
+    /// Each file's top-level statement lines, by path.
+    var topLevelLines: [String: Set<Int>] = [:]
 }

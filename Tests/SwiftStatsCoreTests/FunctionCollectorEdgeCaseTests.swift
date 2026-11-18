@@ -219,6 +219,20 @@ struct FunctionCollectorEdgeCaseTests {
         #expect(CollectorHarness.keys(source) == ["Lib::Screen::func show()"])
     }
 
+    @Test("a @Test inside an #if in the attribute list makes a test")
+    func conditionalTestAttribute() {
+        let source = """
+        struct MathTests {
+            #if canImport(Testing)
+            @Test
+            #endif
+            func adds() { }
+        }
+        """
+        let records = CollectorHarness.collect(source, isTestTarget: true, testCaseClasses: [])
+        #expect(records.map(\.role) == [.test])
+    }
+
     @Test("an #if in the attribute list doesn't hide the @Test after it")
     func conditionalAttributeBeforeTest() {
         let source = """

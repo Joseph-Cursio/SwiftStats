@@ -16,12 +16,16 @@ public struct FileRecord: Codable, Hashable, Sendable {
     /// Lines that hold at least one token, comments, whitespace and
     /// attributes excluded (PRD §7.2).
     public let strippedLines: Int
+    /// Whether the file is generated: a `generated` glob matches its path,
+    /// or its leading comment carries a known header (PRD D8).
+    public let generated: Bool
 
     /// Creates a record. Fields are documented on their properties.
-    public init(path: String, module: String, lines: Int, strippedLines: Int) {
+    public init(path: String, module: String, lines: Int, strippedLines: Int, generated: Bool) {
         self.path = path
         self.module = module
         self.lines = lines
         self.strippedLines = strippedLines
+        self.generated = generated
     }
 }

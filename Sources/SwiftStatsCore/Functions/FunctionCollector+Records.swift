@@ -50,18 +50,13 @@ extension FunctionCollector {
     }
 
     /// The role of a `func`: in a test target, a test if it is a Swift
-    /// Testing `@Test` or an XCTest `test…` method, otherwise a helper.
+    /// Testing `@Test` (including one inside an `#if` in its attribute list)
+    /// or an XCTest `test…` method, otherwise a helper.
     func role(forFunction node: FunctionDeclSyntax) -> CodeRole {
         guard context.isTestTarget else {
             return .production
         }
-        let isSwiftTesting = node.attributes.contains { element in
-            guard let attribute = element.as(AttributeSyntax.self) else {
-                return false
-            }
-            let name = CanonicalText.render(attribute.attributeName)
-            return name == "Test" || name == "Testing.Test"
-        }
+        let isSwiftTesting = AttributeFacts.testAttribute(in: node.attributes) != nil
         return isSwiftTesting || isXCTestMethod(node) ? .test : .helper
     }
 
@@ -94,6 +89,7 @@ extension FunctionCollector {
             strippedLines: lines.count,
             parameterCount: DeclarationFacts.parameterCount(of: draft.node),
             isDocumented: DeclarationFacts.isDocumented(draft.node),
+            isAsync: DeclarationFacts.isAsync(draft.node),
             bodyHash: BodyHash.of(text: draft.bodyTokens),
             parentKey: parentKey,
             ifConfig: conditions.isEmpty ? nil : Self.conjunction(conditions),
@@ -138,6 +134,7 @@ extension FunctionCollector {
             strippedLines: lines.count,
             parameterCount: nil,
             isDocumented: false,
+            isAsync: false,
             bodyHash: BodyHash.of(text: statements.map(CanonicalText.tokenStream).joined(separator: " ")),
             parentKey: nil,
             ifConfig: nil,

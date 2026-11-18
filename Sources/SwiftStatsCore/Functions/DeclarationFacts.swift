@@ -47,8 +47,22 @@ enum DeclarationFacts {
         return nil
     }
 
+    /// Whether `node` is an `async` `func`, `init` or accessor.
+    static func isAsync(_ node: Syntax) -> Bool {
+        if let function = node.as(FunctionDeclSyntax.self) {
+            return function.signature.effectSpecifiers?.asyncSpecifier != nil
+        }
+        if let initializer = node.as(InitializerDeclSyntax.self) {
+            return initializer.signature.effectSpecifiers?.asyncSpecifier != nil
+        }
+        if let accessor = node.as(AccessorDeclSyntax.self) {
+            return accessor.effectSpecifiers?.asyncSpecifier != nil
+        }
+        return false
+    }
+
     /// Whether `trivia` holds a `///` or `/** */` comment.
-    private static func hasDocComment(_ trivia: Trivia) -> Bool {
+    static func hasDocComment(_ trivia: Trivia) -> Bool {
         trivia.contains { piece in
             switch piece {
             case .docBlockComment, .docLineComment:

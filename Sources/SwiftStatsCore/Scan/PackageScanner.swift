@@ -18,15 +18,20 @@ public struct PackageScanner {
 
     /// Where package descriptions come from.
     private let describer: any PackageDescriber
+    /// Where the external collectors' tools come from.
+    let tools: ToolLocator
 
-    /// Creates a scanner that learns a package's targets through `describer`.
-    public init(describer: any PackageDescriber) {
+    /// Creates a scanner that learns a package's targets through
+    /// `describer` and finds external tools with `tools`.
+    public init(describer: any PackageDescriber, tools: ToolLocator = .path) {
         self.describer = describer
+        self.tools = tools
     }
 
-    /// Creates a scanner that asks SwiftPM for package descriptions.
-    public init() {
-        self.init(describer: SwiftPMPackageDescriber())
+    /// Creates a scanner that asks SwiftPM for package descriptions and
+    /// finds external tools with `tools`.
+    public init(tools: ToolLocator = .path) {
+        self.init(describer: SwiftPMPackageDescriber(), tools: tools)
     }
 
     /// Records by file, then start position, then key.
@@ -49,6 +54,18 @@ public struct PackageScanner {
             return lhs.range.start < rhs.range.start
         }
         return lhs.name < rhs.name
+    }
+
+    /// Findings by their first location, then tool, rule and message.
+    static func findingOrder(_ lhs: Finding, _ rhs: Finding) -> Bool {
+        let left = lhs.locations.first
+        let right = rhs.locations.first
+        let leftPlace = (left?.file ?? "", left?.line ?? 0, left?.column ?? 0)
+        let rightPlace = (right?.file ?? "", right?.line ?? 0, right?.column ?? 0)
+        if leftPlace != rightPlace {
+            return leftPlace < rightPlace
+        }
+        return (lhs.tool, lhs.rule, lhs.message) < (rhs.tool, rhs.rule, rhs.message)
     }
 
     /// Warnings by file, then message.
@@ -82,14 +99,23 @@ public struct PackageScanner {
         return (parsedByTarget, warnings)
     }
 
-    /// The function, type and file records of every parsed file, target by target.
+    /// The function, type and file records of every parsed file, target by
+    /// target; files matching `generated` or carrying a known header are
+    /// marked generated.
     private static func collect(
         _ targets: [TargetSummary],
-        _ parsedByTarget: [[ParsedFile]]
+        _ parsedByTarget: [[ParsedFile]],
+        generated: [GlobPattern]
     ) -> CollectedRecords {
         var collected = CollectedRecords()
+        // A test target's XCTestCase subclasses may descend from a base class
+        // in another of the package's targets (swift-collections'
+        // `CollectionTestCase`), so the whole package is indexed too.
+        let packageTestCases = TestCaseClassIndex.testCaseClasses(in: parsedByTarget.flatMap { $0.map(\.tree) })
         for (target, parsed) in zip(targets, parsedByTarget) {
-            let testCaseClasses = target.isTest ? TestCaseClassIndex.testCaseClasses(in: parsed.map(\.tree)) : []
+            let testCaseClasses = target.isTest
+                ? TestCaseClassIndex.testCaseClasses(in: parsed.map(\.tree)).union(packageTestCases)
+                : []
             for file in parsed {
                 let context = FileContext(
                     module: target.name,
@@ -101,7 +127,17 @@ public struct PackageScanner {
                 )
                 collected.records += FunctionCollector.collect(file.tree, context: context)
                 collected.types += TypeCollector.collect(file.tree, context: context)
-                collected.files.append(FileMeasure.record(of: file, module: target.name))
+                collected.declarations += DeclarationCollector.collect(file.tree, module: target.name)
+                collected.markers += MarkerCollector.collect(file.tree, context: context)
+                collected.topLevelLines[file.path] = FunctionCollector.topLevelLines(
+                    in: file.tree,
+                    converter: context.converter
+                )
+                collected.files.append(FileMeasure.record(
+                    of: file,
+                    module: target.name,
+                    generated: GeneratedCode.isGenerated(file, globs: generated)
+                ))
             }
         }
         return collected
@@ -128,7 +164,8 @@ public struct PackageScanner {
                 type: target.type,
                 isTest: target.isTest,
                 path: target.path,
-                files: files
+                files: files,
+                dependencies: target.dependencies
             )
         }
         return (kept, excluded.sorted())
@@ -160,6 +197,54 @@ public struct PackageScanner {
         return (SitrepCounter.report(for: sitrepFiles), warnings)
     }
 
+    /// SwiftStats' own measurements of `targets`' files.
+    private static func measure(
+        _ targets: [TargetSummary],
+        root: URL,
+        configuration: SwiftStatsConfiguration
+    ) -> ScanMeasurements {
+        let (parsedByTarget, readWarnings) = parseFiles(of: targets, root: root)
+        let collected = collect(targets, parsedByTarget, generated: configuration.generated.map(GlobPattern.init))
+        let (resolved, collisionWarnings) = KeyCollisions.resolve(collected.records)
+        let ignoresCases = SwiftLintSettings.ignoresCaseStatements(packageRoot: root)
+        let parsed = zip(targets, parsedByTarget).flatMap { target, files in files.map { (target.name, $0) } }
+        let (records, scoreWarnings) = ComplexityScorer.score(
+            resolved,
+            files: parsed,
+            ignoresCaseStatements: ignoresCases
+        )
+        let (sitrep, sitrepWarnings) = sitrep(parsedByTarget)
+        return ScanMeasurements(
+            records: records,
+            types: collected.types,
+            files: collected.files,
+            declarations: collected.declarations,
+            markers: collected.markers,
+            topLevelLines: collected.topLevelLines,
+            tests: TestInventory.tests(
+                records: records,
+                parsed: parsed,
+                testModules: Set(targets.filter(\.isTest).map(\.name)),
+                generatedFiles: Set(collected.files.filter(\.generated).map(\.path))
+            ),
+            parsed: parsed,
+            sitrep: sitrep,
+            metrics: ComplexityScorer.metricsInfo(ignoresCaseStatements: ignoresCases),
+            warnings: readWarnings + collisionWarnings + scoreWarnings + sitrepWarnings
+        )
+    }
+
+    /// `raw` findings attached to the measured records, types and files.
+    private static func attach(_ raw: [RawFinding], to measured: ScanMeasurements) -> [Finding] {
+        let mapper = FindingMapper(
+            records: measured.records,
+            types: measured.types,
+            files: measured.files,
+            topLevelLines: measured.topLevelLines
+        )
+        return raw.map(mapper.finding(for:))
+    }
+
     /// Scans the package rooted at `packageRoot`, with the `.swiftstats.yml`
     /// in its root when there is one.
     public func scan(packageAt packageRoot: URL) throws -> ScanReport {
@@ -180,36 +265,45 @@ public struct PackageScanner {
         let configuration = try SwiftStatsConfiguration.load(configurationFile, root: root)
         let package = try describer.describePackage(at: root)
         let (targets, excludedFiles) = Self.excluding(TargetResolver.resolve(package), by: configuration)
-        let (parsedByTarget, readWarnings) = Self.parseFiles(of: targets, root: root)
-        let collected = Self.collect(targets, parsedByTarget)
-        let (resolved, collisionWarnings) = KeyCollisions.resolve(collected.records)
-        let ignoresCases = SwiftLintSettings.ignoresCaseStatements(packageRoot: root)
-        let modules = zip(targets, parsedByTarget).flatMap { target, files in files.map { (target.name, $0) } }
-        let (records, scoreWarnings) = ComplexityScorer.score(
-            resolved,
-            files: modules,
-            ignoresCaseStatements: ignoresCases
-        )
-        let (sitrep, sitrepWarnings) = Self.sitrep(parsedByTarget)
-        let warnings = readWarnings + collisionWarnings + scoreWarnings + sitrepWarnings
-            + Self.unusedKeyWarnings(configuration)
+        let measured = Self.measure(targets, root: root, configuration: configuration)
+        let adapters = CollectorRun.run(root: root, targets: targets, configuration: configuration, locator: tools)
+        let findings = Self.attach(measured.markers + adapters.flatMap(\.findings), to: measured)
+        let ranTools = Set(adapters.filter { $0.status.state == .ran }.map(\.status.name))
+            .union([MarkerCollector.tool])
+        let compiled = Set(TargetResolver.resolve(package).flatMap(\.files))
+        let dependencies = dependencies(of: package, root: root, configuration: configuration)
+        let warnings = measured.warnings + Self.unusedKeyWarnings(configuration) + adapters.flatMap(\.warnings)
+            + UnbuiltTests.warnings(root: root, compiled: compiled) + dependencies.warnings
         return ScanReport(
             schemaVersion: ScanReport.currentSchemaVersion,
             tool: .current,
-            metrics: ComplexityScorer.metricsInfo(ignoresCaseStatements: ignoresCases),
+            metrics: measured.metrics,
             package: package.name,
-            configuration: ScanConfigurationSummary(excluded: configuration.excluded, excludedFiles: excludedFiles),
+            configuration: ScanConfigurationSummary(
+                excluded: configuration.excluded,
+                excludedFiles: excludedFiles,
+                generated: configuration.generated
+            ),
             targets: targets,
-            records: records.sorted(by: Self.recordOrder),
-            types: collected.types.sorted(by: Self.typeOrder),
-            files: collected.files.sorted { $0.path < $1.path },
+            records: measured.records.sorted(by: Self.recordOrder),
+            types: measured.types.sorted(by: Self.typeOrder),
+            files: measured.files.sorted { $0.path < $1.path },
             rollups: RollupBuilder.rollups(
                 targets: targets,
-                records: records,
-                types: collected.types,
-                files: collected.files
+                input: RollupInput(
+                    records: measured.records,
+                    types: measured.types,
+                    files: measured.files,
+                    declarations: measured.declarations,
+                    tests: measured.tests,
+                    findings: FindingTally(findings: findings, tools: ranTools)
+                )
             ),
-            sitrep: sitrep,
+            sitrep: measured.sitrep,
+            collectors: (adapters.map(\.status) + [dependencies.status]).sorted { $0.name < $1.name },
+            findings: findings.sorted(by: Self.findingOrder),
+            tests: measured.tests.sorted { ($0.file, $0.key) < ($1.file, $1.key) },
+            dependencies: dependencies.report,
             warnings: warnings.sorted(by: Self.warningOrder)
         )
     }

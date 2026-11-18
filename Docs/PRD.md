@@ -1,6 +1,6 @@
 # SwiftStats — Product Requirements Document
 
-**Status:** Draft v0.2.5 (2026-11-18). Reviewed against the source of every tool it names; see §16 for what changed and `Docs/prd-review-2026-11-17.md` in the repo for the evidence. M0 and M1a are built; see `Docs/m0-results.md` and `Docs/m1a-results.md`.
+**Status:** Draft v0.2.6 (2026-11-18). Reviewed against the source of every tool it names; see §16 for what changed and `Docs/prd-review-2026-11-17.md` in the repo for the evidence. M0, M1a and M1b are built; see `Docs/m0-results.md`, `Docs/m1a-results.md` and `Docs/m1b-results.md`.
 **Owner:** Joseph Cursio
 **Repo:** `~/xcode_projects/SwiftStats` (SwiftPM, `SwiftStatsCore` library + `swiftstats` CLI)
 **Inspired by:** [Sitrep](https://github.com/twostraws/Sitrep) (Paul Hudson / Hacking with Swift)
@@ -71,7 +71,7 @@ The tools disagree (Sitrep counts `func` only, SwiftLint `func` and `init`, llvm
 - **Not records:** closures (their results fold into the enclosing record by source range), protocol requirements without a body, and macro expansions (results inside them are reported as unmapped).
 - Extension members belong to the extended type.
 - Code in every `#if` branch is walked and the condition is stored. Records in branches not compiled in the current configuration can never get a USR or coverage; that is expected, not a mapping failure.
-- Files matching the configured generated-code globs, or carrying a known generated-file header (§7.8), are marked `generated`.
+- Files matching the configured generated-code globs, or carrying a known generated-file header (§7.8, D8), are marked `generated`.
 - Sitrep's "function count" is the `func` subset.
 
 ### 6.2 Snapshot
@@ -103,7 +103,7 @@ Every metric carries a **kind**. The idea comes from SwiftProjectLint's `Candida
 
 Raw census metrics are never listed one per line in a human-facing report. A derived signal (§8) may list items selected by a census metric, because the signal makes them actionable; that is where census data becomes a to-do list.
 
-SwiftProjectLint's outputs do not carry a kind, so SwiftStats keeps its own rule-to-kind list (§7.15) and checks it against `CandidateInventory` on each SwiftProjectLint update.
+SwiftProjectLint's JSON carries each finding's kind from 1.1.0, so SwiftStats reads it rather than keeping its own rule-to-kind list (§7.15). SwiftStats' own markers (§7.4) carry a kind too.
 
 Motivation: in a July 2026 road test on SwiftProjectLint's own code, 76% of findings were census items (460 pure functions and 204 pure closures out of 876 findings; see SwiftProjectLint's `CandidateInventory.swift` and `Docs/roadtest/README.md`). They buried a real defect, a `lossyStructRebuild` finding at line 1438 of a 1768-line report, which went unread. SwiftStats is the natural home for census data, which leaves linter reports for defects only.
 
@@ -163,12 +163,16 @@ Most of these are already SwiftProjectLint rules (`forceUnwrap`, `forceTry`, `fo
 
 The adapter runs SwiftProjectLint with a SwiftStats-owned config (§7.15), so the target repo's own configuration doesn't change these counts. Inline suppressions still apply and are counted separately.
 
+The markers SwiftStats finds itself are findings of the `swiftstats` tool (§7.16): `implicitlyUnwrappedOptional` (a defect), and `precondition`, `unsafeExpression`, `mainActorDeclaration` (an attribute on a declaration, including one inside an `#if` in its attribute list, not on a closure or function type) and `taskCreation` (`Task { … }` or `Task(…) { … }`, specialised or not; `Task.detached` is SwiftProjectLint's), all census. `async` is a flag on each function record, and actors are counted with the other type kinds.
+
 ### 7.5 API surface (T0)
 
 - Declarations by access level (`open`, `public`, `package`, `internal`, `fileprivate`, `private`)
 - `final` ratio among classes
 - **Documentation coverage of the public API** (new; Sitrep tracks doc comments on types only and reports no documentation figures). SwiftStats counts documented and undocumented public declarations itself. SwiftProjectLint's `missingDocumentation` is a cross-check only: it flags undocumented `public` structs, classes and functions, and skips `open`, enums, protocols, actors and properties.
 - **Over-exposed declarations**: implicitly `internal` declarations used only in their own file (SwiftProjectLint `couldBePrivate` for types, `couldBePrivateMember` for functions and properties, `protocolCouldBePrivate`), as a count and as a share of implicitly internal declarations. Over-exposed `public` API needs Periphery's redundant-public analysis (§7.6a, T1).
+
+What is counted (M1b): types, typealiases, functions, initialisers, subscripts and each name a `var` or `let` binds (a tuple pattern's labels bind nothing), outside function bodies, closures and top-level statements, whose declarations are locals. Protocol requirements take their protocol's access and enum cases can't write one, so neither is counted. A declaration's level is the one it writes, else its extension's (members of a `private` extension are `fileprivate`), capped by what encloses it; setter-only modifiers such as `private(set)` don't count. "Implicitly internal" means no modifier on the declaration or its extension, and nothing around it lowering that.
 
 ### 7.6 Coupling and structure (T0 via SwiftCodeMetrics; T1 cross-check via indexstore-db)
 
@@ -209,7 +213,7 @@ Metrics:
 
 ### 7.7 Build health
 
-- **SwiftLint violations** by rule (T0 for SwiftLint's normal rules, which need no build; T1 for its analyzer rules)
+- **SwiftLint violations** by rule (T0 for SwiftLint's normal rules, which need no build; T1 for its analyzer rules). SwiftStats runs `swiftlint lint --reporter json --quiet --force-exclude --config <file>` on the targets' directories (a target at the package root gives its files instead; a directory inside another given is left out, since SwiftLint lints a file once per path holding it). `--config` names the package's root `.swiftlint.yml`, or an empty configuration when it has none, because without it SwiftLint also applies any `.swiftlint.yml` in the directories above the package. Naming one turns off nested configurations, so a `.swiftlint.yml` inside a target directory is reported in a warning as not applied. Not the whole root: a plain run there also lints `.build/checkouts`, worktrees and other packages (146,559 of 156,843 violations on swift-collections, measured in M1b), and `--force-exclude` keeps the configuration's `excluded` in force for paths given this way. Violations are findings (§7.16).
 - **Compiler warnings** by kind (T1)
 - **Type-check time per function** (T1): `swift build -v -Xswiftc -Xfrontend -Xswiftc -debug-time-function-bodies` from a clean build, test targets included. Without `-v` the default build system prints no timings, and only recompiled files are timed. Lines are keyed by file:line:col, not USR, and implicit accessors can repeat at one location, so sum the entries per location and map them to a function by source range. Also collect `-warn-long-expression-type-checking=<ms>` warnings for single slow expressions. Motivation: the 12-arm `+` chain in a SwiftInferProperties test, which type-checked locally but timed out on the CI runner's older toolchain. Local timings can show that an expression is slow; they can't show whether another toolchain will time out.
 
@@ -226,7 +230,9 @@ Metrics:
 
 #### Test inventory (T0)
 
-**Finding test code:** use the test targets declared in `Package.swift`, not file names or folders. Within test targets, a *test* is a `@Test` function or an XCTest `test…` method on an `XCTestCase` subclass; everything else is a **helper** (fixtures, mocks, builders, utilities).
+**Finding test code:** use the test targets declared in `Package.swift`, not file names or folders. Within test targets, a *test* is a `@Test` function (including one inside an `#if` in the attribute list) or an XCTest `test…` method on an `XCTestCase` subclass, whose base class may be in any of the package's targets (swift-collections' `CollectionTestCase` is in a support library); everything else is a **helper** (fixtures, mocks, builders, utilities).
+
+How M1b classifies a test: when one is more than one kind, the first that applies wins: property, idempotency, parameterized, example. A parameterized test's cases are counted when its arguments are literal (arrays, dictionaries, integer ranges, `zip` of those; two collections run every pair) and left unknown otherwise (`Mode.allCases`), or when the count would overflow. The test macros (`@PropertyLawSuite` and its siblings, `@CheckProperty`, `@IdempotencyTests`) are counted as `swiftstats` findings where they are attached, since SwiftStats can't see the tests they expand into.
 
 Counts, each split by framework (Swift Testing vs XCTest):
 
@@ -246,7 +252,7 @@ Variants to record:
 
 - **Line ratio**, test stripped lines ÷ production stripped lines, with **generated tests and helpers excluded** on the test side. **Dead code (§7.6a) is excluded** on the production side once Periphery runs (M7); until then the snapshot records that the exclusion is missing.
 - Same ratio **split by test kind** (example / property / parameterized)
-- **Per module and per type**, not only per project, so a module with no tests isn't hidden by a healthy total
+- **Per module and per type**, not only per project, so a module with no tests isn't hidden by a healthy total. M1b gives per module: a production module is measured against the tests in the test targets that depend on it, and a test target against the production targets it depends on. Per type waits for coverage (M5), since only a naming heuristic could link tests to types before then.
 - **Tests per public function**: a test counts for a function when it covers it (T2, M5). Before coverage, a naming heuristic may be used, labelled as one.
 - **Trend over time** (snapshots and backfill, §7.13): does test code grow with production code?
 
@@ -327,19 +333,19 @@ Source: the local clone's `git log`, not the GitHub API. PR reviews, linked issu
 - Direct dependencies from `Package.swift` (`swift package describe --type json` or `dump-package`).
 - The full graph, with transitive edges, from `swift package show-dependencies --format json`.
 - Pinned versions from `Package.resolved` when it exists. It is a flat list of remote pins, with no edges, no direct/transitive flag and no `path:` dependencies, and many libraries don't commit it (swift-algorithms ignores it; swift-collections has none at the root).
-- Resolving dependencies may need the network, so this collector is T0 only when `.build` already holds resolved checkouts.
+- Resolving dependencies may need the network, so this collector is T0 only when `.build` already holds resolved checkouts. M1b runs `show-dependencies` only when `.build/workspace-state.json` exists (or the package declares no dependencies); otherwise the `dependencies` collector is skipped with that reason, and the graph is absent rather than empty. It runs with `--disable-automatic-resolution`, so a dependency added since the last resolve fails the run instead of fetching, and the run never writes `Package.resolved`. A `Package.resolved` that exists but can't be read gives a warning, not an absent lockfile.
 
 ### 7.15 SwiftProjectLint findings (T0, adapter)
 
 SwiftProjectLint has 218 rules in 13 categories.
 
-**Output.** JSON: a `summary` of counts and an `issues` array. Each issue has `ruleName`, `category`, `severity`, `message`, `suggestion`, an optional `symbol`, and `locations` (a list of `filePath` + `lineNumber`, relative to the project root). `ruleName` is the rule's display name ("Force Unwrap"), so the adapter maps it to the case names used in this document through `RuleIdentifier(rawValue:)`. There is no column, no end line and no schema version. It also emits CSV (one row per location) and a `pbt-seeds` manifest (`file`, `line`, `symbol`, `rule`, `kind`, …) that swift-infer consumes.
+**Output.** JSON: a `summary` of counts and an `issues` array. Each issue has `ruleName`, `category`, `severity`, `message`, `suggestion`, an optional `symbol`, and `locations` (a list of `filePath` + `lineNumber`, relative to the project root). `ruleName` is the rule's display name ("Force Unwrap"). From 1.1.0 the report also carries `schemaVersion` and `tool` (name and version), and each issue carries `ruleIdentifier`, the case name used in this document, and `kind` (`census` or `defect`). There is no column and no end line. It also emits CSV (one row per location) and a `pbt-seeds` manifest (`file`, `line`, `symbol`, `rule`, `kind`, …) that swift-infer consumes.
 
-SwiftStats reads the JSON for every finding and the `pbt-seeds` manifest for seed facts the JSON omits (`kind`, `role`, `restriction`, `effect`, `requires`, `mutates`, `skippedPackages`), joining the two on file, line and symbol. That means two runs (`--format json` and `--format pbt-seeds`). Each finding maps to a function by line, the same way as SwiftLint and coverage results. The schema allows several `locations` per finding, though no current rule emits more than one; if one does, store it once, link it to each function it names, and count it once in roll-ups.
+SwiftStats reads the JSON for every finding, and fails loudly on a `schemaVersion` it doesn't know. The `pbt-seeds` manifest holds seed facts the JSON omits (`kind`, `role`, `restriction`, `effect`, `requires`, `mutates`, `skippedPackages`); reading it, joined on file, line and symbol, waits for M4, where the SwiftInferProperties adapter uses them. Each finding maps to a function by line, the same way as SwiftLint and coverage results (§7.16). The schema allows several `locations` per finding, though no current rule emits more than one; if one does, store it once, link it to each function it names, and count it once in roll-ups.
 
-**Invocation.** Several rules used here are opt-in (`testMissingAssertion`, `testMissingExpect`, `testMissingRequire`, `duplicateStructShape`, `duplicateEnumMapping`, `parallelEnumShape`, `scatteredEnumMapping`, `unusedProtocolRequirement`). There is no `--rules` flag, so SwiftStats runs SwiftProjectLint with its own config (`--config`) whose `enabled_only` lists every rule it consumes, plus `--include-nested-packages`, and records that rule list in the snapshot. Exit codes 1 and 2 mean findings, not failure.
+**Invocation.** Several rules used here are opt-in (`testMissingAssertion`, `testMissingExpect`, `testMissingRequire`, `duplicateStructShape`, `duplicateEnumMapping`, `parallelEnumShape`, `scatteredEnumMapping`, `unusedProtocolRequirement`). There is no `--rules` flag, and `enabled_only` both turns opt-in rules on and turns every unlisted rule off, so one run can't have every default rule plus some opt-in ones without listing all 218 display names. SwiftStats runs it twice, each time with a config of its own (`--config`), so the package's `.swiftprojectlint.yml` changes nothing: once with an empty config, for every default rule, and once with `enabled_only` naming the eight opt-in rules above by display name. It records both configs. A rule name SwiftProjectLint doesn't recognise (it says so on stderr) becomes a scan warning. Nested packages are not included: SwiftStats scans only the package's own targets, so their findings would land outside the scan. Exit codes 1 and 2 mean findings, not failure.
 
-**Census rules → per-function metrics.** Census is `CandidateInventory.inventoryRules` plus `impureClosureInventory` (below); every other rule is a defect. Until SwiftProjectLint's JSON carries a kind, SwiftStats keeps the list of these four rules' display names.
+**Census rules → per-function metrics.** Census is `CandidateInventory.inventoryRules` plus `impureClosureInventory` (below); every other rule is a defect. The JSON's `kind` says which.
 
 - Pure function / closure / mutator candidates (`pureFunctionCandidate`, `pureClosureCandidate`, `pureMutatorCandidate`). **Not** an independent purity opinion: these are built on SwiftEffectInference's `PurityInferrer` (function and mutator candidates through SwiftProjectLint's `PropertyTestCandidacy`; closure candidates call it directly), with filters for whether the function is a sensible property-test candidate. What SwiftStats gains is that candidacy decision. Compare on `verdict(for:)` with matching `ConstructionFacts` (§7.10). A function SwiftEffectInference calls pure (or pure but partial) that SwiftProjectLint doesn't nominate shows a candidacy filter at work. The reverse means the two ran different SwiftEffectInference revisions. Both pin it by commit SHA (it has no version tags), so record SwiftStats' revision and SwiftProjectLint's pinned one in the snapshot.
 - `impureClosureInventory`: closures refused as pure, grouped by reason. Its doc comment calls it a census, but it is not in `CandidateInventory`; treat it as census and flag the mismatch upstream.
@@ -362,6 +368,15 @@ SwiftStats reads the JSON for every finding and the `pbt-seeds` manifest for see
 - Findings per rule and per category, per 1k stripped lines, as trends. Same treatment as SwiftLint violations (§7.7).
 
 **Source of truth:** where SwiftStats and SwiftProjectLint could both compute a measure (risk markers, purity candidates), SwiftProjectLint is the source and SwiftStats only counts and joins, so the two tools can't disagree about, say, what counts as a force unwrap. §7.4 lists the few measures SwiftStats computes itself because no rule exists. Without SwiftProjectLint installed, its metrics show as "not collected" (§6.5), not zero.
+
+### 7.16 Findings and where they attach (T0)
+
+SwiftProjectLint issues, SwiftLint violations and the markers SwiftStats finds itself (§7.4) are all **findings**: a tool, a rule, a kind (§6.4), a severity, a message and a location (file and line, plus a column when the tool gives one). They share one mapping and one roll-up, so a SwiftLint `force_unwrapping` and a SwiftProjectLint `forceUnwrap` are counted the same way.
+
+- **Where a finding attaches.** To the innermost function record whose line range holds its line (a file's top-level-code record holds only its statements' lines, not the declarations between them); otherwise to the innermost type whose range holds it; otherwise to its file. All three count as mapped (§6.1). A finding in a file SwiftStats didn't scan (`Package.swift`, an excluded file, a folder in no target) is **outside the scan**: kept, listed, and left out of the mapped share rather than dropped (§12 criterion 2).
+- **Roll-ups.** Per module and project: findings by tool and rule, and by tool and kind. Raw counts only; per 1k stripped lines is worked out at report time (D6).
+- **A tool that didn't run** gives no counts at all, not zeros (§6.5): its collector status says why (`skipped` with the reason, or `failed` with the exit code and the end of stderr). In the JSON a place outside the scan is `unscanned`, and a SwiftLint violation with no line attaches to its file.
+- **Finding the tools.** `collectors.<name>.path` in `.swiftstats.yml` names a binary, otherwise `swiftprojectlint` and `swiftlint` are looked up on `PATH`; `collectors.<name>.enabled: false` turns one off.
 
 ## 8. Derived signals
 
@@ -497,10 +512,12 @@ Reports lead with the derived-signal lists, then roll-ups, then per-module detai
 - **D6. Store raw counts; normalise per 1k stripped lines at report time**, so corpora can be compared without losing the raw numbers.
 - **D7. Don't make Periphery a sibling project; pin outskirts and send it patches** (decided 2026-11-18). Every other tool SwiftStats reads is the owner's, so changing one is cheap. Periphery isn't: it works from the index store and the compiler's build output, which tend to break with each Swift and Xcode release. Keeping it building is the cost that outskirts already carries, and the reason upstream was archived. SwiftStats needs only the two small changes in §15, and both have workarounds. So at M7: pin an outskirts release, recheck the 2.21.2 limits (§7.6a), and send the two changes to outskirts as pull requests. If they stall, keep a thin GitHub fork of outskirts, never of the archived upstream, only to carry those patches rebased on its releases. Keep reading its JSON rather than linking it (D3), so its swift-syntax and index-store dependencies stay out of SwiftStats' package graph. Revisit only if outskirts goes quiet, or if SwiftStats comes to need deep changes, such as native test-only reporting or a reason for each retained declaration. Either way the maintenance would then be SwiftStats' to carry, so it may as well own the code.
 
+- **D8. Generated code** (decided 2026-11-18, for M1b). A file is generated when its path matches a `generated` glob or its leading comment carries a known header. The default globs are `**/*.generated.swift`, `**/*.pb.swift`, `**/*.grpc.swift` and `**/Generated/**`; `generated:` in `.swiftstats.yml` replaces them. The known headers are SwiftInferProperties' ("Auto-generated by `swift-infer"), SwiftPropertyLaws' ("GENERATED by PropertyLawDiscoveryPlugin"), Sourcery's and SwiftGen's ("Generated using Sourcery" / "Generated using SwiftGen"), and the common "DO NOT EDIT". Headers always count, whatever the globs. Being generated changes no measurement of the file: it is marked on the file record, and its tests are reported separately and left out of the test-to-code ratio (§7.8).
+
 ### Still open
 
 1. **Where snapshots live.** Recommended: `.swiftstats/stats.sqlite` in the package, git-ignored, with `--store <path>` for research corpora. But I work on two machines and sync through GitHub, so a git-ignored store keeps separate history on each; T0 history can be rebuilt with `backfill`, T1–T3 can't. Alternatives: commit the JSON exports, or keep a central store in a synced folder. Needed by M2.
-2. **Generated-code globs.** Which paths count as generated by default, beyond the known headers (§7.8)? Needed by M1b.
+2. ~~**Generated-code globs.**~~ Decided as D8.
 3. ~~**Cognitive complexity for Swift.**~~ Moved to the SwiftCodeMetrics spec (v0.2.2), which decides `guard`, condition lists, optional binding, `if case`, `try?`, `defer` and result-builder bodies, with worked examples.
 4. **Census rules in SwiftProjectLint's reports.** Its text report already counts the census rules without listing them (since July 2026). Should the HTML report do the same, and should the census counts leave the human-facing summary entirely? This is a SwiftProjectLint backlog item, not a SwiftStats one.
 
@@ -510,7 +527,8 @@ Small changes upstream would remove adapter work here. None blocks SwiftStats.
 
 | Tool | Change | Removes |
 |---|---|---|
-| SwiftProjectLint | Add `schemaVersion`, the rule's case name, and a `kind` (census / defect) to the JSON; real version string | SwiftStats' census list and display-name mapping |
+| SwiftProjectLint | ~~Add `schemaVersion`, the rule's case name, and a `kind` (census / defect) to the JSON; real version string~~ Done in 1.1.0 | SwiftStats' census list and display-name mapping |
+| SwiftProjectLint | An `opt_in_rules` config key that adds opt-in rules to the defaults, as SwiftLint's does | The second run (§7.15) |
 | SwiftProjectLint | Put `impureClosureInventory` in `CandidateInventory` (or drop "census" from its doc) | A known mismatch |
 | SwiftCloneDetector | Add `pass` (exact / renamed / near-miss / sequence) to each class in the JSON; real version string | Running passes separately or linking the Kit |
 | SwiftInferProperties | `discover --format json`, or `index --resolve-effects` plus the "why" text and partner locations in `index.json` | Empty reason fields, name-only partner links, and tool disagreements that are expected by construction |
@@ -554,3 +572,11 @@ Reviewed on 2026-11-17 by checking every claim against the tools' source (full f
 - **M1a built** (`Docs/m1a-results.md`): all four done-when criteria met.
 - **§7.2:** stripped lines leave out every attribute, nested ones included, so functions, types and files measure the same way.
 - **§7.3:** the definition version is recorded once per report (`metrics`) rather than on each record.
+
+### v0.2.6 (2026-11-18, after M1b)
+
+- **M1b built** (`Docs/m1b-results.md`): all four done-when criteria met; `schemaVersion: 3`.
+- **D8:** open question 2 (generated-code globs) decided.
+- **§6.4, §7.15:** SwiftProjectLint's JSON carries the kind and case name from 1.1.0, so SwiftStats keeps no census list. The adapter runs SwiftProjectLint twice (every default rule, then the eight opt-in rules), since `enabled_only` can't add opt-in rules to the defaults; §15 asks for an `opt_in_rules` key. Nested packages aren't included, and the `pbt-seeds` join moves to M4.
+- **New §7.16:** SwiftProjectLint issues, SwiftLint violations and SwiftStats' own markers are all findings, with one mapping and one roll-up; how tools are found and turned off.
+- **§7.4, §7.5, §7.7, §7.8, §7.14:** what M1b decided for each: SwiftStats' markers and their kinds; which declarations the API surface counts and at which level; SwiftLint on the targets' directories rather than the root, with the configuration always named; test kinds, case counts, and the ratio per module (per type waits for M5); the graph only when resolved, never resolving or writing `Package.resolved`.

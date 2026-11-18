@@ -67,6 +67,19 @@ extension FunctionCollector {
             .joined(separator: " && ")
     }
 
+    /// The lines a file's top-level statements span, each from its first
+    /// token to its last: where its top-level-code record runs, since the
+    /// declarations between statements don't belong to it (PRD §6.1a).
+    static func topLevelLines(in file: SourceFileSyntax, converter: SourceLocationConverter) -> Set<Int> {
+        var statements: [CodeBlockItemSyntax] = []
+        collectStatements(file.statements, into: &statements)
+        return statements.reduce(into: Set<Int>()) { lines, statement in
+            let first = converter.location(for: statement.positionAfterSkippingLeadingTrivia).line
+            let last = converter.location(for: statement.endPositionBeforeTrailingTrivia).line
+            lines.formUnion(first...last)
+        }
+    }
+
     /// Top-level statements of `items`, descending into `#if` branches. A
     /// plain loop, not `filter`: filtering a syntax collection builds a
     /// detached copy whose positions no longer match the file.
