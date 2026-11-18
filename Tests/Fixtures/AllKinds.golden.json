@@ -1,8 +1,22 @@
 {
+  "metrics" : {
+    "complexityDefinition" : "complexity-1",
+    "library" : "0.3.0",
+    "swiftLintIgnoresCaseStatements" : false,
+    "swiftLintReference" : "0.65.1"
+  },
   "package" : "AllKinds",
   "records" : [
     {
       "bodyHash" : "d302450fc4435c11",
+      "complexity" : {
+        "cognitive" : 0,
+        "decisionCount" : 0,
+        "hasSyntaxErrors" : false,
+        "maxNesting" : 0,
+        "swiftLintCompatible" : 0,
+        "swiftLintScored" : true
+      },
       "file" : "Sources/AllKinds/Resources.swift",
       "key" : "AllKinds::Resource::init(handle: Int)",
       "kind" : "init",
@@ -23,6 +37,14 @@
     },
     {
       "bodyHash" : "76e73a0efe72fb6f",
+      "complexity" : {
+        "cognitive" : 0,
+        "decisionCount" : 0,
+        "hasSyntaxErrors" : false,
+        "maxNesting" : 0,
+        "swiftLintCompatible" : 0,
+        "swiftLintScored" : false
+      },
       "file" : "Sources/AllKinds/Resources.swift",
       "key" : "AllKinds::Resource::deinit",
       "kind" : "deinit",
@@ -43,6 +65,14 @@
     },
     {
       "bodyHash" : "01050d5baa8152d6",
+      "complexity" : {
+        "cognitive" : 0,
+        "decisionCount" : 0,
+        "hasSyntaxErrors" : false,
+        "maxNesting" : 0,
+        "swiftLintCompatible" : 0,
+        "swiftLintScored" : true
+      },
       "file" : "Sources/AllKinds/Resources.swift",
       "ifConfig" : "DEBUG",
       "key" : "AllKinds::Resource::func describe() -> String #if DEBUG",
@@ -64,6 +94,14 @@
     },
     {
       "bodyHash" : "f93d215aaebf61e1",
+      "complexity" : {
+        "cognitive" : 0,
+        "decisionCount" : 0,
+        "hasSyntaxErrors" : false,
+        "maxNesting" : 0,
+        "swiftLintCompatible" : 0,
+        "swiftLintScored" : true
+      },
       "file" : "Sources/AllKinds/Resources.swift",
       "ifConfig" : "!(DEBUG)",
       "key" : "AllKinds::Resource::func describe() -> String #if !(DEBUG)",
@@ -85,6 +123,14 @@
     },
     {
       "bodyHash" : "00eccaff1575bd06",
+      "complexity" : {
+        "cognitive" : 0,
+        "decisionCount" : 0,
+        "hasSyntaxErrors" : false,
+        "maxNesting" : 0,
+        "swiftLintCompatible" : 0,
+        "swiftLintScored" : true
+      },
       "file" : "Sources/AllKinds/Resources.swift",
       "key" : "AllKinds::Resource::func load() async throws -> Int",
       "kind" : "func",
@@ -105,6 +151,14 @@
     },
     {
       "bodyHash" : "00eccaff1575bd06",
+      "complexity" : {
+        "cognitive" : 0,
+        "decisionCount" : 0,
+        "hasSyntaxErrors" : false,
+        "maxNesting" : 0,
+        "swiftLintCompatible" : 0,
+        "swiftLintScored" : true
+      },
       "file" : "Sources/AllKinds/Resources.swift",
       "key" : "AllKinds::Resource::func load() -> Int",
       "kind" : "func",
@@ -125,6 +179,14 @@
     },
     {
       "bodyHash" : "6689c84557597491",
+      "complexity" : {
+        "cognitive" : 0,
+        "decisionCount" : 0,
+        "hasSyntaxErrors" : false,
+        "maxNesting" : 0,
+        "swiftLintCompatible" : 0,
+        "swiftLintScored" : true
+      },
       "file" : "Sources/AllKinds/Resources.swift",
       "key" : "AllKinds::Counter::func increment() -> Int",
       "kind" : "func",
@@ -145,6 +207,14 @@
     },
     {
       "bodyHash" : "28acf588cce0bbf3",
+      "complexity" : {
+        "cognitive" : 0,
+        "decisionCount" : 0,
+        "hasSyntaxErrors" : false,
+        "maxNesting" : 0,
+        "swiftLintCompatible" : 0,
+        "swiftLintScored" : true
+      },
       "file" : "Sources/AllKinds/Resources.swift",
       "key" : "AllKinds::func secretHelper() -> Int @ Sources/AllKinds/Resources.swift",
       "kind" : "func",
@@ -165,6 +235,14 @@
     },
     {
       "bodyHash" : "ea9cee6726fed6ca",
+      "complexity" : {
+        "cognitive" : 0,
+        "decisionCount" : 0,
+        "hasSyntaxErrors" : false,
+        "maxNesting" : 0,
+        "swiftLintCompatible" : 0,
+        "swiftLintScored" : true
+      },
       "file" : "Sources/AllKinds/Resources.swift",
       "key" : "AllKinds::String::func shouted() -> String @ Sources/AllKinds/Resources.swift",
       "kind" : "func",
@@ -185,6 +263,14 @@
     },
     {
       "bodyHash" : "5fdcc8f30e1643a0",
+      "complexity" : {
+        "cognitive" : 0,
+        "decisionCount" : 0,
+        "hasSyntaxErrors" : false,
+        "maxNesting" : 0,
+        "swiftLintCompatible" : 0,
+        "swiftLintScored" : true
+      },
       "file" : "Sources/AllKinds/Resources.swift",
       "key" : "AllKinds::func generic<Element: Comparable>(_: [Element]) -> Element? where Element: Sendable",
       "kind" : "func",
@@ -205,6 +291,14 @@
     },
     {
       "bodyHash" : "3f8b898d82805994",
+      "complexity" : {
+        "cognitive" : 0,
+        "decisionCount" : 0,
+        "hasSyntaxErrors" : false,
+        "maxNesting" : 0,
+        "swiftLintCompatible" : 0,
+        "swiftLintScored" : true
+      },
       "file" : "Sources/AllKinds/Shapes.swift",
       "key" : "AllKinds::Square::init(side: Double)",
       "kind" : "init",
@@ -225,6 +319,14 @@
     },
     {
       "bodyHash" : "52444d006a85cad9",
+      "complexity" : {
+        "cognitive" : 1,
+        "decisionCount" : 1,
+        "hasSyntaxErrors" : false,
+        "maxNesting" : 1,
+        "swiftLintCompatible" : 1,
+        "swiftLintScored" : true
+      },
       "file" : "Sources/AllKinds/Shapes.swift",
       "key" : "AllKinds::Square::init?(text: String)",
       "kind" : "init",
@@ -246,6 +348,14 @@
     {
       "accessorKind" : "get",
       "bodyHash" : "09725b45265f8a1c",
+      "complexity" : {
+        "cognitive" : 0,
+        "decisionCount" : 0,
+        "hasSyntaxErrors" : false,
+        "maxNesting" : 0,
+        "swiftLintCompatible" : 0,
+        "swiftLintScored" : false
+      },
       "file" : "Sources/AllKinds/Shapes.swift",
       "key" : "AllKinds::Square::var area: Double { get }",
       "kind" : "accessor",
@@ -267,6 +377,14 @@
     {
       "accessorKind" : "get",
       "bodyHash" : "8a99a5d863fda516",
+      "complexity" : {
+        "cognitive" : 0,
+        "decisionCount" : 0,
+        "hasSyntaxErrors" : false,
+        "maxNesting" : 0,
+        "swiftLintCompatible" : 0,
+        "swiftLintScored" : false
+      },
       "file" : "Sources/AllKinds/Shapes.swift",
       "key" : "AllKinds::Square::var perimeter: Double { get }",
       "kind" : "accessor",
@@ -288,6 +406,14 @@
     {
       "accessorKind" : "set",
       "bodyHash" : "5368c61801c21901",
+      "complexity" : {
+        "cognitive" : 0,
+        "decisionCount" : 0,
+        "hasSyntaxErrors" : false,
+        "maxNesting" : 0,
+        "swiftLintCompatible" : 0,
+        "swiftLintScored" : false
+      },
       "file" : "Sources/AllKinds/Shapes.swift",
       "key" : "AllKinds::Square::var perimeter: Double { set }",
       "kind" : "accessor",
@@ -309,6 +435,14 @@
     {
       "accessorKind" : "willSet",
       "bodyHash" : "c189433aeaffa6d4",
+      "complexity" : {
+        "cognitive" : 0,
+        "decisionCount" : 0,
+        "hasSyntaxErrors" : false,
+        "maxNesting" : 0,
+        "swiftLintCompatible" : 0,
+        "swiftLintScored" : false
+      },
       "file" : "Sources/AllKinds/Shapes.swift",
       "key" : "AllKinds::Square::var label { willSet }",
       "kind" : "accessor",
@@ -330,6 +464,14 @@
     {
       "accessorKind" : "didSet",
       "bodyHash" : "7fcbf629310ed9fe",
+      "complexity" : {
+        "cognitive" : 0,
+        "decisionCount" : 0,
+        "hasSyntaxErrors" : false,
+        "maxNesting" : 0,
+        "swiftLintCompatible" : 0,
+        "swiftLintScored" : false
+      },
       "file" : "Sources/AllKinds/Shapes.swift",
       "key" : "AllKinds::Square::var label { didSet }",
       "kind" : "accessor",
@@ -350,6 +492,14 @@
     },
     {
       "bodyHash" : "35fa00fd868a1146",
+      "complexity" : {
+        "cognitive" : 0,
+        "decisionCount" : 0,
+        "hasSyntaxErrors" : false,
+        "maxNesting" : 0,
+        "swiftLintCompatible" : 0,
+        "swiftLintScored" : true
+      },
       "file" : "Sources/AllKinds/Shapes.swift",
       "key" : "AllKinds::Square::func scaled(by: Double) -> Square",
       "kind" : "func",
@@ -370,6 +520,14 @@
     },
     {
       "bodyHash" : "09a0815c161093d1",
+      "complexity" : {
+        "cognitive" : 0,
+        "decisionCount" : 0,
+        "hasSyntaxErrors" : false,
+        "maxNesting" : 0,
+        "swiftLintCompatible" : 0,
+        "swiftLintScored" : true
+      },
       "file" : "Sources/AllKinds/Shapes.swift",
       "key" : "AllKinds::Square::func scaled(by: Double) -> Square / func clamp(_: Double) -> Double",
       "kind" : "func",
@@ -391,6 +549,14 @@
     },
     {
       "bodyHash" : "1271d829fcb30ae7",
+      "complexity" : {
+        "cognitive" : 0,
+        "decisionCount" : 0,
+        "hasSyntaxErrors" : false,
+        "maxNesting" : 0,
+        "swiftLintCompatible" : 0,
+        "swiftLintScored" : false
+      },
       "file" : "Sources/AllKinds/Shapes.swift",
       "key" : "AllKinds::Square::subscript(_: Int) -> Double",
       "kind" : "subscript",
@@ -432,6 +598,14 @@
     {
       "accessorKind" : "get",
       "bodyHash" : "7c827398f29d478a",
+      "complexity" : {
+        "cognitive" : 0,
+        "decisionCount" : 0,
+        "hasSyntaxErrors" : false,
+        "maxNesting" : 0,
+        "swiftLintCompatible" : 0,
+        "swiftLintScored" : false
+      },
       "file" : "Sources/AllKinds/Shapes.swift",
       "key" : "AllKinds::Square::subscript(row: Int, column: Int) -> Double / { get }",
       "kind" : "accessor",
@@ -454,6 +628,14 @@
     {
       "accessorKind" : "set",
       "bodyHash" : "dfefe169ea596b24",
+      "complexity" : {
+        "cognitive" : 0,
+        "decisionCount" : 0,
+        "hasSyntaxErrors" : false,
+        "maxNesting" : 0,
+        "swiftLintCompatible" : 0,
+        "swiftLintScored" : false
+      },
       "file" : "Sources/AllKinds/Shapes.swift",
       "key" : "AllKinds::Square::subscript(row: Int, column: Int) -> Double / { set }",
       "kind" : "accessor",
@@ -475,6 +657,14 @@
     },
     {
       "bodyHash" : "1c668c24725fa618",
+      "complexity" : {
+        "cognitive" : 0,
+        "decisionCount" : 0,
+        "hasSyntaxErrors" : false,
+        "maxNesting" : 0,
+        "swiftLintCompatible" : 0,
+        "swiftLintScored" : true
+      },
       "file" : "Sources/AllKinds/Shapes.swift",
       "key" : "AllKinds::Square::static func +(lhs: Square, rhs: Square) -> Square",
       "kind" : "func",
@@ -495,6 +685,14 @@
     },
     {
       "bodyHash" : "95a772b146cd45e4",
+      "complexity" : {
+        "cognitive" : 0,
+        "decisionCount" : 0,
+        "hasSyntaxErrors" : false,
+        "maxNesting" : 0,
+        "swiftLintCompatible" : 0,
+        "swiftLintScored" : true
+      },
       "file" : "Sources/AllKinds/Shapes.swift",
       "key" : "AllKinds::Square::static prefix func -(shape: Square) -> Square",
       "kind" : "func",
@@ -515,6 +713,14 @@
     },
     {
       "bodyHash" : "0c104affe8d872ca",
+      "complexity" : {
+        "cognitive" : 0,
+        "decisionCount" : 0,
+        "hasSyntaxErrors" : false,
+        "maxNesting" : 0,
+        "swiftLintCompatible" : 0,
+        "swiftLintScored" : true
+      },
       "file" : "Sources/AllKinds/Shapes.swift",
       "key" : "AllKinds::Shape where Self: Equatable::func isSame(as: Self) -> Bool",
       "kind" : "func",
@@ -535,6 +741,14 @@
     },
     {
       "bodyHash" : "69885c1f90bb7575",
+      "complexity" : {
+        "cognitive" : 0,
+        "decisionCount" : 0,
+        "hasSyntaxErrors" : false,
+        "maxNesting" : 0,
+        "swiftLintCompatible" : 0,
+        "swiftLintScored" : false
+      },
       "file" : "Sources/Tool/main.swift",
       "key" : "Tool::<top-level code> @ Sources/Tool/main.swift",
       "kind" : "topLevel",
@@ -555,6 +769,14 @@
     },
     {
       "bodyHash" : "195a029cd0d6aa32",
+      "complexity" : {
+        "cognitive" : 0,
+        "decisionCount" : 0,
+        "hasSyntaxErrors" : false,
+        "maxNesting" : 0,
+        "swiftLintCompatible" : 0,
+        "swiftLintScored" : true
+      },
       "file" : "Sources/Tool/main.swift",
       "key" : "Tool::func report(_: Double)",
       "kind" : "func",
@@ -575,6 +797,14 @@
     },
     {
       "bodyHash" : "955bc4c18b8575e8",
+      "complexity" : {
+        "cognitive" : 0,
+        "decisionCount" : 0,
+        "hasSyntaxErrors" : false,
+        "maxNesting" : 0,
+        "swiftLintCompatible" : 0,
+        "swiftLintScored" : true
+      },
       "file" : "Tests/AllKindsTests/SwiftTestingTests.swift",
       "key" : "AllKindsTests::func areaOfSquare()",
       "kind" : "func",
@@ -595,6 +825,14 @@
     },
     {
       "bodyHash" : "1ed093fb4c5263a3",
+      "complexity" : {
+        "cognitive" : 0,
+        "decisionCount" : 0,
+        "hasSyntaxErrors" : false,
+        "maxNesting" : 0,
+        "swiftLintCompatible" : 0,
+        "swiftLintScored" : true
+      },
       "file" : "Tests/AllKindsTests/SwiftTestingTests.swift",
       "key" : "AllKindsTests::SquareSuite::func perimeter()",
       "kind" : "func",
@@ -615,6 +853,14 @@
     },
     {
       "bodyHash" : "ad81e916dbc88acb",
+      "complexity" : {
+        "cognitive" : 0,
+        "decisionCount" : 0,
+        "hasSyntaxErrors" : false,
+        "maxNesting" : 0,
+        "swiftLintCompatible" : 0,
+        "swiftLintScored" : true
+      },
       "file" : "Tests/AllKindsTests/SwiftTestingTests.swift",
       "key" : "AllKindsTests::SquareSuite::func makeSquare() -> Square",
       "kind" : "func",
@@ -635,6 +881,14 @@
     },
     {
       "bodyHash" : "25eca6c5d0fe726a",
+      "complexity" : {
+        "cognitive" : 0,
+        "decisionCount" : 0,
+        "hasSyntaxErrors" : false,
+        "maxNesting" : 0,
+        "swiftLintCompatible" : 0,
+        "swiftLintScored" : true
+      },
       "file" : "Tests/AllKindsTests/XCTestTests.swift",
       "key" : "AllKindsTests::BaseTestCase::func makeResource() -> Resource",
       "kind" : "func",
@@ -655,6 +909,14 @@
     },
     {
       "bodyHash" : "5fca41c2d4d2c7fb",
+      "complexity" : {
+        "cognitive" : 0,
+        "decisionCount" : 0,
+        "hasSyntaxErrors" : false,
+        "maxNesting" : 0,
+        "swiftLintCompatible" : 0,
+        "swiftLintScored" : true
+      },
       "file" : "Tests/AllKindsTests/XCTestTests.swift",
       "key" : "AllKindsTests::ResourceTests::func testDescribe()",
       "kind" : "func",
@@ -675,6 +937,14 @@
     },
     {
       "bodyHash" : "257c1be96ae69f4b",
+      "complexity" : {
+        "cognitive" : 0,
+        "decisionCount" : 0,
+        "hasSyntaxErrors" : false,
+        "maxNesting" : 0,
+        "swiftLintCompatible" : 0,
+        "swiftLintScored" : true
+      },
       "file" : "Tests/AllKindsTests/XCTestTests.swift",
       "key" : "AllKindsTests::ResourceTests::func testWithArgument(_: Int)",
       "kind" : "func",
@@ -695,6 +965,14 @@
     },
     {
       "bodyHash" : "8d5a9ce96bb9fddd",
+      "complexity" : {
+        "cognitive" : 0,
+        "decisionCount" : 0,
+        "hasSyntaxErrors" : false,
+        "maxNesting" : 0,
+        "swiftLintCompatible" : 0,
+        "swiftLintScored" : true
+      },
       "file" : "Tests/AllKindsTests/XCTestTests.swift",
       "key" : "AllKindsTests::ResourceTests::func testFromExtension()",
       "kind" : "func",
@@ -714,7 +992,7 @@
       "strippedLines" : 3
     }
   ],
-  "schemaVersion" : 1,
+  "schemaVersion" : 2,
   "sitrep" : {
     "imports" : [
       {

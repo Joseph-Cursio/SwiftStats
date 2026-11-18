@@ -103,7 +103,14 @@ public struct PackageScanner {
         let package = try describer.describePackage(at: root)
         let targets = TargetResolver.resolve(package)
         let (parsedByTarget, readWarnings) = Self.parseFiles(of: targets, root: root)
-        let (records, collisionWarnings) = KeyCollisions.resolve(Self.collectRecords(targets, parsedByTarget))
+        let (resolved, collisionWarnings) = KeyCollisions.resolve(Self.collectRecords(targets, parsedByTarget))
+        let ignoresCases = SwiftLintSettings.ignoresCaseStatements(packageRoot: root)
+        let modules = zip(targets, parsedByTarget).flatMap { target, files in files.map { (target.name, $0) } }
+        let (records, scoreWarnings) = ComplexityScorer.score(
+            resolved,
+            files: modules,
+            ignoresCaseStatements: ignoresCases
+        )
 
         let sitrepFiles = parsedByTarget.flatMap(\.self)
             .sorted { $0.path < $1.path }
@@ -120,11 +127,12 @@ public struct PackageScanner {
         return ScanReport(
             schemaVersion: ScanReport.currentSchemaVersion,
             tool: .current,
+            metrics: ComplexityScorer.metricsInfo(ignoresCaseStatements: ignoresCases),
             package: package.name,
             targets: targets,
             records: records.sorted(by: Self.recordOrder),
             sitrep: SitrepCounter.report(for: sitrepFiles),
-            warnings: (readWarnings + collisionWarnings + sitrepWarnings).sorted(by: Self.warningOrder)
+            warnings: (readWarnings + collisionWarnings + scoreWarnings + sitrepWarnings).sorted(by: Self.warningOrder)
         )
     }
 }

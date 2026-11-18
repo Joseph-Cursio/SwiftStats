@@ -27,6 +27,10 @@ public struct FunctionRecord: Codable, Hashable, Sendable {
     /// Lines that hold at least one token of the declaration, attributes and
     /// comments excluded (PRD §7.2).
     public let strippedLines: Int
+    /// Complexity scores from SwiftCodeMetrics (PRD §7.3). Nil for a
+    /// `subscript` with explicit accessors, which carry the scores, and when
+    /// the library gave no score for the record, which the scan warns about.
+    public internal(set) var complexity: FunctionComplexity?
     /// Hash of the body's tokens with comments and whitespace removed, so
     /// reformatting leaves it unchanged.
     public let bodyHash: String
