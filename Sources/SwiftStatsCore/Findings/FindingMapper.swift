@@ -41,10 +41,12 @@ struct FindingMapper {
     func location(for place: RawFinding.Place) -> FindingLocation {
         let target: FindingTarget
         let owner: String?
-        if let record = innermost(recordsByFile[place.file] ?? [], holding: place.line, range: \.range) {
+        let records = recordsByFile[place.file] ?? []
+        let types = typesByFile[place.file] ?? []
+        if let line = place.line, let record = innermost(records, holding: line, range: \.range) {
             target = .function
             owner = record.key
-        } else if let type = innermost(typesByFile[place.file] ?? [], holding: place.line, range: \.range) {
+        } else if let line = place.line, let type = innermost(types, holding: line, range: \.range) {
             target = .type
             owner = "\(type.module)::\(type.name)"
         } else {

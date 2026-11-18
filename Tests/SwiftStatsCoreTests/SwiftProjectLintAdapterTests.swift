@@ -55,6 +55,11 @@ struct SwiftProjectLintAdapterTests {
         report(issues, schemaVersion: 1)
     }
 
+    /// The SwiftProjectLint collector's status in `report`.
+    private static func status(_ report: ScanReport) -> CollectorStatus? {
+        report.collectors.first { $0.name == "swiftprojectlint" }
+    }
+
     private static func locator(_ tool: URL) -> ToolLocator {
         ToolLocator { $0 == "swiftprojectlint" ? tool : nil }
     }
@@ -75,7 +80,7 @@ struct SwiftProjectLintAdapterTests {
             Self.report([Issue("testMissingAssertion", "defect", "Sources/Lib/Store.swift", 4)])
             ],
             errorText: "",
-            status: 1
+            statuses: [1]
         )
 
         let report = try package.scan(tools: Self.locator(tool))
@@ -88,7 +93,7 @@ struct SwiftProjectLintAdapterTests {
         #expect(attached.map(\.1) == [.unscanned, .file, .type, .type, .function, .function])
         #expect(attached.map(\.2) == [nil, nil, "Lib::Store", "Lib::Store", Self.key, Self.key])
         #expect(report.findings.allSatisfy { $0.severity == "warning" && $0.tool == "swiftprojectlint" })
-        let status = try #require(report.collectors.first { $0.name == "swiftprojectlint" })
+        let status = try #require(Self.status(report))
         #expect(status.state == .ran)
         #expect(status.version == "9.9.9")
         #expect(status.options == SwiftProjectLintAdapter.options)
@@ -111,7 +116,7 @@ struct SwiftProjectLintAdapterTests {
             Self.report([])
             ],
             errorText: "",
-            status: 0
+            statuses: [0]
         )
 
         let module = try #require(try package.scan(tools: Self.locator(tool)).rollups.first { $0.name == "Lib" })
@@ -124,8 +129,8 @@ struct SwiftProjectLintAdapterTests {
     func notRun() throws {
         let package = try TemporaryPackage(["Sources/Lib/Store.swift": Self.source])
         defer { package.remove() }
-        let failing = try FakeTool.make(outputs: [""], errorText: "Error: something broke\n", status: 64)
-        let newer = try FakeTool.make(outputs: [Self.report([], schemaVersion: 2)], errorText: "", status: 0)
+        let failing = try FakeTool.make(outputs: [""], errorText: "Error: something broke\n", statuses: [64])
+        let newer = try FakeTool.make(outputs: [Self.report([], schemaVersion: 2)], errorText: "", statuses: [0])
 
         let missing = try package.scan(tools: .nowhere)
         let failed = try package.scan(tools: Self.locator(failing))
@@ -135,17 +140,17 @@ struct SwiftProjectLintAdapterTests {
             #expect(report.findings.isEmpty)
             #expect(report.rollups.allSatisfy { $0.findings.isEmpty && $0.findingKinds.isEmpty })
         }
-        let states = [missing, failed, unknown].compactMap { $0.collectors.first?.state }
+        let states = [missing, failed, unknown].compactMap { Self.status($0)?.state }
         #expect(states == [.skipped, .failed, .failed])
         let notFound = "`swiftprojectlint` not found on PATH; set collectors.swiftprojectlint.path"
-        #expect(missing.collectors.first?.reason == notFound)
-        #expect(failed.collectors.first?.reason?.contains("exited with status 64: Error: something broke") == true)
-        #expect(unknown.collectors.first?.reason == "swiftprojectlint wrote schemaVersion 2; SwiftStats reads 1")
+        #expect(Self.status(missing)?.reason == notFound)
+        #expect(Self.status(failed)?.reason?.contains("exited with status 64: Error: something broke") == true)
+        #expect(Self.status(unknown)?.reason == "swiftprojectlint wrote schemaVersion 2; SwiftStats reads 1")
     }
 
     @Test("collectors.<name> can disable a tool or name its path, relative to the package root")
     func configuredTools() throws {
-        let tool = try FakeTool.make(outputs: [Self.report([])], errorText: "", status: 0)
+        let tool = try FakeTool.make(outputs: [Self.report([])], errorText: "", statuses: [0])
         let package = try TemporaryPackage([
             "Sources/Lib/Store.swift": Self.source,
             "bin/placeholder": "",
@@ -161,9 +166,9 @@ struct SwiftProjectLintAdapterTests {
         let configured = try package.scan(tools: .nowhere)
 
         let notExecutable = "collectors.swiftprojectlint.path bin/missing is not an executable file"
-        #expect(badPath.collectors.first?.reason == notExecutable)
-        #expect(disabled.collectors.first?.reason == "disabled by collectors.swiftprojectlint.enabled")
-        #expect(configured.collectors.first?.state == .ran)
+        #expect(Self.status(badPath)?.reason == notExecutable)
+        #expect(Self.status(disabled)?.reason == "disabled by collectors.swiftprojectlint.enabled")
+        #expect(Self.status(configured)?.state == .ran)
     }
 
     @Test("rule names SwiftProjectLint doesn't know become warnings")

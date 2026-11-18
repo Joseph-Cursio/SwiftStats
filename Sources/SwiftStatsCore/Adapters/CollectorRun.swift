@@ -18,8 +18,18 @@ enum CollectorRun {
             locator: locator,
             root: root
         )
+        let swiftLint = ToolResolution.resolve(
+            SwiftLintAdapter.name,
+            executable: "swiftlint",
+            configuration: configuration,
+            locator: locator,
+            root: root
+        )
         return [
-            result(lint, name: SwiftProjectLintAdapter.name) { SwiftProjectLintAdapter.run(executable: $0, root: root) }
+            result(lint, name: SwiftProjectLintAdapter.name) { executable in
+                SwiftProjectLintAdapter.run(executable: executable, root: root)
+            },
+            result(swiftLint, name: SwiftLintAdapter.name) { SwiftLintAdapter.run(executable: $0, root: root) }
         ]
     }
 

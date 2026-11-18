@@ -43,16 +43,34 @@ enum SwiftLintRunner {
         let output = try run(binary, arguments + files)
         var result: [String: Int] = [:]
         for violation in try JSONDecoder().decode([SwiftLintViolation].self, from: Data(output.utf8)) {
-            result["\(violation.file):\(violation.line):\(violation.character ?? 0)"] = violation.complexity
+            result["\(violation.file):\(violation.line ?? 0):\(violation.character ?? 0)"] = violation.complexity
         }
         return result
     }
 
+    /// SwiftLint's violation count per rule for a plain `swiftlint lint` in `root`.
+    static func violationCounts(in root: URL) throws -> [String: Int] {
+        guard let binary else {
+            return [:]
+        }
+        let output = try run(binary, ["lint", "--reporter", "json", "--quiet"], in: root)
+        let violations = try JSONDecoder().decode([SwiftLintViolation].self, from: Data(output.utf8))
+        return violations.reduce(into: [:]) { counts, violation in
+            counts[violation.ruleIdentifier, default: 0] += 1
+        }
+    }
+
     /// Runs the binary and returns its standard output.
     private static func run(_ binary: URL, _ arguments: [String]) throws -> String {
+        try run(binary, arguments, in: nil)
+    }
+
+    /// Runs the binary in `directory`, or the current one, and returns its standard output.
+    private static func run(_ binary: URL, _ arguments: [String], in directory: URL?) throws -> String {
         let process = Process()
         process.executableURL = binary
         process.arguments = arguments
+        process.currentDirectoryURL = directory
         let output = Pipe()
         process.standardOutput = output
         process.standardError = FileHandle.nullDevice

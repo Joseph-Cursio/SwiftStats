@@ -1,6 +1,14 @@
 {
   "collectors" : [
     {
+      "name" : "swiftlint",
+      "options" : [
+
+      ],
+      "reason" : "`swiftlint` not found on PATH; set collectors.swiftlint.path",
+      "state" : "skipped"
+    },
+    {
       "name" : "swiftprojectlint",
       "options" : [
 

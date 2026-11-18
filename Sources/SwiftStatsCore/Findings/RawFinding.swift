@@ -11,8 +11,8 @@ struct RawFinding: Hashable {
     struct Place: Hashable {
         /// Path relative to the package root.
         let file: String
-        /// 1-based line.
-        let line: Int
+        /// 1-based line; nil when the result is about the whole file.
+        let line: Int?
         /// 1-based column, when the tool gives one.
         let column: Int?
     }
