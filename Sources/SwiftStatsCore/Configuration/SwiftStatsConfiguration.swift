@@ -2,8 +2,8 @@
 //  SwiftStatsConfiguration.swift
 //  SwiftStatsCore
 //
-//  `.swiftstats.yml` (PRD §10.1). `excluded` and `generated` are read; the
-//  other keys the PRD names are accepted, with a warning until the
+//  `.swiftstats.yml` (PRD §10.1). `excluded`, `generated` and `collectors`
+//  are read; the other keys the PRD names are accepted, with a warning until the
 //  milestone that uses them, and any other key is an error.
 //
 
@@ -15,15 +15,17 @@ public struct SwiftStatsConfiguration: Hashable, Sendable {
     /// The file name looked for in the package root.
     public static let fileName = ".swiftstats.yml"
     /// Keys the PRD names but no collector reads yet.
-    private static let laterKeys: Set<String> = ["collectors", "history", "signals", "store"]
+    private static let laterKeys: Set<String> = ["history", "signals", "store"]
     /// Every key the file may hold.
-    private static let knownKeys = laterKeys.union(["excluded", "generated"])
+    private static let knownKeys = laterKeys.union(["collectors", "excluded", "generated"])
 
     /// Path globs, relative to the package root, of files not to scan.
     public let excluded: [String]
     /// Path globs of generated files (PRD D8): `generated`, or the
     /// defaults when the file doesn't give it.
     public let generated: [String]
+    /// `collectors.<name>` entries, by collector name.
+    public let collectors: [String: CollectorSettings]
     /// Keys present in the file that no collector reads yet, sorted.
     public let unusedKeys: [String]
     /// The file the configuration came from, as warnings name it; nil for the default.
@@ -31,13 +33,20 @@ public struct SwiftStatsConfiguration: Hashable, Sendable {
 
     /// A configuration with nothing excluded and the default generated globs.
     public init() {
-        self.init(excluded: [], generated: GeneratedCode.defaultGlobs, unusedKeys: [], source: nil)
+        self.init(excluded: [], generated: GeneratedCode.defaultGlobs, collectors: [:], unusedKeys: [], source: nil)
     }
 
     /// A configuration. Fields are documented on their properties.
-    public init(excluded: [String], generated: [String], unusedKeys: [String], source: String?) {
+    public init(
+        excluded: [String],
+        generated: [String],
+        collectors: [String: CollectorSettings],
+        unusedKeys: [String],
+        source: String?
+    ) {
         self.excluded = excluded
         self.generated = generated
+        self.collectors = collectors
         self.unusedKeys = unusedKeys
         self.source = source
     }
@@ -77,7 +86,13 @@ public struct SwiftStatsConfiguration: Hashable, Sendable {
             throw ScanError.configurationInvalid(path, "not valid YAML: \(error)")
         }
         guard let node, node.null == nil else {
-            return Self(excluded: [], generated: GeneratedCode.defaultGlobs, unusedKeys: [], source: source)
+            return Self(
+                excluded: [],
+                generated: GeneratedCode.defaultGlobs,
+                collectors: [:],
+                unusedKeys: [],
+                source: source
+            )
         }
         guard let mapping = node.mapping else {
             throw ScanError.configurationInvalid(path, "the top level must be a mapping")
@@ -92,11 +107,13 @@ public struct SwiftStatsConfiguration: Hashable, Sendable {
         guard unknown.isEmpty else {
             throw ScanError.configurationInvalid(path, "unknown key(s): \(unknown.joined(separator: ", "))")
         }
+        let (settings, unusedCollectorKeys) = try collectorSettings(mapping["collectors"], path: path)
         return Self(
             excluded: try globs(mapping["excluded"], key: "excluded", path: path),
             generated: try mapping["generated"].map { try globs($0, key: "generated", path: path) }
                 ?? GeneratedCode.defaultGlobs,
-            unusedKeys: Set(keys).intersection(laterKeys).sorted(),
+            collectors: settings,
+            unusedKeys: (Set(keys).intersection(laterKeys).union(unusedCollectorKeys)).sorted(),
             source: source
         )
     }

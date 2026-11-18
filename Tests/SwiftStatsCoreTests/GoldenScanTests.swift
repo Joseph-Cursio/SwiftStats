@@ -19,7 +19,7 @@ struct GoldenScanTests {
     private static let golden = fixtures.appendingPathComponent("AllKinds.golden.json")
 
     private static func scan() throws -> Data {
-        try ScanReportEncoder.encode(PackageScanner().scan(packageAt: package))
+        try ScanReportEncoder.encode(PackageScanner(tools: .nowhere).scan(packageAt: package))
     }
 
     @Test("the AllKinds fixture scans to the golden JSON")
@@ -45,7 +45,7 @@ struct GoldenScanTests {
     @Test("a directory without Package.swift is rejected")
     func notAPackage() {
         #expect(throws: ScanError.self) {
-            try PackageScanner().scan(packageAt: Self.fixtures)
+            try PackageScanner(tools: .nowhere).scan(packageAt: Self.fixtures)
         }
     }
 }

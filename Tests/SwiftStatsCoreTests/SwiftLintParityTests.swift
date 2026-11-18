@@ -22,7 +22,7 @@ struct SwiftLintParityTests {
     @Test("every func and init matches SwiftLint on swift-algorithms")
     func swiftAlgorithms() throws {
         try #require(FileManager.default.fileExists(atPath: Self.corpus.path), "corpus missing: \(Self.corpus.path)")
-        let report = try PackageScanner().scan(packageAt: Self.corpus)
+        let report = try PackageScanner(tools: .nowhere).scan(packageAt: Self.corpus)
         let root = Self.corpus.standardizedFileURL.path
         let scannedFiles = report.targets.flatMap(\.files).sorted()
         let paths = scannedFiles.map { root + "/" + $0 }

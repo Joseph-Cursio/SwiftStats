@@ -79,13 +79,46 @@ struct ConfigurationTests {
         }
     }
 
+    @Test("collectors: enabled and path are read; options and later collectors are accepted but unused")
+    func collectors() throws {
+        let text = """
+        collectors:
+          swiftlint:
+            enabled: false
+          swiftprojectlint:
+            path: tools/spl
+            options: [--strict]
+          swiftmutator:
+            enabled: true
+          dependencies:
+        """
+        let configuration = try SwiftStatsConfiguration.parse(text, path: "c.yml")
+
+        #expect(configuration.collectors == [
+            "dependencies": CollectorSettings(enabled: true, path: nil),
+            "swiftlint": CollectorSettings(enabled: false, path: nil),
+            "swiftprojectlint": CollectorSettings(enabled: true, path: "tools/spl")
+        ])
+        #expect(configuration.unusedKeys == ["collectors.swiftmutator", "collectors.swiftprojectlint.options"])
+        let invalid = [
+            "collectors: [swiftlint]\n", "collectors:\n  swiftlint: on\n",
+            "collectors:\n  swiftlint:\n    enabled: maybe\n", "collectors:\n  swiftlint:\n    paths: x\n",
+            "collectors:\n  swiftlint:\n    path: [x]\n"
+        ]
+        for entry in invalid {
+            #expect(throws: ScanError.self, "\(entry)") {
+                try SwiftStatsConfiguration.parse(entry, path: "c.yml")
+            }
+        }
+    }
+
     @Test("a scan leaves excluded files out, lists them, and warns about unused keys")
     func scanExcludes() throws {
         let config = try Self.temporaryFile(
             ".swiftstats.yml",
             "excluded:\n  - Sources/Tool\n  - \"**/XCTestTests.swift\"\nsignals: {}\n"
         )
-        let report = try PackageScanner().scan(packageAt: Self.fixture, configurationFile: config)
+        let report = try PackageScanner(tools: .nowhere).scan(packageAt: Self.fixture, configurationFile: config)
 
         let expected = ["Sources/Tool/main.swift", "Tests/AllKindsTests/XCTestTests.swift"]
         #expect(report.configuration.excludedFiles == expected)

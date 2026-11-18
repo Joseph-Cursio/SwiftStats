@@ -1,4 +1,14 @@
 {
+  "collectors" : [
+    {
+      "name" : "swiftprojectlint",
+      "options" : [
+
+      ],
+      "reason" : "`swiftprojectlint` not found on PATH; set collectors.swiftprojectlint.path",
+      "state" : "skipped"
+    }
+  ],
   "configuration" : {
     "excluded" : [
 
@@ -49,6 +59,9 @@
       "path" : "Tests/AllKindsTests/XCTestTests.swift",
       "strippedLines" : 16
     }
+  ],
+  "findings" : [
+
   ],
   "metrics" : {
     "complexityDefinition" : "complexity-1",
@@ -1132,6 +1145,12 @@
         "total" : 84
       },
       "files" : 2,
+      "findingKinds" : {
+
+      },
+      "findings" : {
+
+      },
       "functionLength" : {
         "count" : 26,
         "max" : 6,
@@ -1224,6 +1243,12 @@
         "total" : 27
       },
       "files" : 2,
+      "findingKinds" : {
+
+      },
+      "findings" : {
+
+      },
       "functionLength" : {
         "count" : 7,
         "max" : 3,
@@ -1310,6 +1335,12 @@
         "total" : 7
       },
       "files" : 1,
+      "findingKinds" : {
+
+      },
+      "findings" : {
+
+      },
       "functionLength" : {
         "count" : 2,
         "max" : 3,
@@ -1387,6 +1418,12 @@
         "total" : 91
       },
       "files" : 3,
+      "findingKinds" : {
+
+      },
+      "findings" : {
+
+      },
       "functionLength" : {
         "count" : 28,
         "max" : 6,
@@ -1480,6 +1517,12 @@
         "total" : 27
       },
       "files" : 2,
+      "findingKinds" : {
+
+      },
+      "findings" : {
+
+      },
       "functionLength" : {
         "count" : 7,
         "max" : 3,

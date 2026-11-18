@@ -7,7 +7,6 @@
 //  SwiftStats is still waiting on standard output.
 //
 
-import Dispatch
 import Foundation
 
 /// Runs external commands for collectors and loaders.
@@ -18,38 +17,58 @@ enum ProcessRunner {
     /// Runs `executable` with `arguments` in `directory` and returns its
     /// standard output. Throws `ScanError.commandFailed` on a non-zero exit.
     static func run(executable: String, arguments: [String], in directory: URL) throws -> Data {
+        try run(executable: executable, arguments: arguments, in: directory, accepting: [0]).output
+    }
+
+    /// Runs `executable` with `arguments` in `directory`. Throws
+    /// `ScanError.commandFailed` when it can't start or exits with a status
+    /// outside `accepted`; some tools exit non-zero to say they found
+    /// something (PRD §6.5).
+    static func run(
+        executable: String,
+        arguments: [String],
+        in directory: URL,
+        accepting accepted: Set<Int32>
+    ) throws -> ProcessOutput {
         let process = Process()
         process.executableURL = URL(fileURLWithPath: executable)
         process.arguments = arguments
         process.currentDirectoryURL = directory
 
-        let outputPipe = Pipe()
-        let errorPipe = Pipe()
-        process.standardOutput = outputPipe
-        process.standardError = errorPipe
-
-        try process.run()
-
-        let errorBox = DataBox()
-        let errorReading = DispatchGroup()
-        DispatchQueue.global().async(group: errorReading) {
-            errorBox.data = errorPipe.fileHandleForReading.readDataToEndOfFile()
+        // Standard error goes to a file, so only one stream is read while
+        // the command runs and neither can fill up and block it.
+        let command = ([executable] + arguments).joined(separator: " ")
+        let errorFile = FileManager.default.temporaryDirectory
+            .appendingPathComponent("SwiftStats-stderr-\(UUID().uuidString)")
+        guard FileManager.default.createFile(atPath: errorFile.path, contents: nil),
+              let errorHandle = try? FileHandle(forWritingTo: errorFile) else {
+            throw ScanError.commandFailed(command, -1, "could not create a file for standard error")
         }
+        defer {
+            try? errorHandle.close()
+            try? FileManager.default.removeItem(at: errorFile)
+        }
+        let outputPipe = Pipe()
+        process.standardOutput = outputPipe
+        process.standardError = errorHandle
 
+        do {
+            try process.run()
+        } catch {
+            throw ScanError.commandFailed(command, -1, error.localizedDescription)
+        }
         let output = outputPipe.fileHandleForReading.readDataToEndOfFile()
         process.waitUntilExit()
-        errorReading.wait()
 
-        guard process.terminationStatus == 0 else {
+        let errorText = (try? String(contentsOf: errorFile, encoding: .utf8)) ?? ""
+        guard accepted.contains(process.terminationStatus) else {
             // Some tools (swiftly, for one) explain failures on standard
             // output, so fall back to it when standard error is empty.
-            let errorText = String(bytes: errorBox.data, encoding: .utf8) ?? ""
             let outputText = String(bytes: output, encoding: .utf8) ?? ""
             let reason = errorText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? outputText : errorText
-            let command = ([executable] + arguments).joined(separator: " ")
             throw ScanError.commandFailed(command, process.terminationStatus, lastLines(of: reason))
         }
-        return output
+        return ProcessOutput(status: process.terminationStatus, output: output, errorText: errorText)
     }
 
     /// The last `maximumReasonLines` non-empty lines of `text`, joined.

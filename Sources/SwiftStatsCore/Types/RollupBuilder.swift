@@ -11,37 +11,24 @@
 enum RollupBuilder {
     /// One roll-up per module, by name, then `production` and `tests` for
     /// the project when the package has modules of that kind.
-    static func rollups(
-        targets: [TargetSummary],
-        records: [FunctionRecord],
-        types: [TypeRecord],
-        files: [FileRecord]
-    ) -> [Rollup] {
+    static func rollups(targets: [TargetSummary], input: RollupInput) -> [Rollup] {
         let scopes = targets.sorted { $0.name < $1.name }.map { (RollupScope.module, $0.name, Set([$0.name])) }
             + [("production", false), ("tests", true)].compactMap { name, isTest in
                 let modules = Set(targets.filter { $0.isTest == isTest }.map(\.name))
                 return modules.isEmpty ? nil : (RollupScope.project, name, modules)
             }
         return scopes.map { scope, name, modules in
-            rollup(
-                scope: scope,
-                name: name,
-                records: records.filter { modules.contains($0.module) },
-                types: types.filter { modules.contains($0.module) },
-                files: files.filter { modules.contains($0.module) }
-            )
+            rollup(scope: scope, name: name, input: input.narrowed(to: modules))
         }
     }
 
-    /// The roll-up of these records, types and files.
-    private static func rollup(
-        scope: RollupScope,
-        name: String,
-        records: [FunctionRecord],
-        types: [TypeRecord],
-        files: [FileRecord]
-    ) -> Rollup {
+    /// The roll-up of `input`.
+    private static func rollup(scope: RollupScope, name: String, input: RollupInput) -> Rollup {
+        let records = input.records
+        let types = input.types
+        let files = input.files
         let scores = records.compactMap(\.complexity)
+        let paths = Set(files.map(\.path))
         return Rollup(
             scope: scope,
             name: name,
@@ -57,7 +44,9 @@ enum RollupBuilder {
             swiftLintCompatible: Distribution(scores.filter(\.swiftLintScored).map(\.swiftLintCompatible)),
             typeBodyLength: Distribution(types.map(\.strippedLines)),
             typeMemberCount: Distribution(types.map(\.memberCount)),
-            fileLength: Distribution(files.map(\.strippedLines))
+            fileLength: Distribution(files.map(\.strippedLines)),
+            findings: input.findings.byRule(in: paths),
+            findingKinds: input.findings.byKind(in: paths)
         )
     }
 

@@ -37,7 +37,7 @@ struct ScannerRobustnessTests {
             sources: sources
         )
         let describer = FixedDescriber(package: DescribedPackage(name: "Probe", targets: [target]))
-        return try PackageScanner(describer: describer).scan(packageAt: root)
+        return try PackageScanner(describer: describer, tools: .nowhere).scan(packageAt: root)
     }
 
     @Test("line-1 columns count a byte order mark's 3 bytes, as the compiler does")

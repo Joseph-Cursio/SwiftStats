@@ -1,0 +1,81 @@
+//
+//  FindingMapper.swift
+//  SwiftStatsCore
+//
+//  Attaches each place a finding names to the innermost function record
+//  whose lines hold it, else the innermost type, else its file, or marks it
+//  unscanned (PRD §7.16).
+//
+
+/// Attaches findings to records, types and files.
+struct FindingMapper {
+    /// Function records by file.
+    private let recordsByFile: [String: [FunctionRecord]]
+    /// Types by file.
+    private let typesByFile: [String: [TypeRecord]]
+    /// Every scanned file.
+    private let scannedFiles: Set<String>
+
+    /// A mapper over the scan's records, types and files.
+    init(records: [FunctionRecord], types: [TypeRecord], files: [FileRecord]) {
+        recordsByFile = Dictionary(grouping: records, by: \.file)
+        typesByFile = Dictionary(grouping: types, by: \.file)
+        scannedFiles = Set(files.map(\.path))
+    }
+
+    /// `raw` with every place attached, its places in the order given.
+    func finding(for raw: RawFinding) -> Finding {
+        Finding(
+            tool: raw.tool,
+            rule: raw.rule,
+            category: raw.category,
+            kind: raw.kind,
+            severity: raw.severity,
+            message: raw.message,
+            symbol: raw.symbol,
+            locations: raw.places.map(location(for:))
+        )
+    }
+
+    /// Where `place` attaches.
+    func location(for place: RawFinding.Place) -> FindingLocation {
+        let target: FindingTarget
+        let owner: String?
+        if let record = innermost(recordsByFile[place.file] ?? [], holding: place.line, range: \.range) {
+            target = .function
+            owner = record.key
+        } else if let type = innermost(typesByFile[place.file] ?? [], holding: place.line, range: \.range) {
+            target = .type
+            owner = "\(type.module)::\(type.name)"
+        } else {
+            target = scannedFiles.contains(place.file) ? .file : .unscanned
+            owner = nil
+        }
+        return FindingLocation(
+            file: place.file,
+            line: place.line,
+            column: place.column,
+            attachedTo: target,
+            owner: owner
+        )
+    }
+
+    /// The element whose lines hold `line` and that starts last; among
+    /// those starting together, the one that ends first.
+    private func innermost<Element>(
+        _ elements: [Element],
+        holding line: Int,
+        range: KeyPath<Element, SourceSpan>
+    ) -> Element? {
+        elements
+            .filter { $0[keyPath: range].start.line <= line && line <= $0[keyPath: range].end.line }
+            .min { lhs, rhs in
+                let left = lhs[keyPath: range]
+                let right = rhs[keyPath: range]
+                if left.start != right.start {
+                    return right.start < left.start
+                }
+                return left.end < right.end
+            }
+    }
+}

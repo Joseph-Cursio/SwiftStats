@@ -38,4 +38,8 @@ public struct Rollup: Codable, Hashable, Sendable {
     public let typeMemberCount: Distribution
     /// Stripped lines of every file.
     public let fileLength: Distribution
+    /// Findings by tool, then rule; only tools that ran have an entry (PRD §7.16).
+    public let findings: [String: [String: Int]]
+    /// Findings by tool, then kind (`census`, `defect`); only tools that ran have an entry.
+    public let findingKinds: [String: [String: Int]]
 }
