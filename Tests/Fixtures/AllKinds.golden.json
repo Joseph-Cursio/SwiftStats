@@ -1,4 +1,12 @@
 {
+  "configuration" : {
+    "excluded" : [
+
+    ],
+    "excludedFiles" : [
+
+    ]
+  },
   "files" : [
     {
       "lines" : 43,

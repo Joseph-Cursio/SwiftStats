@@ -22,6 +22,8 @@ public struct ScanReport: Codable, Hashable, Sendable {
     public let metrics: MetricsInfo
     /// The package name from `Package.swift`.
     public let package: String
+    /// What `.swiftstats.yml` excluded.
+    public let configuration: ScanConfigurationSummary
     /// The scanned targets, sorted by name.
     public let targets: [TargetSummary]
     /// Function records, sorted by file, then position, then key.

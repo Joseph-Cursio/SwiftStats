@@ -107,6 +107,43 @@ public struct PackageScanner {
         return collected
     }
 
+    /// The targets with the files `configuration` excludes left out, and
+    /// those files, sorted.
+    private static func excluding(
+        _ targets: [TargetSummary],
+        by configuration: SwiftStatsConfiguration
+    ) -> (targets: [TargetSummary], excluded: [String]) {
+        let globs = configuration.excluded.map(GlobPattern.init)
+        var excluded: [String] = []
+        let kept = targets.map { target in
+            let files = target.files.filter { file in
+                let isExcluded = globs.contains { $0.matches(file) }
+                if isExcluded {
+                    excluded.append(file)
+                }
+                return isExcluded == false
+            }
+            return TargetSummary(
+                name: target.name,
+                type: target.type,
+                isTest: target.isTest,
+                path: target.path,
+                files: files
+            )
+        }
+        return (kept, excluded.sorted())
+    }
+
+    /// A warning for each key of `.swiftstats.yml` no collector reads yet.
+    private static func unusedKeyWarnings(_ configuration: SwiftStatsConfiguration) -> [ScanWarning] {
+        configuration.unusedKeys.map { key in
+            ScanWarning(
+                file: configuration.source,
+                message: "`\(key)` is accepted but not used yet; it has no effect on this scan"
+            )
+        }
+    }
+
     /// The Sitrep facts of every file, in path order, and a warning for each
     /// type name declared with different first parents.
     private static func sitrep(_ parsedByTarget: [[ParsedFile]]) -> (SitrepReport, [ScanWarning]) {
@@ -123,14 +160,26 @@ public struct PackageScanner {
         return (SitrepCounter.report(for: sitrepFiles), warnings)
     }
 
-    /// Scans the package rooted at `packageRoot`.
+    /// Scans the package rooted at `packageRoot`, with the `.swiftstats.yml`
+    /// in its root when there is one.
     public func scan(packageAt packageRoot: URL) throws -> ScanReport {
+        let file = packageRoot.standardizedFileURL.appendingPathComponent(SwiftStatsConfiguration.fileName)
+        return try scan(
+            packageAt: packageRoot,
+            configurationFile: FileManager.default.fileExists(atPath: file.path) ? file : nil
+        )
+    }
+
+    /// Scans the package rooted at `packageRoot` with the configuration in
+    /// `configurationFile`, or the default configuration when it is nil.
+    public func scan(packageAt packageRoot: URL, configurationFile: URL?) throws -> ScanReport {
         let root = packageRoot.standardizedFileURL
         guard FileManager.default.fileExists(atPath: root.appendingPathComponent("Package.swift").path) else {
             throw ScanError.notAPackage(root.path)
         }
+        let configuration = try SwiftStatsConfiguration.load(configurationFile, root: root)
         let package = try describer.describePackage(at: root)
-        let targets = TargetResolver.resolve(package)
+        let (targets, excludedFiles) = Self.excluding(TargetResolver.resolve(package), by: configuration)
         let (parsedByTarget, readWarnings) = Self.parseFiles(of: targets, root: root)
         let collected = Self.collect(targets, parsedByTarget)
         let (resolved, collisionWarnings) = KeyCollisions.resolve(collected.records)
@@ -143,11 +192,13 @@ public struct PackageScanner {
         )
         let (sitrep, sitrepWarnings) = Self.sitrep(parsedByTarget)
         let warnings = readWarnings + collisionWarnings + scoreWarnings + sitrepWarnings
+            + Self.unusedKeyWarnings(configuration)
         return ScanReport(
             schemaVersion: ScanReport.currentSchemaVersion,
             tool: .current,
             metrics: ComplexityScorer.metricsInfo(ignoresCaseStatements: ignoresCases),
             package: package.name,
+            configuration: ScanConfigurationSummary(excluded: configuration.excluded, excludedFiles: excludedFiles),
             targets: targets,
             records: records.sorted(by: Self.recordOrder),
             types: collected.types.sorted(by: Self.typeOrder),

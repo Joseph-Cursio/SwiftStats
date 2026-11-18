@@ -6,23 +6,31 @@ import SwiftStatsCore
 struct ScanCommand: ParsableCommand {
     static let configuration = CommandConfiguration(
         commandName: "scan",
-        abstract: "Scan a SwiftPM package and print its function records as JSON."
+        abstract: "Scan a SwiftPM package and print its function, type and file records, "
+            + "their roll-ups and Sitrep-compatible counts as JSON."
     )
 
     @Argument(help: "The package directory (the one containing Package.swift).")
     var path = "."
 
-    @Option(help: "Output format. Only json exists in M0.")
+    @Option(help: "Output format. Only json exists so far.")
     var format: ScanFormat = .json
 
     @Option(name: .shortAndLong, help: "Write the report to this file instead of standard output.")
     var output: String?
 
+    @Option(help: "Read this configuration file instead of the package's .swiftstats.yml.")
+    var config: String?
+
     func run() throws {
         let root = URL(fileURLWithPath: path, isDirectory: true)
         let report: ScanReport
         do {
-            report = try PackageScanner().scan(packageAt: root)
+            if let config {
+                report = try PackageScanner().scan(packageAt: root, configurationFile: URL(fileURLWithPath: config))
+            } else {
+                report = try PackageScanner().scan(packageAt: root)
+            }
         } catch ScanError.notAPackage(let path) {
             // A wrong path is a usage error: exit 64 with the usage text.
             throw ValidationError(ScanError.notAPackage(path).description)
