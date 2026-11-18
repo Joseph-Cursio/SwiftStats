@@ -17,6 +17,15 @@ public struct SwiftPMPackageDescriber: PackageDescriber {
         // `.swift-version` file in the package.
     }
 
+    /// The package `output` describes; `packageRoot` names it in errors.
+    static func decode(_ output: Data, packageRoot: URL) throws -> DescribedPackage {
+        do {
+            return try JSONDecoder().decode(DescribedPackage.self, from: output)
+        } catch {
+            throw ScanError.descriptionUnreadable(packageRoot.path, String(describing: error))
+        }
+    }
+
     /// Runs `swift package describe --type json` in `packageRoot` and
     /// decodes its output.
     public func describePackage(at packageRoot: URL) throws -> DescribedPackage {
@@ -25,10 +34,6 @@ public struct SwiftPMPackageDescriber: PackageDescriber {
             arguments: ["swift", "package", "describe", "--type", "json"],
             in: packageRoot
         )
-        do {
-            return try JSONDecoder().decode(DescribedPackage.self, from: output)
-        } catch {
-            throw ScanError.descriptionUnreadable(packageRoot.path, String(describing: error))
-        }
+        return try Self.decode(output, packageRoot: packageRoot)
     }
 }

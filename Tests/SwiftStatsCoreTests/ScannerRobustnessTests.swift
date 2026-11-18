@@ -74,6 +74,17 @@ struct ScannerRobustnessTests {
         #expect(report.warnings == [expected])
     }
 
+    @Test("SwiftPM output that doesn't decode is an error naming the package")
+    func undecodableDescription() {
+        let root = URL(fileURLWithPath: "/tmp/Probe")
+        do {
+            _ = try SwiftPMPackageDescriber.decode(Data("{\"name\": 1}".utf8), packageRoot: root)
+            Issue.record("a description without targets should not decode")
+        } catch {
+            #expect("\(error)".hasPrefix("could not read SwiftPM's description of /tmp/Probe: "))
+        }
+    }
+
     @Test("a failing command's reason comes from stdout when stderr is empty")
     func failureReason() {
         let directory = FileManager.default.temporaryDirectory
