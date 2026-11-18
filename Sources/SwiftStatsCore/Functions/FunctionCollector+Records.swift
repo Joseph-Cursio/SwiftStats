@@ -79,7 +79,7 @@ extension FunctionCollector {
                 key += " #\(occurrence)"
             }
         }
-        let lines = lineSet(of: draft.node, from: draft.countFrom)
+        let lines = context.lineSet(of: draft.node, from: draft.countFrom)
         records.append(FunctionRecord(
             key: key,
             module: context.module,
@@ -87,7 +87,7 @@ extension FunctionCollector {
             name: draft.name,
             accessorKind: draft.accessorKind,
             file: context.file,
-            range: span(
+            range: context.span(
                 from: draft.node.positionAfterSkippingLeadingTrivia,
                 to: draft.node.endPositionBeforeTrailingTrivia
             ),
@@ -117,7 +117,7 @@ extension FunctionCollector {
         }
         var lines = Set<Int>()
         for statement in statements {
-            lines.formUnion(lineSet(of: Syntax(statement), from: statement.position))
+            lines.formUnion(context.lineSet(of: Syntax(statement), from: statement.position))
         }
         let key = makeKey(declaration: "<top-level code>", isFileScoped: true).key
         topLevelKey = key
@@ -129,7 +129,10 @@ extension FunctionCollector {
             name: "<top-level>",
             accessorKind: nil,
             file: context.file,
-            range: span(from: first.positionAfterSkippingLeadingTrivia, to: last.endPositionBeforeTrailingTrivia),
+            range: context.span(
+                from: first.positionAfterSkippingLeadingTrivia,
+                to: last.endPositionBeforeTrailingTrivia
+            ),
             strippedLines: lines.count,
             bodyHash: BodyHash.of(text: statements.map(CanonicalText.tokenStream).joined(separator: " ")),
             parentKey: nil,
@@ -183,31 +186,5 @@ extension FunctionCollector {
             return false
         }
         return context.testCaseClasses.contains(owner.simpleName)
-    }
-
-    /// Lines holding at least one token of `node` at or after `start`.
-    private func lineSet(of node: Syntax, from start: AbsolutePosition) -> Set<Int> {
-        var lines = Set<Int>()
-        for token in node.tokens(viewMode: .sourceAccurate)
-        where token.presence == .present && token.positionAfterSkippingLeadingTrivia >= start {
-            let first = context.converter.location(for: token.positionAfterSkippingLeadingTrivia).line
-            let last = context.converter.location(for: token.endPositionBeforeTrailingTrivia).line
-            lines.formUnion(first...max(first, last))
-        }
-        return lines
-    }
-
-    /// The inclusive span from `start` to the character before `end`.
-    private func span(from start: AbsolutePosition, to end: AbsolutePosition) -> SourceSpan {
-        let startLocation = context.converter.location(for: start)
-        let lastCharacter = AbsolutePosition(utf8Offset: max(start.utf8Offset, end.utf8Offset - 1))
-        let endLocation = context.converter.location(for: lastCharacter)
-        return SourceSpan(start: position(startLocation), end: position(endLocation))
-    }
-
-    /// A position as external tools report it, BOM bytes included on line 1.
-    private func position(_ location: SourceLocation) -> SourcePosition {
-        let offset = location.line == 1 ? context.firstLineColumnOffset : 0
-        return SourcePosition(line: location.line, column: location.column + offset)
     }
 }
