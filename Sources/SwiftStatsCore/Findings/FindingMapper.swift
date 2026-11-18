@@ -4,7 +4,8 @@
 //
 //  Attaches each place a finding names to the innermost function record
 //  whose lines hold it, else the innermost type, else its file, or marks it
-//  unscanned (PRD §7.16).
+//  unscanned (PRD §7.16). A file's top-level-code record holds only its
+//  statements' lines, not the declarations between them.
 //
 
 /// Attaches findings to records, types and files.
@@ -15,12 +16,16 @@ struct FindingMapper {
     private let typesByFile: [String: [TypeRecord]]
     /// Every scanned file.
     private let scannedFiles: Set<String>
+    /// Each file's top-level statement lines.
+    private let topLevelLines: [String: Set<Int>]
 
-    /// A mapper over the scan's records, types and files.
-    init(records: [FunctionRecord], types: [TypeRecord], files: [FileRecord]) {
+    /// A mapper over the scan's records, types and files, with each file's
+    /// top-level statement lines.
+    init(records: [FunctionRecord], types: [TypeRecord], files: [FileRecord], topLevelLines: [String: Set<Int>]) {
         recordsByFile = Dictionary(grouping: records, by: \.file)
         typesByFile = Dictionary(grouping: types, by: \.file)
         scannedFiles = Set(files.map(\.path))
+        self.topLevelLines = topLevelLines
     }
 
     /// `raw` with every place attached, its places in the order given.
@@ -41,7 +46,10 @@ struct FindingMapper {
     func location(for place: RawFinding.Place) -> FindingLocation {
         let target: FindingTarget
         let owner: String?
-        let records = recordsByFile[place.file] ?? []
+        let statementLines = topLevelLines[place.file] ?? []
+        let records = (recordsByFile[place.file] ?? []).filter { record in
+            record.kind != .topLevelCode || place.line.map(statementLines.contains) == true
+        }
         let types = typesByFile[place.file] ?? []
         if let line = place.line, let record = innermost(records, holding: line, range: \.range) {
             target = .function

@@ -129,6 +129,10 @@ public struct PackageScanner {
                 collected.types += TypeCollector.collect(file.tree, context: context)
                 collected.declarations += DeclarationCollector.collect(file.tree, module: target.name)
                 collected.markers += MarkerCollector.collect(file.tree, context: context)
+                collected.topLevelLines[file.path] = FunctionCollector.topLevelLines(
+                    in: file.tree,
+                    converter: context.converter
+                )
                 collected.files.append(FileMeasure.record(
                     of: file,
                     module: target.name,
@@ -216,6 +220,7 @@ public struct PackageScanner {
             files: collected.files,
             declarations: collected.declarations,
             markers: collected.markers,
+            topLevelLines: collected.topLevelLines,
             tests: TestInventory.tests(
                 records: records,
                 parsed: parsed,
@@ -227,6 +232,17 @@ public struct PackageScanner {
             metrics: ComplexityScorer.metricsInfo(ignoresCaseStatements: ignoresCases),
             warnings: readWarnings + collisionWarnings + scoreWarnings + sitrepWarnings
         )
+    }
+
+    /// `raw` findings attached to the measured records, types and files.
+    private static func attach(_ raw: [RawFinding], to measured: ScanMeasurements) -> [Finding] {
+        let mapper = FindingMapper(
+            records: measured.records,
+            types: measured.types,
+            files: measured.files,
+            topLevelLines: measured.topLevelLines
+        )
+        return raw.map(mapper.finding(for:))
     }
 
     /// Scans the package rooted at `packageRoot`, with the `.swiftstats.yml`
@@ -251,8 +267,7 @@ public struct PackageScanner {
         let (targets, excludedFiles) = Self.excluding(TargetResolver.resolve(package), by: configuration)
         let measured = Self.measure(targets, root: root, configuration: configuration)
         let adapters = CollectorRun.run(root: root, targets: targets, configuration: configuration, locator: tools)
-        let mapper = FindingMapper(records: measured.records, types: measured.types, files: measured.files)
-        let findings = (measured.markers + adapters.flatMap(\.findings)).map(mapper.finding(for:))
+        let findings = Self.attach(measured.markers + adapters.flatMap(\.findings), to: measured)
         let ranTools = Set(adapters.filter { $0.status.state == .ran }.map(\.status.name))
             .union([MarkerCollector.tool])
         let compiled = Set(TargetResolver.resolve(package).flatMap(\.files))

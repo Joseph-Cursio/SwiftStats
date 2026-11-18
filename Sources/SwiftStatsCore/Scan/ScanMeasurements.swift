@@ -18,6 +18,8 @@ struct ScanMeasurements {
     let declarations: [APIDeclaration]
     /// SwiftStats' own markers.
     let markers: [RawFinding]
+    /// Each file's top-level statement lines, by path.
+    let topLevelLines: [String: Set<Int>]
     /// The test inventory.
     let tests: [TestRecord]
     /// Each parsed file with its module.

@@ -34,6 +34,27 @@ struct RiskMarkerTests {
         #expect(markers.allSatisfy { $0.tool == "swiftstats" && $0.category == nil })
     }
 
+    @Test("in a file of top-level code, a declaration between statements attaches to its type or the file")
+    func topLevelAttachment() throws {
+        let source = """
+        print("start")
+        struct Config {
+            var name: String!
+        }
+        var global: Int!
+        precondition(global == nil)
+        """
+        let package = try TemporaryPackage(["Sources/Lib/main.swift": source])
+        defer { package.remove() }
+
+        let report = try package.scan(tools: .nowhere)
+
+        let locations = report.findings.map { $0.locations[0] }
+        #expect(locations.map(\.line) == [3, 5, 6])
+        #expect(locations.map(\.attachedTo) == [.type, .file, .function])
+        #expect(locations.map(\.owner) == ["Lib::Config", nil, "Lib::<top-level code> @ Sources/Lib/main.swift"])
+    }
+
     @Test("a Task without a closure, or a type named like Task, is not a creation site")
     func notTasks() {
         let source = """

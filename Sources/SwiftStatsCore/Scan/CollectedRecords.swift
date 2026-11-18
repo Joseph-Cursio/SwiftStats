@@ -18,4 +18,6 @@ struct CollectedRecords {
     var declarations: [APIDeclaration] = []
     /// SwiftStats' own risk markers.
     var markers: [RawFinding] = []
+    /// Each file's top-level statement lines, by path.
+    var topLevelLines: [String: Set<Int>] = [:]
 }
