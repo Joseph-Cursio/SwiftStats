@@ -54,7 +54,13 @@ enum SwiftLintRunner {
         guard let binary else {
             return [:]
         }
-        let output = try run(binary, ["lint", "--reporter", "json", "--quiet", "--force-exclude"] + paths, in: root)
+        // The corpus has no .swiftlint.yml; an empty one stops SwiftLint
+        // reading any in the directories above it.
+        let config = FileManager.default.temporaryDirectory.appendingPathComponent("parity-\(UUID().uuidString).yml")
+        try "disabled_rules: []\n".write(to: config, atomically: true, encoding: .utf8)
+        defer { try? FileManager.default.removeItem(at: config) }
+        let arguments = ["lint", "--reporter", "json", "--quiet", "--force-exclude", "--config", config.path] + paths
+        let output = try run(binary, arguments, in: root)
         let violations = try JSONDecoder().decode([SwiftLintViolation].self, from: Data(output.utf8))
         return violations.reduce(into: [:]) { counts, violation in
             counts[violation.ruleIdentifier, default: 0] += 1

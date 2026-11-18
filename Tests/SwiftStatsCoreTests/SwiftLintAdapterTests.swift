@@ -46,9 +46,56 @@ struct SwiftLintAdapterTests {
         let status = try #require(report.collectors.first { $0.name == "swiftlint" })
         #expect(status.version == "0.65.1")
         #expect(status.options == [
-            "lint --reporter json --quiet --force-exclude Sources/Lib", "config: none, so SwiftLint's defaults"
+            "lint --reporter json --quiet --force-exclude --config <empty> Sources/Lib",
+            "config: none, so SwiftLint's defaults"
         ])
-        #expect(FakeTool.arguments(of: tool) == ["version", "lint --reporter json --quiet --force-exclude Sources/Lib"])
+        let arguments = FakeTool.arguments(of: tool)
+        #expect(arguments.first == "version")
+        // An empty configuration of SwiftStats' own, so no .swiftlint.yml above the package applies.
+        #expect(arguments.last?.hasPrefix("lint --reporter json --quiet --force-exclude --config /") == true)
+        #expect(arguments.last?.hasSuffix("/swiftlint.yml Sources/Lib") == true)
+        #expect(report.warnings.isEmpty)
+    }
+
+    @Test("the package's own configuration is named, and nested ones are reported as not applied")
+    func packageConfiguration() throws {
+        let package = try TemporaryPackage([
+            "Sources/Lib/Store.swift": Self.source,
+            "Tests/LibTests/StoreTests.swift": "",
+            "Tests/LibTests/.swiftlint.yml": "disabled_rules: [force_unwrapping]\n",
+            ".swiftlint.yml": "opt_in_rules: [force_unwrapping]\n"
+        ])
+        defer { package.remove() }
+        let tool = try FakeTool.make(outputs: ["0.65.1\n", "[]"], errorText: "", statuses: [0])
+
+        let report = try package.scan(tools: Self.locator(tool))
+
+        let lint = "lint --reporter json --quiet --force-exclude --config .swiftlint.yml Sources/Lib Tests/LibTests"
+        #expect(FakeTool.arguments(of: tool) == ["version", lint])
+        let status = try #require(report.collectors.first { $0.name == "swiftlint" })
+        #expect(status.options == [lint, "config: the package's .swiftlint.yml"])
+        #expect(report.warnings.map(\.message) == [
+            "swiftlint: nested configurations are not applied, only the root one: Tests/LibTests/.swiftlint.yml"
+        ])
+    }
+
+    @Test("a path inside another is dropped, and a target at the root gives its files, not the root")
+    func overlappingPaths() {
+        let target = { (name: String, path: String, files: [String]) in
+            TargetSummary(name: name, type: "library", isTest: false, path: path, files: files)
+        }
+        let nested = [
+            target("Foo", "Sources/Foo", ["Sources/Foo/Foo.swift"]),
+            target("Bar", "Sources/Foo/Bar", ["Sources/Foo/Bar/Bar.swift"]),
+            target("Foobar", "Sources/Foobar", ["Sources/Foobar/Foobar.swift"])
+        ]
+        let atRoot = [
+            target("Lib", "", ["Lib.swift", "Support/Helpers.swift"]),
+            target("LibTests", "Tests/LibTests", ["Tests/LibTests/LibTests.swift"])
+        ]
+
+        #expect(SwiftLintAdapter.paths(of: nested) == ["Sources/Foo", "Sources/Foobar"])
+        #expect(SwiftLintAdapter.paths(of: atRoot) == ["Lib.swift", "Support/Helpers.swift", "Tests/LibTests"])
     }
 
     @Test("an exit status other than 0 or 2 fails the collector, not the scan")
