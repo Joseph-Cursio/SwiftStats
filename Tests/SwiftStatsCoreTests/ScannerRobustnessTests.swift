@@ -139,4 +139,22 @@ struct ScannerRobustnessTests {
             try ProcessRunner.run(executable: "/bin/sh", arguments: ["-c", script], in: directory)
         }
     }
+
+    @Test("a Swift file left in Tests/Generated/ and in no target is reported as never built")
+    func unbuiltGeneratedTests() throws {
+        let package = try TemporaryPackage([
+            "Sources/Lib/Lib.swift": "func run() { }\n",
+            "Tests/Generated/SwiftInfer/OldStubs.swift": "func testOld() { }\n",
+            "Tests/Generated/notes.md": "not Swift\n"
+        ])
+        defer { package.remove() }
+
+        let report = try package.scan(tools: .nowhere)
+
+        let expected = ScanWarning(
+            file: "Tests/Generated/SwiftInfer/OldStubs.swift",
+            message: "in Tests/Generated/ but in no target, so never built or run"
+        )
+        #expect(report.warnings == [expected])
+    }
 }

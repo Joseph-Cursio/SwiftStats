@@ -13,6 +13,7 @@ public struct DescribedTarget: Decodable, Sendable {
     private enum CodingKeys: String, CodingKey {
         case moduleType = "module_type"
         case name, path, sources, type
+        case targetDependencies = "target_dependencies"
     }
 
     /// The target name, which is also its module name.
@@ -26,14 +27,24 @@ public struct DescribedTarget: Decodable, Sendable {
     public let path: String
     /// The compiled source files, relative to the target directory.
     public let sources: [String]
+    /// The package's own targets this one depends on, by name.
+    public let targetDependencies: [String]
 
     /// Creates a target. Fields are documented on their properties.
-    public init(name: String, type: String, moduleType: String, path: String, sources: [String]) {
+    public init(
+        name: String,
+        type: String,
+        moduleType: String,
+        path: String,
+        sources: [String],
+        targetDependencies: [String] = []
+    ) {
         self.name = name
         self.type = type
         self.moduleType = moduleType
         self.path = path
         self.sources = sources
+        self.targetDependencies = targetDependencies
     }
 
     /// Decodes a target; a target without sources (binary, system) gets none.
@@ -44,5 +55,6 @@ public struct DescribedTarget: Decodable, Sendable {
         moduleType = try container.decodeIfPresent(String.self, forKey: .moduleType) ?? ""
         path = try container.decodeIfPresent(String.self, forKey: .path) ?? ""
         sources = try container.decodeIfPresent([String].self, forKey: .sources) ?? []
+        targetDependencies = try container.decodeIfPresent([String].self, forKey: .targetDependencies) ?? []
     }
 }

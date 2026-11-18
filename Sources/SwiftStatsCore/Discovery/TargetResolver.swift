@@ -28,7 +28,8 @@ public enum TargetResolver {
                     type: target.type,
                     isTest: target.type == "test",
                     path: directory,
-                    files: files
+                    files: files,
+                    dependencies: target.targetDependencies.sorted()
                 )
             }
             .sorted { $0.name < $1.name }

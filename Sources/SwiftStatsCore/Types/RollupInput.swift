@@ -16,6 +16,8 @@ struct RollupInput {
     var files: [FileRecord]
     /// Declarations the API surface counts.
     var declarations: [APIDeclaration]
+    /// The test inventory.
+    var tests: [TestRecord]
     /// Findings, with the tools that ran; narrowed by file when counted.
     var findings: FindingTally
 
@@ -26,6 +28,7 @@ struct RollupInput {
             types: types.filter { modules.contains($0.module) },
             files: files.filter { modules.contains($0.module) },
             declarations: declarations.filter { modules.contains($0.module) },
+            tests: tests.filter { modules.contains($0.module) },
             findings: findings
         )
     }

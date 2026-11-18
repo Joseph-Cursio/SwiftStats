@@ -42,6 +42,8 @@ public struct ScanReport: Codable, Hashable, Sendable {
     public let collectors: [CollectorStatus]
     /// Every finding, sorted by first location, then tool and rule (PRD §7.16).
     public let findings: [Finding]
+    /// The test inventory, sorted by file, then key (PRD §7.8).
+    public let tests: [TestRecord]
     /// Non-fatal problems, sorted.
     public let warnings: [ScanWarning]
 }

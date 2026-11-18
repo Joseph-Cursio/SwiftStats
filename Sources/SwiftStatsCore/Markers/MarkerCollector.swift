@@ -1,5 +1,5 @@
 //
-//  RiskMarkerCollector.swift
+//  MarkerCollector.swift
 //  SwiftStatsCore
 //
 //  The risk markers SwiftStats finds itself, because no SwiftProjectLint
@@ -10,10 +10,15 @@
 
 import SwiftSyntax
 
-/// Finds SwiftStats' own risk markers in one file.
-final class RiskMarkerCollector: SyntaxVisitor {
+/// Finds SwiftStats' own markers in one file.
+final class MarkerCollector: SyntaxVisitor {
     /// The tool name on SwiftStats' own findings.
     static let tool = "swiftstats"
+    /// Attributes that expand into property tests.
+    static let propertyTestMacros: Set<String> = [
+        "CheckProperty", "DefensiveCopyTests", "InteractionInvariantTests", "PropertyLawSuite",
+        "StableIdentityTests", "ValueSemanticTests"
+    ]
 
     /// Markers found so far, in source order.
     private(set) var markers: [RawFinding] = []
@@ -81,8 +86,14 @@ final class RiskMarkerCollector: SyntaxVisitor {
 
     override func visit(_ node: AttributeSyntax) -> SyntaxVisitorContinueKind {
         let isOnDeclaration = node.parent?.parent?.is(DeclSyntax.self) == true
-        if isOnDeclaration, CanonicalText.render(node.attributeName) == "MainActor" {
+        let name = CanonicalText.render(node.attributeName)
+        if isOnDeclaration, name == "MainActor" {
             add("mainActorDeclaration", kind: .census, at: Syntax(node), message: "@MainActor declaration")
+        } else if Self.propertyTestMacros.contains(name) {
+            add("propertyTestMacro", kind: .census, at: Syntax(node), message: "@\(name) expands into property tests")
+        } else if name == "IdempotencyTests" {
+            let message = "@IdempotencyTests expands into tests"
+            add("idempotencyTestMacro", kind: .census, at: Syntax(node), message: message)
         }
         return .visitChildren
     }

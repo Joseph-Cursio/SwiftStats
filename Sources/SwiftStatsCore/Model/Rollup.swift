@@ -46,4 +46,6 @@ public struct Rollup: Codable, Hashable, Sendable {
     public let findingKinds: [String: [String: Int]]
     /// Declarations by access level, documentation and `final` (PRD §7.5).
     public let api: APISurface
+    /// Tests by framework and kind, and the test-to-code line counts (PRD §7.8).
+    public let tests: TestSummary
 }

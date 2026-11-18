@@ -65,7 +65,7 @@ enum CollectorHarness {
             converter: SourceLocationConverter(fileName: defaultFile, tree: tree),
             firstLineColumnOffset: 0
         )
-        return RiskMarkerCollector.collect(tree, context: context)
+        return MarkerCollector.collect(tree, context: context)
     }
 
     /// API declarations of a file of module `Lib`.

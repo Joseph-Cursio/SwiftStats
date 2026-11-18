@@ -16,8 +16,10 @@ struct ScanMeasurements {
     let files: [FileRecord]
     /// Declarations the API surface counts.
     let declarations: [APIDeclaration]
-    /// SwiftStats' own risk markers.
+    /// SwiftStats' own markers.
     let markers: [RawFinding]
+    /// The test inventory.
+    let tests: [TestRecord]
     /// Each parsed file with its module.
     let parsed: [(module: String, file: ParsedFile)]
     /// Sitrep-compatible counts.

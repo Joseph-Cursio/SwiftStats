@@ -1252,6 +1252,28 @@
         "p90" : 0,
         "total" : 1
       },
+      "tests" : {
+        "assertionsPerTest" : {
+          "count" : 0,
+          "total" : 0
+        },
+        "generatedTests" : 0,
+        "helpers" : 0,
+        "lineRatio" : {
+          "deadCodeExcluded" : false,
+          "productionLines" : 84,
+          "testLines" : 12,
+          "testLinesByKind" : {
+            "example" : 12
+          }
+        },
+        "parameterizedCases" : 0,
+        "parameterizedUnknownCases" : 0,
+        "tests" : {
+
+        },
+        "xctestWithoutAssertions" : 0
+      },
       "typeBodyLength" : {
         "count" : 6,
         "max" : 40,
@@ -1361,6 +1383,37 @@
         "p90" : 0,
         "total" : 0
       },
+      "tests" : {
+        "assertionsPerTest" : {
+          "count" : 4,
+          "max" : 1,
+          "median" : 1,
+          "min" : 1,
+          "p90" : 1,
+          "total" : 4
+        },
+        "generatedTests" : 0,
+        "helpers" : 3,
+        "lineRatio" : {
+          "deadCodeExcluded" : false,
+          "productionLines" : 84,
+          "testLines" : 12,
+          "testLinesByKind" : {
+            "example" : 12
+          }
+        },
+        "parameterizedCases" : 0,
+        "parameterizedUnknownCases" : 0,
+        "tests" : {
+          "swift-testing" : {
+            "example" : 2
+          },
+          "xctest" : {
+            "example" : 2
+          }
+        },
+        "xctestWithoutAssertions" : 0
+      },
       "typeBodyLength" : {
         "count" : 4,
         "max" : 6,
@@ -1469,6 +1522,28 @@
         "p90" : 0,
         "total" : 0
       },
+      "tests" : {
+        "assertionsPerTest" : {
+          "count" : 0,
+          "total" : 0
+        },
+        "generatedTests" : 0,
+        "helpers" : 0,
+        "lineRatio" : {
+          "deadCodeExcluded" : false,
+          "productionLines" : 7,
+          "testLines" : 0,
+          "testLinesByKind" : {
+
+          }
+        },
+        "parameterizedCases" : 0,
+        "parameterizedUnknownCases" : 0,
+        "tests" : {
+
+        },
+        "xctestWithoutAssertions" : 0
+      },
       "typeBodyLength" : {
         "count" : 0,
         "total" : 0
@@ -1573,6 +1648,28 @@
         "min" : 0,
         "p90" : 0,
         "total" : 1
+      },
+      "tests" : {
+        "assertionsPerTest" : {
+          "count" : 0,
+          "total" : 0
+        },
+        "generatedTests" : 0,
+        "helpers" : 0,
+        "lineRatio" : {
+          "deadCodeExcluded" : false,
+          "productionLines" : 91,
+          "testLines" : 12,
+          "testLinesByKind" : {
+            "example" : 12
+          }
+        },
+        "parameterizedCases" : 0,
+        "parameterizedUnknownCases" : 0,
+        "tests" : {
+
+        },
+        "xctestWithoutAssertions" : 0
       },
       "typeBodyLength" : {
         "count" : 6,
@@ -1683,6 +1780,37 @@
         "p90" : 0,
         "total" : 0
       },
+      "tests" : {
+        "assertionsPerTest" : {
+          "count" : 4,
+          "max" : 1,
+          "median" : 1,
+          "min" : 1,
+          "p90" : 1,
+          "total" : 4
+        },
+        "generatedTests" : 0,
+        "helpers" : 3,
+        "lineRatio" : {
+          "deadCodeExcluded" : false,
+          "productionLines" : 91,
+          "testLines" : 12,
+          "testLinesByKind" : {
+            "example" : 12
+          }
+        },
+        "parameterizedCases" : 0,
+        "parameterizedUnknownCases" : 0,
+        "tests" : {
+          "swift-testing" : {
+            "example" : 2
+          },
+          "xctest" : {
+            "example" : 2
+          }
+        },
+        "xctestWithoutAssertions" : 0
+      },
       "typeBodyLength" : {
         "count" : 4,
         "max" : 6,
@@ -1769,6 +1897,9 @@
   },
   "targets" : [
     {
+      "dependencies" : [
+
+      ],
       "files" : [
         "Sources/AllKinds/Resources.swift",
         "Sources/AllKinds/Shapes.swift"
@@ -1779,6 +1910,9 @@
       "type" : "library"
     },
     {
+      "dependencies" : [
+        "AllKinds"
+      ],
       "files" : [
         "Tests/AllKindsTests/SwiftTestingTests.swift",
         "Tests/AllKindsTests/XCTestTests.swift"
@@ -1789,6 +1923,9 @@
       "type" : "test"
     },
     {
+      "dependencies" : [
+        "AllKinds"
+      ],
       "files" : [
         "Sources/Tool/main.swift"
       ],
@@ -1796,6 +1933,44 @@
       "name" : "Tool",
       "path" : "Sources/Tool",
       "type" : "executable"
+    }
+  ],
+  "tests" : [
+    {
+      "assertions" : 1,
+      "file" : "Tests/AllKindsTests/SwiftTestingTests.swift",
+      "framework" : "swift-testing",
+      "generated" : false,
+      "key" : "AllKindsTests::SquareSuite::func perimeter()",
+      "kind" : "example",
+      "module" : "AllKindsTests"
+    },
+    {
+      "assertions" : 1,
+      "file" : "Tests/AllKindsTests/SwiftTestingTests.swift",
+      "framework" : "swift-testing",
+      "generated" : false,
+      "key" : "AllKindsTests::func areaOfSquare()",
+      "kind" : "example",
+      "module" : "AllKindsTests"
+    },
+    {
+      "assertions" : 1,
+      "file" : "Tests/AllKindsTests/XCTestTests.swift",
+      "framework" : "xctest",
+      "generated" : false,
+      "key" : "AllKindsTests::ResourceTests::func testDescribe()",
+      "kind" : "example",
+      "module" : "AllKindsTests"
+    },
+    {
+      "assertions" : 1,
+      "file" : "Tests/AllKindsTests/XCTestTests.swift",
+      "framework" : "xctest",
+      "generated" : false,
+      "key" : "AllKindsTests::ResourceTests::func testFromExtension()",
+      "kind" : "example",
+      "module" : "AllKindsTests"
     }
   ],
   "tool" : {

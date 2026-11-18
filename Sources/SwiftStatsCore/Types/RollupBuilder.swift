@@ -18,12 +18,17 @@ enum RollupBuilder {
                 return modules.isEmpty ? nil : (RollupScope.project, name, modules)
             }
         return scopes.map { scope, name, modules in
-            rollup(scope: scope, name: name, input: input.narrowed(to: modules))
+            rollup(
+                scope: scope,
+                name: name,
+                input: input.narrowed(to: modules),
+                tests: TestSummaryBuilder.summary(of: modules, scope: scope, targets: targets, scan: input)
+            )
         }
     }
 
-    /// The roll-up of `input`.
-    private static func rollup(scope: RollupScope, name: String, input: RollupInput) -> Rollup {
+    /// The roll-up of `input`, with its test summary.
+    private static func rollup(scope: RollupScope, name: String, input: RollupInput, tests: TestSummary) -> Rollup {
         let records = input.records
         let types = input.types
         let files = input.files
@@ -48,7 +53,8 @@ enum RollupBuilder {
             fileLength: Distribution(files.map(\.strippedLines)),
             findings: input.findings.byRule(in: paths),
             findingKinds: input.findings.byKind(in: paths),
-            api: APISurface(input.declarations, overExposed: input.findings.overExposed(in: paths))
+            api: APISurface(input.declarations, overExposed: input.findings.overExposed(in: paths)),
+            tests: tests
         )
     }
 

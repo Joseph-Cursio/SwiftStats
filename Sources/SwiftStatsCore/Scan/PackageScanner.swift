@@ -122,7 +122,7 @@ public struct PackageScanner {
                 collected.records += FunctionCollector.collect(file.tree, context: context)
                 collected.types += TypeCollector.collect(file.tree, context: context)
                 collected.declarations += DeclarationCollector.collect(file.tree, module: target.name)
-                collected.markers += RiskMarkerCollector.collect(file.tree, context: context)
+                collected.markers += MarkerCollector.collect(file.tree, context: context)
                 collected.files.append(FileMeasure.record(
                     of: file,
                     module: target.name,
@@ -154,7 +154,8 @@ public struct PackageScanner {
                 type: target.type,
                 isTest: target.isTest,
                 path: target.path,
-                files: files
+                files: files,
+                dependencies: target.dependencies
             )
         }
         return (kept, excluded.sorted())
@@ -209,6 +210,12 @@ public struct PackageScanner {
             files: collected.files,
             declarations: collected.declarations,
             markers: collected.markers,
+            tests: TestInventory.tests(
+                records: records,
+                parsed: parsed,
+                testModules: Set(targets.filter(\.isTest).map(\.name)),
+                generatedFiles: Set(collected.files.filter(\.generated).map(\.path))
+            ),
             parsed: parsed,
             sitrep: sitrep,
             metrics: ComplexityScorer.metricsInfo(ignoresCaseStatements: ignoresCases),
@@ -241,8 +248,10 @@ public struct PackageScanner {
         let mapper = FindingMapper(records: measured.records, types: measured.types, files: measured.files)
         let findings = (measured.markers + adapters.flatMap(\.findings)).map(mapper.finding(for:))
         let ranTools = Set(adapters.filter { $0.status.state == .ran }.map(\.status.name))
-            .union([RiskMarkerCollector.tool])
+            .union([MarkerCollector.tool])
+        let compiled = Set(TargetResolver.resolve(package).flatMap(\.files))
         let warnings = measured.warnings + Self.unusedKeyWarnings(configuration) + adapters.flatMap(\.warnings)
+            + UnbuiltTests.warnings(root: root, compiled: compiled)
         return ScanReport(
             schemaVersion: ScanReport.currentSchemaVersion,
             tool: .current,
@@ -264,12 +273,14 @@ public struct PackageScanner {
                     types: measured.types,
                     files: measured.files,
                     declarations: measured.declarations,
+                    tests: measured.tests,
                     findings: FindingTally(findings: findings, tools: ranTools)
                 )
             ),
             sitrep: measured.sitrep,
             collectors: adapters.map(\.status).sorted { $0.name < $1.name },
             findings: findings.sorted(by: Self.findingOrder),
+            tests: measured.tests.sorted { ($0.file, $0.key) < ($1.file, $1.key) },
             warnings: warnings.sorted(by: Self.warningOrder)
         )
     }
