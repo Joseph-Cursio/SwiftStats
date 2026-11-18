@@ -45,8 +45,10 @@ struct SwiftLintAdapterTests {
         #expect(report.findings.allSatisfy { $0.kind == .defect && $0.tool == "swiftlint" })
         let status = try #require(report.collectors.first { $0.name == "swiftlint" })
         #expect(status.version == "0.65.1")
-        #expect(status.options == ["lint --reporter json --quiet", "config: none, so SwiftLint's defaults"])
-        #expect(FakeTool.arguments(of: tool) == ["version", "lint --reporter json --quiet"])
+        #expect(status.options == [
+            "lint --reporter json --quiet --force-exclude Sources/Lib", "config: none, so SwiftLint's defaults"
+        ])
+        #expect(FakeTool.arguments(of: tool) == ["version", "lint --reporter json --quiet --force-exclude Sources/Lib"])
     }
 
     @Test("an exit status other than 0 or 2 fails the collector, not the scan")

@@ -48,12 +48,13 @@ enum SwiftLintRunner {
         return result
     }
 
-    /// SwiftLint's violation count per rule for a plain `swiftlint lint` in `root`.
-    static func violationCounts(in root: URL) throws -> [String: Int] {
+    /// SwiftLint's violation count per rule for `swiftlint lint` run in
+    /// `root` on `paths`, with the package's own configuration.
+    static func violationCounts(in root: URL, paths: [String]) throws -> [String: Int] {
         guard let binary else {
             return [:]
         }
-        let output = try run(binary, ["lint", "--reporter", "json", "--quiet"], in: root)
+        let output = try run(binary, ["lint", "--reporter", "json", "--quiet", "--force-exclude"] + paths, in: root)
         let violations = try JSONDecoder().decode([SwiftLintViolation].self, from: Data(output.utf8))
         return violations.reduce(into: [:]) { counts, violation in
             counts[violation.ruleIdentifier, default: 0] += 1

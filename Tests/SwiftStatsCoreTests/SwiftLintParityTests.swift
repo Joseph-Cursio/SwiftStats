@@ -69,7 +69,7 @@ struct SwiftLintParityTests {
     }
 
     /// PRD M1b done-when (2): the SwiftLint adapter's counts per rule equal
-    /// a plain `swiftlint lint --reporter json` in the package root.
+    /// `swiftlint lint --reporter json` run on the targets' directories.
     @Test("violation counts per rule match swiftlint lint on swift-algorithms")
     func violationCounts() throws {
         try #require(FileManager.default.fileExists(atPath: Self.corpus.path), "corpus missing: \(Self.corpus.path)")
@@ -83,6 +83,8 @@ struct SwiftLintParityTests {
 
         #expect(report.collectors.first { $0.name == "swiftlint" }?.state == .ran)
         #expect(counts.isEmpty == false)
-        #expect(counts == (try SwiftLintRunner.violationCounts(in: Self.corpus)))
+        let paths = Set(report.targets.map(\.path)).sorted()
+        #expect(counts == (try SwiftLintRunner.violationCounts(in: Self.corpus, paths: paths)))
+        #expect(report.findings.allSatisfy { $0.locations.allSatisfy { $0.attachedTo != .unscanned } })
     }
 }

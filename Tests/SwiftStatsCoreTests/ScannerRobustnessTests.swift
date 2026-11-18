@@ -157,4 +157,19 @@ struct ScannerRobustnessTests {
         )
         #expect(report.warnings == [expected])
     }
+
+    @Test("a test case whose XCTestCase base class is in another target is still a test case")
+    func crossTargetTestCaseBase() throws {
+        let package = try TemporaryPackage([
+            "Sources/Lib/Support.swift": "import XCTest\nopen class CollectionTestCase: XCTestCase { }\n",
+            "Tests/LibTests/DequeTests.swift":
+                "final class DequeTests: CollectionTestCase {\n    func testAppend() { }\n}\n"
+        ])
+        defer { package.remove() }
+
+        let report = try package.scan(tools: .nowhere)
+
+        #expect(report.records.filter { $0.module == "LibTests" }.map(\.role) == [.test])
+        #expect(report.tests.map(\.framework) == [.xctest])
+    }
 }

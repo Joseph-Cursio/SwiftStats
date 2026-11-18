@@ -6,8 +6,14 @@ import SwiftStatsCore
 struct ScanCommand: ParsableCommand {
     static let configuration = CommandConfiguration(
         commandName: "scan",
-        abstract: "Scan a SwiftPM package and print its function, type and file records, "
-            + "their roll-ups and Sitrep-compatible counts as JSON."
+        abstract: "Scan a SwiftPM package and print its records, findings, test inventory, "
+            + "dependencies, roll-ups and Sitrep-compatible counts as JSON.",
+        discussion: """
+        SwiftProjectLint and SwiftLint run when found on PATH (as swiftprojectlint and swiftlint), \
+        or at collectors.<name>.path in .swiftstats.yml; collectors.<name>.enabled: false turns one off. \
+        The dependency graph comes from `swift package show-dependencies`, run only when the package's \
+        dependencies are already resolved.
+        """
     )
 
     @Argument(help: "The package directory (the one containing Package.swift).")

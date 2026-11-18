@@ -108,8 +108,14 @@ public struct PackageScanner {
         generated: [GlobPattern]
     ) -> CollectedRecords {
         var collected = CollectedRecords()
+        // A test target's XCTestCase subclasses may descend from a base class
+        // in another of the package's targets (swift-collections'
+        // `CollectionTestCase`), so the whole package is indexed too.
+        let packageTestCases = TestCaseClassIndex.testCaseClasses(in: parsedByTarget.flatMap { $0.map(\.tree) })
         for (target, parsed) in zip(targets, parsedByTarget) {
-            let testCaseClasses = target.isTest ? TestCaseClassIndex.testCaseClasses(in: parsed.map(\.tree)) : []
+            let testCaseClasses = target.isTest
+                ? TestCaseClassIndex.testCaseClasses(in: parsed.map(\.tree)).union(packageTestCases)
+                : []
             for file in parsed {
                 let context = FileContext(
                     module: target.name,
@@ -244,7 +250,7 @@ public struct PackageScanner {
         let package = try describer.describePackage(at: root)
         let (targets, excludedFiles) = Self.excluding(TargetResolver.resolve(package), by: configuration)
         let measured = Self.measure(targets, root: root, configuration: configuration)
-        let adapters = CollectorRun.run(root: root, configuration: configuration, locator: tools)
+        let adapters = CollectorRun.run(root: root, targets: targets, configuration: configuration, locator: tools)
         let mapper = FindingMapper(records: measured.records, types: measured.types, files: measured.files)
         let findings = (measured.markers + adapters.flatMap(\.findings)).map(mapper.finding(for:))
         let ranTools = Set(adapters.filter { $0.status.state == .ran }.map(\.status.name))
