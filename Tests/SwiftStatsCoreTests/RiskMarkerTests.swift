@@ -55,6 +55,28 @@ struct RiskMarkerTests {
         #expect(locations.map(\.owner) == ["Lib::Config", nil, "Lib::<top-level code> @ Sources/Lib/main.swift"])
     }
 
+    @Test("@MainActor inside an #if in a declaration's attributes marks the declaration")
+    func mainActorInsideIf() {
+        let source = """
+        #if os(iOS)
+        @MainActor
+        #endif
+        final class Screen {
+            #if canImport(UIKit)
+            @MainActor
+            #else
+            @preconcurrency
+            #endif
+            func refresh() { }
+            let handler: @MainActor () -> Void = { }
+        }
+        """
+        let markers = CollectorHarness.markers(source)
+
+        #expect(markers.map(\.rule) == ["mainActorDeclaration", "mainActorDeclaration"])
+        #expect(markers.map { $0.places[0].line } == [2, 6])
+    }
+
     @Test("a Task without a closure, or a type named like Task, is not a creation site")
     func notTasks() {
         let source = """

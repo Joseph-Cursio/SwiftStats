@@ -65,6 +65,21 @@ final class MarkerCollector: SyntaxVisitor {
         return false
     }
 
+    /// Whether `attribute` is written on a declaration, directly or inside
+    /// an `#if` in its attribute list.
+    static func isOnDeclaration(_ attribute: AttributeSyntax) -> Bool {
+        var node = attribute.parent
+        while let current = node {
+            let isListOrCondition = current.is(AttributeListSyntax.self) || current.is(IfConfigClauseSyntax.self)
+                || current.is(IfConfigClauseListSyntax.self) || current.is(IfConfigDeclSyntax.self)
+            guard isListOrCondition else {
+                return current.is(DeclSyntax.self)
+            }
+            node = current.parent
+        }
+        return false
+    }
+
     override func visit(_ node: ImplicitlyUnwrappedOptionalTypeSyntax) -> SyntaxVisitorContinueKind {
         add("implicitlyUnwrappedOptional", kind: .defect, at: Syntax(node), message: "implicitly unwrapped optional")
         return .visitChildren
@@ -85,9 +100,8 @@ final class MarkerCollector: SyntaxVisitor {
     }
 
     override func visit(_ node: AttributeSyntax) -> SyntaxVisitorContinueKind {
-        let isOnDeclaration = node.parent?.parent?.is(DeclSyntax.self) == true
         let name = CanonicalText.render(node.attributeName)
-        if isOnDeclaration, name == "MainActor" {
+        if name == "MainActor", Self.isOnDeclaration(node) {
             add("mainActorDeclaration", kind: .census, at: Syntax(node), message: "@MainActor declaration")
         } else if Self.propertyTestMacros.contains(name) {
             add("propertyTestMacro", kind: .census, at: Syntax(node), message: "@\(name) expands into property tests")
