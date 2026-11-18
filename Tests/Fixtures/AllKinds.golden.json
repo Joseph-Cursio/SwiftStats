@@ -1,6 +1,13 @@
 {
   "collectors" : [
     {
+      "name" : "dependencies",
+      "options" : [
+
+      ],
+      "state" : "ran"
+    },
+    {
       "name" : "swiftlint",
       "options" : [
 
@@ -30,6 +37,16 @@
       "**/*.grpc.swift",
       "**/Generated/**"
     ]
+  },
+  "dependencies" : {
+    "direct" : [
+
+    ],
+    "resolved" : {
+      "packages" : [
+
+      ]
+    }
   },
   "files" : [
     {

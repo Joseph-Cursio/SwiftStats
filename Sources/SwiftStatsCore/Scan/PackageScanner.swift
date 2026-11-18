@@ -19,7 +19,7 @@ public struct PackageScanner {
     /// Where package descriptions come from.
     private let describer: any PackageDescriber
     /// Where the external collectors' tools come from.
-    private let tools: ToolLocator
+    let tools: ToolLocator
 
     /// Creates a scanner that learns a package's targets through
     /// `describer` and finds external tools with `tools`.
@@ -250,8 +250,9 @@ public struct PackageScanner {
         let ranTools = Set(adapters.filter { $0.status.state == .ran }.map(\.status.name))
             .union([MarkerCollector.tool])
         let compiled = Set(TargetResolver.resolve(package).flatMap(\.files))
+        let dependencies = dependencies(of: package, root: root, configuration: configuration)
         let warnings = measured.warnings + Self.unusedKeyWarnings(configuration) + adapters.flatMap(\.warnings)
-            + UnbuiltTests.warnings(root: root, compiled: compiled)
+            + UnbuiltTests.warnings(root: root, compiled: compiled) + dependencies.warnings
         return ScanReport(
             schemaVersion: ScanReport.currentSchemaVersion,
             tool: .current,
@@ -278,9 +279,10 @@ public struct PackageScanner {
                 )
             ),
             sitrep: measured.sitrep,
-            collectors: adapters.map(\.status).sorted { $0.name < $1.name },
+            collectors: (adapters.map(\.status) + [dependencies.status]).sorted { $0.name < $1.name },
             findings: findings.sorted(by: Self.findingOrder),
             tests: measured.tests.sorted { ($0.file, $0.key) < ($1.file, $1.key) },
+            dependencies: dependencies.report,
             warnings: warnings.sorted(by: Self.warningOrder)
         )
     }

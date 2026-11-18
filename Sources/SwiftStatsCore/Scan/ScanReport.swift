@@ -44,6 +44,8 @@ public struct ScanReport: Codable, Hashable, Sendable {
     public let findings: [Finding]
     /// The test inventory, sorted by file, then key (PRD §7.8).
     public let tests: [TestRecord]
+    /// Direct dependencies, pins and the resolved graph (PRD §7.14).
+    public let dependencies: DependencyReport
     /// Non-fatal problems, sorted.
     public let warnings: [ScanWarning]
 }
