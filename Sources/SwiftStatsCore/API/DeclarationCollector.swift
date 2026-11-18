@@ -4,8 +4,9 @@
 //
 //  Collects the declarations the API surface counts (PRD §7.5): types,
 //  typealiases, functions, initialisers, subscripts and each name a `var` or
-//  `let` binds, outside function bodies. Protocol requirements take their
-//  protocol's access and aren't counted; enum cases can't write one.
+//  `let` binds, outside function bodies and top-level statements (whose
+//  declarations are locals). Protocol requirements take their protocol's
+//  access and aren't counted; enum cases can't write one.
 //
 
 import SwiftSyntax
@@ -48,6 +49,18 @@ final class DeclarationCollector: SyntaxVisitor {
         let collector = Self(module: module)
         collector.walk(tree)
         return collector.declarations
+    }
+
+    /// The names `pattern` binds: one for an identifier, those of each
+    /// element for a tuple (its labels bind nothing), none for `_`.
+    static func boundNames(in pattern: PatternSyntax) -> Int {
+        if pattern.is(IdentifierPatternSyntax.self) {
+            return 1
+        }
+        guard let tuple = pattern.as(TuplePatternSyntax.self) else {
+            return 0
+        }
+        return tuple.elements.reduce(0) { $0 + boundNames(in: $1.pattern) }
     }
 
     override func visit(_ node: StructDeclSyntax) -> SyntaxVisitorContinueKind {
@@ -124,15 +137,14 @@ final class DeclarationCollector: SyntaxVisitor {
         return .skipChildren
     }
 
+    /// A top-level statement (`if`, `for`, `do`, an expression) holds only
+    /// locals, so only declarations are walked into.
+    override func visit(_ node: CodeBlockItemSyntax) -> SyntaxVisitorContinueKind {
+        node.item.is(DeclSyntax.self) ? .visitChildren : .skipChildren
+    }
+
     override func visit(_ node: VariableDeclSyntax) -> SyntaxVisitorContinueKind {
-        let names = node.bindings.reduce(into: 0) { count, binding in
-            count += binding.pattern.tokens(viewMode: .sourceAccurate).filter { token in
-                if case .identifier = token.tokenKind {
-                    return true
-                }
-                return false
-            }.count
-        }
+        let names = node.bindings.reduce(0) { $0 + Self.boundNames(in: $1.pattern) }
         for _ in 0..<names {
             add(node.modifiers, node: Syntax(node), finality: .notAClass)
         }

@@ -58,6 +58,28 @@ struct APISurfaceTests {
         #expect(declarations.allSatisfy { $0.access == .internal && $0.isImplicitlyInternal })
     }
 
+    @Test("declarations inside top-level statements are locals, and a tuple binds its elements' names")
+    func topLevelStatementsAndTuples() {
+        let source = """
+        let flag = true
+        for index in 0..<3 { let copy = index; struct Local { } }
+        if flag { var count = 1; count += 1 }
+        do { class Box { } }
+        switch flag { case true: let kept = 2; _ = kept; default: break }
+        #if DEBUG
+        let debug = 1
+        #endif
+        public let (first: low, second: high) = (1, 2)
+        let (left, (_, right)) = (1, (2, 3))
+        """
+        let declarations = CollectorHarness.declarations(source)
+
+        // flag, debug, low, high, left and right; nothing from the statement bodies.
+        #expect(declarations.count == 6)
+        #expect(declarations.filter { $0.access == .public }.count == 2)
+        #expect(declarations.contains(where: \.isClass) == false)
+    }
+
     @Test("the surface counts levels, public documentation and final classes")
     func surface() {
         let source = """
