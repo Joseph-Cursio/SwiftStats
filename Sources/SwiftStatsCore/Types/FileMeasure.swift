@@ -14,7 +14,8 @@ enum FileMeasure {
         let converter = SourceLocationConverter(fileName: file.path, tree: file.tree)
         var stripped = Set<Int>()
         for token in file.tree.tokens(viewMode: .sourceAccurate)
-        where token.presence == .present && token.tokenKind != .endOfFile {
+        where token.presence == .present && token.tokenKind != .endOfFile
+            && FileContext.isAttributeToken(token) == false {
             let first = converter.location(for: token.positionAfterSkippingLeadingTrivia).line
             let last = converter.location(for: token.endPositionBeforeTrailingTrivia).line
             stripped.formUnion(first...max(first, last))

@@ -67,6 +67,7 @@ struct TypeCollectorTests {
         """)
 
         #expect(types.first?.strippedLines == 3)
+        #expect(CollectorHarness.types("struct S {\n    @inlinable\n    func f() {}\n}").first?.strippedLines == 3)
         #expect(types.first?.range.start.line == 1)
         #expect(types.last?.ifConfig == "os(macOS)")
         #expect(types.last?.kind == .actor)

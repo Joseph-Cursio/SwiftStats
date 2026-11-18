@@ -19,8 +19,9 @@ public struct TypeRecord: Codable, Hashable, Sendable {
     public let file: String
     /// The declaration's source range, attributes included.
     public let range: SourceSpan
-    /// Lines that hold at least one token of the declaration, its own
-    /// attributes and comments excluded; nested declarations count toward it.
+    /// Lines that hold at least one token of the declaration, attributes
+    /// (its members' included) and comments excluded; nested declarations
+    /// count toward it.
     public let strippedLines: Int
     /// Declarations directly in its body, `#if` branches flattened: each
     /// function, initialiser, deinitialiser, subscript, typealias,

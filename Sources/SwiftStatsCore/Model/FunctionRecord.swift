@@ -24,8 +24,8 @@ public struct FunctionRecord: Codable, Hashable, Sendable {
     public let file: String
     /// The declaration's source range, attributes included.
     public let range: SourceSpan
-    /// Lines that hold at least one token of the declaration, attributes and
-    /// comments excluded (PRD §7.2).
+    /// Lines that hold at least one token of the declaration, attributes
+    /// (nested ones included) and comments excluded (PRD §7.2).
     public let strippedLines: Int
     /// Parameters in the declaration's own parameter list, for `func`, `init`
     /// and `subscript`; nil for kinds without one.

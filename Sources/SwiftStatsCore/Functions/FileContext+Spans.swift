@@ -9,11 +9,31 @@
 import SwiftSyntax
 
 extension FileContext {
-    /// Lines holding at least one token of `node` at or after `start`.
+    /// Whether `token` belongs to an attribute (`@inlinable`, `@available(…)`):
+    /// attributes don't count toward stripped lines (PRD §7.2). The walk stops
+    /// at the nearest declaration or statement, which an attribute is below.
+    static func isAttributeToken(_ token: TokenSyntax) -> Bool {
+        var current = token.parent
+        while let node = current {
+            if node.is(AttributeSyntax.self) {
+                return true
+            }
+            if node.is(DeclSyntax.self) || node.is(StmtSyntax.self)
+                || node.is(MemberBlockItemSyntax.self) || node.is(CodeBlockItemSyntax.self) {
+                return false
+            }
+            current = node.parent
+        }
+        return false
+    }
+
+    /// Lines holding at least one token of `node` at or after `start`,
+    /// attribute tokens excluded.
     func lineSet(of node: Syntax, from start: AbsolutePosition) -> Set<Int> {
         var lines = Set<Int>()
         for token in node.tokens(viewMode: .sourceAccurate)
-        where token.presence == .present && token.positionAfterSkippingLeadingTrivia >= start {
+        where token.presence == .present && token.positionAfterSkippingLeadingTrivia >= start
+            && Self.isAttributeToken(token) == false {
             let first = converter.location(for: token.positionAfterSkippingLeadingTrivia).line
             let last = converter.location(for: token.endPositionBeforeTrailingTrivia).line
             lines.formUnion(first...max(first, last))

@@ -13,7 +13,8 @@ public struct FileRecord: Codable, Hashable, Sendable {
     public let module: String
     /// Physical lines.
     public let lines: Int
-    /// Lines that hold at least one token, comments and whitespace excluded.
+    /// Lines that hold at least one token, comments, whitespace and
+    /// attributes excluded (PRD §7.2).
     public let strippedLines: Int
 
     /// Creates a record. Fields are documented on their properties.
