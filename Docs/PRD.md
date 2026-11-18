@@ -1,6 +1,6 @@
 # SwiftStats — Product Requirements Document
 
-**Status:** Draft v0.2.4 (2026-11-18). Reviewed against the source of every tool it names; see §16 for what changed and `Docs/prd-review-2026-11-17.md` in the repo for the evidence. M0 is built; see `Docs/m0-results.md`.
+**Status:** Draft v0.2.5 (2026-11-18). Reviewed against the source of every tool it names; see §16 for what changed and `Docs/prd-review-2026-11-17.md` in the repo for the evidence. M0 and M1a are built; see `Docs/m0-results.md` and `Docs/m1a-results.md`.
 **Owner:** Joseph Cursio
 **Repo:** `~/xcode_projects/SwiftStats` (SwiftPM, `SwiftStatsCore` library + `swiftstats` CLI)
 **Inspired by:** [Sitrep](https://github.com/twostraws/Sitrep) (Paul Hudson / Hacking with Swift)
@@ -134,7 +134,7 @@ Sitrep declares function-count and documented-function-count fields but never fi
 
 ### 7.2 Size and shape (T0, per function / type / file)
 
-**Stripped lines** are lines that contain at least one token after comments and whitespace are removed. Doc comments and attributes don't count. This differs from Sitrep's figure (§7.1), which is kept as `sitrepLines` for comparison.
+**Stripped lines** are lines that contain at least one token after comments and whitespace are removed. Doc comments and attributes don't count, attributes nested in a body included, so a line holding only `@inlinable` counts toward neither the member, the type around it, nor the file. This differs from Sitrep's figure (§7.1), which is kept as `sitrepLines` for comparison.
 
 - Function count (by §6.1a kind) and documented function count
 - Type counts by kind including nested types
@@ -144,7 +144,7 @@ Sitrep declares function-count and documented-function-count fields but never fi
 
 ### 7.3 Complexity (T0)
 
-Computed by **SwiftCodeMetrics**, a shared library that SwiftProjectLint also uses, so both tools report the same numbers. Its specification (`Docs/Spec.md` in that repo) defines every rule, with worked examples; SwiftStats doesn't restate them. Each function record gets three scores, plus the library's definition version:
+Computed by **SwiftCodeMetrics**, a shared library that SwiftProjectLint also uses, so both tools report the same numbers. Its specification (`Docs/Spec.md` in that repo) defines every rule, with worked examples; SwiftStats doesn't restate them. Each function record gets three scores; the report records the library's definition version once (`metrics`), since every score in a scan shares it:
 
 - **Cognitive complexity**, Swift-specific, built on SonarSource's specification (v1.7, 2023). Sonar removed its own Swift rule, so the Swift constructs (`guard`, condition lists, `if case`, `try`/`await`, result builders, `#if`) are decided in the spec.
 - **Decision count**, McCabe's: every branch point, including `&&`, `||`, `??` and the ternary. Compared as `mccabe` (decisions + 1).
@@ -548,3 +548,9 @@ Reviewed on 2026-11-17 by checking every claim against the tools' source (full f
   - **M1a** links SwiftCodeMetrics and adds complexity, size and shape; its done-when keeps the SwiftLint parity check.
   - **M1b** adds the adapters and the remaining T0 counts, each with its own pass/fail criterion.
 - §11 named SwiftCodeMetrics v0.1, but the library is at v0.3, so M1 now pins `0.3.0`. Open question 2 is now needed by M1b.
+
+### v0.2.5 (2026-11-18, after M1a)
+
+- **M1a built** (`Docs/m1a-results.md`): all four done-when criteria met.
+- **§7.2:** stripped lines leave out every attribute, nested ones included, so functions, types and files measure the same way.
+- **§7.3:** the definition version is recorded once per report (`metrics`) rather than on each record.
