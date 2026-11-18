@@ -40,6 +40,20 @@ enum CollectorHarness {
         return FunctionCollector.collect(tree, context: context)
     }
 
+    /// Type records of a production file at the default path.
+    static func types(_ source: String) -> [TypeRecord] {
+        let tree = Parser.parse(source: source)
+        let context = FileContext(
+            module: "Lib",
+            file: defaultFile,
+            isTestTarget: false,
+            testCaseClasses: [],
+            converter: SourceLocationConverter(fileName: defaultFile, tree: tree),
+            firstLineColumnOffset: 0
+        )
+        return TypeCollector.collect(tree, context: context)
+    }
+
     /// Keys of a production file at the default path.
     static func keys(_ source: String) -> [String] {
         collect(source).map(\.key)

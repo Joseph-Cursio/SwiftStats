@@ -92,6 +92,8 @@ extension FunctionCollector {
                 to: draft.node.endPositionBeforeTrailingTrivia
             ),
             strippedLines: lines.count,
+            parameterCount: DeclarationFacts.parameterCount(of: draft.node),
+            isDocumented: DeclarationFacts.isDocumented(draft.node),
             bodyHash: BodyHash.of(text: draft.bodyTokens),
             parentKey: parentKey,
             ifConfig: conditions.isEmpty ? nil : Self.conjunction(conditions),
@@ -134,6 +136,8 @@ extension FunctionCollector {
                 to: last.endPositionBeforeTrailingTrivia
             ),
             strippedLines: lines.count,
+            parameterCount: nil,
+            isDocumented: false,
             bodyHash: BodyHash.of(text: statements.map(CanonicalText.tokenStream).joined(separator: " ")),
             parentKey: nil,
             ifConfig: nil,

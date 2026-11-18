@@ -17,6 +17,8 @@ extension FunctionRecord {
             file: file,
             range: range,
             strippedLines: strippedLines,
+            parameterCount: parameterCount,
+            isDocumented: isDocumented,
             bodyHash: bodyHash,
             parentKey: parentKey,
             ifConfig: ifConfig,

@@ -40,6 +40,17 @@ public struct PackageScanner {
         return lhs.key < rhs.key
     }
 
+    /// Types by file, then start position, then name.
+    private static func typeOrder(_ lhs: TypeRecord, _ rhs: TypeRecord) -> Bool {
+        if lhs.file != rhs.file {
+            return lhs.file < rhs.file
+        }
+        if lhs.range.start != rhs.range.start {
+            return lhs.range.start < rhs.range.start
+        }
+        return lhs.name < rhs.name
+    }
+
     /// Warnings by file, then message.
     private static func warningOrder(_ lhs: ScanWarning, _ rhs: ScanWarning) -> Bool {
         if lhs.file != rhs.file {
@@ -71,12 +82,12 @@ public struct PackageScanner {
         return (parsedByTarget, warnings)
     }
 
-    /// The function records of every parsed file, target by target.
-    private static func collectRecords(
+    /// The function, type and file records of every parsed file, target by target.
+    private static func collect(
         _ targets: [TargetSummary],
         _ parsedByTarget: [[ParsedFile]]
-    ) -> [FunctionRecord] {
-        var records: [FunctionRecord] = []
+    ) -> CollectedRecords {
+        var collected = CollectedRecords()
         for (target, parsed) in zip(targets, parsedByTarget) {
             let testCaseClasses = target.isTest ? TestCaseClassIndex.testCaseClasses(in: parsed.map(\.tree)) : []
             for file in parsed {
@@ -88,10 +99,28 @@ public struct PackageScanner {
                     converter: SourceLocationConverter(fileName: file.path, tree: file.tree),
                     firstLineColumnOffset: file.hasByteOrderMark ? byteOrderMark.count : 0
                 )
-                records += FunctionCollector.collect(file.tree, context: context)
+                collected.records += FunctionCollector.collect(file.tree, context: context)
+                collected.types += TypeCollector.collect(file.tree, context: context)
+                collected.files.append(FileMeasure.record(of: file, module: target.name))
             }
         }
-        return records
+        return collected
+    }
+
+    /// The Sitrep facts of every file, in path order, and a warning for each
+    /// type name declared with different first parents.
+    private static func sitrep(_ parsedByTarget: [[ParsedFile]]) -> (SitrepReport, [ScanWarning]) {
+        let sitrepFiles = parsedByTarget.flatMap(\.self)
+            .sorted { $0.path < $1.path }
+            .map { SitrepFileVisitor.facts(for: $0.tree, source: $0.source, path: $0.path) }
+        let warnings = SitrepCounter.namesWithConflictingParents(in: sitrepFiles).map { name in
+            ScanWarning(
+                file: nil,
+                message: "sitrep: \(name) is declared with different first parents; "
+                    + "its UIKit and SwiftUI line counts follow the first declaration in path order"
+            )
+        }
+        return (SitrepCounter.report(for: sitrepFiles), warnings)
     }
 
     /// Scans the package rooted at `packageRoot`.
@@ -103,7 +132,8 @@ public struct PackageScanner {
         let package = try describer.describePackage(at: root)
         let targets = TargetResolver.resolve(package)
         let (parsedByTarget, readWarnings) = Self.parseFiles(of: targets, root: root)
-        let (resolved, collisionWarnings) = KeyCollisions.resolve(Self.collectRecords(targets, parsedByTarget))
+        let collected = Self.collect(targets, parsedByTarget)
+        let (resolved, collisionWarnings) = KeyCollisions.resolve(collected.records)
         let ignoresCases = SwiftLintSettings.ignoresCaseStatements(packageRoot: root)
         let modules = zip(targets, parsedByTarget).flatMap { target, files in files.map { (target.name, $0) } }
         let (records, scoreWarnings) = ComplexityScorer.score(
@@ -111,19 +141,8 @@ public struct PackageScanner {
             files: modules,
             ignoresCaseStatements: ignoresCases
         )
-
-        let sitrepFiles = parsedByTarget.flatMap(\.self)
-            .sorted { $0.path < $1.path }
-            .map { SitrepFileVisitor.facts(for: $0.tree, source: $0.source, path: $0.path) }
-
-        let sitrepWarnings = SitrepCounter.namesWithConflictingParents(in: sitrepFiles).map { name in
-            ScanWarning(
-                file: nil,
-                message: "sitrep: \(name) is declared with different first parents; "
-                    + "its UIKit and SwiftUI line counts follow the first declaration in path order"
-            )
-        }
-
+        let (sitrep, sitrepWarnings) = Self.sitrep(parsedByTarget)
+        let warnings = readWarnings + collisionWarnings + scoreWarnings + sitrepWarnings
         return ScanReport(
             schemaVersion: ScanReport.currentSchemaVersion,
             tool: .current,
@@ -131,8 +150,16 @@ public struct PackageScanner {
             package: package.name,
             targets: targets,
             records: records.sorted(by: Self.recordOrder),
-            sitrep: SitrepCounter.report(for: sitrepFiles),
-            warnings: (readWarnings + collisionWarnings + scoreWarnings + sitrepWarnings).sorted(by: Self.warningOrder)
+            types: collected.types.sorted(by: Self.typeOrder),
+            files: collected.files.sorted { $0.path < $1.path },
+            rollups: RollupBuilder.rollups(
+                targets: targets,
+                records: records,
+                types: collected.types,
+                files: collected.files
+            ),
+            sitrep: sitrep,
+            warnings: warnings.sorted(by: Self.warningOrder)
         )
     }
 }

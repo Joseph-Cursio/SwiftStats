@@ -2,8 +2,8 @@
 //  ScanReport.swift
 //  SwiftStatsCore
 //
-//  The output of `swiftstats scan` (PRD M0, M1a): the package's function
-//  records and the Sitrep-compatible counts.
+//  The output of `swiftstats scan` (PRD M0, M1a): the package's function,
+//  type and file records, their roll-ups, and the Sitrep-compatible counts.
 //  It holds no timestamps or absolute paths, so scanning the same tree twice
 //  gives byte-identical JSON.
 //
@@ -26,6 +26,12 @@ public struct ScanReport: Codable, Hashable, Sendable {
     public let targets: [TargetSummary]
     /// Function records, sorted by file, then position, then key.
     public let records: [FunctionRecord]
+    /// Type records, sorted by file, then position.
+    public let types: [TypeRecord]
+    /// File records, sorted by path.
+    public let files: [FileRecord]
+    /// Size, shape and complexity per module and for the project.
+    public let rollups: [Rollup]
     /// Sitrep-compatible project counts (PRD §7.1).
     public let sitrep: SitrepReport
     /// Non-fatal problems, sorted.
