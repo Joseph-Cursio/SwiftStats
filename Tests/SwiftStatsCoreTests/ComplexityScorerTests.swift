@@ -51,4 +51,21 @@ struct ComplexityScorerTests {
         let expected = "complexity of helper() at line 3 (inside a macro's arguments?) joins no record"
         #expect(warnings.map(\.message) == [expected])
     }
+
+    @Test("a result builder hint names the attribute, or the opaque result's protocol")
+    func resultBuilders() {
+        let (records, warnings) = Self.score("""
+        import SwiftUI
+        struct Card: View {
+            @ViewBuilder
+            func badge(_ flag: Bool) -> some View {
+                if flag { Text("on") }
+            }
+            var body: some View { Text("card") }
+        }
+        """)
+
+        #expect(records.map(\.complexity?.resultBuilder) == ["ViewBuilder", "View"])
+        #expect(warnings.isEmpty)
+    }
 }

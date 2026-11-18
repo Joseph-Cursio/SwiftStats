@@ -147,6 +147,21 @@ struct FunctionCollectorTests {
         #expect(records[0].ifConfig == "os(macOS)")
     }
 
+    @Test("nested #if conditions are joined, each parenthesised when it has a space")
+    func nestedIfConfig() {
+        let source = """
+        #if os(iOS) || os(tvOS)
+        #if DEBUG
+        func trace() { }
+        #endif
+        #endif
+        """
+        let records = CollectorHarness.collect(source)
+
+        #expect(records.map(\.key) == ["Lib::func trace() #if (os(iOS) || os(tvOS)) && DEBUG"])
+        #expect(records.map(\.ifConfig) == ["(os(iOS) || os(tvOS)) && DEBUG"])
+    }
+
     @Test("private and fileprivate declarations carry the file; others don't")
     func fileScope() {
         let source = """
