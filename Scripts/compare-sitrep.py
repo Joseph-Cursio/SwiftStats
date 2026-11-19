@@ -77,7 +77,7 @@ def main():
     args = parser.parse_args()
 
     package = os.path.abspath(args.package)
-    scan = run_json([os.path.abspath(args.swiftstats), "scan", package])
+    scan = run_json([os.path.abspath(args.swiftstats), "scan", package, "--no-store"])
     files = [file for target in scan["targets"] for file in target["files"]]
     unreadable = {warning["file"] for warning in scan["warnings"] if warning.get("file")}
     files = [file for file in files if file not in unreadable]

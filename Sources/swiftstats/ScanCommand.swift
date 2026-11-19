@@ -2,55 +2,63 @@ import ArgumentParser
 import Foundation
 import SwiftStatsCore
 
-/// `swiftstats scan`: the syntax-only (T0) scan of a package.
+/// `swiftstats scan`: the syntax-only (T0) scan of a package, stored as a snapshot.
 struct ScanCommand: ParsableCommand {
+    /// How many characters of a commit the summary shows.
+    private static let shortCommitLength = 10
+
     static let configuration = CommandConfiguration(
         commandName: "scan",
-        abstract: "Scan a SwiftPM package and print its records, findings, test inventory, "
-            + "dependencies, roll-ups and Sitrep-compatible counts as JSON.",
+        abstract: "Scan a SwiftPM package and store the snapshot.",
         discussion: """
-        SwiftProjectLint and SwiftLint run when found on PATH (as swiftprojectlint and swiftlint), \
-        or at collectors.<name>.path in .swiftstats.yml; collectors.<name>.enabled: false turns one off. \
-        The dependency graph comes from `swift package show-dependencies`, run only when the package's \
-        dependencies are already resolved.
+        The snapshot goes to the package's store (.swiftstats/stats.sqlite, or store: in .swiftstats.yml, \
+        or --store), replacing any earlier snapshot of the same commit and dirtiness. --format json prints \
+        the scan's records, findings, test inventory, dependencies, roll-ups and Sitrep-compatible counts; \
+        -o writes them to a file. SwiftProjectLint and SwiftLint run when found on PATH (as swiftprojectlint \
+        and swiftlint), or at collectors.<name>.path in .swiftstats.yml; collectors.<name>.enabled: false \
+        turns one off. The dependency graph comes from `swift package show-dependencies`, run only when the \
+        package's dependencies are already resolved.
         """
     )
 
     @Argument(help: "The package directory (the one containing Package.swift).")
     var path = "."
 
-    @Option(help: "Output format. Only json exists so far.")
-    var format: ScanFormat = .json
+    @Option(help: "Print the scan in this format.")
+    var format: ScanFormat?
 
-    @Option(name: .shortAndLong, help: "Write the report to this file instead of standard output.")
+    @Option(name: .shortAndLong, help: "Write the scan JSON to this file.")
     var output: String?
 
-    @Option(help: "Read this configuration file instead of the package's .swiftstats.yml.")
-    var config: String?
+    @Flag(help: "Don't store the snapshot; print the scan JSON instead.")
+    var noStore = false
+
+    @OptionGroup var options: PackageOptions
 
     func run() throws {
-        let root = URL(fileURLWithPath: path, isDirectory: true)
-        let report: ScanReport
-        do {
-            if let config {
-                report = try PackageScanner().scan(packageAt: root, configurationFile: URL(fileURLWithPath: config))
+        try CommandFailure.reporting {
+            let report: ScanReport
+            if noStore {
+                let root = URL(fileURLWithPath: path, isDirectory: true)
+                report = try options.config.map { file in
+                    try PackageScanner().scan(packageAt: root, configurationFile: URL(fileURLWithPath: file))
+                } ?? PackageScanner().scan(packageAt: root)
             } else {
-                report = try PackageScanner().scan(packageAt: root)
+                let workspace = try options.workspace(path: path)
+                let (snapshot, _) = try workspace.scanWorkingTree()
+                report = snapshot.report
+                FileHandle.standardError.write(Data((summary(snapshot.info, store: workspace.store.url) + "\n").utf8))
             }
-        } catch ScanError.notAPackage(let path) {
-            // A wrong path is a usage error: exit 64 with the usage text.
-            throw ValidationError(ScanError.notAPackage(path).description)
-        } catch let error as ScanError {
-            // Anything else went wrong in the environment, not on the command
-            // line: report it and exit 1 without the usage text.
-            FileHandle.standardError.write(Data("Error: \(error.description)\n".utf8))
-            throw ExitCode.failure
+            if output != nil || format != nil || noStore {
+                try CommandFailure.write(try ScanReportEncoder.encode(report), to: output)
+            }
         }
-        let data = try ScanReportEncoder.encode(report)
-        if let output {
-            try data.write(to: URL(fileURLWithPath: output))
-        } else {
-            FileHandle.standardOutput.write(data)
-        }
+    }
+
+    /// The line `scan` prints about the snapshot it stored.
+    private func summary(_ info: SnapshotInfo, store: URL) -> String {
+        let commit = info.git.commit.map { String($0.prefix(Self.shortCommitLength)) } ?? "the working tree (no git)"
+        let dirty = info.git.isDirty ? " with uncommitted changes" : ""
+        return "Stored a snapshot of \(info.package) at \(commit)\(dirty) in \(store.path)"
     }
 }
