@@ -16,7 +16,7 @@ enum CollectorRun {
         targets: [TargetSummary],
         configuration: SwiftStatsConfiguration,
         locator: ToolLocator
-    ) -> [AdapterResult] {
+    ) -> [TimedAdapterResult] {
         let lint = ToolResolution.resolve(
             SwiftProjectLintAdapter.name,
             executable: "swiftprojectlint",
@@ -41,18 +41,19 @@ enum CollectorRun {
         ]
     }
 
-    /// `run`'s result when `resolution` found an executable, else a skip.
+    /// `run`'s result, timed, when `resolution` found an executable, else a skip.
     private static func result(
         _ resolution: ToolResolution,
         name: String,
         run: (URL) -> AdapterResult
-    ) -> AdapterResult {
+    ) -> TimedAdapterResult {
         switch resolution {
         case .found(let executable):
-            return run(executable)
+            let (result, milliseconds) = Stopwatch.time { run(executable) }
+            return TimedAdapterResult(result: result, executable: executable, milliseconds: milliseconds)
 
         case .skip(let reason):
-            return .skipped(name, reason: reason)
+            return TimedAdapterResult(result: .skipped(name, reason: reason), executable: nil, milliseconds: 0)
         }
     }
 }
