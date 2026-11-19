@@ -57,17 +57,30 @@ let kPackage = Package(
             ],
             swiftSettings: kSwiftSettings
         ),
+        // SwiftStats' own build identity (PRD §6.2), embedded at build time.
+        // Only the executable and the tests depend on it, never
+        // SwiftStatsCore, so a package using the library doesn't run the plugin.
+        .target(
+            name: "SwiftStatsBuildInfo",
+            swiftSettings: kSwiftSettings,
+            plugins: ["BuildInfoPlugin"]
+        ),
+        .plugin(
+            name: "BuildInfoPlugin",
+            capability: .buildTool()
+        ),
         .executableTarget(
             name: "swiftstats",
             dependencies: [
                 "SwiftStatsCore",
+                "SwiftStatsBuildInfo",
                 .product(name: "ArgumentParser", package: "swift-argument-parser")
             ],
             swiftSettings: kSwiftSettings
         ),
         .testTarget(
             name: "SwiftStatsCoreTests",
-            dependencies: ["SwiftStatsCore"],
+            dependencies: ["SwiftStatsCore", "SwiftStatsBuildInfo"],
             swiftSettings: kSwiftSettings
         )
     ]
