@@ -10,7 +10,7 @@ struct DiffCommand: ParsableCommand {
         discussion: """
         Compares functions (added, removed, moved, renamed, changed) and metrics, for collectors that ran \
         in both snapshots with the same build and options. A commit with no snapshot is scanned first, \
-        from a git archive export, and stored.
+        from a copy of its tracked files checked out into a temporary directory, and stored.
         """
     )
 
