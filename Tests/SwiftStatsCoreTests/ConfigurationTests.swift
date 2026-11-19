@@ -20,7 +20,7 @@ struct ConfigurationTests {
         return file
     }
 
-    @Test("excluded globs are read; keys for later milestones are accepted but unused")
+    @Test("excluded globs and the store are read; keys for later milestones are accepted but unused")
     func parsing() throws {
         let configuration = try SwiftStatsConfiguration.parse(
             "excluded:\n  - Sources/Generated\nhistory:\n  window: 30d\nstore: stats.sqlite\n",
@@ -28,18 +28,20 @@ struct ConfigurationTests {
         )
 
         #expect(configuration.excluded == ["Sources/Generated"])
-        #expect(configuration.unusedKeys == ["history", "store"])
+        #expect(configuration.unusedKeys == ["history"])
+        #expect(configuration.store == "stats.sqlite")
+        #expect(try SwiftStatsConfiguration.parse("", path: "c.yml").store == nil)
         #expect(try SwiftStatsConfiguration.parse("", path: "c.yml").excluded.isEmpty)
         #expect(try SwiftStatsConfiguration.parse("---\n# nothing yet\n", path: "c.yml").excluded.isEmpty)
         let commentedOut = "excluded:\n#  - Sources/Generated\n"
         #expect(try SwiftStatsConfiguration.parse(commentedOut, path: "c.yml").excluded.isEmpty)
     }
 
-    @Test("unknown keys, a non-list excluded, invalid YAML and a non-mapping are errors")
+    @Test("unknown keys, a non-list excluded, a non-path store, invalid YAML and a non-mapping are errors")
     func errors() {
         let cases = [
             "exclude:\n  - A\n", "excluded: Sources\n", "excluded: [\n", "- just\n- a list\n",
-            "excluded:\n  - A\nexcluded:\n  - B\n", "excluded:\n  - [nested]\n"
+            "excluded:\n  - A\nexcluded:\n  - B\n", "excluded:\n  - [nested]\n", "store:\n  - a\n", "store: \"\"\n"
         ]
         for text in cases {
             #expect(throws: ScanError.self) {

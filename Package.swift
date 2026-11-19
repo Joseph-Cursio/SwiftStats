@@ -38,6 +38,11 @@ let kPackage = Package(
         .package(
             url: "https://github.com/jpsim/Yams.git",
             from: "6.1.0"
+        ),
+        // The snapshot store (PRD §9, D9).
+        .package(
+            url: "https://github.com/groue/GRDB.swift.git",
+            from: "7.12.0"
         )
     ],
     targets: [
@@ -47,7 +52,8 @@ let kPackage = Package(
                 .product(name: "SwiftSyntax", package: "swift-syntax"),
                 .product(name: "SwiftParser", package: "swift-syntax"),
                 .product(name: "SwiftCodeMetrics", package: "SwiftCodeMetrics"),
-                .product(name: "Yams", package: "Yams")
+                .product(name: "Yams", package: "Yams"),
+                .product(name: "GRDB", package: "GRDB.swift")
             ],
             swiftSettings: kSwiftSettings
         ),
