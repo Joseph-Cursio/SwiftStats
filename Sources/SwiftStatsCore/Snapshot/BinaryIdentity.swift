@@ -30,15 +30,15 @@ enum BinaryIdentity {
     /// otherwise nil. HEAD alone would name a binary built before a pull
     /// with the commit after it, and a commit's own date predates the pull.
     private static func sourceCommit(of binary: URL) -> String? {
-        var directory = binary.deletingLastPathComponent()
-        while directory.lastPathComponent != buildDirectoryName {
-            let parent = directory.deletingLastPathComponent()
-            guard parent.path != directory.path else {
-                return nil
-            }
-            directory = parent
+        // The nearest `.build` above the binary, found among the path's
+        // components: walking up with `deletingLastPathComponent` never
+        // ends, since the parent of `/` is `/..`.
+        let components = binary.deletingLastPathComponent().standardizedFileURL.pathComponents
+        guard let buildIndex = components.lastIndex(of: buildDirectoryName), buildIndex > 0 else {
+            return nil
         }
-        let package = directory.deletingLastPathComponent()
+        let packagePath = "/" + components[1..<buildIndex].joined(separator: "/")
+        let package = URL(fileURLWithPath: packagePath, isDirectory: true)
         guard GitReader.isTopLevel(package), GitReader.isClean(package),
               let commit = GitReader.line(["rev-parse", "HEAD"], in: package),
               let moved = headMoved(in: package),
