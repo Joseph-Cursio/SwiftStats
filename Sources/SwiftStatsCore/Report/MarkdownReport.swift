@@ -2,9 +2,9 @@
 //  MarkdownReport.swift
 //  SwiftStatsCore
 //
-//  `swiftstats report --format markdown` (PRD §10): derived signals first
-//  (none until M3), then the collectors, the project roll-up with findings
-//  per 1k stripped lines (D6), and per-module detail.
+//  `swiftstats report --format markdown` (PRD §10): derived signals first,
+//  then the collectors, the project roll-up with findings per 1k stripped
+//  lines (D6), the history's notes, and per-module detail.
 //
 
 /// Renders a snapshot report as Markdown.
@@ -17,7 +17,7 @@ public enum MarkdownReport {
     /// `report` as Markdown, ending in a newline.
     public static func render(_ report: SnapshotReport) -> String {
         var lines = header(report.snapshot)
-        lines += ["", "## Signals", "", "None yet: derived signals arrive with M3."]
+        lines += ["", "## Signals"] + MarkdownSignals.render(report.signals, history: report.scan.history)
         lines += ["", "## Collectors", ""] + collectors(report.snapshot.collectors)
         let project = projectParts.compactMap { part in
             report.scan.rollups.first { $0.scope == .project && $0.name == part }
@@ -25,6 +25,9 @@ public enum MarkdownReport {
         lines += ["", "## Project", ""] + summary(project)
         lines += ["", "### Findings by rule", ""] + findings(project, field: \.findings, label: "Rule")
         lines += ["", "### Findings by kind", ""] + findings(project, field: \.findingKinds, label: "Kind")
+        if let history = report.scan.history {
+            lines += ["", "## History", ""] + MarkdownSignals.history(history)
+        }
         let modules = report.scan.rollups.filter { $0.scope == .module }.sorted { $0.name < $1.name }
         lines += ["", "## Modules", ""] + summary(modules)
         return lines.joined(separator: "\n") + "\n"

@@ -65,6 +65,11 @@ public struct SnapshotWorkspace {
         return commit
     }
 
+    /// The signals of snapshot `id`, with this workspace's thresholds.
+    public func signals(id: Int64) throws -> [SignalResult] {
+        SignalEngine.signals(of: try store.load(id: id), thresholds: configuration.signals)
+    }
+
     /// Scans the working tree, reading history from `history`, stores the
     /// snapshot and returns it with its id.
     public func scanWorkingTree(history: HistorySource = .automatic) throws -> (snapshot: ScannedSnapshot, id: Int64) {

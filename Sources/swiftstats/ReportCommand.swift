@@ -33,6 +33,7 @@ struct ReportCommand: ParsableCommand {
             let id = try workspace.reportSnapshotID(revision: commit)
             let report = SnapshotReport(
                 snapshot: try workspace.store.info(id: id),
+                signals: try workspace.signals(id: id),
                 scan: try workspace.store.report(id: id)
             )
             let data: Data = switch format {
