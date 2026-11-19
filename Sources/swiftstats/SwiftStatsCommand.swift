@@ -15,7 +15,9 @@ struct SwiftStatsCommand: ParsableCommand {
             ScanCommand.self,
             ReportCommand.self,
             DiffCommand.self,
-            TopCommand.self
+            TopCommand.self,
+            TrendCommand.self,
+            BackfillCommand.self
         ]
     )
 }
