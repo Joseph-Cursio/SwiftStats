@@ -41,6 +41,27 @@ extension FileContext {
         return lines
     }
 
+    /// The stripped lines of `body` without its own opening and closing
+    /// braces (PRD §6.6): what the code inside it occupies, whatever the
+    /// layout of the braces.
+    func innerLineCount(of body: Syntax) -> Int {
+        var tokens = body.tokens(viewMode: .sourceAccurate)
+            .filter { $0.presence == .present && Self.isAttributeToken($0) == false }[...]
+        if tokens.first?.tokenKind == .leftBrace {
+            tokens = tokens.dropFirst()
+        }
+        if tokens.last?.tokenKind == .rightBrace {
+            tokens = tokens.dropLast()
+        }
+        var lines = Set<Int>()
+        for token in tokens {
+            let first = converter.location(for: token.positionAfterSkippingLeadingTrivia).line
+            let last = converter.location(for: token.endPositionBeforeTrailingTrivia).line
+            lines.formUnion(first...max(first, last))
+        }
+        return lines.count
+    }
+
     /// The inclusive span from `start` to the character before `end`.
     func span(from start: AbsolutePosition, to end: AbsolutePosition) -> SourceSpan {
         let startLocation = converter.location(for: start)

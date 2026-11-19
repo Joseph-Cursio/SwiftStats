@@ -17,6 +17,7 @@ extension FunctionRecord {
             file: file,
             range: range,
             strippedLines: strippedLines,
+            bodyLines: bodyLines,
             parameterCount: parameterCount,
             isDocumented: isDocumented,
             isAsync: isAsync,

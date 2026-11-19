@@ -13,8 +13,8 @@ public struct ScanReport: Codable, Hashable, Sendable {
     /// The version of this output format. Bumped on any change a reader
     /// would notice: 2 adds complexity, size and shape (M1a); 3 adds
     /// generated files, findings, risk markers, API surface, the test
-    /// inventory and dependencies (M1b).
-    public static let currentSchemaVersion = 3
+    /// inventory and dependencies (M1b); 4 adds each function's body lines (M2).
+    public static let currentSchemaVersion = 4
 
     /// The output format version (`currentSchemaVersion` when written).
     public let schemaVersion: Int

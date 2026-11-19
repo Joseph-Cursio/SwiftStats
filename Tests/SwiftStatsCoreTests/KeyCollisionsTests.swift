@@ -29,6 +29,7 @@ struct KeyCollisionsTests {
             file: file,
             range: SourceSpan(start: start, end: SourcePosition(line: endLine, column: 1)),
             strippedLines: 1,
+            bodyLines: 1,
             parameterCount: 0,
             isDocumented: false,
             isAsync: false,
