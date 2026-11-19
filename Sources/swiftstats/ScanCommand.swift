@@ -30,8 +30,11 @@ struct ScanCommand: ParsableCommand {
     @Option(name: .shortAndLong, help: "Write the scan JSON to this file.")
     var output: String?
 
-    @Flag(help: "Don't store the snapshot; print the scan JSON instead.")
+    @Flag(help: "Don't store the snapshot; print the scan JSON instead. Reads no git history.")
     var noStore = false
+
+    @Flag(help: "Don't read the git history (churn, fixes and the signals built on them).")
+    var noHistory = false
 
     @OptionGroup var options: PackageOptions
 
@@ -45,7 +48,8 @@ struct ScanCommand: ParsableCommand {
                 } ?? PackageScanner().scan(packageAt: root)
             } else {
                 let workspace = try options.workspace(path: path)
-                let (snapshot, _) = try workspace.scanWorkingTree()
+                let history: HistorySource = noHistory ? .skipped("--no-history") : .automatic
+                let (snapshot, _) = try workspace.scanWorkingTree(history: history)
                 report = snapshot.report
                 FileHandle.standardError.write(Data((summary(snapshot.info, store: workspace.store.url) + "\n").utf8))
             }

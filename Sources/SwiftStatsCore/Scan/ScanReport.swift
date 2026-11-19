@@ -13,8 +13,9 @@ public struct ScanReport: Codable, Hashable, Sendable {
     /// The version of this output format. Bumped on any change a reader
     /// would notice: 2 adds complexity, size and shape (M1a); 3 adds
     /// generated files, findings, risk markers, API surface, the test
-    /// inventory and dependencies (M1b); 4 adds each function's body lines (M2).
-    public static let currentSchemaVersion = 4
+    /// inventory and dependencies (M1b); 4 adds each function's body lines
+    /// (M2); 5 adds history (M3).
+    public static let currentSchemaVersion = 5
 
     /// The output format version (`currentSchemaVersion` when written).
     public let schemaVersion: Int
@@ -48,4 +49,31 @@ public struct ScanReport: Codable, Hashable, Sendable {
     public let dependencies: DependencyReport
     /// Non-fatal problems, sorted.
     public let warnings: [ScanWarning]
+    /// What the history collector found; absent when it didn't run (PRD §7.13).
+    public internal(set) var history: HistoryReport?
+
+    /// The report with `history` attached and the history collector's
+    /// status replaced by `status`.
+    func with(history: HistoryReport?, status: CollectorStatus) -> Self {
+        var report = Self(
+            schemaVersion: schemaVersion,
+            tool: tool,
+            metrics: metrics,
+            package: package,
+            configuration: configuration,
+            targets: targets,
+            records: records,
+            types: types,
+            files: files,
+            rollups: rollups,
+            sitrep: sitrep,
+            collectors: (collectors.filter { $0.name != status.name } + [status]).sorted { $0.name < $1.name },
+            findings: findings,
+            tests: tests,
+            dependencies: dependencies,
+            warnings: warnings
+        )
+        report.history = history
+        return report
+    }
 }

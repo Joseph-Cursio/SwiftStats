@@ -64,6 +64,12 @@ public struct SnapshotStore: Sendable {
         for location in snapshot.report.findings.flatMap({ FindingRow.rows(for: $0, snapshotId: snapshotId) }) {
             try location.insert(database)
         }
+        if let history = snapshot.report.history {
+            try HistoryRunRow(history, snapshotId: snapshotId).insert(database)
+            for family in history.families {
+                try FamilyHistoryRow(family, snapshotId: snapshotId).insert(database)
+            }
+        }
         for (rollup, numbers) in metrics {
             for number in numbers {
                 try RollupMetricRow(
@@ -140,6 +146,23 @@ public struct SnapshotStore: Sendable {
         }
     }
 
+    /// The newest snapshot at `packagePath` of `commit` with dirtiness
+    /// `isDirty`, whatever the package was called then. A full commit hash
+    /// and the package path name one package tree, whose name can change
+    /// from commit to commit.
+    public func snapshotID(packagePath: String, commit: String, isDirty: Bool) throws -> Int64? {
+        try queue.read { database in
+            try Int64.fetchOne(
+                database,
+                sql: """
+                    SELECT max(id) FROM snapshot
+                    WHERE packagePath = ? AND commitHash = ? AND isDirty = ?
+                    """,
+                arguments: [packagePath, commit, isDirty]
+            )
+        }
+    }
+
     /// The most recently taken snapshot of `package` at `packagePath`.
     public func latestSnapshotID(package: String, packagePath: String) throws -> Int64? {
         try queue.read { database in
@@ -150,6 +173,34 @@ public struct SnapshotStore: Sendable {
                     ORDER BY date DESC, id DESC LIMIT 1
                     """,
                 arguments: [package, packagePath]
+            )
+        }
+    }
+
+    /// The clean snapshots of `package` at `packagePath`, with their commits.
+    public func cleanSnapshots(package: String, packagePath: String) throws -> [(id: Int64, commit: String)] {
+        try queue.read { database in
+            let rows = try Row.fetchAll(
+                database,
+                sql: """
+                    SELECT id, commitHash FROM snapshot
+                    WHERE package = ? AND packagePath = ? AND isDirty = 0 AND commitHash IS NOT NULL
+                    ORDER BY id
+                    """,
+                arguments: [package, packagePath]
+            )
+            return rows.map { row in (id: row["id"], commit: row["commitHash"]) }
+        }
+    }
+
+    /// The value of roll-up number `metric` in the roll-up `name` of `scope`
+    /// in snapshot `id`; nil when that snapshot has no such number.
+    public func rollupValue(id: Int64, scope: RollupScope, name: String, metric: String) throws -> Double? {
+        try queue.read { database in
+            try Double.fetchOne(
+                database,
+                sql: "SELECT value FROM rollupMetric WHERE snapshotId = ? AND scope = ? AND name = ? AND metric = ?",
+                arguments: [id, scope.rawValue, name, metric]
             )
         }
     }
@@ -176,6 +227,11 @@ public struct SnapshotStore: Sendable {
                 rollups: try RollupMetricRow
                     .filter(Column("snapshotId") == id)
                     .order(Column("scope"), Column("name"), Column("metric"))
+                    .fetchAll(database),
+                history: try HistoryRunRow.filter(Column("snapshotId") == id).fetchOne(database),
+                familyHistory: try FamilyHistoryRow
+                    .filter(Column("snapshotId") == id)
+                    .order(Column("file"), Column("line"), Column("family"))
                     .fetchAll(database)
             )
         }

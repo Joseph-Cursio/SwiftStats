@@ -46,16 +46,38 @@ enum ProcessRunner {
             .output
     }
 
+    /// Runs `executable` with `arguments` in `directory`, reading standard
+    /// input from the file at `input`, and returns its standard output.
+    /// Throws `ScanError.commandFailed` on a non-zero exit.
+    static func run(executable: String, arguments: [String], in directory: URL, input: URL) throws -> Data {
+        try run(
+            executable: executable,
+            arguments: arguments,
+            in: directory,
+            accepting: [0],
+            environment: [:],
+            input: input
+        ).output
+    }
+
     /// Runs `executable` as `run(executable:arguments:in:accepting:)` does,
-    /// with `environment` added to this process's.
+    /// with `environment` added to this process's and standard input read
+    /// from `input` when given.
     private static func run(
         executable: String,
         arguments: [String],
         in directory: URL,
         accepting accepted: Set<Int32>,
-        environment: [String: String]
+        environment: [String: String],
+        input: URL? = nil
     ) throws -> ProcessOutput {
         let process = Process()
+        if let input {
+            guard let handle = try? FileHandle(forReadingFrom: input) else {
+                throw ScanError.commandFailed(executable, -1, "could not read \(input.path)")
+            }
+            process.standardInput = handle
+        }
         process.executableURL = URL(fileURLWithPath: executable)
         process.arguments = arguments
         process.currentDirectoryURL = directory

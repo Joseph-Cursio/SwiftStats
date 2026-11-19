@@ -1,0 +1,260 @@
+{
+  "commit": "79908525089012c1492cbcc392c88994f14f198a",
+  "commits": [
+    {
+      "commit": "3477f68c380bb88e7ec70625cd9000ed91b04040",
+      "excluded": "sweep",
+      "label": null,
+      "matched": true,
+      "note": "",
+      "subject": "Fix access-modifier, optional-Bool and async-without-await violations"
+    },
+    {
+      "commit": "10cd923f0d95980e4f8bfa58fdc4605fe4f0d172",
+      "excluded": null,
+      "label": null,
+      "matched": true,
+      "note": "",
+      "subject": "Fix two emitter defects that made 89% of output uncompilable"
+    },
+    {
+      "commit": "15bb86cd91d138569bb3b06d3633f86cf3b858f4",
+      "excluded": null,
+      "label": null,
+      "matched": true,
+      "note": "",
+      "subject": "Fix the release build the probe broke, and guard the class"
+    },
+    {
+      "commit": "8ce93bb1ebae4a1647b9b4ce0722efbb8638d7ac",
+      "excluded": null,
+      "label": null,
+      "matched": false,
+      "note": "",
+      "subject": "Verify three more accepted laws; record why verify skips the rest (#701)"
+    },
+    {
+      "commit": "2e9fc2223a15b1f77c98f2fc1648d59c71f71d90",
+      "excluded": null,
+      "label": null,
+      "matched": false,
+      "note": "",
+      "subject": "Cite the filed issues, not a doc that is not on main yet"
+    },
+    {
+      "commit": "1505e848b9d5c48766959fde61b549c7a13ea18a",
+      "excluded": null,
+      "label": null,
+      "matched": false,
+      "note": "",
+      "subject": "State the uniquifier law over the names a reserving initializer reserved (#692)"
+    },
+    {
+      "commit": "0956e1212270ffd2dbee1a48b8070f81d03eb7db",
+      "excluded": null,
+      "label": null,
+      "matched": false,
+      "note": "",
+      "subject": "Move defaulted parameters after the required ones"
+    },
+    {
+      "commit": "f873ec76b761a0dd15d1b06d1eb48a7771f85b1c",
+      "excluded": null,
+      "label": null,
+      "matched": false,
+      "note": "",
+      "subject": "Run the precision arm on the three judged translators (#666)"
+    },
+    {
+      "commit": "277f5900e62913b81d9b76f05dca964e81c45938",
+      "excluded": null,
+      "label": null,
+      "matched": false,
+      "note": "",
+      "subject": "Pin SwiftPropertyLaws 4.10.0"
+    },
+    {
+      "commit": "757a4c7cc772e23545905875c888870ae1b8955a",
+      "excluded": null,
+      "label": null,
+      "matched": false,
+      "note": "",
+      "subject": "Pin covers' root guard with an identical layout under another root"
+    },
+    {
+      "commit": "752c26b3f5fb1d2008a4c888c82f54f947c1de9f",
+      "excluded": null,
+      "label": null,
+      "matched": false,
+      "note": "",
+      "subject": "Never skip a UF_HIDDEN file in the universe, the scanned directory's included"
+    },
+    {
+      "commit": "34e516a6c82e4a0b6a1517197f136ed6fbf8a757",
+      "excluded": null,
+      "label": null,
+      "matched": false,
+      "note": "",
+      "subject": "Bound the construction universe the way the shared spec now says"
+    },
+    {
+      "commit": "35d56395481734aef536569eb70bf7f4f1fdcad7",
+      "excluded": null,
+      "label": null,
+      "matched": false,
+      "note": "",
+      "subject": "Bump to 1.159.0"
+    },
+    {
+      "commit": "b427ffff1de168be31804104ca46b8f0279e357b",
+      "excluded": null,
+      "label": null,
+      "matched": false,
+      "note": "",
+      "subject": "Follow a precondition one hop through a helper call"
+    },
+    {
+      "commit": "ce764c72193004bd37a7fbd536d79ee817df265f",
+      "excluded": null,
+      "label": null,
+      "matched": false,
+      "note": "",
+      "subject": "Read what a string-rewriting body removes from its output"
+    },
+    {
+      "commit": "5513517cdee3858a86453b4557eabb3ea9d687c5",
+      "excluded": null,
+      "label": null,
+      "matched": false,
+      "note": "",
+      "subject": "Pin SwiftPropertyLaws 4.9.1"
+    },
+    {
+      "commit": "9868ce9a2ce4f1f6b8125a8afbb787f42dac63bc",
+      "excluded": null,
+      "label": null,
+      "matched": false,
+      "note": "",
+      "subject": "Pin SwiftPropertyLaws 4.8.0"
+    },
+    {
+      "commit": "1b29c508c36e3f2fdc96cc7b3ee53f18d38be25c",
+      "excluded": null,
+      "label": null,
+      "matched": false,
+      "note": "",
+      "subject": "Construct a class receiver at the call site, not as a drawn value"
+    },
+    {
+      "commit": "9a7625f4c279ea37cfb3a5bf4d0f111c74a88633",
+      "excluded": null,
+      "label": null,
+      "matched": false,
+      "note": "",
+      "subject": "Report a test target's real directory, and let each consumer choose"
+    },
+    {
+      "commit": "dd7286191113a99dfcac77cb5eb99b0516854d02",
+      "excluded": null,
+      "label": null,
+      "matched": false,
+      "note": "",
+      "subject": "Annotate the multi-argument stub's tuple, so its error stops hiding the real one"
+    },
+    {
+      "commit": "1d81301b4ac0637f2f13b375b4a6da8ef540d69e",
+      "excluded": null,
+      "label": null,
+      "matched": false,
+      "note": "",
+      "subject": "Write caseiterable-key-injectivity stubs as an exhaustive loop"
+    },
+    {
+      "commit": "0b6ac1b12f09bb7dd739fc673cad8bf5572a65ff",
+      "excluded": null,
+      "label": null,
+      "matched": false,
+      "note": "",
+      "subject": "Pin the raw values of every enum stored in .swiftinfer/ files"
+    },
+    {
+      "commit": "5ee051c10a4168e56dd805efad23f3a79b600e57",
+      "excluded": null,
+      "label": null,
+      "matched": false,
+      "note": "",
+      "subject": "Say which subject could not be called, not which template is missing"
+    },
+    {
+      "commit": "44a23e1cbe3fcd3b1abe94c756356c8688856234",
+      "excluded": null,
+      "label": null,
+      "matched": false,
+      "note": "",
+      "subject": "Match SwiftProjectLint's SEI pin, so the cross-repo guard can speak again"
+    },
+    {
+      "commit": "ebd1bd52a933f5d4a808893a965d1c2bc3c54600",
+      "excluded": null,
+      "label": null,
+      "matched": false,
+      "note": "",
+      "subject": "The sixth comparator also stopped at `line`"
+    },
+    {
+      "commit": "89ab94faf3067112ef0287132ff0ab0b365a1540",
+      "excluded": null,
+      "label": null,
+      "matched": false,
+      "note": "",
+      "subject": "Drop monotonicity where the subject's name says it cannot hold"
+    },
+    {
+      "commit": "63026288c2fbd043b5ae58b70d87cca8192f8354",
+      "excluded": null,
+      "label": null,
+      "matched": false,
+      "note": "",
+      "subject": "Resolve \u00a78.4: NUL stays, because the question was aimed at the wrong component"
+    },
+    {
+      "commit": "94119bbf765ed39b627f2b583f679066fe1e12e9",
+      "excluded": null,
+      "label": null,
+      "matched": false,
+      "note": "",
+      "subject": "Score the collision-pairing lever in mutants killed, and narrow the claim"
+    },
+    {
+      "commit": "74282b43386aa007732d526fb9a543586455824b",
+      "excluded": null,
+      "label": null,
+      "matched": false,
+      "note": "",
+      "subject": "Ask the arm's findings the consumer question, on the day they appeared"
+    },
+    {
+      "commit": "a9641cbdd4de1cb9c389e1ccd9317da114e097bd",
+      "excluded": null,
+      "label": null,
+      "matched": false,
+      "note": "",
+      "subject": "Measure the backtest's two blind spots, and find one of them live"
+    }
+  ],
+  "historyOptions": [
+    "window: 90d",
+    "fix_patterns: ^(fix|fixes|fixed)\\b | \\bbug\\b | \\bregression\\b | ^hotfix\\b",
+    "fix_exclude_patterns: \\b(swiftlint|lint|violations?|warnings?)\\b | ^(style|chore)(\\(.*\\))?:",
+    "repeat_window: 14d",
+    "half_life: 90d",
+    "bulk_files: 30",
+    "ignore_revs: ",
+    "coupling.min_support: 3"
+  ],
+  "packagePath": "",
+  "repo": "SwiftInferProperties",
+  "unmatchedSampled": "every 16 of 433",
+  "windowCommitsTouchingSwift": 436,
+  "windowStart": "2026-08-16T07:36:29Z"
+}

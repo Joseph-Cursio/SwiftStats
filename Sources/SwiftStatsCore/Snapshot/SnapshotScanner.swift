@@ -15,9 +15,9 @@ public struct SnapshotScanner {
     private static let dateFormat = Date.ISO8601FormatStyle(timeZone: .gmt)
 
     /// The scan itself.
-    private let scanner: PackageScanner
+    let scanner: PackageScanner
     /// Which build of SwiftStats is scanning.
-    private let build: SwiftStatsBuild
+    let build: SwiftStatsBuild
 
     /// A snapshot scanner that scans with `scanner` as build `build`.
     public init(scanner: PackageScanner, build: SwiftStatsBuild) {
@@ -34,18 +34,24 @@ public struct SnapshotScanner {
     /// `configurationFile` (or the default). `git` and `toolchain` are read
     /// when not given; a scan of an exported revision supplies its git state.
     /// Changes to the files at `ignoring` (relative to `root`, such as a
-    /// store kept in the package) don't make the tree dirty.
+    /// store kept in the package) don't make the tree dirty. `history` says
+    /// whether and where to read the history (PRD §7.13).
     public func scan(
         packageAt root: URL,
         configurationFile: URL?,
         git: GitState? = nil,
         ignoring: [String] = [],
         toolchain: Toolchain? = nil,
-        date: Date = Date()
+        date: Date = Date(),
+        history: HistorySource = .automatic
     ) throws -> ScannedSnapshot {
         let packageRoot = root.standardizedFileURL
         let gitState = git ?? GitReader.read(packageRoot: packageRoot, ignoring: ignoring)
-        let outcome = try scanner.run(packageAt: packageRoot, configurationFile: configurationFile)
+        let scanned = try scanner.run(packageAt: packageRoot, configurationFile: configurationFile)
+        let (outcome, historyRun) = Self.addHistory(
+            to: scanned,
+            source: history.resolved(packageRoot: packageRoot, git: gitState)
+        )
         let tools = toolchain ?? ToolchainReader.read(packageRoot: packageRoot, tools: scanner.tools)
         let own = CollectorRunInfo(
             name: SwiftStatsCollector.name,
@@ -61,7 +67,9 @@ public struct SnapshotScanner {
             durationMilliseconds: outcome.milliseconds[SwiftStatsCollector.name] ?? 0
         )
         let external = outcome.report.collectors.map { status in
-            info(for: status, outcome: outcome, toolchain: tools)
+            status.name == HistoryCollector.name
+                ? historyRun.info(status)
+                : info(for: status, outcome: outcome, toolchain: tools)
         }
         return ScannedSnapshot(
             info: SnapshotInfo(

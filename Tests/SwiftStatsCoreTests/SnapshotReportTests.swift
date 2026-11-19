@@ -16,7 +16,11 @@ struct SnapshotReportTests {
         let render = {
             // A fresh connection each time, as separate runs would have.
             let store = try SnapshotStore(at: url)
-            let report = SnapshotReport(snapshot: try store.info(id: id), scan: try store.report(id: id))
+            let report = SnapshotReport(
+                snapshot: try store.info(id: id),
+                signals: SignalEngine.signals(of: try store.load(id: id), thresholds: SignalThresholds()),
+                scan: try store.report(id: id)
+            )
             return (try ScanReportEncoder.encode(report), MarkdownReport.render(report))
         }
         let first = try render()
@@ -55,15 +59,21 @@ struct SnapshotReportTests {
         ]
         let id = try SnapshotHarness.stored(files, commit: "c1", in: store).id
 
-        let report = SnapshotReport(snapshot: try store.info(id: id), scan: try store.report(id: id))
+        let report = SnapshotReport(
+            snapshot: try store.info(id: id),
+            signals: SignalEngine.signals(of: try store.load(id: id), thresholds: SignalThresholds()),
+            scan: try store.report(id: id)
+        )
         let text = MarkdownReport.render(report)
 
         let headings = text.split(separator: "\n").filter { $0.hasPrefix("#") }.map(String.init)
-        #expect(headings == [
-            "# Probe", "## Signals", "## Collectors", "## Project",
+        let expected = [
+            "# Probe", "## Signals", "### Hotspots", "### Bug-prone", "### Unstable fixes",
+            "### Tests not keeping up", "### Safe to leave", "## Collectors", "## Project",
             "### Findings by rule", "### Findings by kind", "## Modules"
-        ])
-        #expect(text.contains("None yet: derived signals arrive with M3."))
+        ]
+        #expect(headings == expected)
+        #expect(text.contains("Left out: history was not collected: skipped, not in a git repository with commits."))
         // One `precondition` in four stripped lines: 250 per 1k.
         #expect(text.contains("| production | swiftstats | precondition | 1 | 250.0 |"))
     }

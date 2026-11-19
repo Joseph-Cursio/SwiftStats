@@ -41,6 +41,13 @@ enum CollectorRun {
         ]
     }
 
+    /// Every external collector skipped for `reason`.
+    static func skipped(_ reason: String) -> [TimedAdapterResult] {
+        [SwiftProjectLintAdapter.name, SwiftLintAdapter.name].map { name in
+            TimedAdapterResult(result: .skipped(name, reason: reason), executable: nil, milliseconds: 0)
+        }
+    }
+
     /// `run`'s result, timed, when `resolution` found an executable, else a skip.
     private static func result(
         _ resolution: ToolResolution,

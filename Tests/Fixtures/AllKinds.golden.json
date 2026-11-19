@@ -9,6 +9,14 @@
       "state" : "skipped"
     },
     {
+      "name" : "history",
+      "options" : [
+
+      ],
+      "reason" : "not requested",
+      "state" : "skipped"
+    },
+    {
       "name" : "swiftlint",
       "options" : [
 
@@ -1882,7 +1890,7 @@
       }
     }
   ],
-  "schemaVersion" : 4,
+  "schemaVersion" : 5,
   "sitrep" : {
     "imports" : [
       {

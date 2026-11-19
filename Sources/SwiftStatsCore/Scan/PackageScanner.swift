@@ -20,12 +20,17 @@ public struct PackageScanner {
     let describer: any PackageDescriber
     /// Where the external collectors' tools come from.
     let tools: ToolLocator
+    /// When set, the external tool adapters are skipped for this reason
+    /// (SwiftStats' own measurements and the dependency graph still run).
+    let toolSkipReason: String?
 
     /// Creates a scanner that learns a package's targets through
-    /// `describer` and finds external tools with `tools`.
-    public init(describer: any PackageDescriber, tools: ToolLocator = .path) {
+    /// `describer` and finds external tools with `tools`, or skips them
+    /// for `toolSkipReason` when it is given.
+    public init(describer: any PackageDescriber, tools: ToolLocator = .path, toolSkipReason: String? = nil) {
         self.describer = describer
         self.tools = tools
+        self.toolSkipReason = toolSkipReason
     }
 
     /// Creates a scanner that asks SwiftPM for package descriptions and

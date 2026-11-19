@@ -20,7 +20,7 @@ struct ConfigurationTests {
         return file
     }
 
-    @Test("excluded globs and the store are read; keys for later milestones are accepted but unused")
+    @Test("excluded globs, the store and history are read; nothing is left unused")
     func parsing() throws {
         let configuration = try SwiftStatsConfiguration.parse(
             "excluded:\n  - Sources/Generated\nhistory:\n  window: 30d\nstore: stats.sqlite\n",
@@ -28,7 +28,8 @@ struct ConfigurationTests {
         )
 
         #expect(configuration.excluded == ["Sources/Generated"])
-        #expect(configuration.unusedKeys == ["history"])
+        #expect(configuration.unusedKeys.isEmpty)
+        #expect(configuration.history.windowDays == 30)
         #expect(configuration.store == "stats.sqlite")
         #expect(try SwiftStatsConfiguration.parse("", path: "c.yml").store == nil)
         #expect(try SwiftStatsConfiguration.parse("", path: "c.yml").excluded.isEmpty)
@@ -118,7 +119,7 @@ struct ConfigurationTests {
     func scanExcludes() throws {
         let config = try Self.temporaryFile(
             ".swiftstats.yml",
-            "excluded:\n  - Sources/Tool\n  - \"**/XCTestTests.swift\"\nsignals: {}\n"
+            "excluded:\n  - Sources/Tool\n  - \"**/XCTestTests.swift\"\ncollectors:\n  periphery: {}\n"
         )
         let report = try PackageScanner(tools: .nowhere).scan(packageAt: Self.fixture, configurationFile: config)
 
@@ -126,7 +127,8 @@ struct ConfigurationTests {
         #expect(report.configuration.excludedFiles == expected)
         #expect(report.records.contains { report.configuration.excludedFiles.contains($0.file) } == false)
         #expect(report.files.map(\.path).contains("Sources/Tool/main.swift") == false)
-        let warning = report.warnings.first { $0.message.hasPrefix("`signals` is accepted but not used yet") }
+        let notUsed = "`collectors.periphery` is accepted but not used yet"
+        let warning = report.warnings.first { $0.message.hasPrefix(notUsed) }
         #expect(warning?.file == config.path)
     }
 

@@ -2,9 +2,8 @@
 //  SwiftStatsConfiguration.swift
 //  SwiftStatsCore
 //
-//  `.swiftstats.yml` (PRD §10.1). `excluded`, `generated`, `collectors` and
-//  `store` are read; the other keys the PRD names are accepted, with a warning until the
-//  milestone that uses them, and any other key is an error.
+//  `.swiftstats.yml` (PRD §10.1). `excluded`, `generated`, `collectors`,
+//  `store`, `history` and `signals` are read; any other key is an error.
 //
 
 import Foundation
@@ -15,9 +14,11 @@ public struct SwiftStatsConfiguration: Hashable, Sendable {
     /// The file name looked for in the package root.
     public static let fileName = ".swiftstats.yml"
     /// Keys the PRD names but no collector reads yet.
-    private static let laterKeys: Set<String> = ["history", "signals"]
+    private static let laterKeys: Set<String> = []
     /// Every key the file may hold.
-    private static let knownKeys = laterKeys.union(["collectors", "excluded", "generated", "store"])
+    private static let knownKeys = laterKeys.union(
+        ["collectors", "excluded", "generated", "history", "signals", "store"]
+    )
 
     /// Path globs, relative to the package root, of files not to scan.
     public let excluded: [String]
@@ -29,6 +30,10 @@ public struct SwiftStatsConfiguration: Hashable, Sendable {
     /// Where the snapshot store is (PRD D9), relative to the package root
     /// or absolute; nil for the default `.swiftstats/stats.sqlite`.
     public let store: String?
+    /// How the history collector reads git history (PRD §7.13).
+    public let history: HistoryOptions
+    /// The ranked signals' membership thresholds (PRD §8).
+    public let signals: SignalThresholds
     /// Keys present in the file that no collector reads yet, sorted.
     public let unusedKeys: [String]
     /// The file the configuration came from, as warnings name it; nil for the default.
@@ -41,6 +46,8 @@ public struct SwiftStatsConfiguration: Hashable, Sendable {
             generated: GeneratedCode.defaultGlobs,
             collectors: [:],
             store: nil,
+            history: .standard,
+            signals: SignalThresholds(),
             unusedKeys: [],
             source: nil
         )
@@ -52,6 +59,8 @@ public struct SwiftStatsConfiguration: Hashable, Sendable {
         generated: [String],
         collectors: [String: CollectorSettings],
         store: String?,
+        history: HistoryOptions,
+        signals: SignalThresholds,
         unusedKeys: [String],
         source: String?
     ) {
@@ -59,6 +68,8 @@ public struct SwiftStatsConfiguration: Hashable, Sendable {
         self.generated = generated
         self.collectors = collectors
         self.store = store
+        self.history = history
+        self.signals = signals
         self.unusedKeys = unusedKeys
         self.source = source
     }
@@ -103,6 +114,8 @@ public struct SwiftStatsConfiguration: Hashable, Sendable {
                 generated: GeneratedCode.defaultGlobs,
                 collectors: [:],
                 store: nil,
+                history: .standard,
+                signals: SignalThresholds(),
                 unusedKeys: [],
                 source: source
             )
@@ -127,6 +140,8 @@ public struct SwiftStatsConfiguration: Hashable, Sendable {
                 ?? GeneratedCode.defaultGlobs,
             collectors: settings,
             store: try storePath(mapping["store"], path: path),
+            history: try historyOptions(mapping["history"], path: path),
+            signals: try signalThresholds(mapping["signals"], path: path),
             unusedKeys: (Set(keys).intersection(laterKeys).union(unusedCollectorKeys)).sorted(),
             source: source
         )

@@ -40,7 +40,8 @@ extension PackageScanner {
         let (measured, measureMilliseconds) = Stopwatch.time {
             Self.measure(targets, root: root, configuration: configuration)
         }
-        let timed = CollectorRun.run(root: root, targets: targets, configuration: configuration, locator: tools)
+        let timed = toolSkipReason.map(CollectorRun.skipped)
+            ?? CollectorRun.run(root: root, targets: targets, configuration: configuration, locator: tools)
         let adapters = timed.map(\.result)
         let findings = Self.attach(measured.markers + adapters.flatMap(\.findings), to: measured)
         let ranTools = Set(adapters.filter { $0.status.state == .ran }.map(\.status.name))
@@ -65,7 +66,8 @@ extension PackageScanner {
                 findings: FindingTally(findings: findings, tools: ranTools)
             ),
             sitrep: measured.sitrep,
-            collectors: (adapters.map(\.status) + [dependencies.status]).sorted { $0.name < $1.name },
+            collectors: (adapters.map(\.status) + [dependencies.status, HistoryCollector.notRequested])
+                .sorted { $0.name < $1.name },
             findings: findings.sorted(by: Self.findingOrder),
             tests: measured.tests.sorted { ($0.file, $0.key) < ($1.file, $1.key) },
             dependencies: dependencies.report,
