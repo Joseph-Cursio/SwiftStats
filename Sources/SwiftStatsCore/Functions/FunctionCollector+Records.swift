@@ -87,6 +87,7 @@ extension FunctionCollector {
                 to: draft.node.endPositionBeforeTrailingTrivia
             ),
             strippedLines: lines.count,
+            bodyLines: context.innerLineCount(of: draft.body),
             parameterCount: DeclarationFacts.parameterCount(of: draft.node),
             isDocumented: DeclarationFacts.isDocumented(draft.node),
             isAsync: DeclarationFacts.isAsync(draft.node),
@@ -132,6 +133,7 @@ extension FunctionCollector {
                 to: last.endPositionBeforeTrailingTrivia
             ),
             strippedLines: lines.count,
+            bodyLines: lines.count,
             parameterCount: nil,
             isDocumented: false,
             isAsync: false,

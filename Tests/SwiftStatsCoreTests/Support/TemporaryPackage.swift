@@ -18,6 +18,11 @@ struct TemporaryPackage {
     /// The targets the description lists.
     let targets: [DescribedTarget]
 
+    /// A describer that gives this package's description.
+    var describer: any PackageDescriber {
+        FixedDescriber(package: DescribedPackage(name: "Probe", targets: targets))
+    }
+
     /// A package holding `files` (paths relative to the root) and a
     /// `Package.swift`, whose description lists a library `Lib` with the
     /// files under `Sources/Lib/` and a test target `LibTests` with those
@@ -58,8 +63,7 @@ struct TemporaryPackage {
 
     /// Scans the package, finding tools with `tools`.
     func scan(tools: ToolLocator) throws -> ScanReport {
-        let describer = FixedDescriber(package: DescribedPackage(name: "Probe", targets: targets))
-        return try PackageScanner(describer: describer, tools: tools).scan(packageAt: root)
+        try PackageScanner(describer: describer, tools: tools).scan(packageAt: root)
     }
 
     /// Removes the package.

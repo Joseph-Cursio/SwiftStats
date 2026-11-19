@@ -2,8 +2,8 @@
 //  SwiftStatsConfiguration.swift
 //  SwiftStatsCore
 //
-//  `.swiftstats.yml` (PRD §10.1). `excluded`, `generated` and `collectors`
-//  are read; the other keys the PRD names are accepted, with a warning until the
+//  `.swiftstats.yml` (PRD §10.1). `excluded`, `generated`, `collectors` and
+//  `store` are read; the other keys the PRD names are accepted, with a warning until the
 //  milestone that uses them, and any other key is an error.
 //
 
@@ -15,9 +15,9 @@ public struct SwiftStatsConfiguration: Hashable, Sendable {
     /// The file name looked for in the package root.
     public static let fileName = ".swiftstats.yml"
     /// Keys the PRD names but no collector reads yet.
-    private static let laterKeys: Set<String> = ["history", "signals", "store"]
+    private static let laterKeys: Set<String> = ["history", "signals"]
     /// Every key the file may hold.
-    private static let knownKeys = laterKeys.union(["collectors", "excluded", "generated"])
+    private static let knownKeys = laterKeys.union(["collectors", "excluded", "generated", "store"])
 
     /// Path globs, relative to the package root, of files not to scan.
     public let excluded: [String]
@@ -26,6 +26,9 @@ public struct SwiftStatsConfiguration: Hashable, Sendable {
     public let generated: [String]
     /// `collectors.<name>` entries, by collector name.
     public let collectors: [String: CollectorSettings]
+    /// Where the snapshot store is (PRD D9), relative to the package root
+    /// or absolute; nil for the default `.swiftstats/stats.sqlite`.
+    public let store: String?
     /// Keys present in the file that no collector reads yet, sorted.
     public let unusedKeys: [String]
     /// The file the configuration came from, as warnings name it; nil for the default.
@@ -33,7 +36,14 @@ public struct SwiftStatsConfiguration: Hashable, Sendable {
 
     /// A configuration with nothing excluded and the default generated globs.
     public init() {
-        self.init(excluded: [], generated: GeneratedCode.defaultGlobs, collectors: [:], unusedKeys: [], source: nil)
+        self.init(
+            excluded: [],
+            generated: GeneratedCode.defaultGlobs,
+            collectors: [:],
+            store: nil,
+            unusedKeys: [],
+            source: nil
+        )
     }
 
     /// A configuration. Fields are documented on their properties.
@@ -41,12 +51,14 @@ public struct SwiftStatsConfiguration: Hashable, Sendable {
         excluded: [String],
         generated: [String],
         collectors: [String: CollectorSettings],
+        store: String?,
         unusedKeys: [String],
         source: String?
     ) {
         self.excluded = excluded
         self.generated = generated
         self.collectors = collectors
+        self.store = store
         self.unusedKeys = unusedKeys
         self.source = source
     }
@@ -90,6 +102,7 @@ public struct SwiftStatsConfiguration: Hashable, Sendable {
                 excluded: [],
                 generated: GeneratedCode.defaultGlobs,
                 collectors: [:],
+                store: nil,
                 unusedKeys: [],
                 source: source
             )
@@ -113,9 +126,21 @@ public struct SwiftStatsConfiguration: Hashable, Sendable {
             generated: try mapping["generated"].map { try globs($0, key: "generated", path: path) }
                 ?? GeneratedCode.defaultGlobs,
             collectors: settings,
+            store: try storePath(mapping["store"], path: path),
             unusedKeys: (Set(keys).intersection(laterKeys).union(unusedCollectorKeys)).sorted(),
             source: source
         )
+    }
+
+    /// The `store` path, or nil when absent; an error unless it is a string.
+    private static func storePath(_ value: Node?, path: String) throws -> String? {
+        guard let value, value.null == nil else {
+            return nil
+        }
+        guard let text = value.scalar?.string, text.isEmpty == false else {
+            throw ScanError.configurationInvalid(path, "`store` must be a path")
+        }
+        return text
     }
 
     /// A list of glob strings, or an error naming `key`. An absent or empty

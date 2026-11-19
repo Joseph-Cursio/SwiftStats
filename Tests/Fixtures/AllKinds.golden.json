@@ -94,6 +94,7 @@
   "records" : [
     {
       "bodyHash" : "d302450fc4435c11",
+      "bodyLines" : 1,
       "complexity" : {
         "cognitive" : 0,
         "decisionCount" : 0,
@@ -125,6 +126,7 @@
     },
     {
       "bodyHash" : "76e73a0efe72fb6f",
+      "bodyLines" : 1,
       "complexity" : {
         "cognitive" : 0,
         "decisionCount" : 0,
@@ -155,6 +157,7 @@
     },
     {
       "bodyHash" : "01050d5baa8152d6",
+      "bodyLines" : 1,
       "complexity" : {
         "cognitive" : 0,
         "decisionCount" : 0,
@@ -187,6 +190,7 @@
     },
     {
       "bodyHash" : "f93d215aaebf61e1",
+      "bodyLines" : 1,
       "complexity" : {
         "cognitive" : 0,
         "decisionCount" : 0,
@@ -219,6 +223,7 @@
     },
     {
       "bodyHash" : "00eccaff1575bd06",
+      "bodyLines" : 1,
       "complexity" : {
         "cognitive" : 0,
         "decisionCount" : 0,
@@ -250,6 +255,7 @@
     },
     {
       "bodyHash" : "00eccaff1575bd06",
+      "bodyLines" : 1,
       "complexity" : {
         "cognitive" : 0,
         "decisionCount" : 0,
@@ -281,6 +287,7 @@
     },
     {
       "bodyHash" : "6689c84557597491",
+      "bodyLines" : 2,
       "complexity" : {
         "cognitive" : 0,
         "decisionCount" : 0,
@@ -312,6 +319,7 @@
     },
     {
       "bodyHash" : "28acf588cce0bbf3",
+      "bodyLines" : 1,
       "complexity" : {
         "cognitive" : 0,
         "decisionCount" : 0,
@@ -343,6 +351,7 @@
     },
     {
       "bodyHash" : "ea9cee6726fed6ca",
+      "bodyLines" : 1,
       "complexity" : {
         "cognitive" : 0,
         "decisionCount" : 0,
@@ -374,6 +383,7 @@
     },
     {
       "bodyHash" : "5fdcc8f30e1643a0",
+      "bodyLines" : 1,
       "complexity" : {
         "cognitive" : 0,
         "decisionCount" : 0,
@@ -405,6 +415,7 @@
     },
     {
       "bodyHash" : "3f8b898d82805994",
+      "bodyLines" : 1,
       "complexity" : {
         "cognitive" : 0,
         "decisionCount" : 0,
@@ -436,6 +447,7 @@
     },
     {
       "bodyHash" : "52444d006a85cad9",
+      "bodyLines" : 2,
       "complexity" : {
         "cognitive" : 1,
         "decisionCount" : 1,
@@ -468,6 +480,7 @@
     {
       "accessorKind" : "get",
       "bodyHash" : "09725b45265f8a1c",
+      "bodyLines" : 1,
       "complexity" : {
         "cognitive" : 0,
         "decisionCount" : 0,
@@ -499,6 +512,7 @@
     {
       "accessorKind" : "get",
       "bodyHash" : "8a99a5d863fda516",
+      "bodyLines" : 1,
       "complexity" : {
         "cognitive" : 0,
         "decisionCount" : 0,
@@ -530,6 +544,7 @@
     {
       "accessorKind" : "set",
       "bodyHash" : "5368c61801c21901",
+      "bodyLines" : 1,
       "complexity" : {
         "cognitive" : 0,
         "decisionCount" : 0,
@@ -561,6 +576,7 @@
     {
       "accessorKind" : "willSet",
       "bodyHash" : "c189433aeaffa6d4",
+      "bodyLines" : 1,
       "complexity" : {
         "cognitive" : 0,
         "decisionCount" : 0,
@@ -592,6 +608,7 @@
     {
       "accessorKind" : "didSet",
       "bodyHash" : "7fcbf629310ed9fe",
+      "bodyLines" : 1,
       "complexity" : {
         "cognitive" : 0,
         "decisionCount" : 0,
@@ -622,6 +639,7 @@
     },
     {
       "bodyHash" : "35fa00fd868a1146",
+      "bodyLines" : 4,
       "complexity" : {
         "cognitive" : 0,
         "decisionCount" : 0,
@@ -653,6 +671,7 @@
     },
     {
       "bodyHash" : "09a0815c161093d1",
+      "bodyLines" : 1,
       "complexity" : {
         "cognitive" : 0,
         "decisionCount" : 0,
@@ -685,6 +704,7 @@
     },
     {
       "bodyHash" : "1271d829fcb30ae7",
+      "bodyLines" : 1,
       "complexity" : {
         "cognitive" : 0,
         "decisionCount" : 0,
@@ -716,6 +736,7 @@
     },
     {
       "bodyHash" : "9288593763a41083",
+      "bodyLines" : 2,
       "file" : "Sources/AllKinds/Shapes.swift",
       "isAsync" : false,
       "isDocumented" : false,
@@ -740,6 +761,7 @@
     {
       "accessorKind" : "get",
       "bodyHash" : "7c827398f29d478a",
+      "bodyLines" : 1,
       "complexity" : {
         "cognitive" : 0,
         "decisionCount" : 0,
@@ -772,6 +794,7 @@
     {
       "accessorKind" : "set",
       "bodyHash" : "dfefe169ea596b24",
+      "bodyLines" : 1,
       "complexity" : {
         "cognitive" : 0,
         "decisionCount" : 0,
@@ -803,6 +826,7 @@
     },
     {
       "bodyHash" : "1c668c24725fa618",
+      "bodyLines" : 1,
       "complexity" : {
         "cognitive" : 0,
         "decisionCount" : 0,
@@ -834,6 +858,7 @@
     },
     {
       "bodyHash" : "95a772b146cd45e4",
+      "bodyLines" : 1,
       "complexity" : {
         "cognitive" : 0,
         "decisionCount" : 0,
@@ -865,6 +890,7 @@
     },
     {
       "bodyHash" : "0c104affe8d872ca",
+      "bodyLines" : 1,
       "complexity" : {
         "cognitive" : 0,
         "decisionCount" : 0,
@@ -896,6 +922,7 @@
     },
     {
       "bodyHash" : "69885c1f90bb7575",
+      "bodyLines" : 2,
       "complexity" : {
         "cognitive" : 0,
         "decisionCount" : 0,
@@ -926,6 +953,7 @@
     },
     {
       "bodyHash" : "195a029cd0d6aa32",
+      "bodyLines" : 1,
       "complexity" : {
         "cognitive" : 0,
         "decisionCount" : 0,
@@ -957,6 +985,7 @@
     },
     {
       "bodyHash" : "955bc4c18b8575e8",
+      "bodyLines" : 1,
       "complexity" : {
         "cognitive" : 0,
         "decisionCount" : 0,
@@ -988,6 +1017,7 @@
     },
     {
       "bodyHash" : "1ed093fb4c5263a3",
+      "bodyLines" : 1,
       "complexity" : {
         "cognitive" : 0,
         "decisionCount" : 0,
@@ -1019,6 +1049,7 @@
     },
     {
       "bodyHash" : "ad81e916dbc88acb",
+      "bodyLines" : 1,
       "complexity" : {
         "cognitive" : 0,
         "decisionCount" : 0,
@@ -1050,6 +1081,7 @@
     },
     {
       "bodyHash" : "25eca6c5d0fe726a",
+      "bodyLines" : 1,
       "complexity" : {
         "cognitive" : 0,
         "decisionCount" : 0,
@@ -1081,6 +1113,7 @@
     },
     {
       "bodyHash" : "5fca41c2d4d2c7fb",
+      "bodyLines" : 1,
       "complexity" : {
         "cognitive" : 0,
         "decisionCount" : 0,
@@ -1112,6 +1145,7 @@
     },
     {
       "bodyHash" : "257c1be96ae69f4b",
+      "bodyLines" : 0,
       "complexity" : {
         "cognitive" : 0,
         "decisionCount" : 0,
@@ -1143,6 +1177,7 @@
     },
     {
       "bodyHash" : "8d5a9ce96bb9fddd",
+      "bodyLines" : 1,
       "complexity" : {
         "cognitive" : 0,
         "decisionCount" : 0,
@@ -1847,7 +1882,7 @@
       }
     }
   ],
-  "schemaVersion" : 3,
+  "schemaVersion" : 4,
   "sitrep" : {
     "imports" : [
       {

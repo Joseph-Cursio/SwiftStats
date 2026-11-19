@@ -27,6 +27,9 @@ public struct FunctionRecord: Codable, Hashable, Sendable {
     /// Lines that hold at least one token of the declaration, attributes
     /// (nested ones included) and comments excluded (PRD §7.2).
     public let strippedLines: Int
+    /// Stripped lines of the body alone, without its opening and closing
+    /// braces: 1 for `{ true }` however it is laid out (PRD §6.6).
+    public let bodyLines: Int
     /// Parameters in the declaration's own parameter list, for `func`, `init`
     /// and `subscript`; nil for kinds without one.
     public let parameterCount: Int?
@@ -61,6 +64,7 @@ public struct FunctionRecord: Codable, Hashable, Sendable {
         file: String,
         range: SourceSpan,
         strippedLines: Int,
+        bodyLines: Int,
         parameterCount: Int?,
         isDocumented: Bool,
         isAsync: Bool,
@@ -77,6 +81,7 @@ public struct FunctionRecord: Codable, Hashable, Sendable {
         self.file = file
         self.range = range
         self.strippedLines = strippedLines
+        self.bodyLines = bodyLines
         self.parameterCount = parameterCount
         self.isDocumented = isDocumented
         self.isAsync = isAsync

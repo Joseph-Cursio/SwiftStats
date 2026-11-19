@@ -17,7 +17,7 @@ public struct PackageScanner {
     private static let byteOrderMark = Array("\u{FEFF}".utf8)
 
     /// Where package descriptions come from.
-    private let describer: any PackageDescriber
+    let describer: any PackageDescriber
     /// Where the external collectors' tools come from.
     let tools: ToolLocator
 
@@ -145,7 +145,7 @@ public struct PackageScanner {
 
     /// The targets with the files `configuration` excludes left out, and
     /// those files, sorted.
-    private static func excluding(
+    static func excluding(
         _ targets: [TargetSummary],
         by configuration: SwiftStatsConfiguration
     ) -> (targets: [TargetSummary], excluded: [String]) {
@@ -172,7 +172,7 @@ public struct PackageScanner {
     }
 
     /// A warning for each key of `.swiftstats.yml` no collector reads yet.
-    private static func unusedKeyWarnings(_ configuration: SwiftStatsConfiguration) -> [ScanWarning] {
+    static func unusedKeyWarnings(_ configuration: SwiftStatsConfiguration) -> [ScanWarning] {
         configuration.unusedKeys.map { key in
             ScanWarning(
                 file: configuration.source,
@@ -198,7 +198,7 @@ public struct PackageScanner {
     }
 
     /// SwiftStats' own measurements of `targets`' files.
-    private static func measure(
+    static func measure(
         _ targets: [TargetSummary],
         root: URL,
         configuration: SwiftStatsConfiguration
@@ -235,7 +235,7 @@ public struct PackageScanner {
     }
 
     /// `raw` findings attached to the measured records, types and files.
-    private static func attach(_ raw: [RawFinding], to measured: ScanMeasurements) -> [Finding] {
+    static func attach(_ raw: [RawFinding], to measured: ScanMeasurements) -> [Finding] {
         let mapper = FindingMapper(
             records: measured.records,
             types: measured.types,
@@ -258,53 +258,6 @@ public struct PackageScanner {
     /// Scans the package rooted at `packageRoot` with the configuration in
     /// `configurationFile`, or the default configuration when it is nil.
     public func scan(packageAt packageRoot: URL, configurationFile: URL?) throws -> ScanReport {
-        let root = packageRoot.standardizedFileURL
-        guard FileManager.default.fileExists(atPath: root.appendingPathComponent("Package.swift").path) else {
-            throw ScanError.notAPackage(root.path)
-        }
-        let configuration = try SwiftStatsConfiguration.load(configurationFile, root: root)
-        let package = try describer.describePackage(at: root)
-        let (targets, excludedFiles) = Self.excluding(TargetResolver.resolve(package), by: configuration)
-        let measured = Self.measure(targets, root: root, configuration: configuration)
-        let adapters = CollectorRun.run(root: root, targets: targets, configuration: configuration, locator: tools)
-        let findings = Self.attach(measured.markers + adapters.flatMap(\.findings), to: measured)
-        let ranTools = Set(adapters.filter { $0.status.state == .ran }.map(\.status.name))
-            .union([MarkerCollector.tool])
-        let compiled = Set(TargetResolver.resolve(package).flatMap(\.files))
-        let dependencies = dependencies(of: package, root: root, configuration: configuration)
-        let warnings = measured.warnings + Self.unusedKeyWarnings(configuration) + adapters.flatMap(\.warnings)
-            + UnbuiltTests.warnings(root: root, compiled: compiled) + dependencies.warnings
-        return ScanReport(
-            schemaVersion: ScanReport.currentSchemaVersion,
-            tool: .current,
-            metrics: measured.metrics,
-            package: package.name,
-            configuration: ScanConfigurationSummary(
-                excluded: configuration.excluded,
-                excludedFiles: excludedFiles,
-                generated: configuration.generated
-            ),
-            targets: targets,
-            records: measured.records.sorted(by: Self.recordOrder),
-            types: measured.types.sorted(by: Self.typeOrder),
-            files: measured.files.sorted { $0.path < $1.path },
-            rollups: RollupBuilder.rollups(
-                targets: targets,
-                input: RollupInput(
-                    records: measured.records,
-                    types: measured.types,
-                    files: measured.files,
-                    declarations: measured.declarations,
-                    tests: measured.tests,
-                    findings: FindingTally(findings: findings, tools: ranTools)
-                )
-            ),
-            sitrep: measured.sitrep,
-            collectors: (adapters.map(\.status) + [dependencies.status]).sorted { $0.name < $1.name },
-            findings: findings.sorted(by: Self.findingOrder),
-            tests: measured.tests.sorted { ($0.file, $0.key) < ($1.file, $1.key) },
-            dependencies: dependencies.report,
-            warnings: warnings.sorted(by: Self.warningOrder)
-        )
+        try run(packageAt: packageRoot, configurationFile: configurationFile).report
     }
 }

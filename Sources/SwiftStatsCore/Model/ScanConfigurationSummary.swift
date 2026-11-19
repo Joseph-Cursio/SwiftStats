@@ -22,4 +22,9 @@ public struct ScanConfigurationSummary: Codable, Hashable, Sendable {
         self.excludedFiles = excludedFiles
         self.generated = generated
     }
+
+    /// The summary of `configuration`, which excluded `excludedFiles`.
+    init(_ configuration: SwiftStatsConfiguration, excludedFiles: [String]) {
+        self.init(excluded: configuration.excluded, excludedFiles: excludedFiles, generated: configuration.generated)
+    }
 }

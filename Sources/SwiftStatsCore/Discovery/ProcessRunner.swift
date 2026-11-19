@@ -30,10 +30,38 @@ enum ProcessRunner {
         in directory: URL,
         accepting accepted: Set<Int32>
     ) throws -> ProcessOutput {
+        try run(executable: executable, arguments: arguments, in: directory, accepting: accepted, environment: [:])
+    }
+
+    /// Runs `executable` with `arguments` in `directory`, with `environment`
+    /// added to this process's, and returns its standard output. Throws
+    /// `ScanError.commandFailed` on a non-zero exit.
+    static func run(
+        executable: String,
+        arguments: [String],
+        in directory: URL,
+        environment: [String: String]
+    ) throws -> Data {
+        try run(executable: executable, arguments: arguments, in: directory, accepting: [0], environment: environment)
+            .output
+    }
+
+    /// Runs `executable` as `run(executable:arguments:in:accepting:)` does,
+    /// with `environment` added to this process's.
+    private static func run(
+        executable: String,
+        arguments: [String],
+        in directory: URL,
+        accepting accepted: Set<Int32>,
+        environment: [String: String]
+    ) throws -> ProcessOutput {
         let process = Process()
         process.executableURL = URL(fileURLWithPath: executable)
         process.arguments = arguments
         process.currentDirectoryURL = directory
+        if environment.isEmpty == false {
+            process.environment = ProcessInfo.processInfo.environment.merging(environment) { $1 }
+        }
 
         // Standard error goes to a file, so only one stream is read while
         // the command runs and neither can fill up and block it.

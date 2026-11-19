@@ -38,6 +38,11 @@ let kPackage = Package(
         .package(
             url: "https://github.com/jpsim/Yams.git",
             from: "6.1.0"
+        ),
+        // The snapshot store (PRD §9, D9).
+        .package(
+            url: "https://github.com/groue/GRDB.swift.git",
+            from: "7.12.0"
         )
     ],
     targets: [
@@ -47,21 +52,35 @@ let kPackage = Package(
                 .product(name: "SwiftSyntax", package: "swift-syntax"),
                 .product(name: "SwiftParser", package: "swift-syntax"),
                 .product(name: "SwiftCodeMetrics", package: "SwiftCodeMetrics"),
-                .product(name: "Yams", package: "Yams")
+                .product(name: "Yams", package: "Yams"),
+                .product(name: "GRDB", package: "GRDB.swift")
             ],
             swiftSettings: kSwiftSettings
+        ),
+        // SwiftStats' own build identity (PRD §6.2), embedded at build time.
+        // Only the executable and the tests depend on it, never
+        // SwiftStatsCore, so a package using the library doesn't run the plugin.
+        .target(
+            name: "SwiftStatsBuildInfo",
+            swiftSettings: kSwiftSettings,
+            plugins: ["BuildInfoPlugin"]
+        ),
+        .plugin(
+            name: "BuildInfoPlugin",
+            capability: .buildTool()
         ),
         .executableTarget(
             name: "swiftstats",
             dependencies: [
                 "SwiftStatsCore",
+                "SwiftStatsBuildInfo",
                 .product(name: "ArgumentParser", package: "swift-argument-parser")
             ],
             swiftSettings: kSwiftSettings
         ),
         .testTarget(
             name: "SwiftStatsCoreTests",
-            dependencies: ["SwiftStatsCore"],
+            dependencies: ["SwiftStatsCore", "SwiftStatsBuildInfo"],
             swiftSettings: kSwiftSettings
         )
     ]

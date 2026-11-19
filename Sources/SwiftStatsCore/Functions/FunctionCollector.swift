@@ -182,6 +182,7 @@ final class FunctionCollector: SyntaxVisitor {
             node: Syntax(node),
             countFrom: node.attributes.endPosition,
             bodyTokens: CanonicalText.tokenStream(body),
+            body: Syntax(body),
             role: role(forFunction: node)
         ))
         return .visitChildren
@@ -204,6 +205,7 @@ final class FunctionCollector: SyntaxVisitor {
             node: Syntax(node),
             countFrom: node.attributes.endPosition,
             bodyTokens: CanonicalText.tokenStream(body),
+            body: Syntax(body),
             role: nonTestRole
         ))
         return .visitChildren
@@ -226,6 +228,7 @@ final class FunctionCollector: SyntaxVisitor {
             node: Syntax(node),
             countFrom: node.attributes.endPosition,
             bodyTokens: CanonicalText.tokenStream(body),
+            body: Syntax(body),
             role: nonTestRole
         ))
         return .visitChildren
@@ -248,6 +251,7 @@ final class FunctionCollector: SyntaxVisitor {
             node: Syntax(node),
             countFrom: node.attributes.endPosition,
             bodyTokens: CanonicalText.tokenStream(block),
+            body: Syntax(block),
             role: nonTestRole
         ))
         return .visitChildren
@@ -278,6 +282,7 @@ final class FunctionCollector: SyntaxVisitor {
             node: Syntax(node),
             countFrom: node.position,
             bodyTokens: CanonicalText.tokenStream(items),
+            body: Syntax(items),
             role: nonTestRole
         ))
         return .visitChildren
@@ -312,6 +317,7 @@ final class FunctionCollector: SyntaxVisitor {
             node: Syntax(node),
             countFrom: node.attributes.endPosition,
             bodyTokens: CanonicalText.tokenStream(body),
+            body: Syntax(body),
             role: nonTestRole
         ))
         return .visitChildren

@@ -26,6 +26,8 @@ struct RecordDraft {
     let countFrom: AbsolutePosition
     /// The token stream the body hash is taken over.
     let bodyTokens: String
+    /// The body, whose own lines are counted apart from the braces.
+    let body: Syntax
     /// The record's role.
     let role: CodeRole
 }
