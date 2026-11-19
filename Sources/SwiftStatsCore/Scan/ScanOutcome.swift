@@ -11,7 +11,7 @@ import Foundation
 /// A scan's report with each collector's run time and executable.
 struct ScanOutcome {
     /// The scan JSON.
-    let report: ScanReport
+    var report: ScanReport
     /// Wall-clock milliseconds by collector name, `swiftstats` included.
     let milliseconds: [String: Int]
     /// The binary each external collector ran, by name.

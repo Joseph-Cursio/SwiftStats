@@ -18,15 +18,17 @@ public struct SnapshotWorkspace {
     public let root: URL
     /// The store.
     public let store: SnapshotStore
+    /// The package's configuration, or the one given on the command line.
+    public let configuration: SwiftStatsConfiguration
     /// The configuration file given on the command line, if any.
-    private let configurationFile: URL?
+    let configurationFile: URL?
     /// Scans with snapshot metadata.
-    private let scanner: SnapshotScanner
+    let scanner: SnapshotScanner
     /// Learns the package's name.
-    private let describer: any PackageDescriber
+    let describer: any PackageDescriber
     /// The store's path from the package root when it is kept inside the
     /// package outside `.swiftstats/`, so its writes don't dirty the tree.
-    private let storeInPackage: [String]
+    let storeInPackage: [String]
 
     /// The workspace of the package at `root`, with its store at `storeOverride`,
     /// else where its configuration says, else the default.
@@ -42,10 +44,11 @@ public struct SnapshotWorkspace {
         guard FileManager.default.fileExists(atPath: packageRoot.appendingPathComponent("Package.swift").path) else {
             throw ScanError.notAPackage(packageRoot.path)
         }
-        let configuration = try StoreLocation.configuration(packageRoot: packageRoot, file: configurationFile)
-        let url = StoreLocation.resolve(packageRoot: packageRoot, configuration: configuration, override: storeOverride)
+        let loaded = try StoreLocation.configuration(packageRoot: packageRoot, file: configurationFile)
+        let url = StoreLocation.resolve(packageRoot: packageRoot, configuration: loaded, override: storeOverride)
         try StoreLocation.prepare(url, packageRoot: packageRoot)
         self.root = packageRoot
+        self.configuration = loaded
         self.configurationFile = configurationFile
         self.describer = describer
         // After the store exists, so its directory's symlinks resolve.
@@ -62,12 +65,14 @@ public struct SnapshotWorkspace {
         return commit
     }
 
-    /// Scans the working tree, stores the snapshot and returns it with its id.
-    public func scanWorkingTree() throws -> (snapshot: ScannedSnapshot, id: Int64) {
+    /// Scans the working tree, reading history from `history`, stores the
+    /// snapshot and returns it with its id.
+    public func scanWorkingTree(history: HistorySource = .automatic) throws -> (snapshot: ScannedSnapshot, id: Int64) {
         let snapshot = try scanner.scan(
             packageAt: root,
             configurationFile: configurationFile ?? StoreLocation.localConfiguration(packageRoot: root),
-            ignoring: storeInPackage
+            ignoring: storeInPackage,
+            history: history
         )
         return (snapshot, try store.save(snapshot))
     }
@@ -144,7 +149,8 @@ public struct SnapshotWorkspace {
         let snapshot = try scanner.scan(
             packageAt: exported,
             configurationFile: configurationFile ?? StoreLocation.localConfiguration(packageRoot: exported),
-            git: state
+            git: state,
+            history: .skipped("exported revision")
         )
         return try store.save(snapshot)
     }

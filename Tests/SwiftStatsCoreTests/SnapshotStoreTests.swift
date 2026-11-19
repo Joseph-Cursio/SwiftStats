@@ -46,7 +46,8 @@ struct SnapshotStoreTests {
         let production = loaded.rollups.filter { $0.scope == .project && $0.name == "production" }
         #expect(production.first { $0.metric == "functions.func" }?.value == 2)
         #expect(production.first { $0.metric == "findings.swiftstats.precondition" }?.collector == "swiftstats")
-        #expect(snapshot.info.collectors.map(\.name) == ["dependencies", "swiftlint", "swiftprojectlint", "swiftstats"])
+        let collectorNames = ["dependencies", "history", "swiftlint", "swiftprojectlint", "swiftstats"]
+        #expect(snapshot.info.collectors.map(\.name) == collectorNames)
     }
 
     @Test("a rescan replaces its commit's snapshot; clean and dirty, and other commits, are kept apart")
@@ -118,7 +119,7 @@ struct SnapshotStoreTests {
             arguments: [url.path, "PRAGMA user_version"],
             in: directory
         )
-        #expect(String(bytes: version, encoding: .utf8) == "1\n")
+        #expect(String(bytes: version, encoding: .utf8) == "2\n")
 
         try SnapshotHarness.sqlite(url, "INSERT INTO grdb_migrations VALUES ('v99')")
 

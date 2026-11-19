@@ -17,4 +17,8 @@ public struct StoredSnapshot: Hashable, Sendable {
     public let findings: [FindingRow]
     /// Its roll-up numbers.
     public let rollups: [RollupMetricRow]
+    /// Its history run; nil when history wasn't read.
+    public let history: HistoryRunRow?
+    /// Its families' history.
+    public let familyHistory: [FamilyHistoryRow]
 }

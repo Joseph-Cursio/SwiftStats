@@ -18,6 +18,9 @@ enum Comparability {
             if name == DependencyGraphAdapter.name, result.outcome == .compared, ownOutcome.outcome != .compared {
                 result = (.notComparable, "SwiftStats' build differs, and its own code reads the graph")
             }
+            if name == HistoryCollector.name, result.outcome == .compared, ownOutcome.outcome != .compared {
+                result = (.notComparable, "SwiftStats' build differs, and its own code reads the history")
+            }
             return CollectorComparison(name: name, outcome: result.outcome, reason: result.reason)
         }
     }

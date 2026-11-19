@@ -15,6 +15,7 @@ enum StoreMigrations {
     static var migrator: DatabaseMigrator {
         var steps = DatabaseMigrator()
         steps.registerMigration("v1", migrate: version1)
+        steps.registerMigration("v2", migrate: version2)
         return steps
     }
 
@@ -71,6 +72,40 @@ enum StoreMigrations {
             table.column("data", .blob).notNull()
         }
         try database.execute(sql: "PRAGMA user_version = 1")
+    }
+
+    /// M3: each snapshot's history run and its families' history.
+    private static func version2(_ database: Database) throws {
+        try database.create(table: HistoryRunRow.databaseTableName) { table in
+            snapshotColumn(table).primaryKey()
+            table.column("commitHash", .text).notNull()
+            table.column("date", .text).notNull()
+            table.column("windowDays", .integer).notNull()
+            table.column("windowStart", .text).notNull()
+            table.column("mergeStyle", .text).notNull()
+            table.column("commits", .integer).notNull()
+            table.column("windowCommits", .integer).notNull()
+        }
+        try database.create(table: FamilyHistoryRow.databaseTableName) { table in
+            snapshotColumn(table).indexed()
+            table.column("family", .text).notNull()
+            table.column("file", .text).notNull()
+            table.column("line", .integer).notNull()
+            table.column("generated", .boolean).notNull()
+            let counts = [
+                "changes", "sweepChanges", "allChanges", "fixes", "allFixes", "reverts", "repeatedFixes", "testChanges"
+            ]
+            for name in counts {
+                table.column(name, .integer)
+            }
+            table.column("fixScore", .double)
+            table.column("fixRate", .double)
+            table.column("hasTests", .boolean).notNull()
+            table.column("firstSeen", .text)
+            table.column("lastChanged", .text)
+            table.column("tracedBy", .text).notNull()
+        }
+        try database.execute(sql: "PRAGMA user_version = 2")
     }
 
     /// The `function` table.
