@@ -1,0 +1,260 @@
+{
+  "commit": "6477efac57a74b02c1af0a305458602318621e2b",
+  "commits": [
+    {
+      "commit": "9ab602865351f7678a0b2fd5b2d43dc1e228ad57",
+      "excluded": null,
+      "label": null,
+      "matched": true,
+      "note": "",
+      "subject": "Fix Missing StateObject: report an @ObservedObject the view's init builds"
+    },
+    {
+      "commit": "f4bd4c3add561249e4dfecfdaa111c899f7fb00f",
+      "excluded": "excluded-subject",
+      "label": null,
+      "matched": true,
+      "note": "",
+      "subject": "Fix the complexity and length SwiftLint warnings"
+    },
+    {
+      "commit": "73137741b2c7dc4d2eb7f4531bddf4036ffc7ec8",
+      "excluded": "excluded-subject",
+      "label": null,
+      "matched": true,
+      "note": "",
+      "subject": "Fix the mechanical SwiftLint warnings"
+    },
+    {
+      "commit": "d8a77bff866bf5fffe89212062bd1da818ea7706",
+      "excluded": null,
+      "label": null,
+      "matched": false,
+      "note": "",
+      "subject": "Add schemaVersion, tool, ruleIdentifier and kind to the JSON report"
+    },
+    {
+      "commit": "3cb3e82ff1071bf508a1ab4a992fb951341ce8b4",
+      "excluded": null,
+      "label": null,
+      "matched": false,
+      "note": "",
+      "subject": "Split the remaining oversized engine, visitor and rule files"
+    },
+    {
+      "commit": "70875ad1cf01afb2d824805a06f21776a04619f1",
+      "excluded": null,
+      "label": null,
+      "matched": false,
+      "note": "",
+      "subject": "Wrap long lines, multi-line calls and call chains"
+    },
+    {
+      "commit": "a0107ec4fe5dc19fb38af9b287d9094d7cc1d876",
+      "excluded": null,
+      "label": null,
+      "matched": false,
+      "note": "",
+      "subject": "Discarded Try Result: read a Task's spelled-out Success type"
+    },
+    {
+      "commit": "1bd1fef119a2bcdc5e8f7f77341b42ae95eb47b5",
+      "excluded": null,
+      "label": null,
+      "matched": false,
+      "note": "",
+      "subject": "Positional View Lookup: a loop over test-declared views keeps their ownership"
+    },
+    {
+      "commit": "b17f9ad01facb5135d7f07628bc6281428aa7769",
+      "excluded": null,
+      "label": null,
+      "matched": false,
+      "note": "",
+      "subject": "Positional View Lookup: say how inspect().text() and selected rows resolve"
+    },
+    {
+      "commit": "e353c3a13fef6ca8828773bdc484f80b3714cdc0",
+      "excluded": null,
+      "label": null,
+      "matched": false,
+      "note": "",
+      "subject": "Unsafe URL: check only URL(string:)"
+    },
+    {
+      "commit": "6159e0cf1a41b3b5f0a8258f7a95e8a92c07c970",
+      "excluded": null,
+      "label": null,
+      "matched": false,
+      "note": "",
+      "subject": "Walk up for a #Preview only for a call Magic Number would record"
+    },
+    {
+      "commit": "9f9a0a476e7410b6fa70f02255366f01c0924184",
+      "excluded": null,
+      "label": null,
+      "matched": false,
+      "note": "",
+      "subject": "Report a pure function kept out of property testing only by a missing Equatable"
+    },
+    {
+      "commit": "5f6bbbde379679ee2bca85db9abaaa95583af9e7",
+      "excluded": null,
+      "label": null,
+      "matched": false,
+      "note": "",
+      "subject": "Add the Lossy Round Trip rule"
+    },
+    {
+      "commit": "c3c33be20f2167877b0b3c72115e46630473fa4e",
+      "excluded": null,
+      "label": null,
+      "matched": false,
+      "note": "",
+      "subject": "Report an actor typed concretely beside an all-async protocol it conforms to"
+    },
+    {
+      "commit": "18a69519faf80a83583146a299dd5202088c4422",
+      "excluded": null,
+      "label": null,
+      "matched": false,
+      "note": "",
+      "subject": "Make the local-URL and async-context helpers static"
+    },
+    {
+      "commit": "4eac0037914cb92c6f6a18ff8d7e78afb4fa0384",
+      "excluded": null,
+      "label": null,
+      "matched": false,
+      "note": "",
+      "subject": "A closure's `$0` is not a projected value"
+    },
+    {
+      "commit": "caf4e18b6c7b064f41cff1d72cb72ac1c99d04ae",
+      "excluded": null,
+      "label": null,
+      "matched": false,
+      "note": "",
+      "subject": "Widen private helpers so generated property tests can reach them"
+    },
+    {
+      "commit": "2ae345c6cdaf3c33ece8cf4c5e26084b24cbbdac",
+      "excluded": null,
+      "label": null,
+      "matched": false,
+      "note": "",
+      "subject": "Widen 42 helpers whose laws now have every generator they need"
+    },
+    {
+      "commit": "bdfb642fd4b8e3ec40ba85da0695174047923534",
+      "excluded": null,
+      "label": null,
+      "matched": false,
+      "note": "",
+      "subject": "Let a layer allowlist the frameworks it may import"
+    },
+    {
+      "commit": "4bd2fcd167a4b6a832f5e948fd0344d0f01af70b",
+      "excluded": null,
+      "label": null,
+      "matched": false,
+      "note": "",
+      "subject": "Lift a package's target imports out of the undeclared-dependency visitor"
+    },
+    {
+      "commit": "66293f17e9145ea5f0ddfad786dab2288d4819ca",
+      "excluded": null,
+      "label": null,
+      "matched": false,
+      "note": "",
+      "subject": "Compare a secret against its own name ignoring separators"
+    },
+    {
+      "commit": "0ecf4e12007f4119f1ad4790b2e1850efccab75e",
+      "excluded": null,
+      "label": null,
+      "matched": false,
+      "note": "",
+      "subject": "Stop reporting Boolean Control Coupling at its own remedy"
+    },
+    {
+      "commit": "78ae07f658a462eb5424298e9ee0ddf81700b095",
+      "excluded": null,
+      "label": null,
+      "matched": false,
+      "note": "",
+      "subject": "Derive the trivial value types from the carriers they exclude"
+    },
+    {
+      "commit": "aa716a196ecdf3492de08b58e98bd09839c70c04",
+      "excluded": null,
+      "label": null,
+      "matched": false,
+      "note": "",
+      "subject": "Tell a total kernel from a dependency, for both twins at once"
+    },
+    {
+      "commit": "0de0d73d40babedc5086a3e3bf6ba1d3ae3fdc3e",
+      "excluded": null,
+      "label": null,
+      "matched": false,
+      "note": "",
+      "subject": "A range's bounds are exempt under either spelling"
+    },
+    {
+      "commit": "7ce811502b6855ce3c1dfc498087b50e50e8f155",
+      "excluded": null,
+      "label": null,
+      "matched": false,
+      "note": "",
+      "subject": "Condition 5: a single store through a setter is already a named seam"
+    },
+    {
+      "commit": "1dc09752b36c294ea4c21db3710133d2e2d49a3f",
+      "excluded": null,
+      "label": null,
+      "matched": false,
+      "note": "",
+      "subject": "Stop asking for injection of types no caller can name"
+    },
+    {
+      "commit": "1ab12f1b783fe47ec4337cb76c76572d242950f7",
+      "excluded": null,
+      "label": null,
+      "matched": false,
+      "note": "",
+      "subject": "Make the capture gate fire at all"
+    },
+    {
+      "commit": "17b48b5f56eb596b3b42f9d6d0a026d849a9b9c0",
+      "excluded": null,
+      "label": null,
+      "matched": false,
+      "note": "",
+      "subject": "Report a fabrication only when the source IS the fallback"
+    },
+    {
+      "commit": "a815947a9022ecee38d936530ba386df175f8dd1",
+      "excluded": null,
+      "label": null,
+      "matched": false,
+      "note": "",
+      "subject": "Stop reporting a clock read as an extractable pure kernel"
+    }
+  ],
+  "historyOptions": [
+    "window: 90d",
+    "fix_patterns: ^(fix|fixes|fixed)\\b | \\bbug\\b | \\bregression\\b | ^hotfix\\b",
+    "fix_exclude_patterns: \\b(swiftlint|lint|violations?|warnings?)\\b | ^(style|chore)(\\(.*\\))?:",
+    "repeat_window: 14d",
+    "half_life: 90d",
+    "bulk_files: 30",
+    "ignore_revs: ",
+    "coupling.min_support: 3"
+  ],
+  "packagePath": "Packages/SwiftProjectLintRules",
+  "repo": "SwiftProjectLintRules",
+  "unmatchedSampled": "every 7 of 194",
+  "windowCommitsTouchingSwift": 197,
+  "windowStart": "2026-08-20T16:36:38Z"
+}
