@@ -43,6 +43,14 @@ let kPackage = Package(
         .package(
             url: "https://github.com/groue/GRDB.swift.git",
             from: "7.12.0"
+        ),
+        // Side effects (PRD §7.10), linked in process. Pinned by revision,
+        // the one SwiftProjectLint and SwiftInferProperties pin (the package
+        // has no tags), so nothing can depend on SwiftStatsCore by version.
+        // Keep `EffectInferenceRevision.pinned` equal to it.
+        .package(
+            url: "https://github.com/Joseph-Cursio/SwiftEffectInference.git",
+            revision: "ba3624d754c3c9150c946f66468c2c356be3e7e0"
         )
     ],
     targets: [
@@ -53,7 +61,8 @@ let kPackage = Package(
                 .product(name: "SwiftParser", package: "swift-syntax"),
                 .product(name: "SwiftCodeMetrics", package: "SwiftCodeMetrics"),
                 .product(name: "Yams", package: "Yams"),
-                .product(name: "GRDB", package: "GRDB.swift")
+                .product(name: "GRDB", package: "GRDB.swift"),
+                .product(name: "SwiftEffectInference", package: "SwiftEffectInference")
             ],
             swiftSettings: kSwiftSettings
         ),

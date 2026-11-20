@@ -1,5 +1,5 @@
 {
-  "originHash" : "7bf28cd2b1805fda7d3caf7732af4c194555eeb28cbb2dd5c12c52c0649c5352",
+  "originHash" : "b1b1026b476514d8f6e7cf825ab50eb2c7d586aad4d5be2605eb8c4ec772b687",
   "pins" : [
     {
       "identity" : "grdb.swift",
@@ -35,6 +35,14 @@
       "state" : {
         "revision" : "ee99260e33141210fb2ceb79f9be7110592a3d23",
         "version" : "0.3.0"
+      }
+    },
+    {
+      "identity" : "swifteffectinference",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/Joseph-Cursio/SwiftEffectInference.git",
+      "state" : {
+        "revision" : "ba3624d754c3c9150c946f66468c2c356be3e7e0"
       }
     },
     {
