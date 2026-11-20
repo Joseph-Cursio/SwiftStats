@@ -6,8 +6,17 @@
 //  one (PRD §8, divergent clones): the commits after the earlier one, and
 //  the old-side ranges of a zero-context diff of the package, following
 //  renames and ignoring whitespace. Read-only git; every setting that
-//  could change the diff's hunks is fixed on the command line, as the
-//  history walk fixes its own.
+//  could change the diff's hunks is fixed, as the history walk fixes its
+//  own: on the command line, and in the environment for GIT_DIFF_OPTS,
+//  whose `--unified` overrides `-U0`. Every file is diffed as text, so
+//  neither a `-diff` or `binary` attribute (from the user's attributes
+//  file too) nor `core.bigFileThreshold` turns a file's hunks into
+//  "Binary files differ". Only Swift files are diffed: clone copies are
+//  only in them, and as text a changed image or model asset would put all
+//  its bytes in the diff. The pathspec's glob is explicit and the setting
+//  that would read it literally is cleared, so no exported pathspec
+//  setting changes which files it names. The commit list is plain
+//  `rev-list` output, which no diff or log setting changes.
 //
 
 import Foundation
@@ -26,6 +35,13 @@ enum GitChanges {
     private static let octalDigits = 3
     /// The base of an octal escape.
     private static let octalRadix = 8
+    /// The package's Swift files, at any depth below the working directory.
+    static let swiftFiles = ":(glob)**/*.swift"
+    /// The environment settings that would change the diff's hunks, or the
+    /// files `swiftFiles` names, cleared: git ignores an empty
+    /// GIT_DIFF_OPTS, and reads its magic and glob unless pathspecs are
+    /// literal.
+    static let pinnedEnvironment = ["GIT_DIFF_OPTS": "", "GIT_LITERAL_PATHSPECS": "0"]
 
     /// The commits reachable from `later` and not from `earlier`.
     static func commits(from earlier: String, to later: String, in directory: URL) throws -> Set<String> {
@@ -46,13 +62,31 @@ enum GitChanges {
         packagePath: String,
         in directory: URL
     ) throws -> [String: [DiffHunk]] {
+        try hunks(from: earlier, to: later, packagePath: packagePath, in: directory, inherited: [:])
+    }
+
+    /// The hunks as `hunks(from:to:packagePath:in:)` reads them, with
+    /// `inherited` added to this process's environment, as a setting the
+    /// user exported would be; the pinned settings win over both.
+    static func hunks(
+        from earlier: String,
+        to later: String,
+        packagePath: String,
+        in directory: URL,
+        inherited: [String: String]
+    ) throws -> [String: [DiffHunk]] {
         let arguments = [
             "--no-optional-locks", "-c", "core.quotepath=off", "-c", "diff.renames=true",
             "diff", "-M", "-l\(renameLimit)", "-w", "-U0", "--inter-hunk-context=0", "--diff-algorithm=myers",
-            "--indent-heuristic", "--no-ext-diff", "--no-textconv", "--no-color", "--no-relative",
-            "--ignore-submodules", "--src-prefix=a/", "--dst-prefix=b/", earlier, later, "--", "."
+            "--indent-heuristic", "--no-ext-diff", "--no-textconv", "--text", "--no-color", "--no-relative",
+            "--ignore-submodules", "--src-prefix=a/", "--dst-prefix=b/", earlier, later, "--", swiftFiles
         ]
-        let data = try ProcessRunner.run(executable: GitReader.git, arguments: arguments, in: directory)
+        let data = try ProcessRunner.run(
+            executable: GitReader.git,
+            arguments: arguments,
+            in: directory,
+            environment: inherited.merging(pinnedEnvironment) { _, pinned in pinned }
+        )
         return hunks(inDiff: text(of: data), packagePath: packagePath)
     }
 

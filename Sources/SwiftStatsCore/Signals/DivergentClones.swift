@@ -15,14 +15,22 @@
 //  several, else one slot of each copy's unit. A class is listed when a
 //  slot has a changed and an unchanged unit, scored by those slots' lines
 //  per copy beyond the first; nested classes fold into the class holding
-//  them. The signal isn't ranked.
+//  them. The signal isn't ranked. On a snapshot with uncommitted
+//  changes, only commits are compared: the changes since run to its
+//  commit, and the rule says uncommitted changes aren't compared.
 //
 
 /// The divergent-clones signal.
 enum DivergentClones {
     /// Why the signal is left out when no earlier snapshot has clone data.
-    static let noEarlier = "no earlier snapshot with clone data; scan an older commit (`swiftstats diff <rev>`) "
-        + "or `backfill --with-tools`"
+    /// A commit that already has a snapshot keeps it under plain `diff`
+    /// and `backfill`, so the first remedy rescans.
+    static let noEarlier = "no earlier snapshot with clone data; scan an older commit with SwiftCloneDetector "
+        + "(`swiftstats diff <rev> --rescan`, or `backfill --with-tools` for commits not yet scanned)"
+
+    /// What the rule adds on a snapshot with uncommitted changes, whose
+    /// changes since run to its commit.
+    static let uncommitted = "uncommitted changes aren't compared"
 
     /// The fewest copies with a family now that put a class in the pool.
     static let minimumCopies = 2
@@ -68,7 +76,11 @@ enum DivergentClones {
         }
         let kept = folded(members)
         let foldedCount = kept.reduce(0) { $0 + $1.folded.count }
-        let since = inputs.earlierNote ?? String(sinceCommit.prefix(MarkdownSignals.shortLength))
+        var since = inputs.earlierNote ?? String(sinceCommit.prefix(MarkdownSignals.shortLength))
+        if inputs.snapshot.info.git.isDirty {
+            since += ", to \((inputs.snapshot.info.git.commit ?? "").prefix(MarkdownSignals.shortLength)); "
+                + uncommitted
+        }
         return SignalComputation(
             rule: rule + "; since \(since); \(skipped) copies with no production family outside generated "
                 + "files with known history now are skipped; \(foldedCount) classes nested in a listed one are "

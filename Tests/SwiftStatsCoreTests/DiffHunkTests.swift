@@ -13,6 +13,18 @@ import Testing
 
 @Suite("Diff hunks")
 struct DiffHunkTests {
+    /// Commits ten lines to `File.swift` in `repository`, then a change to
+    /// line 5, and returns both commits.
+    static func commitLineFive(in repository: HistoryRepository) throws -> (first: String, second: String) {
+        let lines = (1...10).map { "let value\($0) = \($0)" }
+        try repository.write(["File.swift": lines.joined(separator: "\n") + "\n"])
+        let first = try repository.commit("Ten lines", day: 0)
+        var changed = lines
+        changed[4] = "let value5 = 50"
+        try repository.write(["File.swift": changed.joined(separator: "\n") + "\n"])
+        return (first, try repository.commit("Change line five", day: 1))
+    }
+
     @Test("hunks are read by old path in the package, following renames, past content that looks like a header")
     func parsing() {
         let diff = """
@@ -104,5 +116,91 @@ struct DiffHunkTests {
         #expect(insertion.overlaps(lower: 5, upper: 9))
         #expect(insertion.overlaps(lower: 1, upper: 5) == false)
         #expect(insertion.overlaps(lower: 6, upper: 9) == false)
+    }
+
+    @Test("an exported GIT_DIFF_OPTS doesn't give the zero-context diff context lines")
+    func diffOptionsPinned() throws {
+        let repository = try HistoryRepository()
+        defer { repository.remove() }
+        let (first, second) = try Self.commitLineFive(in: repository)
+
+        let plain = try GitChanges.hunks(from: first, to: second, packagePath: "", in: repository.root)
+        let exported = try GitChanges.hunks(
+            from: first,
+            to: second,
+            packagePath: "",
+            in: repository.root,
+            inherited: ["GIT_DIFF_OPTS": "-u3"]
+        )
+
+        #expect(plain["File.swift"] == [DiffHunk(start: 5, count: 1)])
+        // With three lines of context git would report lines 2–8.
+        #expect(exported["File.swift"] == [DiffHunk(start: 5, count: 1)])
+    }
+
+    @Test("a -diff attribute or core.bigFileThreshold doesn't turn a file's hunks into a binary notice")
+    func diffedAsText() throws {
+        let repository = try HistoryRepository()
+        defer { repository.remove() }
+        let (first, second) = try Self.commitLineFive(in: repository)
+        let attributes = repository.root.appendingPathComponent(".git/info/attributes")
+        try FileManager.default.createDirectory(
+            at: attributes.deletingLastPathComponent(),
+            withIntermediateDirectories: true
+        )
+
+        try "*.swift -diff\n".write(to: attributes, atomically: true, encoding: .utf8)
+        let attributed = try GitChanges.hunks(from: first, to: second, packagePath: "", in: repository.root)
+        try FileManager.default.removeItem(at: attributes)
+        try repository.git(["config", "core.bigFileThreshold", "10"])
+        let big = try GitChanges.hunks(from: first, to: second, packagePath: "", in: repository.root)
+
+        #expect(attributed["File.swift"] == [DiffHunk(start: 5, count: 1)])
+        #expect(big["File.swift"] == [DiffHunk(start: 5, count: 1)])
+    }
+
+    @Test("only the package's Swift files are diffed, so a changed binary asset adds nothing to the diff")
+    func swiftFilesOnly() throws {
+        let repository = try HistoryRepository()
+        defer { repository.remove() }
+        let asset = repository.root.appendingPathComponent("Pkg/Resources/asset.bin")
+        try repository.write(["Pkg/Top.swift": "let top = 1\n", "Pkg/Sources/Kit/Deep.swift": "let deep = 1\n"])
+        try repository.write(["Pkg/notes.md": "one\n", "Elsewhere.swift": "let other = 1\n"])
+        try FileManager.default.createDirectory(
+            at: asset.deletingLastPathComponent(),
+            withIntermediateDirectories: true
+        )
+        try Data([0, 1, 2, 0xFF, 10, 0]).write(to: asset)
+        let first = try repository.commit("Files", day: 0)
+        try repository.write(["Pkg/Top.swift": "let top = 2\n", "Pkg/Sources/Kit/Deep.swift": "let deep = 2\n"])
+        try repository.write(["Pkg/notes.md": "two\n", "Elsewhere.swift": "let other = 2\n"])
+        try Data([0, 3, 4, 0xFE, 10, 0]).write(to: asset)
+        let second = try repository.commit("Change them all", day: 1)
+
+        let hunks = try GitChanges.hunks(
+            from: first,
+            to: second,
+            packagePath: "Pkg",
+            in: repository.root.appendingPathComponent("Pkg")
+        )
+
+        #expect(Set(hunks.keys) == ["Top.swift", "Sources/Kit/Deep.swift"])
+    }
+
+    @Test("an exported GIT_LITERAL_PATHSPECS doesn't stop the diff naming the Swift files")
+    func literalPathspecsPinned() throws {
+        let repository = try HistoryRepository()
+        defer { repository.remove() }
+        let (first, second) = try Self.commitLineFive(in: repository)
+
+        let exported = try GitChanges.hunks(
+            from: first,
+            to: second,
+            packagePath: "",
+            in: repository.root,
+            inherited: ["GIT_LITERAL_PATHSPECS": "1"]
+        )
+
+        #expect(exported["File.swift"] == [DiffHunk(start: 5, count: 1)])
     }
 }

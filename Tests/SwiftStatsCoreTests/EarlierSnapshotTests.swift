@@ -3,8 +3,9 @@
 //  SwiftStatsCoreTests
 //
 //  The earlier snapshot divergent clones compares with (PRD §8): which
-//  stored snapshot is chosen, and how the signal is left out when none
-//  qualifies or git can't say what changed.
+//  stored snapshot is chosen, how the signal is left out when none
+//  qualifies or git can't say what changed, and that a snapshot with
+//  uncommitted changes is compared up to its commit only.
 //
 
 import Foundation
@@ -95,5 +96,73 @@ struct EarlierSnapshotTests {
         let compared = SignalInputs(snapshot: loaded, earlier: loaded, earlierNote: "note", gitFailure: "git failed")
         let result = SignalEngine.signals(of: compared, thresholds: SignalThresholds())
         #expect(result.first { $0.name == .divergentClones }?.leftOut == "git failed")
+    }
+
+    @Test("after a backfill without the tools, the rescan the left-out reason names supplies clone data")
+    func remedyAfterBackfill() throws {
+        let repository = try CloneRepository()
+        defer { repository.remove() }
+        let first = try repository.commit(Self.note(0), "Start", day: 0)
+        try repository.commit(Self.note(1), "Middle", day: 1)
+        try repository.commit(Self.note(2), "Current", day: 2)
+        let workspace = try repository.workspace(withClones: true)
+        let plain = BackfillPlan(selection: .every(1), since: nil, maximumCommits: nil, rerun: false, withTools: false)
+        _ = try workspace.backfill(plain) { _ in
+            // Progress isn't checked here.
+        }
+        let current = try repository.scan()
+        let before = try repository.signal(.divergentClones, id: current)
+
+        // Neither a rerun with the tools nor a plain diff replaces a snapshot of this build.
+        let rerun = BackfillPlan(selection: .every(1), since: nil, maximumCommits: nil, rerun: true, withTools: true)
+        let steps = try workspace.backfill(rerun) { _ in
+            // Progress isn't checked here.
+        }
+        _ = try workspace.diffSnapshotIDs(older: first, newer: nil, includeDirty: false, rescan: false)
+        let unchanged = try repository.signal(.divergentClones, id: current)
+        let rescanned = try workspace.diffSnapshotIDs(older: first, newer: nil, includeDirty: false, rescan: true)
+        let after = try repository.signal(.divergentClones, id: rescanned.newer)
+
+        #expect(before.leftOut == DivergentClones.noEarlier)
+        #expect(DivergentClones.noEarlier.contains("(`swiftstats diff <rev> --rescan`, or "))
+        #expect(DivergentClones.noEarlier.contains("`backfill --with-tools` for commits not yet scanned"))
+        #expect(steps.allSatisfy { $0.action == .skipped })
+        #expect(unchanged.leftOut == DivergentClones.noEarlier)
+        #expect(after.leftOut == nil)
+        #expect(after.rule.contains("since \(first.prefix(10)) of 2026-01-01, the earliest snapshot with clone data"))
+    }
+
+    @Test("on a snapshot with uncommitted changes only commits are compared, and the rule says so")
+    func uncommittedNotCompared() throws {
+        let repository = try CloneRepository()
+        defer { repository.remove() }
+        let file = DivergentCloneTests.hostsFile
+        let hosts = DivergentCloneTests.hosts
+        let start = try repository.commit([file: hosts], "Add hosts", day: 0)
+        try repository.report([DivergentCloneTests.loops(["first", "second"])])
+        try repository.scan()
+        let firstFixed = hosts.replacingOccurrences(
+            of: "total += value * 2\n    }\n    return total + base",
+            with: "total += value * 3\n    }\n    return total + base"
+        )
+        let head = try repository.commit([file: firstFixed], "Fix first", day: 1)
+        let clean = try repository.signal(.divergentClones, id: try repository.scan())
+        // The same fix to `second`, not committed.
+        let bothFixed = firstFixed.replacingOccurrences(
+            of: "total += value * 2\n    }\n    return total - offset",
+            with: "total += value * 3\n    }\n    return total - offset"
+        )
+        try repository.repository.write([file: bothFixed])
+        let dirty = try repository.signal(.divergentClones, id: try repository.scan())
+
+        #expect(clean.rule.contains(DivergentClones.uncommitted) == false)
+        #expect(dirty.rule.contains(
+            "the period is shorter than the 90-day window, to \(head.prefix(10)); uncommitted changes aren't "
+                + "compared; 0 copies"
+        ))
+        // The uncommitted fix isn't seen: `second` still reads as unchanged.
+        let divergence = try #require(dirty.items.first?.clone?.divergence)
+        #expect(divergence.sinceCommit == start)
+        #expect(divergence.unchanged.map(\.family) == ["Lib::func second(_: [Int]) -> Int"])
     }
 }
