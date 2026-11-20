@@ -8,8 +8,9 @@
 //  conforms to. A pair's state is the first that applies: suppressed by a
 //  marker in the discovery plugin's file; run by a test-target
 //  `check<P>PropertyLaws` call (which also runs what P inherits, unless
-//  `laws: .ownOnly`; a check on a type local to the test attaches nowhere);
-//  run by `@PropertyLawSuite` on a primary declaration, which reads its
+//  `laws: .ownOnly`; a check on a type local to the test attaches nowhere,
+//  and one on a generic parameter or associated type is unresolved); run
+//  by `@PropertyLawSuite` on a primary declaration, which reads its
 //  inheritance clause exactly as written; waived by a running
 //  floating-point check; otherwise not run.
 //
@@ -75,19 +76,40 @@ enum LawCheckCollector {
         var subjects: [LawTypeResolver.TypeName: LawSubject] = [:]
         for file in files where file.isTest == false {
             for declaration in file.declarations where subjectKinds.contains(declaration.kind) {
-                let type = LawTypeResolver.TypeName(module: file.module, name: declaration.name)
-                let site = LawSubject.Site(file: file.file, importsKit: file.importsKit, declaration: declaration)
+                let type = LawTypeResolver.TypeName(declaration, in: file)
+                let site = LawSubject.Site(declaration, in: file)
                 subjects[type, default: LawSubject(type: type)].primaries.append(site)
+            }
+        }
+        for file in files where file.isTest == false {
+            for witness in file.operatorWitnesses {
+                if case .resolved(let type) = resolver.resolve(
+                    witness.typeName,
+                    in: file.module,
+                    file: file.file,
+                    scope: []
+                ) {
+                    subjects[type]?.operators.append(LawSubject.Operator(
+                        witness: witness.witness,
+                        module: file.module,
+                        file: file.file,
+                        fileScoped: witness.fileScoped
+                    ))
+                }
             }
         }
         var testSites: [LawTypeResolver.TypeName: [LawSubject.Site]] = [:]
         for file in files {
             for declaration in file.declarations where declaration.kind == .extensionDeclaration {
-                guard case .resolved(let type) = resolver.resolve(declaration.name, in: file.module, scope: []),
-                      subjects[type] != nil else {
+                guard case .resolved(let type) = resolver.resolve(
+                    declaration.name,
+                    in: file.module,
+                    file: file.file,
+                    scope: []
+                ), subjects[type] != nil else {
                     continue
                 }
-                let site = LawSubject.Site(file: file.file, importsKit: file.importsKit, declaration: declaration)
+                let site = LawSubject.Site(declaration, in: file)
                 if file.isTest {
                     testSites[type, default: []].append(site)
                 } else {
@@ -103,17 +125,17 @@ enum LawCheckCollector {
         var coverage = Coverage()
         for file in files {
             for call in file.calls {
-                record(call, in: file.module, resolver: resolver, into: &coverage)
+                record(call, in: file, resolver: resolver, into: &coverage)
             }
             for marker in file.markers {
-                switch resolver.resolve(marker.typeName, in: file.module, scope: []) {
+                switch resolver.resolve(marker.typeName, in: file.module, file: file.file, scope: []) {
                 case .resolved(let type):
                     coverage.suppressed[type, default: []].insert(marker.protocolName)
 
                 case .ambiguous:
                     coverage.ambiguousNames.insert(marker.typeName)
 
-                case .foreign:
+                case .foreign, .unnamed:
                     break
                 }
             }
@@ -121,11 +143,13 @@ enum LawCheckCollector {
         return coverage
     }
 
-    /// Adds what `call`, in `module`, covers to `coverage`: nothing when it
-    /// checks a local type or a type outside the package.
+    /// Adds what `call`, in `file`, covers to `coverage`: nothing when it
+    /// checks a local type or a type outside the package, and an
+    /// unresolved call when its subject is a generic parameter, an
+    /// associated type or a typealias naming no plain type.
     private static func record(
         _ call: LawFileFacts.Call,
-        in module: String,
+        in file: LawFileFacts,
         resolver: LawTypeResolver,
         into coverage: inout Coverage
     ) {
@@ -136,13 +160,21 @@ enum LawCheckCollector {
         guard call.namesLocalType == false else {
             return
         }
-        switch resolver.resolve(name, in: module, scope: call.scope) {
+        let head = name.split(separator: ".").first.map(String.init) ?? name
+        guard resolver.binds(head, around: call.scope, in: file.module, file: file.file) == false else {
+            coverage.unresolvedCalls += 1
+            return
+        }
+        switch resolver.resolve(name, in: file.module, file: file.file, scope: call.scope) {
         case .resolved(let type):
             let covered = KitProtocols.covered(by: call.protocolName, ownOnly: call.ownOnly)
             coverage.called[type, default: []].formUnion(covered)
 
         case .ambiguous:
             coverage.ambiguousNames.insert(name)
+
+        case .unnamed:
+            coverage.unresolvedCalls += 1
 
         case .foreign:
             break

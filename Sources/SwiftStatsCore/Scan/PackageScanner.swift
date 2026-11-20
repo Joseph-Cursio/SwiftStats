@@ -117,6 +117,7 @@ public struct PackageScanner {
         // in another of the package's targets (swift-collections'
         // `CollectionTestCase`), so the whole package is indexed too.
         let packageTestCases = TestCaseClassIndex.testCaseClasses(in: parsedByTarget.flatMap { $0.map(\.tree) })
+        let packageModules = Set(targets.map(\.name))
         for (target, parsed) in zip(targets, parsedByTarget) {
             let testCaseClasses = target.isTest
                 ? TestCaseClassIndex.testCaseClasses(in: parsed.map(\.tree)).union(packageTestCases)
@@ -134,7 +135,11 @@ public struct PackageScanner {
                 collected.types += TypeCollector.collect(file.tree, context: context)
                 collected.declarations += DeclarationCollector.collect(file.tree, module: target.name)
                 collected.markers += MarkerCollector.collect(file.tree, context: context)
-                collected.laws.append(LawSyntaxCollector.collect(file.tree, context: context))
+                collected.laws.append(LawSyntaxCollector.collect(
+                    file.tree,
+                    context: context,
+                    packageModules: packageModules
+                ))
                 for identity in target.isTest ? PropertyTestLinks.stubIdentities(in: file.tree) : [] {
                     collected.stubs[identity, default: []].insert(file.path)
                 }

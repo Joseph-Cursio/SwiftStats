@@ -6,7 +6,9 @@
 //  check's subject is the `for: X.self` argument, else a `using:`,
 //  `overEvery:` or `sampling:` argument written `X.gen()` or `X.gen`;
 //  nothing else names it, and a generic parameter names nothing. A subject
-//  whose first component is a local type in scope names that local type.
+//  whose first component is a typealias local to the call is read through
+//  it; one whose first component is then a local type in scope names that
+//  local type.
 //
 
 import Foundation
@@ -14,8 +16,27 @@ import SwiftSyntax
 
 /// Reads `check<P>PropertyLaws` calls and suppression markers.
 enum LawCallReader {
+    /// The types and typealiases a function body, closure or local type
+    /// declares directly.
+    struct LocalNames {
+        /// The types.
+        var types: Set<String> = []
+        /// The typealiases, each with the type it names: a dotted path
+        /// with generic arguments stripped, else its value as written.
+        var aliases: [String: String] = [:]
+
+        /// Adds `other`'s names; an alias already here is kept.
+        mutating func formUnion(_ other: Self) {
+            types.formUnion(other.types)
+            aliases.merge(other.aliases) { kept, _ in kept }
+        }
+    }
+
     /// Argument labels whose `X.gen()` or `X.gen` names the subject.
     private static let generatorLabels = ["using", "overEvery", "sampling"]
+    /// How many local typealiases a subject is read through before it
+    /// counts as unnamed, which stops a cycle.
+    private static let maximumAliasHops = 8
     /// What a suppression marker starts with, after `//`.
     private static let markerPrefix = "// ("
     /// What a suppression marker ends with.
@@ -23,19 +44,20 @@ enum LawCallReader {
 
     /// The check `node` makes, if it calls `check<P>PropertyLaws` for a
     /// protocol in the kit's table, read in `scope` with `generics` the
-    /// generic parameters and `locals` the local types in scope.
+    /// generic parameters and `locals` the local names in scope, outermost
+    /// first.
     static func call(
         _ node: FunctionCallExprSyntax,
         scope: [String],
         generics: Set<String>,
-        locals: Set<String>
+        locals: [LocalNames]
     ) -> LawFileFacts.Call? {
         guard let name = calleeName(node.calledExpression),
               let protocolName = KitProtocols.checkedProtocol(ofFunction: name) else {
             return nil
         }
-        let written = subject(in: node.arguments)
-        let head = written.map { name in name.split(separator: ".").first.map(String.init) ?? name }
+        let (written, isLocal) = subject(in: node.arguments).map { read($0, locals: locals) } ?? (nil, false)
+        let head = written.map(Self.head)
         let typeName = head.map { $0 == "Self" || generics.contains($0) } == true ? nil : written
         let ownOnly = node.arguments.contains { argument in
             argument.label?.text == "laws"
@@ -46,8 +68,38 @@ enum LawCallReader {
             typeName: typeName,
             scope: scope,
             ownOnly: ownOnly,
-            namesLocalType: typeName != nil && head.map(locals.contains) == true
+            namesLocalType: typeName != nil && isLocal
         )
+    }
+
+    /// `written` read through the local typealiases in `locals`, innermost
+    /// first, and whether its first component is then a local type; nil
+    /// when an alias names no plain type or the aliases loop.
+    private static func read(_ written: String, locals: [LocalNames]) -> (String?, Bool) {
+        var name = written
+        var frame = locals.count - 1
+        var hops = 0
+        while frame >= 0 {
+            let first = head(name)
+            if locals[frame].types.contains(first) {
+                return (name, true)
+            }
+            guard let value = locals[frame].aliases[first] else {
+                frame -= 1
+                continue
+            }
+            hops += 1
+            guard hops <= maximumAliasHops, let target = typeName(value) else {
+                return (nil, false)
+            }
+            name = target + name.dropFirst(first.count)
+        }
+        return (name, false)
+    }
+
+    /// The first component of a dotted type name.
+    private static func head(_ name: String) -> String {
+        name.split(separator: ".").first.map(String.init) ?? name
     }
 
     /// The suppression markers in the comments of `tree`.

@@ -6,18 +6,58 @@
 //  tests (PRD §7.11), which make a conformance `custom` rather than
 //  synthesised: `==`, `<`, `hash(into:)`, `hashValue`, `encode(to:)` and
 //  `init(from:)` taking only an `Encoder` or `Decoder`, `CodingKeys`,
-//  `init(rawValue:)`, `rawValue`, `allCases`.
+//  `init(rawValue:)`, `rawValue`, `allCases`. Swift also finds an `==` or
+//  `<` declared at file scope as the witness of its parameters' type, where
+//  the conformance can see it.
 //
 
 import SwiftSyntax
 
 /// Reads the witnesses in a member block.
 enum LawWitnesses {
+    /// How many parameters an `==` or `<` takes.
+    private static let operatorArity = 2
+
     /// The witnesses declared directly in `members`, `#if` branches included.
     static func witnesses(in members: MemberBlockItemListSyntax) -> Set<LawFileFacts.Witness> {
         members.reduce(into: []) { result, item in
             result.formUnion(witnesses(of: item.decl))
         }
+    }
+
+    /// The witness a file-scope function is: an `==` or `<` whose two
+    /// parameters have one type, a dotted path once generic arguments,
+    /// attributes and specifiers are stripped.
+    static func operatorWitness(_ function: FunctionDeclSyntax) -> LawFileFacts.OperatorWitness? {
+        let witness: LawFileFacts.Witness
+        switch function.name.text {
+        case "==":
+            witness = .equalTo
+
+        case "<":
+            witness = .lessThan
+
+        default:
+            return nil
+        }
+        let parameters = function.signature.parameterClause.parameters
+        let types = parameters.compactMap { parameter in
+            LawCallReader.typeName(baseType(parameter.type).trimmedDescription)
+        }
+        guard parameters.count == operatorArity, types.count == operatorArity,
+              let typeName = types.first, types.last == typeName else {
+            return nil
+        }
+        return LawFileFacts.OperatorWitness(
+            typeName: typeName,
+            witness: witness,
+            fileScoped: FunctionCollector.isFileScoped(function.modifiers)
+        )
+    }
+
+    /// `type` without attributes and specifiers such as `borrowing`.
+    private static func baseType(_ type: TypeSyntax) -> TypeSyntax {
+        type.as(AttributedTypeSyntax.self).map { baseType($0.baseType) } ?? type
     }
 
     /// The witnesses one member declares.

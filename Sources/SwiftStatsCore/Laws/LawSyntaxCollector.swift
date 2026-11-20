@@ -2,11 +2,13 @@
 //  LawSyntaxCollector.swift
 //  SwiftStatsCore
 //
-//  Walks one file for law detection (PRD §7.11): type declarations and
-//  extensions outside function bodies, with their inheritance, attributes
-//  and witnesses; kit imports; and, in a test target, every kit protocol
-//  check with the type path, generic parameters and local types around it.
-//  A production file's bodies are skipped: nothing in them is read.
+//  Walks one file for law detection (PRD §7.11): type declarations,
+//  extensions and typealiases outside function bodies, with their
+//  inheritance, attributes, witnesses, file scoping and the generic names
+//  their bodies can use; file-scope `==` and `<` witnesses; kit imports;
+//  and, in a test target, every kit protocol check with the type path,
+//  generic names, local types and local typealiases around it. A
+//  production file's bodies are skipped: nothing in them is read.
 //
 
 import SwiftSyntax
@@ -21,32 +23,53 @@ final class LawSyntaxCollector: SyntaxVisitor {
 
     /// The file being walked.
     private let context: FileContext
+    /// The package's target names, which a module-qualified extension's
+    /// first component may be.
+    private let packageModules: Set<String>
+    /// Paths of the types the file declares `private` or `fileprivate`,
+    /// directly or by nesting.
+    private let fileScopedTypes: Set<String>
     /// Declarations found so far, in source order.
     private var declarations: [LawFileFacts.Declaration] = []
+    /// Typealiases found so far, in source order.
+    private var aliases: [LawFileFacts.Alias] = []
+    /// File-scope operator witnesses found so far, in source order.
+    private var operatorWitnesses: [LawFileFacts.OperatorWitness] = []
     /// Checks found so far, in source order.
     private var calls: [LawFileFacts.Call] = []
     /// Whether an import of a kit module has been seen.
     private var importsKit = false
     /// Names of the enclosing types and extensions, outermost first.
     private var path: [String] = []
+    /// Whether each enclosing type or extension makes what it declares file-scoped.
+    private var fileScoped: [Bool] = []
     /// How many function bodies, accessors, closures and macro arguments enclose the walk.
     private var codeDepth = 0
     /// Generic parameter names of each enclosing generic declaration.
     private var genericNames: [[String]] = []
-    /// Type names each enclosing code context, or local type, declares
-    /// directly: the local types a check's subject may name. Only a test
-    /// target's walk fills them.
-    private var localTypes: [Set<String>] = []
+    /// Types and typealiases each enclosing code context, or local type,
+    /// declares directly: the local names a check's subject may use. Only
+    /// a test target's walk fills them.
+    private var localNames: [LawCallReader.LocalNames] = []
 
-    /// Creates a collector for the file described by `context`.
-    init(context: FileContext) {
+    /// Creates a collector for the file described by `context`, in a
+    /// package with targets `packageModules`, whose file-scoped types are
+    /// `fileScopedTypes`.
+    init(context: FileContext, packageModules: Set<String>, fileScopedTypes: Set<String>) {
         self.context = context
+        self.packageModules = packageModules
+        self.fileScopedTypes = fileScopedTypes
         super.init(viewMode: .sourceAccurate)
     }
 
-    /// Walks `tree` and returns its law-detection facts.
-    static func collect(_ tree: SourceFileSyntax, context: FileContext) -> LawFileFacts {
-        let collector = Self(context: context)
+    /// Walks `tree`, a file of a package with targets `packageModules`,
+    /// and returns its law-detection facts.
+    static func collect(_ tree: SourceFileSyntax, context: FileContext, packageModules: Set<String>) -> LawFileFacts {
+        let collector = Self(
+            context: context,
+            packageModules: packageModules,
+            fileScopedTypes: FileScopedTypes.paths(in: tree)
+        )
         collector.walk(tree)
         return LawFileFacts(
             module: context.module,
@@ -54,6 +77,8 @@ final class LawSyntaxCollector: SyntaxVisitor {
             isTest: context.isTestTarget,
             importsKit: collector.importsKit,
             declarations: collector.declarations,
+            aliases: collector.aliases,
+            operatorWitnesses: collector.operatorWitnesses,
             calls: collector.calls,
             markers: GeneratedCode.hasHeader(tree, containing: discoveryPluginHeader)
                 ? LawCallReader.markers(in: tree)
@@ -61,54 +86,10 @@ final class LawSyntaxCollector: SyntaxVisitor {
         )
     }
 
-    /// The parameter names of a generic parameter clause.
-    private static func names(_ clause: GenericParameterClauseSyntax?) -> [String] {
-        clause?.parameters.map(\.name.text) ?? []
-    }
-
-    /// The types and typealiases `statements` declare directly, `#if`
-    /// branches included.
-    private static func typeNames(in statements: CodeBlockItemListSyntax) -> Set<String> {
-        statements.reduce(into: []) { result, statement in
-            if let decl = statement.item.as(DeclSyntax.self) {
-                result.formUnion(typeNames(of: decl))
-            }
-        }
-    }
-
-    /// The types and typealiases `members` declare directly, `#if`
-    /// branches included.
-    private static func typeNames(in members: MemberBlockItemListSyntax) -> Set<String> {
-        members.reduce(into: []) { result, member in
-            result.formUnion(typeNames(of: member.decl))
-        }
-    }
-
-    /// The name `decl` declares if it is a type or typealias, or the names
-    /// its `#if` branches declare.
-    private static func typeNames(of decl: DeclSyntax) -> Set<String> {
-        if let ifConfig = decl.as(IfConfigDeclSyntax.self) {
-            return ifConfig.clauses.reduce(into: []) { result, clause in
-                if let statements = clause.elements?.as(CodeBlockItemListSyntax.self) {
-                    result.formUnion(typeNames(in: statements))
-                }
-                if let members = clause.elements?.as(MemberBlockItemListSyntax.self) {
-                    result.formUnion(typeNames(in: members))
-                }
-            }
-        }
-        let name = decl.as(StructDeclSyntax.self)?.name
-            ?? decl.as(ClassDeclSyntax.self)?.name
-            ?? decl.as(EnumDeclSyntax.self)?.name
-            ?? decl.as(ActorDeclSyntax.self)?.name
-            ?? decl.as(TypeAliasDeclSyntax.self)?.name
-        return name.map { [$0.text] } ?? []
-    }
-
     // MARK: - Types
 
     override func visit(_ node: StructDeclSyntax) -> SyntaxVisitorContinueKind {
-        enter(node, kind: .structType, name: node.name.text, generics: Self.names(node.genericParameterClause))
+        enter(node, kind: .structType, name: node.name.text, generics: LawScopeNames.names(node.genericParameterClause))
     }
 
     override func visitPost(_: StructDeclSyntax) {
@@ -116,7 +97,7 @@ final class LawSyntaxCollector: SyntaxVisitor {
     }
 
     override func visit(_ node: ClassDeclSyntax) -> SyntaxVisitorContinueKind {
-        enter(node, kind: .classType, name: node.name.text, generics: Self.names(node.genericParameterClause))
+        enter(node, kind: .classType, name: node.name.text, generics: LawScopeNames.names(node.genericParameterClause))
     }
 
     override func visitPost(_: ClassDeclSyntax) {
@@ -124,7 +105,7 @@ final class LawSyntaxCollector: SyntaxVisitor {
     }
 
     override func visit(_ node: EnumDeclSyntax) -> SyntaxVisitorContinueKind {
-        enter(node, kind: .enumType, name: node.name.text, generics: Self.names(node.genericParameterClause))
+        enter(node, kind: .enumType, name: node.name.text, generics: LawScopeNames.names(node.genericParameterClause))
     }
 
     override func visitPost(_: EnumDeclSyntax) {
@@ -132,7 +113,7 @@ final class LawSyntaxCollector: SyntaxVisitor {
     }
 
     override func visit(_ node: ActorDeclSyntax) -> SyntaxVisitorContinueKind {
-        enter(node, kind: .actor, name: node.name.text, generics: Self.names(node.genericParameterClause))
+        enter(node, kind: .actor, name: node.name.text, generics: LawScopeNames.names(node.genericParameterClause))
     }
 
     override func visitPost(_: ActorDeclSyntax) {
@@ -140,15 +121,29 @@ final class LawSyntaxCollector: SyntaxVisitor {
     }
 
     override func visit(_ node: ProtocolDeclSyntax) -> SyntaxVisitorContinueKind {
-        enter(node, kind: .protocolType, name: node.name.text, generics: [])
+        enter(node, kind: .protocolType, name: node.name.text, generics: LawScopeNames.associatedTypes(of: node))
     }
 
     override func visitPost(_: ProtocolDeclSyntax) {
         leave()
     }
 
+    /// An extension is recorded as written, generic arguments stripped
+    /// (`extension Wrap<Int>` extends `Wrap`); what it nests takes that
+    /// path without a package module qualifier, as a bare extension's
+    /// would.
     override func visit(_ node: ExtensionDeclSyntax) -> SyntaxVisitorContinueKind {
-        enter(node, kind: .extensionDeclaration, name: CanonicalText.render(node.extendedType), generics: [])
+        let rendered = CanonicalText.render(node.extendedType)
+        let written = LawCallReader.typeName(rendered) ?? rendered
+        let components = written.split(separator: ".").map(String.init)
+        let isQualified = components.count > 1 && packageModules.contains(components[0])
+        return enter(
+            node,
+            kind: .extensionDeclaration,
+            name: written,
+            pathName: isQualified ? components.dropFirst().joined(separator: ".") : written,
+            generics: LawScopeNames.constrainedNames(node.genericWhereClause)
+        )
     }
 
     override func visitPost(_: ExtensionDeclSyntax) {
@@ -158,7 +153,10 @@ final class LawSyntaxCollector: SyntaxVisitor {
     // MARK: - Generic functions
 
     override func visit(_ node: FunctionDeclSyntax) -> SyntaxVisitorContinueKind {
-        genericNames.append(Self.names(node.genericParameterClause))
+        if path.isEmpty, codeDepth == 0, let witness = LawWitnesses.operatorWitness(node) {
+            operatorWitnesses.append(witness)
+        }
+        genericNames.append(LawScopeNames.names(node.genericParameterClause))
         return .visitChildren
     }
 
@@ -167,7 +165,7 @@ final class LawSyntaxCollector: SyntaxVisitor {
     }
 
     override func visit(_ node: InitializerDeclSyntax) -> SyntaxVisitorContinueKind {
-        genericNames.append(Self.names(node.genericParameterClause))
+        genericNames.append(LawScopeNames.names(node.genericParameterClause))
         return .visitChildren
     }
 
@@ -176,7 +174,7 @@ final class LawSyntaxCollector: SyntaxVisitor {
     }
 
     override func visit(_ node: SubscriptDeclSyntax) -> SyntaxVisitorContinueKind {
-        genericNames.append(Self.names(node.genericParameterClause))
+        genericNames.append(LawScopeNames.names(node.genericParameterClause))
         return .visitChildren
     }
 
@@ -187,7 +185,7 @@ final class LawSyntaxCollector: SyntaxVisitor {
     // MARK: - Code contexts
 
     override func visit(_ node: CodeBlockSyntax) -> SyntaxVisitorContinueKind {
-        enterCode(declaring: Self.typeNames(in: node.statements))
+        enterCode(declaring: LawScopeNames.localNames(in: node.statements))
     }
 
     override func visitPost(_: CodeBlockSyntax) {
@@ -196,9 +194,9 @@ final class LawSyntaxCollector: SyntaxVisitor {
 
     override func visit(_ node: AccessorBlockSyntax) -> SyntaxVisitorContinueKind {
         guard case .getter(let statements) = node.accessors else {
-            return enterCode(declaring: [])
+            return enterCode(declaring: LawCallReader.LocalNames())
         }
-        return enterCode(declaring: Self.typeNames(in: statements))
+        return enterCode(declaring: LawScopeNames.localNames(in: statements))
     }
 
     override func visitPost(_: AccessorBlockSyntax) {
@@ -206,7 +204,7 @@ final class LawSyntaxCollector: SyntaxVisitor {
     }
 
     override func visit(_ node: ClosureExprSyntax) -> SyntaxVisitorContinueKind {
-        enterCode(declaring: Self.typeNames(in: node.statements))
+        enterCode(declaring: LawScopeNames.localNames(in: node.statements))
     }
 
     override func visitPost(_: ClosureExprSyntax) {
@@ -214,7 +212,7 @@ final class LawSyntaxCollector: SyntaxVisitor {
     }
 
     override func visit(_: MacroExpansionExprSyntax) -> SyntaxVisitorContinueKind {
-        enterCode(declaring: [])
+        enterCode(declaring: LawCallReader.LocalNames())
     }
 
     override func visitPost(_: MacroExpansionExprSyntax) {
@@ -222,14 +220,27 @@ final class LawSyntaxCollector: SyntaxVisitor {
     }
 
     override func visit(_: MacroExpansionDeclSyntax) -> SyntaxVisitorContinueKind {
-        enterCode(declaring: [])
+        enterCode(declaring: LawCallReader.LocalNames())
     }
 
     override func visitPost(_: MacroExpansionDeclSyntax) {
         leaveCode()
     }
 
-    // MARK: - Imports and checks
+    // MARK: - Typealiases, imports and checks
+
+    /// A typealias outside code is recorded; one in code is a local name,
+    /// read where its code context is entered.
+    override func visit(_ node: TypeAliasDeclSyntax) -> SyntaxVisitorContinueKind {
+        if codeDepth == 0 {
+            aliases.append(LawFileFacts.Alias(
+                name: (path + [node.name.text]).joined(separator: "."),
+                value: LawScopeNames.aliasValue(node),
+                fileScoped: FunctionCollector.isFileScoped(node.modifiers) || fileScoped.last == true
+            ))
+        }
+        return .visitChildren
+    }
 
     override func visit(_ node: ImportDeclSyntax) -> SyntaxVisitorContinueKind {
         if let module = node.path.first?.name.text, KitProtocols.kitModules.contains(module) {
@@ -243,7 +254,7 @@ final class LawSyntaxCollector: SyntaxVisitor {
             node,
             scope: path,
             generics: Set(genericNames.flatMap(\.self)),
-            locals: Set(localTypes.flatMap(\.self))
+            locals: localNames
         ) {
             calls.append(call)
         }
@@ -252,14 +263,30 @@ final class LawSyntaxCollector: SyntaxVisitor {
 
     // MARK: - Records
 
-    /// Records `node` when it is outside code, and puts its name, generic
-    /// parameters and, for a local type, the types nested in it in scope.
+    /// Records `node`, a type named `name`, as `enter(_:kind:name:pathName:generics:)`.
     private func enter(
         _ node: some DeclGroupSyntax,
         kind: TypeKind,
         name: String,
         generics: [String]
     ) -> SyntaxVisitorContinueKind {
+        enter(node, kind: kind, name: name, pathName: name, generics: generics)
+    }
+
+    /// Records `node`, named `name`, when it is outside code, and puts
+    /// `pathName` (the name what it nests is under), its generic names
+    /// and, for a local type, the names nested in it in scope.
+    private func enter(
+        _ node: some DeclGroupSyntax,
+        kind: TypeKind,
+        name: String,
+        pathName: String,
+        generics: [String]
+    ) -> SyntaxVisitorContinueKind {
+        let isFileScoped = FunctionCollector.isFileScoped(node.modifiers)
+            || (kind == .extensionDeclaration
+                ? FileScopedTypes.isFileScoped(pathName, in: fileScopedTypes)
+                : fileScoped.last == true)
         if codeDepth == 0 {
             let attributes = AttributeFacts.attributes(in: node.attributes)
             declarations.append(LawFileFacts.Declaration(
@@ -269,35 +296,41 @@ final class LawSyntaxCollector: SyntaxVisitor {
                 inherited: Conformances.written(node.inheritanceClause),
                 writtenInherited: node.inheritanceClause?.inheritedTypes.map(\.type.trimmedDescription) ?? [],
                 hasSuite: attributes.contains { Self.suiteAttributes.contains(CanonicalText.render($0.attributeName)) },
-                witnesses: LawWitnesses.witnesses(in: node.memberBlock.members)
+                witnesses: LawWitnesses.witnesses(in: node.memberBlock.members),
+                fileScoped: isFileScoped,
+                generics: generics
             ))
         }
-        path.append(name)
+        path.append(pathName)
+        fileScoped.append(isFileScoped)
         genericNames.append(generics)
-        localTypes.append(codeDepth > 0 && context.isTestTarget ? Self.typeNames(in: node.memberBlock.members) : [])
+        localNames.append(codeDepth > 0 && context.isTestTarget
+            ? LawScopeNames.localNames(in: node.memberBlock.members)
+            : LawCallReader.LocalNames())
         return .visitChildren
     }
 
-    /// Takes the innermost name, its generic parameters and nested local
-    /// types out of scope.
+    /// Takes the innermost name, its generic names and nested local names
+    /// out of scope.
     private func leave() {
         path.removeLast()
+        fileScoped.removeLast()
         genericNames.removeLast()
-        localTypes.removeLast()
+        localNames.removeLast()
     }
 
     /// Enters a code context, whose contents only a test target's walk
-    /// reads, with `names` the types its statements declare.
-    private func enterCode(declaring names: @autoclosure () -> Set<String>) -> SyntaxVisitorContinueKind {
+    /// reads, with `names` the types and typealiases its statements declare.
+    private func enterCode(declaring names: @autoclosure () -> LawCallReader.LocalNames) -> SyntaxVisitorContinueKind {
         codeDepth += 1
-        localTypes.append(context.isTestTarget ? names() : [])
+        localNames.append(context.isTestTarget ? names() : LawCallReader.LocalNames())
         return context.isTestTarget ? .visitChildren : .skipChildren
     }
 
     /// Leaves the innermost code context.
     private func leaveCode() {
         codeDepth -= 1
-        localTypes.removeLast()
+        localNames.removeLast()
     }
 
     deinit {

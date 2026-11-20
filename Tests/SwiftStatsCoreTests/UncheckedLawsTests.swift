@@ -177,6 +177,32 @@ struct UncheckedLawsTests {
             + "| add `check<P>PropertyLaws` calls | yes |")
     }
 
+    @Test("same-named private types in two files are listed apart, each at its own declaration")
+    func fileScopedNamesakes() throws {
+        let files = [
+            "Sources/Core/A.swift": "private struct Key: Equatable { let first: Int }\n",
+            "Sources/Core/B.swift": """
+            private struct Key: Equatable {
+                let second: Int
+                static func == (lhs: Key, rhs: Key) -> Bool { lhs.second == rhs.second }
+            }
+            """
+        ]
+        let targets = [PropertyHarness.target("Core", "library", "Sources/Core", ["A.swift", "B.swift"])]
+        let snapshot = try SignalHarness.stored(files, targets: targets, tools: SnapshotHarness.noTools)
+        let signal = try SignalHarness.signal(.uncheckedLaws, of: snapshot)
+
+        #expect(snapshot.lawChecks.map(\.type) == [
+            "Core::Key @ Sources/Core/A.swift", "Core::Key @ Sources/Core/B.swift"
+        ])
+        #expect(signal.candidates == 2)
+        #expect(signal.items.map(\.subject) == ["Core::Key @ Sources/Core/B.swift"])
+        #expect(signal.items.map(\.score) == [1])
+        #expect(signal.rule.contains("; 1 unchecked pairs with synthesised witnesses are left out"))
+        #expect(SignalHarness.rows(signal)[2] == "| 1 | `Key` (Sources/Core/B.swift:1) | 1 | Equatable "
+            + "| add the SwiftPropertyLaws dependency | yes |")
+    }
+
     @Test("a snapshot stored before M4 leaves the signal out")
     func predatesM4() throws {
         let directory = try SnapshotHarness.temporaryDirectory("Signals")

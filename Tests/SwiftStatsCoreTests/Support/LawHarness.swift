@@ -53,22 +53,35 @@ enum LawHarness {
             try sources(in: path).map { source -> LawFileFacts in
                 let file = path + "/" + source
                 let text = try String(contentsOf: fixture.appendingPathComponent(file), encoding: .utf8)
-                return facts(text, file: file, module: name, isTest: type == "test")
+                return facts(text, file: file, module: name, isTest: type == "test", modules: Set(targets.map(\.0)))
             }
         }
     }
 
     /// The law facts of `source`, walked as `file` of `module`.
     static func facts(_ source: String, file: String, module: String, isTest: Bool) -> LawFileFacts {
+        facts(source, file: file, module: module, isTest: isTest, modules: [])
+    }
+
+    /// The law facts of `source`, walked as `file` of `module` in a
+    /// package whose other targets are `modules`.
+    static func facts(
+        _ source: String,
+        file: String,
+        module: String,
+        isTest: Bool,
+        modules: Set<String>
+    ) -> LawFileFacts {
         let tree = Parser.parse(source: source)
-        return LawSyntaxCollector.collect(tree, context: FileContext(
+        let context = FileContext(
             module: module,
             file: file,
             isTestTarget: isTest,
             testCaseClasses: [],
             converter: SourceLocationConverter(fileName: file, tree: tree),
             firstLineColumnOffset: 0
-        ))
+        )
+        return LawSyntaxCollector.collect(tree, context: context, packageModules: modules.union([module]))
     }
 
     /// The Swift files under the fixture's `path`, relative to it, sorted.

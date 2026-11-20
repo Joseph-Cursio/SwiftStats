@@ -3,9 +3,10 @@
 //  SwiftStatsCore
 //
 //  What law detection reads from one file (PRD §7.11): its type
-//  declarations and extensions with their inheritance and the witnesses
-//  they write, its kit protocol checks if it is in a test target, and its
-//  suppression markers if the discovery plugin generated it.
+//  declarations, extensions and typealiases, with their inheritance and the
+//  witnesses they write; the `==` and `<` it declares at file scope; its kit
+//  protocol checks if it is in a test target; and its suppression markers
+//  if the discovery plugin generated it.
 //
 
 /// The law-detection facts of one source file.
@@ -38,7 +39,10 @@ struct LawFileFacts {
     struct Declaration {
         /// What it declares.
         let kind: TypeKind
-        /// The lexical path; for an extension, the extended type as written.
+        /// The lexical path; for an extension, the extended type as written,
+        /// generic arguments stripped. A type nested in an extension takes
+        /// the extended type's path without a package module qualifier, so
+        /// `Currency` in `extension Core.Money` is `Money.Currency`.
         let name: String
         /// Its first line.
         let line: Int
@@ -52,14 +56,47 @@ struct LawFileFacts {
         let hasSuite: Bool
         /// The witnesses directly in its body, `#if` branches included.
         let witnesses: Set<Witness>
+        /// Whether only its file can see it: it, or a type or extension
+        /// around it, is `private` or `fileprivate`, or an extension around
+        /// it extends a type that is. For an extension, whether what it
+        /// declares is.
+        let fileScoped: Bool
+        /// The names its body can use for types it doesn't declare: a
+        /// generic type's parameters, a protocol's associated types, the
+        /// constrained names of an extension's `where` clause.
+        let generics: [String]
+    }
+
+    /// A `typealias` outside any function body.
+    struct Alias {
+        /// Its lexical path, as a declaration's.
+        let name: String
+        /// The type it names: a dotted path with generic arguments
+        /// stripped, else its value as written.
+        let value: String
+        /// Whether only its file can see it, as a declaration.
+        let fileScoped: Bool
+    }
+
+    /// An `==` or `<` declared at file scope with both parameters of one
+    /// type, which Swift finds as that type's witness where it is visible.
+    struct OperatorWitness {
+        /// The parameters' type as written, generic arguments stripped.
+        let typeName: String
+        /// The witness it is.
+        let witness: Witness
+        /// Whether it is `private` or `fileprivate`, so only its file sees it.
+        let fileScoped: Bool
     }
 
     /// A `check<P>PropertyLaws` call for a protocol in the kit's table.
     struct Call {
         /// The protocol it checks.
         let protocolName: String
-        /// Its subject as written, generic arguments stripped; nil when no
-        /// argument names one or it is a generic parameter or `Self`.
+        /// Its subject as written, generic arguments stripped, through any
+        /// typealias declared in a function body or closure around it; nil
+        /// when no argument names one, it is a generic parameter or `Self`,
+        /// or such a typealias names no plain type.
         let typeName: String?
         /// The lexical path of the type or extension around the call.
         let scope: [String]
@@ -88,6 +125,10 @@ struct LawFileFacts {
     let importsKit: Bool
     /// Its type declarations and extensions, local ones left out, in source order.
     let declarations: [Declaration]
+    /// Its typealiases, local ones left out, in source order.
+    let aliases: [Alias]
+    /// Its file-scope `==` and `<` witnesses, in source order.
+    let operatorWitnesses: [OperatorWitness]
     /// Its kit protocol checks; only a test target's are collected.
     let calls: [Call]
     /// Its suppression markers; only a file the discovery plugin generated has any.
