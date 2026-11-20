@@ -5,6 +5,8 @@
 //  `trend` (PRD §10): a roll-up number over the clean snapshots of HEAD's
 //  first-parent commits, the same line `backfill` fills in. Snapshots of
 //  commits only reachable through a merged branch are counted, not shown.
+//  A keyed count reads 0 where its collector ran and the roll-up is there,
+//  once some point stores it, as `diff` reads it only when a side has it.
 //
 
 import Foundation
@@ -75,6 +77,35 @@ extension SnapshotWorkspace {
         return Set((String(bytes: data, encoding: .utf8) ?? "").split(separator: "\n").map(String.init))
     }
 
+    /// Roll-up number `metric` in the roll-up `name` of `scope` at each
+    /// of `snapshots`. A keyed count missing where its `collector` ran and
+    /// the roll-up is there reads as zero, as `diff` reads it (PRD §6.5,
+    /// §6.6), but only when some snapshot stores it there: `diff` reads a
+    /// zero only beside a side that has the number, so a count never
+    /// collected in that scope, such as side effects in a test module, or a
+    /// misspelt key, stays nil throughout.
+    private func values(
+        of metric: String,
+        in snapshots: [(id: Int64, info: SnapshotInfo)],
+        scope: RollupScope,
+        name: String,
+        collector: String
+    ) throws -> [Double?] {
+        let stored = try snapshots.map { snapshot in
+            try store.rollupValue(id: snapshot.id, scope: scope, name: name, metric: metric)
+        }
+        guard stored.contains(where: { $0 != nil }) else {
+            return stored
+        }
+        return try zip(snapshots, stored).map { snapshot, value in
+            let ran = snapshot.info.collectors.contains { $0.name == collector && $0.state == .ran }
+            guard value == nil, ran, try store.hasRollup(id: snapshot.id, scope: scope, name: name) else {
+                return value
+            }
+            return CountedMetrics.value(value, metric: metric)
+        }
+    }
+
     /// The trend of roll-up number `metric` in the roll-up `name` of `scope`.
     public func trend(metric: String, scope: RollupScope, name: String) throws -> TrendReport {
         let package = try describer.describePackage(at: root).name
@@ -88,20 +119,26 @@ extension SnapshotWorkspace {
         ) { _, last in last }
         let collector = RollupMetrics.collector(of: metric.split(separator: ".").map(String.init))
         let watched = Array(Set([SwiftStatsCollector.name, collector])).sorted()
+        let shown = try line.compactMap { commit, time in
+            try snapshots[commit].map { id in (commit: commit, time: time, id: id, info: try store.info(id: id)) }
+        }
+        let values = try values(
+            of: metric,
+            in: shown.map { (id: $0.id, info: $0.info) },
+            scope: scope,
+            name: name,
+            collector: collector
+        )
         var points: [TrendPoint] = []
         var previous: SnapshotInfo?
-        for (commit, time) in line {
-            guard let id = snapshots[commit] else {
-                continue
-            }
-            let info = try store.info(id: id)
+        for (point, value) in zip(shown, values) {
             points.append(TrendPoint(
-                commit: commit,
-                date: HistoryCollector.date(time),
-                value: try store.rollupValue(id: id, scope: scope, name: name, metric: metric),
-                breakReason: previous.flatMap { Self.breakReason(from: $0, to: info, watching: watched) }
+                commit: point.commit,
+                date: HistoryCollector.date(point.time),
+                value: value,
+                breakReason: previous.flatMap { Self.breakReason(from: $0, to: point.info, watching: watched) }
             ))
-            previous = info
+            previous = point.info
         }
         let onLine = Set(line.map(\.commit))
         let reachable = try reachableCommits()

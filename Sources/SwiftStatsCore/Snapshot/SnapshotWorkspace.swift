@@ -149,16 +149,8 @@ public struct SnapshotWorkspace {
         if commit == git.commit, git.isDirty == false {
             return try scanWorkingTree().id
         }
-        let exported = try RevisionExport.export(commit: commit, packagePath: git.packagePath, from: root)
-        defer { ScratchRegistry.shared.remove(RevisionExport.workDirectory(of: exported)) }
-        let state = GitState(commit: commit, branch: nil, isDirty: false, dirtyHash: nil, packagePath: git.packagePath)
-        let snapshot = try scanner.scan(
-            packageAt: exported,
-            configurationFile: configurationFile ?? StoreLocation.localConfiguration(packageRoot: exported),
-            git: state,
-            history: .skipped("exported revision")
-        )
-        return try store.save(snapshot)
+        let scanned = try scanExport(commit, git: git, scanner: scanner, history: .skipped("exported revision"))
+        return try store.save(scanned.snapshot)
     }
 
     /// HEAD's stored dirty snapshot when its hash of the changes is the

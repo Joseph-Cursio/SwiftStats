@@ -208,6 +208,18 @@ public struct SnapshotStore: Sendable {
         }
     }
 
+    /// Whether snapshot `id` holds any number in the roll-up `name` of
+    /// `scope`: false when that module or part wasn't there.
+    func hasRollup(id: Int64, scope: RollupScope, name: String) throws -> Bool {
+        try queue.read { database in
+            try Bool.fetchOne(
+                database,
+                sql: "SELECT EXISTS (SELECT 1 FROM rollupMetric WHERE snapshotId = ? AND scope = ? AND name = ?)",
+                arguments: [id, scope.rawValue, name]
+            ) ?? false
+        }
+    }
+
     /// The metadata of snapshot `id`.
     public func info(id: Int64) throws -> SnapshotInfo {
         try queue.read { database in try Self.info(id: id, in: database) }

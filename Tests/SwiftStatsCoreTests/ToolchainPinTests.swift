@@ -8,6 +8,40 @@ import Testing
 /// outside a repository, the nearest above it as far as swiftly looks.
 @Suite("Toolchain pins")
 struct ToolchainPinTests {
+    /// The note on a backfill step scanned only once its pins were removed.
+    private static let withoutPin = "scanned without its .swift-version toolchain pin"
+
+    /// Commits a nested package `Packages/Inner` twice in `repository`: first
+    /// under a repository pin no install has, then under one that is
+    /// installed, with a function added. Returns the commits, oldest first.
+    private static func commitStalePin(in repository: HistoryRepository) throws -> [String] {
+        try repository.write([
+            ".swift-version": "\(PinRefusingDescriber.uninstalled)\n",
+            "Packages/Inner/Package.swift": "// swift-tools-version: 6.0\n",
+            "Packages/Inner/Sources/Inner/One.swift": "func one() -> Int {\n    1\n}\n"
+        ])
+        let old = try repository.commit("Old pin", day: 0)
+        try repository.write([
+            ".swift-version": "6.4.1\n",
+            "Packages/Inner/Sources/Inner/Two.swift": "func two() -> Int {\n    2\n}\n"
+        ])
+        let new = try repository.commit("New pin", day: 1)
+        return [old, new]
+    }
+
+    /// A workspace on `Packages/Inner` whose describing fails under the
+    /// uninstalled pin.
+    private static func innerWorkspace(_ repository: HistoryRepository) throws -> SnapshotWorkspace {
+        try SnapshotWorkspace(
+            packageRoot: repository.root.appendingPathComponent("Packages/Inner"),
+            configurationFile: nil,
+            storeOverride: nil,
+            build: SnapshotHarness.build,
+            describer: PinRefusingDescriber(),
+            tools: SnapshotHarness.noTools
+        )
+    }
+
     @Test("""
         a package with no toolchain pin of its own gets the nearest one in its repository, and so does an \
         export of it, which records the same options
@@ -61,5 +95,53 @@ struct ToolchainPinTests {
         #expect(SwiftInferCopy.toolchainOption(root: package) == ".swift-version: 6.4.1")
         #expect(SwiftInferCopy.toolchainPin(for: bare) == nil)
         #expect(SwiftInferCopy.toolchainOption(root: bare) == ".swift-version: absent")
+    }
+
+    @Test("""
+        backfill scans a nested package's commit whose inherited pin no longer installs by removing that pin, \
+        and an export still carries the inherited pin
+        """)
+    func backfillWithoutInheritedPin() throws {
+        let repository = try HistoryRepository()
+        defer { repository.remove() }
+        let commits = try Self.commitStalePin(in: repository)
+        let workspace = try Self.innerWorkspace(repository)
+
+        let steps = try workspace.backfill(
+            BackfillPlan(selection: .every(1), since: nil, maximumCommits: nil, rerun: false, withTools: false)
+        ) { _ in
+            // Progress isn't checked here.
+        }
+        let exported = try RevisionExport.export(
+            commit: commits[1],
+            packagePath: "Packages/Inner",
+            from: repository.root
+        )
+        defer { try? FileManager.default.removeItem(at: RevisionExport.workDirectory(of: exported)) }
+        let inherited = RevisionExport.workDirectory(of: exported).appendingPathComponent(".swift-version")
+
+        #expect(steps.map(\.commit) == commits)
+        #expect(steps.map(\.action) == [.scanned, .scanned])
+        #expect(steps.map(\.note) == [Self.withoutPin, nil])
+        #expect(RevisionExport.toolchainPins(of: exported) == [inherited])
+        #expect(try String(contentsOf: inherited, encoding: .utf8) == "6.4.1\n")
+    }
+
+    @Test("diff scans a nested package's commit whose inherited pin no longer installs by removing that pin")
+    func diffWithoutInheritedPin() throws {
+        let repository = try HistoryRepository()
+        defer { repository.remove() }
+        let commits = try Self.commitStalePin(in: repository)
+        let workspace = try Self.innerWorkspace(repository)
+
+        let ids = try workspace.diffSnapshotIDs(older: commits[0], newer: nil, includeDirty: false, rescan: false)
+
+        let stored = try workspace.store.snapshotID(
+            packagePath: "Packages/Inner",
+            commit: commits[0],
+            isDirty: false
+        )
+        #expect(ids.older == stored)
+        #expect(ids.older != ids.newer)
     }
 }

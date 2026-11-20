@@ -8,7 +8,9 @@
 //  `git archive`, which drops `export-ignore` paths and rewrites
 //  `export-subst` files. A nested package gets the nearest toolchain pin
 //  above it in the repository, written just above the export, so swiftly
-//  picks the toolchain it would in the working tree.
+//  picks the toolchain it would in the working tree; a scan of the export
+//  that fails under a pin is tried again without it (SnapshotWorkspace's
+//  `scanExport`).
 //
 
 import Foundation
@@ -96,5 +98,13 @@ enum RevisionExport {
     /// The directory to remove once the export at `package` is scanned.
     static func workDirectory(of package: URL) -> URL {
         package.deletingLastPathComponent()
+    }
+
+    /// The toolchain pins swiftly would read for the export at `package`:
+    /// the package's own and the one inherited just above it, where present.
+    static func toolchainPins(of package: URL) -> [URL] {
+        [package, workDirectory(of: package)]
+            .map { $0.appendingPathComponent(toolchainPinName) }
+            .filter { FileManager.default.fileExists(atPath: $0.path) }
     }
 }

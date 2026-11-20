@@ -145,7 +145,12 @@ extension SnapshotWorkspace {
                     return Self.kept(commit, holding: held)
                 }
             }
-            let (snapshot, note) = try scanExport(commit, git: git, scanner: backfillScanner)
+            let (snapshot, note) = try scanExport(
+                commit,
+                git: git,
+                scanner: backfillScanner,
+                history: .skipped("backfill")
+            )
             let ran = Set(snapshot.info.collectors.filter { $0.state == .ran }.map(\.name))
             let lost = existingRan.subtracting(ran)
             guard lost.isEmpty else {
@@ -155,39 +160,6 @@ extension SnapshotWorkspace {
             return BackfillStep(commit: commit, action: .scanned, note: note)
         } catch {
             return BackfillStep(commit: commit, action: .failed, note: String(describing: error))
-        }
-    }
-
-    /// Exports `commit` and scans it, with a note when the scan needed the
-    /// export's toolchain pin removed.
-    private func scanExport(
-        _ commit: String,
-        git: GitState,
-        scanner backfillScanner: SnapshotScanner
-    ) throws -> (ScannedSnapshot, String?) {
-        let exported = try RevisionExport.export(commit: commit, packagePath: git.packagePath, from: root)
-        defer { ScratchRegistry.shared.remove(RevisionExport.workDirectory(of: exported)) }
-        let state = GitState(commit: commit, branch: nil, isDirty: false, dirtyHash: nil, packagePath: git.packagePath)
-        let scan = {
-            try backfillScanner.scan(
-                packageAt: exported,
-                configurationFile: self.configurationFile ?? StoreLocation.localConfiguration(packageRoot: exported),
-                git: state,
-                history: .skipped("backfill")
-            )
-        }
-        do {
-            return (try scan(), nil)
-        } catch {
-            // An old `.swift-version` can pin a toolchain that no longer
-            // installs or describes the manifest; the export is scratch, so
-            // try once without it.
-            let pin = exported.appendingPathComponent(".swift-version")
-            guard FileManager.default.fileExists(atPath: pin.path) else {
-                throw error
-            }
-            try FileManager.default.removeItem(at: pin)
-            return (try scan(), "scanned without its .swift-version toolchain pin")
         }
     }
 }
