@@ -4,7 +4,8 @@
 //
 //  The SQLite snapshot store (PRD §9, D9): one clean and one dirty snapshot
 //  per package and commit, each with its collector runs, function rows,
-//  finding rows, roll-up numbers and the whole scan report.
+//  finding rows, roll-up numbers, history, M4 rows (`SnapshotStore+Rows`)
+//  and the whole scan report.
 //
 
 import Foundation
@@ -58,8 +59,9 @@ public struct SnapshotStore: Sendable {
         for run in snapshot.info.collectors {
             try CollectorRunRow(run, snapshotId: snapshotId).insert(database)
         }
+        let generated = Set(snapshot.report.files.filter(\.generated).map(\.path))
         for record in snapshot.report.records {
-            try FunctionRow(record, snapshotId: snapshotId).insert(database)
+            try FunctionRow(record, snapshotId: snapshotId, generated: generated.contains(record.file)).insert(database)
         }
         for location in snapshot.report.findings.flatMap({ FindingRow.rows(for: $0, snapshotId: snapshotId) }) {
             try location.insert(database)
@@ -70,6 +72,7 @@ public struct SnapshotStore: Sendable {
                 try FamilyHistoryRow(family, snapshotId: snapshotId).insert(database)
             }
         }
+        try insertM4Rows(of: snapshot.report, snapshotId: snapshotId, in: database)
         for (rollup, numbers) in metrics {
             for number in numbers {
                 try RollupMetricRow(
@@ -85,7 +88,7 @@ public struct SnapshotStore: Sendable {
     }
 
     /// The metadata of snapshot `id`, read in `database`.
-    private static func info(id: Int64, in database: Database) throws -> SnapshotInfo {
+    static func info(id: Int64, in database: Database) throws -> SnapshotInfo {
         guard let row = try SnapshotRow.fetchOne(database, key: id) else {
             throw StoreError.noSnapshot("id \(id)")
         }
@@ -212,29 +215,7 @@ public struct SnapshotStore: Sendable {
 
     /// Snapshot `id` with its rows.
     public func load(id: Int64) throws -> StoredSnapshot {
-        try queue.read { database in
-            StoredSnapshot(
-                id: id,
-                info: try Self.info(id: id, in: database),
-                functions: try FunctionRow
-                    .filter(Column("snapshotId") == id)
-                    .order(Column("key"), Column("file"), Column("startLine"))
-                    .fetchAll(database),
-                findings: try FindingRow
-                    .filter(Column("snapshotId") == id)
-                    .order(Column("tool"), Column("rule"), Column("file"), Column("line"), Column("column"))
-                    .fetchAll(database),
-                rollups: try RollupMetricRow
-                    .filter(Column("snapshotId") == id)
-                    .order(Column("scope"), Column("name"), Column("metric"))
-                    .fetchAll(database),
-                history: try HistoryRunRow.filter(Column("snapshotId") == id).fetchOne(database),
-                familyHistory: try FamilyHistoryRow
-                    .filter(Column("snapshotId") == id)
-                    .order(Column("file"), Column("line"), Column("family"))
-                    .fetchAll(database)
-            )
-        }
+        try queue.read { database in try Self.snapshot(id: id, in: database) }
     }
 
     /// Snapshot `id`'s scan report. One written with another report schema

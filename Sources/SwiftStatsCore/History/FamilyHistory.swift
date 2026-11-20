@@ -44,4 +44,7 @@ public struct FamilyHistory: Codable, Hashable, Sendable {
     public let lastChanged: String?
     /// How surely its history was traced.
     public let tracedBy: TracedBy
+    /// The commits that changed it, sweeps included, as positions in the
+    /// history's `commitLog`; null when the family has no history.
+    public let changedBy: CommitOrdinals?
 }

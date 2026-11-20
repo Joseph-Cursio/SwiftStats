@@ -62,21 +62,21 @@ enum HistoryCollector {
             Self.events(of: commits[index], parsed: parsed, modules: modules)
         }
         let facts = commits.map(classifier.facts(of:))
+        let log = commitLog(commits, facts)
         let seeds = side(anchorFiles.map { (path: $0.key, blob: $0.value) }, parsed: parsed)
-        let warnings = shallowWarnings(top: top)
         let chain = HistoryChain(
             seeds: FunctionFamily.families(seeds.rows),
             scan: FunctionFamily.families(input.records.map { FunctionRow($0, snapshotId: 0) }),
             events: events
         )
-        let tests = TestNameMatcher(testFiles: anchorFiles.keys.filter { modules.place($0)?.isTest == true })
         let measures = HistoryMeasures(
             chain: chain,
             facts: facts,
             anchor: anchor,
             options: input.options,
-            tests: tests,
-            generated: Set(input.files.filter(\.generated).map(\.path))
+            tests: TestNameMatcher(testFiles: anchorFiles.keys.filter { modules.place($0)?.isTest == true }),
+            generated: Set(input.files.filter(\.generated).map(\.path)),
+            logOrdinals: log.ordinals
         )
         return HistoryReport(
             commit: input.commit,
@@ -84,15 +84,35 @@ enum HistoryCollector {
             windowDays: input.options.windowDays,
             windowStart: date(windowStart),
             mergeStyle: mergeStyle(top: top, commit: input.commit, since: windowStart),
-            commits: facts.filter { $0.files > 0 }.count,
+            commits: log.entries.count,
             windowCommits: facts.filter { $0.files > 0 && $0.inWindow }.count,
+            commitLog: log.entries,
             fixCommits: notes(commits, facts, events) { $0.matchesFix },
             revertCommits: notes(commits, facts, events) { $0.isRevertCommit },
             sweepCommits: notes(commits, facts, events) { $0.isSweep },
             families: measures.families(),
             coupling: measures.coupling(minimumSupport: input.options.couplingMinSupport),
-            warnings: (warnings + chain.warnings).sorted()
+            warnings: (shallowWarnings(top: top) + chain.warnings).sorted()
         )
+    }
+
+    /// The commits that changed the package's Swift files, newest first, and
+    /// the position among them of each one's index in `commits`.
+    private static func commitLog(
+        _ commits: [HistoryCommit],
+        _ facts: [CommitFacts]
+    ) -> (entries: [HistoryLogEntry], ordinals: [Int: Int]) {
+        let logged = commits.indices.filter { facts[$0].files > 0 }
+        let entries = logged.map { index in
+            HistoryLogEntry(
+                hash: commits[index].hash,
+                date: date(commits[index].time),
+                sweep: facts[index].isSweep,
+                fix: facts[index].isFix
+            )
+        }
+        let ordinals = Dictionary(uniqueKeysWithValues: logged.enumerated().map { ($0.element, $0.offset) })
+        return (entries, ordinals)
     }
 
     /// The committer time of the analysed commit.

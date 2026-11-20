@@ -29,6 +29,8 @@ struct HistoryMeasures {
     let tests: TestNameMatcher
     /// Generated files.
     let generated: Set<String>
+    /// The position in the commit log of each logged commit's index in `facts`.
+    let logOrdinals: [Int: Int]
 
     /// Rounds a score to four decimal places, so the JSON is stable.
     private static func rounded(_ value: Double) -> Double {
@@ -60,7 +62,8 @@ struct HistoryMeasures {
                     hasTests: matchingTests.isEmpty == false,
                     firstSeen: nil,
                     lastChanged: nil,
-                    tracedBy: .uncommitted
+                    tracedBy: .uncommitted,
+                    changedBy: nil
                 )
             }
             return history(of: family, lineage: chain.lineages[lineage], matchingTests: matchingTests)
@@ -105,7 +108,8 @@ struct HistoryMeasures {
             hasTests: matchingTests.isEmpty == false,
             firstSeen: lineage.birth.map { HistoryCollector.date(facts[$0].time) },
             lastChanged: changes.map(\.time).max().map(HistoryCollector.date),
-            tracedBy: lineage.weakest.map(TracedBy.init) ?? .key
+            tracedBy: lineage.weakest.map(TracedBy.init) ?? .key,
+            changedBy: CommitOrdinals(lineage.changes.compactMap { logOrdinals[$0] })
         )
     }
 
