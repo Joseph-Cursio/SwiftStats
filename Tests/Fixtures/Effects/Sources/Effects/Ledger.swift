@@ -11,8 +11,8 @@ final class Ledger {
         cache.upsert(totalsKey)
     }
 
-    // On the first pass `updateTotals()` is guessed non_idempotent from the
-    // `update` prefix; from the second, its body's idempotent tier wins.
+    // The `update` prefix would guess `updateTotals()` non_idempotent, but
+    // it is a package function: only its body's idempotent tier counts.
     func refresh() {
         updateTotals()
     }

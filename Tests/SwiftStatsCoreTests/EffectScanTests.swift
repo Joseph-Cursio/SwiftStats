@@ -163,6 +163,61 @@ struct EffectScanTests {
         ])
     }
 
+    @Test("plugin targets are outside the universe, so a plugin namesake leaves a library function unique")
+    func pluginTargetsLeftOut() throws {
+        let store = """
+        struct Store {
+            let cache: TotalsCache
+            func save(_ text: String) -> String {
+                cache.upsert(text)
+                return text
+            }
+            func label(_ text: String) -> String {
+                save(text)
+            }
+            func load(_ text: String) -> String {
+                cache.upsert(text)
+                return text
+            }
+        }
+        """
+        let package = try TemporaryPackage(
+            [
+                "Sources/Core/Store.swift": store,
+                "Plugins/Gen/Plugin.swift": "func save(_ text: String) -> String {\n    text\n}\n",
+                "Sources/Tool/main.swift": "func load(_ text: String) -> String {\n    text\n}\n"
+            ],
+            targets: [
+                PropertyHarness.target("Core", "library", "Sources/Core", ["Store.swift"]),
+                PropertyHarness.target("Gen", "plugin", "Plugins/Gen", ["Plugin.swift"]),
+                PropertyHarness.target("Tool", "executable", "Sources/Tool", ["main.swift"])
+            ]
+        )
+        defer { package.remove() }
+
+        let report = try package.scan(tools: SnapshotHarness.noTools)
+        let effects = Dictionary(uniqueKeysWithValues: report.records.compactMap { record in
+            record.effect.map { (record.key, $0) }
+        })
+
+        let save = try #require(effects["Core::Store::func save(_: String) -> String"])
+        #expect(save.function?.inference == .unique)
+        #expect(save.function?.inferred?.tier == .idempotent)
+        let label = try #require(effects["Core::Store::func label(_: String) -> String"])
+        #expect(label.function?.inferred?.via == ["calls `save(_:)`"])
+        // Plugin records get no facts, as test records don't.
+        #expect(report.records.contains { $0.key == "Gen::func save(_: String) -> String" })
+        #expect(effects["Gen::func save(_: String) -> String"] == nil)
+        // Executable targets stay in: strict resolution is package-wide.
+        let load = try #require(effects["Core::Store::func load(_: String) -> String"])
+        #expect(load.function?.inference == .ambiguous)
+        #expect(effects["Tool::func load(_: String) -> String"]?.function?.inference == .ambiguous)
+        let status = report.collectors.first { $0.name == EffectCollector.name }
+        #expect(status?.options.contains(
+            "universe: production files after exclusion, plugin targets excluded, sorted by String <"
+        ) == true)
+    }
+
     @Test("the Side effects section says how many passes body inference took, in the singular for one")
     func passesWording() throws {
         let pure = "func double(_ value: Int) -> Int { value * 2 }\n"

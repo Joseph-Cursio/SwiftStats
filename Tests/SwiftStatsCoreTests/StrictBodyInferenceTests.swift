@@ -4,10 +4,12 @@
 //
 //  Strict body inference (PRD §7.10) on the Effects fixture: convergence
 //  and the pass limit, file-order independence and the collector's sort,
-//  declared tiers on shared signatures, a callee's body beating a name
-//  guess, `via`, anchors and the inference states.
+//  declared tiers on shared signatures, a package callee's body deciding
+//  its tier where its name would guess another (cycles and recursion too),
+//  `via`, anchors and the inference states.
 //
 
+import Foundation
 @testable import SwiftStatsCore
 import Testing
 
@@ -17,9 +19,9 @@ struct StrictBodyInferenceTests {
     func convergence() throws {
         let run = try EffectHarness.runFixture()
 
-        // syncAll → refresh → updateTotals → upsert: pass 1 guesses
-        // updateTotals() from its name, pass 2 corrects refresh, pass 3
-        // corrects syncAll, pass 4 changes nothing.
+        // syncAll → refresh → updateTotals → upsert: pass 1 infers
+        // updateTotals() from `upsert`, pass 2 gives refresh its tier, pass 3
+        // gives syncAll its tier, pass 4 changes nothing.
         #expect(run.summary.passes == 4)
         #expect(run.summary.revision == EffectInferenceRevision.pinned)
     }
@@ -137,7 +139,7 @@ struct StrictBodyInferenceTests {
         #expect(keep.function?.inferred == nil)
     }
 
-    @Test("a callee's own body beats the guess its name gave on the first pass")
+    @Test("a callee's own body, never its name, gives a call to it a tier")
     func calleeBodyWins() throws {
         let run = try EffectHarness.runFixture()
         let updateTotals = try EffectHarness.inferred("Effects::Ledger::func updateTotals()", in: run)
@@ -155,6 +157,82 @@ struct StrictBodyInferenceTests {
             anchor: .heuristic,
             via: ["calls `updateTotals()`"]
         ))
+    }
+
+    @Test("a call cycle through a name the heuristic matches converges on its bodies' tier")
+    func heuristicNamedCycle() throws {
+        // `logger` is outside the package, so `logger.info` takes the
+        // logger-shaped receiver heuristic.
+        let run = try EffectHarness.run(source: """
+        func insertNode(_ value: Int) { logger.info("insert"); walk(value - 1) }
+        func walk(_ value: Int) { logger.info("walk"); if value > 0 { insertNode(value) } }
+        func appendLeaf(_ value: Int) { logger.info("append"); descend(value) }
+        func descend(_ value: Int) { logger.info("descend"); climb(value - 1) }
+        func climb(_ value: Int) { logger.info("climb"); if value > 0 { appendLeaf(value) } }
+        """)
+        let keys = [
+            "Effects::func insertNode(_: Int)",
+            "Effects::func walk(_: Int)",
+            "Effects::func appendLeaf(_: Int)",
+            "Effects::func descend(_: Int)",
+            "Effects::func climb(_: Int)"
+        ]
+
+        // A name guess seeding the cycle would swap between its members
+        // every pass and never settle.
+        #expect(run.summary.passes <= 3)
+        for key in keys {
+            let inferred = try EffectHarness.inferred(key, in: run)
+            #expect(inferred.tier == .observational, "\(key)")
+            #expect(inferred.via.contains { $0.hasPrefix("from logger-shaped receiver") }, "\(key)")
+        }
+        // With the package's own `Logger`, whose `info` does nothing, the
+        // loop still settles. A signature can't tell `logger.info` from an
+        // external logger's, so the receiver-qualified call keeps its guess,
+        // while the unqualified calls in the cycle still guess nothing.
+        let stubbed = try EffectHarness.run(source: """
+        struct Logger { func info(_ text: String) {} }
+        let logger = Logger()
+        func insertNode(_ value: Int) { logger.info("insert"); walk(value - 1) }
+        func walk(_ value: Int) { logger.info("walk"); if value > 0 { insertNode(value) } }
+        """)
+        #expect(stubbed.summary.passes <= 3)
+        for key in ["Effects::func insertNode(_: Int)", "Effects::func walk(_: Int)"] {
+            let function = try EffectHarness.facts(key, in: stubbed).function
+            #expect(function?.inference == .unique, "\(key)")
+            #expect(function?.inferred?.tier == .observational, "\(key)")
+        }
+    }
+
+    @Test("a recursive function, or a cycle of lexicon names, takes its bodies' tier, not its names'")
+    func recursiveLexiconName() throws {
+        let run = try EffectHarness.run(source: """
+        func updateTree(_ depth: Int) { logger.info("visit"); if depth > 0 { updateTree(depth - 1) } }
+        func refreshTree(_ depth: Int) { logger.info("visit"); if depth > 0 { refreshTree(depth - 1) } }
+        func updatePing(_ depth: Int) { logger.info("ping"); if depth > 0 { insertPong(depth - 1) } }
+        func insertPong(_ depth: Int) { logger.info("pong"); if depth > 0 { updatePing(depth - 1) } }
+        """)
+        let update = try EffectHarness.inferred("Effects::func updateTree(_: Int)", in: run)
+        let refresh = try EffectHarness.inferred("Effects::func refreshTree(_: Int)", in: run)
+
+        // The two bodies differ only in the name, which is in the
+        // non-idempotent lexicon for one of them.
+        #expect(update.tier == .observational)
+        #expect(update == refresh.renamingVia(from: "refreshTree", to: "updateTree"))
+        #expect(update.via.contains("from logger-shaped receiver `logger.info`"))
+        for key in ["Effects::func updatePing(_: Int)", "Effects::func insertPong(_: Int)"] {
+            #expect(try EffectHarness.inferred(key, in: run).tier == .observational, "\(key)")
+        }
+    }
+
+    @Test("a package function whose body gives no tier is never guessed from its name")
+    func bodiedCalleeWithoutTier() throws {
+        let run = try EffectHarness.run(source: """
+        func insertRow(_ value: Int) {}
+        func stage(_ value: Int) { insertRow(value) }
+        """)
+
+        #expect(try EffectHarness.facts("Effects::func stage(_: Int)", in: run).function?.inferred == nil)
     }
 
     @Test("a tier two hops from its anchor names the callee it took it from")
@@ -219,5 +297,17 @@ struct StrictBodyInferenceTests {
         #expect(try EffectHarness.facts("Effects::func outer() -> Int", in: run).function?.inference == .unique)
         let inner = try EffectHarness.facts("Effects::func outer() -> Int / func inner() -> Int", in: run)
         #expect(inner.function?.inference == nil)
+    }
+}
+
+private extension EffectFacts.Inferred {
+    /// This tier with `old` replaced by `new` in each reason.
+    func renamingVia(from old: String, to new: String) -> Self {
+        Self(
+            tier: tier,
+            depth: depth,
+            anchor: anchor,
+            via: via.map { $0.replacingOccurrences(of: old, with: new) }
+        )
     }
 }

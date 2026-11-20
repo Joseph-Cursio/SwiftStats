@@ -3,11 +3,12 @@
 //  SwiftStatsCore
 //
 //  Runs SwiftEffectInference over the production files left after
-//  exclusion (PRD §7.10), in process, on the calling thread: construction
-//  facts, declared tiers, strict body inference, then each site's facts,
-//  joined to records by file, start and kind as complexity scores are. The
-//  universe is sorted by path and uses the scan's own tree instances, since
-//  SwiftEffectInference resolves some answers by node identity.
+//  exclusion, plugin targets left out (PRD §7.10), in process, on the
+//  calling thread: construction facts, declared tiers, strict body
+//  inference, then each site's facts, joined to records by file, start and
+//  kind as complexity scores are. The universe is sorted by path and uses
+//  the scan's own tree instances, since SwiftEffectInference resolves some
+//  answers by node identity.
 //
 
 import SwiftEffectInference
@@ -23,7 +24,7 @@ enum EffectCollector {
         "maxPasses: \(StrictBodyInference.defaultMaxPasses)",
         "heuristic: import-aware, all frameworks",
         "recognition: default",
-        "universe: production files after exclusion, sorted by String <"
+        "universe: production files after exclusion, plugin targets excluded, sorted by String <"
     ]
 
     /// The facts of `records` found in `files`, the production files left

@@ -8,7 +8,7 @@
 //  also ask, from syntax alone, whether the function returns a value and
 //  writes nothing outside its own parameters and locals. A write is the
 //  target of an assignment, or a call whose value is thrown away, rooted at
-//  `self`, `super` or a name the function doesn't bind.
+//  `self`, `super` or a name the function doesn't bind where the write is.
 //
 
 import SwiftSyntax
@@ -34,7 +34,7 @@ enum ValueShapeAnalyzer {
         let parameters = function.signature.parameterClause.parameters.map { parameter in
             (parameter.secondName ?? parameter.firstName).text
         }
-        let finder = StateWriteFinder(bound: Set(parameters).union(BindingCollector.names(in: body)))
+        let finder = StateWriteFinder(parameters: Set(parameters), bindings: BindingCollector.scopes(in: body))
         finder.walk(body)
         return finder.writesState == false
     }

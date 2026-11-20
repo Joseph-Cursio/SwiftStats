@@ -6,7 +6,9 @@
 //  set SwiftEffectInference itself walks: every `func` with a body outside a
 //  closure, and every closure-literal binding outside a function, which it
 //  treats as a pseudo-method. A signature held more than once is shared, and
-//  strict inference never resolves a call to it (PRD §7.10).
+//  strict inference never resolves a call to it (PRD §7.10). A signature
+//  held at all is a package function's, and an unqualified or `self.` call
+//  to it never takes the name heuristic.
 //
 
 import SwiftEffectInference
@@ -22,13 +24,13 @@ final class SignatureCensus: SyntaxVisitor {
         super.init(viewMode: .sourceAccurate)
     }
 
-    /// The signatures held by more than one inferred declaration in `trees`.
-    static func sharedSignatures(in trees: [SourceFileSyntax]) -> Set<FunctionSignature> {
+    /// How many inferred declarations in `trees` hold each signature.
+    static func counts(in trees: [SourceFileSyntax]) -> [FunctionSignature: Int] {
         let census = Self()
         for tree in trees {
             census.walk(tree)
         }
-        return Set(census.counts.filter { $0.value > 1 }.keys)
+        return census.counts
     }
 
     /// The signature `declaration` registers as a pseudo-method: a single

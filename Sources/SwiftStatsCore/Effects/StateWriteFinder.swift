@@ -6,9 +6,9 @@
 //  target of `=` or a compound assignment, the receiver of a call whose
 //  value is thrown away (`issues.append(x)`, `self.record(…)`,
 //  `built[k].append(…)`), or an unqualified thrown-away call that names no
-//  local (`addIssue(…)`), when its root is `self`, `super` or an unbound
-//  name. Calls on a local `var` are fine, and so are the checks and traps in
-//  `ValueShapeAnalyzer.exemptCalls`.
+//  local (`addIssue(…)`), when its root is `self`, `super` or a name not
+//  bound where the write is. Calls on a local `var` are fine, and so are the
+//  checks and traps in `ValueShapeAnalyzer.exemptCalls`.
 //
 
 import SwiftSyntax
@@ -21,12 +21,16 @@ final class StateWriteFinder: SyntaxVisitor {
     /// Whether a write was found.
     private(set) var writesState = false
 
-    /// Names the function binds: its parameters and its locals.
-    let bound: Set<String>
+    /// The function's parameters, bound throughout its body.
+    let parameters: Set<String>
+    /// The names its body binds, each with where it is visible.
+    let bindings: [String: [BindingCollector.Scope]]
 
-    /// Creates a finder that treats `bound` as local.
-    init(bound: Set<String>) {
-        self.bound = bound
+    /// Creates a finder that treats `parameters` as local throughout, and
+    /// each of `bindings` as local in its scopes.
+    init(parameters: Set<String>, bindings: [String: [BindingCollector.Scope]]) {
+        self.parameters = parameters
+        self.bindings = bindings
         super.init(viewMode: .sourceAccurate)
     }
 
@@ -136,7 +140,7 @@ final class StateWriteFinder: SyntaxVisitor {
         }
         if let reference = call.calledExpression.as(DeclReferenceExprSyntax.self) {
             let name = reference.baseName.text
-            if ValueShapeAnalyzer.exemptCalls.contains(name) == false, isLocal(name) == false {
+            if ValueShapeAnalyzer.exemptCalls.contains(name) == false, isLocal(name, at: reference) == false {
                 writesState = true
             }
         } else {
@@ -145,20 +149,22 @@ final class StateWriteFinder: SyntaxVisitor {
         return .visitChildren
     }
 
-    /// Notes a write when any root of `expression` isn't local.
+    /// Notes a write when any root of `expression` isn't local there.
     private func checkRoots(of expression: ExprSyntax) {
-        if Self.roots(of: expression).contains(where: { isLocal($0) == false }) {
+        if Self.roots(of: expression).contains(where: { isLocal($0, at: expression) == false }) {
             writesState = true
         }
     }
 
-    /// Whether `name` is bound by the function: a parameter, a local, or a
-    /// closure's anonymous parameter (`$0`). `self` and `super` never are.
-    private func isLocal(_ name: String) -> Bool {
+    /// Whether `name` is bound by the function where `node` is: a
+    /// parameter, a local in scope, or a closure's anonymous parameter
+    /// (`$0`). `self` and `super` never are.
+    private func isLocal(_ name: String, at node: some SyntaxProtocol) -> Bool {
         guard name != "self", name != "super" else {
             return false
         }
-        return name.hasPrefix("$") || bound.contains(name)
+        return name.hasPrefix("$") || parameters.contains(name)
+            || BindingCollector.isBound(name, at: node, in: bindings)
     }
 
     deinit {

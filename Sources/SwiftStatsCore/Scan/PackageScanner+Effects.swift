@@ -3,8 +3,11 @@
 //  SwiftStatsCore
 //
 //  The side-effect part of a scan (PRD §7.10): SwiftEffectInference, linked
-//  and run in process over the production files left after exclusion, after
-//  keys are resolved and scores joined. It runs on the calling thread, never
+//  and run in process over the production files left after exclusion,
+//  plugin targets left out, after keys are resolved and scores joined. Plugin
+//  code is built for the host and never linked with the package's other
+//  targets, and swift-infer skips it too, so a plugin function never makes
+//  a library signature shared. It runs on the calling thread, never
 //  in a concurrent loop, since inference recurses deeply on large bodies.
 //  The tools' skip reason doesn't stop it: a backfill runs it too.
 //
@@ -63,8 +66,8 @@ extension PackageScanner {
     }
 
     /// The side effects of `measured`'s production records, found in the
-    /// files of `targets` that aren't test targets, unless `configuration`
-    /// disables the collector.
+    /// files of `targets` that aren't test or plugin targets, unless
+    /// `configuration` disables the collector. Plugin records get no facts.
     static func effects(
         of measured: ScanMeasurements,
         targets: [TargetSummary],
@@ -80,7 +83,7 @@ extension PackageScanner {
                 milliseconds: 0
             )
         }
-        let production = Set(targets.filter { $0.isTest == false }.map(\.name))
+        let production = Set(targets.filter { $0.isTest == false && $0.type != "plugin" }.map(\.name))
         let files = measured.parsed.filter { production.contains($0.module) }.map(\.file)
         let (outcome, milliseconds) = Stopwatch.time {
             Result { () throws(EffectInferenceError) in

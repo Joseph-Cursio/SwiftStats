@@ -175,6 +175,62 @@ struct ValueShapeTests {
         }
     }
 
+    @Test("a binding is local only in its own scope, so a namesake bound elsewhere doesn't hide a stored property")
+    func bindingScopes() throws {
+        let run = try EffectHarness.run(source: """
+        final class Meter {
+            var pending: Int?
+            var total = 0
+            func drained(_ value: Int) -> Int {
+                if let pending { return pending + value }
+                pending = value
+                return value
+            }
+            func scaled(_ value: Int) -> Int { total += value; return [value].map { total in total * 2 }[0] }
+            func looped(_ value: Int) -> Int { for total in [value] { _ = total }; total = value; return value }
+            func elsewise(_ value: Int) -> Int {
+                if let pending { return pending } else { pending = value }
+                return value
+            }
+            func guarded(_ value: Int) -> Int {
+                guard let pending else { pending = value; return value }
+                return pending
+            }
+            func cased(_ value: Int?) -> Int {
+                switch value { case let total?: return total; case nil: break }
+                total = 0
+                return total
+            }
+            func bumped(_ value: Int) -> Int { if var pending { pending += value; return pending }; return value }
+            func summed(_ values: [Int]) -> Int { var total = 0; for value in values { total += value }; return total }
+            func mapped(_ value: Int) -> Int { [value].map { total in var total = total; total += 1; return total }[0] }
+            func later(_ value: Int) -> Int {
+                guard let base = Optional(value) else { return 0 }
+                var total = base
+                total += 1
+                return total
+            }
+        }
+        """)
+        let expected = [
+            ("Effects::Meter::func drained(_: Int) -> Int", false),
+            ("Effects::Meter::func scaled(_: Int) -> Int", false),
+            ("Effects::Meter::func looped(_: Int) -> Int", false),
+            // An `if`'s binding isn't visible in its `else`, nor a `guard`'s in its own.
+            ("Effects::Meter::func elsewise(_: Int) -> Int", false),
+            ("Effects::Meter::func guarded(_: Int) -> Int", false),
+            ("Effects::Meter::func cased(_: Int?) -> Int", false),
+            // Inside its own scope a shadowing binding is still local.
+            ("Effects::Meter::func bumped(_: Int) -> Int", true),
+            ("Effects::Meter::func summed(_: [Int]) -> Int", true),
+            ("Effects::Meter::func mapped(_: Int) -> Int", true),
+            ("Effects::Meter::func later(_: Int) -> Int", true)
+        ]
+        for (key, valueShaped) in expected {
+            #expect(try Self.function(key, in: run).valueShaped == valueShaped, "\(key)")
+        }
+    }
+
     @Test("the pattern-match operator ~= reads its left operand rather than assigning it")
     func patternMatch() throws {
         let run = try EffectHarness.run(source: """

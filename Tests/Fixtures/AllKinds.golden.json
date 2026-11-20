@@ -31,7 +31,7 @@
         "maxPasses: 50",
         "heuristic: import-aware, all frameworks",
         "recognition: default",
-        "universe: production files after exclusion, sorted by String <"
+        "universe: production files after exclusion, plugin targets excluded, sorted by String <"
       ],
       "state" : "ran",
       "version" : "ba3624d754c3c9150c946f66468c2c356be3e7e0"

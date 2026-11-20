@@ -6,12 +6,21 @@
 //  Inference keys inferred tiers by signature and merges every declaration
 //  that shares one, which spreads a tier to callers that never call the
 //  declaration it came from. Here a call to a shared signature that no
-//  annotation declares resolves to nothing; everything else (the lattice,
-//  the walk, the escaping-closure rule, the heuristics) is SwiftEffect-
-//  Inference's own. Each pass reads only the previous pass's map (Jacobi
-//  iteration), so file order can't change the result, and the loop has no
-//  clock: it stops when a pass changes no tier, or fails the collector
-//  after `maxPasses`.
+//  annotation declares resolves to nothing, and an unqualified or `self.`
+//  call to a package function this run infers takes only that function's
+//  inferred tier, never a guess from its name. A call through another
+//  receiver (`logger.info`, `transport.send`) may reach an external API
+//  with the same signature, so it takes the higher of that tier and the
+//  guess. Everything else (the lattice, the walk, the escaping-closure
+//  rule, the heuristics) is SwiftEffectInference's own. Each pass reads
+//  only the previous pass's map (Jacobi iteration), so file order can't
+//  change the result. A pass's only inputs that change are the previous
+//  pass's tiers, a callee not yet in the map counts as bottom, a guess is
+//  the same every pass, and a body takes the upper bound of its calls, so
+//  every pass is monotone: the map climbs from empty to the least fixed
+//  point, through cycles too, and a guess never drops out of one. The loop
+//  has no clock: it stops when a pass changes no tier, or fails the
+//  collector after `maxPasses`.
 //
 
 import SwiftEffectInference
@@ -52,6 +61,10 @@ struct StrictBodyInference {
     let declared: EffectSymbolTable
     /// Signatures held by more than one inferred declaration.
     let shared: Set<FunctionSignature>
+    /// Signatures held by an inferred declaration, shared or not: a package
+    /// function's body, never its name, decides an unqualified or `self.`
+    /// call to it.
+    let bodied: Set<FunctionSignature>
     /// Reads declared tiers, with the default attribute recognition.
     let parser = EffectAnnotationParser()
 
@@ -64,7 +77,9 @@ struct StrictBodyInference {
         self.trees = trees
         self.imports = trees.map(ImportCollector.imports(in:))
         self.declared = table
-        self.shared = SignatureCensus.sharedSignatures(in: trees)
+        let counts = SignatureCensus.counts(in: trees)
+        self.shared = Set(counts.filter { $0.value > 1 }.keys)
+        self.bodied = Set(counts.keys)
     }
 
     /// The enclosing function of `call`, if any.
@@ -77,6 +92,25 @@ struct StrictBodyInference {
             current = node.parent
         }
         return nil
+    }
+
+    /// Whether `call` is made through a receiver other than `self`, `Self`
+    /// or `super`, such as `logger.info(…)` or `transport.send(…)`.
+    private static func namesOtherReceiver(_ call: FunctionCallExprSyntax) -> Bool {
+        guard var base = call.calledExpression.as(MemberAccessExprSyntax.self)?.base else {
+            return false
+        }
+        while let inner = base.as(OptionalChainingExprSyntax.self)?.expression
+            ?? base.as(ForceUnwrapExprSyntax.self)?.expression {
+            base = inner
+        }
+        if base.is(SuperExprSyntax.self) {
+            return false
+        }
+        guard let reference = base.as(DeclReferenceExprSyntax.self) else {
+            return true
+        }
+        return ["self", "Self"].contains(reference.baseName.text) == false
     }
 
     /// Whether another declaration declares `signature`, which suppresses
@@ -172,16 +206,27 @@ struct StrictBodyInference {
     /// The strict resolver: nothing for a collided signature (two or more
     /// annotations, even agreeing ones, as SwiftEffectInference's own
     /// resolver treats them); else the declared tier; else nothing for a
-    /// shared signature; else the previous pass's tier or the heuristic's
-    /// guess. The declared tier comes before the shared check: an
-    /// annotation governs its signature whichever body a call reaches
-    /// (those bodies are never inferred), and refusing shared signatures
-    /// only stops merged inferred tiers spreading.
+    /// shared signature; else, for an unqualified or `self.` call to a
+    /// package function this run infers, only the previous pass's tier
+    /// (nothing while its body hasn't given one, or gives none); else the
+    /// higher of that tier and the heuristic's guess, the guess on a tie.
+    /// The declared tier comes before the shared check: an annotation
+    /// governs its signature whichever body a call reaches (those bodies are
+    /// never inferred), and refusing shared signatures only stops merged
+    /// inferred tiers spreading. A signature alone can't tell
+    /// `transport.send(_:)` or `logger.info(_:)` from a package function of
+    /// that name, so a call through another receiver keeps its guess: a
+    /// forwarding wrapper or a logging facade doesn't take the heuristic
+    /// from every call of its signature. The guess is the same every pass
+    /// and the tier only climbs, so each pass stays monotone; a recursive
+    /// `updateTree` or a cycle through `insertNode` called unqualified takes
+    /// its bodies' tier, not its name's.
     private func resolve(
         _ call: FunctionCallExprSyntax,
         imports fileImports: Set<String>,
         previous: [FunctionSignature: BodyInference]
     ) -> (inference: BodyInference, resolution: Resolution)? {
+        var known: (inference: BodyInference, resolution: Resolution)?
         if let signature = FunctionSignature.from(call: call) {
             if declared.isCollision(signature: signature) {
                 return nil
@@ -192,13 +237,17 @@ struct StrictBodyInference {
             if shared.contains(signature) {
                 return nil
             }
-            if let known = previous[signature] {
-                return (known, .callee(signature))
+            known = previous[signature].map { ($0, .callee(signature)) }
+            if known != nil || bodied.contains(signature), Self.namesOtherReceiver(call) == false {
+                return known
             }
         }
-        guard let guess = CallSiteEffectInferrer.infer(call: call, imports: fileImports) else {
-            return nil
+        let guess = CallSiteEffectInferrer.infer(call: call, imports: fileImports).map { effect in
+            (inference: BodyInference(effect: effect, depth: 0, anchor: .heuristic), resolution: Resolution.heuristic)
         }
-        return (BodyInference(effect: guess, depth: 0, anchor: .heuristic), .heuristic)
+        guard let known, let guess else {
+            return known ?? guess
+        }
+        return known.inference.effect.rank > guess.inference.effect.rank ? known : guess
     }
 }
