@@ -9,8 +9,10 @@
 
 /// One signal's ranking, as `top` writes it.
 public struct TopReport: Codable, Hashable, Sendable {
-    /// The version of this document's format.
-    public static let currentSchemaVersion = 1
+    /// The version of this document's format: 2 names each item's
+    /// `subject` (it was `family`) and moves its inputs into payloads, M3's
+    /// into `history` (M4).
+    public static let currentSchemaVersion = 2
 
     /// The document's format version.
     public let schemaVersion: Int

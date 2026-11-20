@@ -20,4 +20,12 @@ struct CollectedRecords {
     var markers: [RawFinding] = []
     /// Each file's top-level statement lines, by path.
     var topLevelLines: [String: Set<Int>] = [:]
+    /// Each file's law-detection facts.
+    var laws: [LawFileFacts] = []
+    /// The test-target files whose leading comments carry a
+    /// SwiftInferProperties suggestion identity, by identity.
+    var stubs: [String: Set<String>] = [:]
+    /// The law each `@CheckProperty` the macro accepts checks, by the
+    /// place its marker names.
+    var checkProperties: [RawFinding.Place: CheckPropertyKind] = [:]
 }

@@ -189,7 +189,8 @@ final class TypeCollector: SyntaxVisitor {
             strippedLines: lines.count,
             memberCount: Self.memberCount(of: node.memberBlock.members),
             isLocal: frames.count > 1,
-            ifConfig: conditions.isEmpty ? nil : FunctionCollector.conjunction(conditions)
+            ifConfig: conditions.isEmpty ? nil : FunctionCollector.conjunction(conditions),
+            conformances: Conformances.sorted(node.inheritanceClause)
         ))
         frames[frames.count - 1].append(name)
         return .visitChildren

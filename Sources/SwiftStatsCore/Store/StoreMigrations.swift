@@ -16,6 +16,7 @@ enum StoreMigrations {
         var steps = DatabaseMigrator()
         steps.registerMigration("v1", migrate: version1)
         steps.registerMigration("v2", migrate: version2)
+        steps.registerMigration("v3", migrate: version3)
         return steps
     }
 
@@ -106,6 +107,120 @@ enum StoreMigrations {
             table.column("tracedBy", .text).notNull()
         }
         try database.execute(sql: "PRAGMA user_version = 2")
+    }
+
+    /// M4: function rows' generated flag and side effects, scan-wide facts,
+    /// property candidates, law checks, clones and history's commit lists.
+    /// Rows written before it get nulls in the new columns and no rows in
+    /// the new tables.
+    private static func version3(_ database: Database) throws {
+        try database.alter(table: FunctionRow.databaseTableName) { table in
+            for name in ["effectTier", "effectSource", "purity", "refutation", "inference", "inferredTier"] {
+                table.add(column: name, .text)
+            }
+            table.add(column: "inferredAnchor", .text)
+            table.add(column: "inferredDepth", .integer)
+            table.add(column: "inferredVia", .text)
+            table.add(column: "valueShaped", .boolean)
+            table.add(column: "shape", .text)
+            table.add(column: "generated", .boolean)
+        }
+        try database.create(table: ScanFactsRow.databaseTableName) { table in
+            snapshotColumn(table).primaryKey()
+            table.column("kitDependency", .boolean).notNull()
+            table.column("sipSeiRevision", .text)
+        }
+        try createCandidateTable(database)
+        try database.create(table: LawCheckRow.databaseTableName) { table in
+            snapshotColumn(table)
+            table.column("ordinal", .integer).notNull()
+            table.column("type", .text).notNull()
+            table.column("protocol", .text).notNull()
+            table.column("provenance", .text).notNull()
+            table.column("implementation", .text).notNull()
+            table.column("state", .text).notNull()
+            table.column("evidence", .text)
+            table.column("file", .text).notNull()
+            table.column("line", .integer).notNull()
+            table.column("generated", .boolean).notNull()
+            table.primaryKey(["snapshotId", "ordinal"])
+        }
+        try createCloneTables(database)
+        try database.create(table: HistoryCommitRow.databaseTableName) { table in
+            snapshotColumn(table)
+            table.column("ordinal", .integer).notNull()
+            table.column("hash", .text).notNull()
+            table.column("date", .text).notNull()
+            table.column("sweep", .boolean).notNull()
+            table.column("fix", .boolean).notNull()
+            table.primaryKey(["snapshotId", "ordinal"])
+        }
+        try database.create(table: FamilyChangeRow.databaseTableName) { table in
+            snapshotColumn(table).indexed()
+            table.column("family", .text).notNull()
+            table.column("file", .text).notNull()
+            table.column("commitOrdinal", .integer).notNull()
+        }
+        try database.execute(sql: "PRAGMA user_version = 3")
+    }
+
+    /// The `propertyCandidate` table.
+    private static func createCandidateTable(_ database: Database) throws {
+        try database.create(table: PropertyCandidateRow.databaseTableName) { table in
+            snapshotColumn(table)
+            table.column("ordinal", .integer).notNull()
+            for name in ["identity", "population", "template", "tier"] {
+                table.column(name, .text).notNull()
+            }
+            table.column("score", .integer).notNull()
+            table.column("scoreBand", .text).notNull()
+            table.column("blocked", .boolean).notNull()
+            table.column("function", .text).notNull()
+            table.column("typeName", .text)
+            table.column("file", .text)
+            table.column("line", .integer)
+            for name in ["attachedTo", "owner", "site", "unmapped"] {
+                table.column(name, .text)
+            }
+            table.column("generated", .boolean).notNull()
+            table.column("identityCollision", .boolean).notNull()
+            for name in ["partner", "partnerKey", "decision", "verifyOutcome"] {
+                table.column(name, .text)
+            }
+            for name in ["verifyFresh", "verified", "disproven"] {
+                table.column(name, .boolean)
+            }
+            table.column("testedBy", .text)
+            table.column("testKeys", .text).notNull()
+            table.primaryKey(["snapshotId", "ordinal"])
+        }
+    }
+
+    /// The `cloneClass` and `cloneInstance` tables.
+    private static func createCloneTables(_ database: Database) throws {
+        try database.create(table: CloneClassRow.databaseTableName) { table in
+            snapshotColumn(table)
+            table.column("ordinal", .integer).notNull()
+            table.column("pass", .text).notNull()
+            table.column("exact", .boolean).notNull()
+            table.column("mass", .integer).notNull()
+            table.column("similarity", .double)
+            table.column("lineSpan", .integer).notNull()
+            table.column("fingerprint", .text).notNull()
+            table.primaryKey(["snapshotId", "ordinal"])
+        }
+        try database.create(table: CloneInstanceRow.databaseTableName) { table in
+            snapshotColumn(table)
+            table.column("classOrdinal", .integer).notNull()
+            table.column("ordinal", .integer).notNull()
+            table.column("file", .text).notNull()
+            for name in ["startLine", "startColumn", "endLine", "endColumn", "strippedLines"] {
+                table.column(name, .integer).notNull()
+            }
+            table.column("containing", .text)
+            table.column("wholes", .text).notNull()
+            table.primaryKey(["snapshotId", "classOrdinal", "ordinal"])
+        }
     }
 
     /// The `function` table.

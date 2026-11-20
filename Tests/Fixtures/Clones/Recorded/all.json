@@ -1,0 +1,272 @@
+{
+  "cloneCount" : 11,
+  "clones" : [
+    {
+      "fingerprint" : "99cc60d40d3db1d2",
+      "instances" : [
+        {
+          "endColumn" : 2,
+          "endLine" : 31,
+          "path" : "Sources/Core/Parsing.swift",
+          "startColumn" : 1,
+          "startLine" : 17
+        },
+        {
+          "endColumn" : 2,
+          "endLine" : 14,
+          "path" : "Sources/Core/Parsing.swift",
+          "startColumn" : 1,
+          "startLine" : 2
+        }
+      ],
+      "lineSpan" : 15,
+      "mass" : 300,
+      "similarity" : 0.9011753901131134
+    },
+    {
+      "fingerprint" : "e62cd083b9ff4abe",
+      "instances" : [
+        {
+          "endColumn" : 6,
+          "endLine" : 14,
+          "path" : "Sources/Core/Reports.swift",
+          "startColumn" : 5,
+          "startLine" : 3
+        },
+        {
+          "endColumn" : 6,
+          "endLine" : 31,
+          "path" : "Sources/Core/Reports.swift",
+          "startColumn" : 5,
+          "startLine" : 20
+        }
+      ],
+      "lineSpan" : 12,
+      "mass" : 233
+    },
+    {
+      "fingerprint" : "77e4cad416bd685f",
+      "instances" : [
+        {
+          "endColumn" : 2,
+          "endLine" : 20,
+          "path" : "Sources/Core/Paths.swift",
+          "startColumn" : 1,
+          "startLine" : 12
+        },
+        {
+          "endColumn" : 2,
+          "endLine" : 9,
+          "path" : "Sources/Core/Paths.swift",
+          "startColumn" : 1,
+          "startLine" : 2
+        }
+      ],
+      "lineSpan" : 9,
+      "mass" : 192,
+      "similarity" : 0.8766844658433134
+    },
+    {
+      "fingerprint" : "89ba172222dfa4b3",
+      "instances" : [
+        {
+          "endColumn" : 2,
+          "endLine" : 29,
+          "path" : "Sources/Extras/Codes.swift",
+          "startColumn" : 1,
+          "startLine" : 16
+        },
+        {
+          "endColumn" : 2,
+          "endLine" : 13,
+          "path" : "Sources/Extras/Codes.swift",
+          "startColumn" : 1,
+          "startLine" : 2
+        }
+      ],
+      "lineSpan" : 14,
+      "mass" : 144,
+      "similarity" : 0.9212156316102446
+    },
+    {
+      "fingerprint" : "ce8d859a5bc47adf",
+      "instances" : [
+        {
+          "endColumn" : 2,
+          "endLine" : 11,
+          "path" : "Sources/Core/Shapes.swift",
+          "startColumn" : 1,
+          "startLine" : 2
+        },
+        {
+          "endColumn" : 2,
+          "endLine" : 11,
+          "path" : "Sources/Extras/Boxes.swift",
+          "startColumn" : 1,
+          "startLine" : 2
+        }
+      ],
+      "lineSpan" : 10,
+      "mass" : 133
+    },
+    {
+      "fingerprint" : "32b25fbf8fcb2272",
+      "instances" : [
+        {
+          "endColumn" : 2,
+          "endLine" : 8,
+          "path" : "Sources/Core/Totals.swift",
+          "startColumn" : 1,
+          "startLine" : 2
+        },
+        {
+          "endColumn" : 2,
+          "endLine" : 10,
+          "path" : "Sources/Extras/Ledger.swift",
+          "startColumn" : 1,
+          "startLine" : 4
+        }
+      ],
+      "lineSpan" : 7,
+      "mass" : 97
+    },
+    {
+      "fingerprint" : "a887b8b033633204",
+      "instances" : [
+        {
+          "endColumn" : 6,
+          "endLine" : 11,
+          "path" : "Sources/Core/Reports.swift",
+          "startColumn" : 5,
+          "startLine" : 7
+        },
+        {
+          "endColumn" : 6,
+          "endLine" : 28,
+          "path" : "Sources/Core/Reports.swift",
+          "startColumn" : 5,
+          "startLine" : 24
+        }
+      ],
+      "lineSpan" : 5,
+      "mass" : 83
+    },
+    {
+      "fingerprint" : "5c464bd13a3e05c9",
+      "instances" : [
+        {
+          "endColumn" : 6,
+          "endLine" : 7,
+          "path" : "Sources/Core/Paths.swift",
+          "startColumn" : 5,
+          "startLine" : 4
+        },
+        {
+          "endColumn" : 6,
+          "endLine" : 18,
+          "path" : "Sources/Core/Paths.swift",
+          "startColumn" : 5,
+          "startLine" : 15
+        }
+      ],
+      "lineSpan" : 4,
+      "mass" : 78
+    },
+    {
+      "fingerprint" : "e960dabde84af2a4",
+      "instances" : [
+        {
+          "endColumn" : 6,
+          "endLine" : 14,
+          "path" : "Sources/Core/Reports.swift",
+          "startColumn" : 5,
+          "startLine" : 12
+        },
+        {
+          "endColumn" : 6,
+          "endLine" : 31,
+          "path" : "Sources/Core/Reports.swift",
+          "startColumn" : 5,
+          "startLine" : 29
+        }
+      ],
+      "lineSpan" : 3,
+      "mass" : 51
+    },
+    {
+      "fingerprint" : "ce65d4d074903674",
+      "instances" : [
+        {
+          "endColumn" : 21,
+          "endLine" : 26,
+          "path" : "Sources/Core/Paths.swift",
+          "startColumn" : 5,
+          "startLine" : 24
+        },
+        {
+          "endColumn" : 22,
+          "endLine" : 35,
+          "path" : "Sources/Core/Paths.swift",
+          "startColumn" : 5,
+          "startLine" : 33
+        }
+      ],
+      "lineSpan" : 3,
+      "mass" : 43
+    },
+    {
+      "fingerprint" : "2c132b938db7b8b2",
+      "instances" : [
+        {
+          "endColumn" : 20,
+          "endLine" : 5,
+          "path" : "Sources/Extras/Codes.swift",
+          "startColumn" : 5,
+          "startLine" : 4
+        },
+        {
+          "endColumn" : 23,
+          "endLine" : 7,
+          "path" : "Sources/Extras/Codes.swift",
+          "startColumn" : 5,
+          "startLine" : 6
+        },
+        {
+          "endColumn" : 30,
+          "endLine" : 9,
+          "path" : "Sources/Extras/Codes.swift",
+          "startColumn" : 5,
+          "startLine" : 8
+        },
+        {
+          "endColumn" : 20,
+          "endLine" : 19,
+          "path" : "Sources/Extras/Codes.swift",
+          "startColumn" : 5,
+          "startLine" : 18
+        },
+        {
+          "endColumn" : 26,
+          "endLine" : 21,
+          "path" : "Sources/Extras/Codes.swift",
+          "startColumn" : 5,
+          "startLine" : 20
+        },
+        {
+          "endColumn" : 29,
+          "endLine" : 25,
+          "path" : "Sources/Extras/Codes.swift",
+          "startColumn" : 5,
+          "startLine" : 24
+        }
+      ],
+      "lineSpan" : 2,
+      "mass" : 25
+    }
+  ],
+  "duplicatedLines" : 92,
+  "fileCount" : 8,
+  "mode" : "type1-2",
+  "tool" : "swift-clone-detector",
+  "version" : "0.1.0"
+}

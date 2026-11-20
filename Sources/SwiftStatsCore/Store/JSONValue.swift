@@ -2,11 +2,12 @@
 //  JSONValue.swift
 //  SwiftStatsCore
 //
-//  A decoded JSON value, for walking an encoded roll-up's numbers.
+//  A decoded JSON value, for walking an encoded roll-up's numbers and
+//  comparing a tool's rows field by field.
 //
 
 /// Any JSON value.
-enum JSONValue: Decodable {
+enum JSONValue: Decodable, Equatable, Sendable {
     /// An array.
     case array([Self])
     /// `true` or `false`.

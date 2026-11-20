@@ -65,9 +65,10 @@ public struct SnapshotWorkspace {
         return commit
     }
 
-    /// The signals of snapshot `id`, with this workspace's thresholds.
+    /// The signals of snapshot `id`, with this workspace's thresholds, and
+    /// for divergent clones the earlier snapshot it chooses.
     public func signals(id: Int64) throws -> [SignalResult] {
-        SignalEngine.signals(of: try store.load(id: id), thresholds: configuration.signals)
+        SignalEngine.signals(of: try signalInputs(for: try store.load(id: id)), thresholds: configuration.signals)
     }
 
     /// Scans the working tree, reading history from `history`, stores the
@@ -148,16 +149,8 @@ public struct SnapshotWorkspace {
         if commit == git.commit, git.isDirty == false {
             return try scanWorkingTree().id
         }
-        let exported = try RevisionExport.export(commit: commit, packagePath: git.packagePath, from: root)
-        defer { try? FileManager.default.removeItem(at: RevisionExport.workDirectory(of: exported)) }
-        let state = GitState(commit: commit, branch: nil, isDirty: false, dirtyHash: nil, packagePath: git.packagePath)
-        let snapshot = try scanner.scan(
-            packageAt: exported,
-            configurationFile: configurationFile ?? StoreLocation.localConfiguration(packageRoot: exported),
-            git: state,
-            history: .skipped("exported revision")
-        )
-        return try store.save(snapshot)
+        let scanned = try scanExport(commit, git: git, scanner: scanner, history: .skipped("exported revision"))
+        return try store.save(scanned.snapshot)
     }
 
     /// HEAD's stored dirty snapshot when its hash of the changes is the

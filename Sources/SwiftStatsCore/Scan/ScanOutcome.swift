@@ -21,16 +21,18 @@ struct ScanOutcome {
 
     /// The outcome of a scan that gave `report` under `configuration`,
     /// measured in `measureMilliseconds`, with the external collectors'
-    /// timed runs and the dependency step.
+    /// timed runs, the side-effect step and the dependency step.
     init(
         report: ScanReport,
         configuration: SwiftStatsConfiguration,
         measureMilliseconds: Int,
         adapters: [TimedAdapterResult],
+        effects: PackageScanner.EffectScan,
         dependencies: PackageScanner.DependencyScan
     ) {
         var times = [
             SwiftStatsCollector.name: measureMilliseconds,
+            EffectCollector.name: effects.milliseconds,
             DependencyGraphAdapter.name: dependencies.milliseconds
         ]
         var binaries: [String: URL] = [:]

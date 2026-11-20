@@ -14,8 +14,9 @@ public struct ScanReport: Codable, Hashable, Sendable {
     /// would notice: 2 adds complexity, size and shape (M1a); 3 adds
     /// generated files, findings, risk markers, API surface, the test
     /// inventory and dependencies (M1b); 4 adds each function's body lines
-    /// (M2); 5 adds history (M3).
-    public static let currentSchemaVersion = 5
+    /// (M2); 5 adds history (M3); 6 adds side effects, conformances, law
+    /// checks, property-test suggestions and clones (M4).
+    public static let currentSchemaVersion = 6
 
     /// The output format version (`currentSchemaVersion` when written).
     public let schemaVersion: Int
@@ -49,6 +50,17 @@ public struct ScanReport: Codable, Hashable, Sendable {
     public let dependencies: DependencyReport
     /// Non-fatal problems, sorted.
     public let warnings: [ScanWarning]
+    /// What the side-effect run produced beyond each record's facts; absent
+    /// when SwiftEffectInference didn't run (PRD §7.10).
+    public let effects: EffectSummary?
+    /// SwiftInferProperties' suggestions, attached to records; absent when
+    /// it didn't run (PRD §7.11).
+    public let properties: PropertyReport?
+    /// SwiftCloneDetector's clone classes in the production files, attached
+    /// to records; absent when it didn't run (PRD §7.12).
+    public let clones: CloneReport?
+    /// Law checks per production conformance; always present (PRD §7.11).
+    public let laws: LawReport
     /// What the history collector found; absent when it didn't run (PRD §7.13).
     public internal(set) var history: HistoryReport?
 
@@ -71,7 +83,11 @@ public struct ScanReport: Codable, Hashable, Sendable {
             findings: findings,
             tests: tests,
             dependencies: dependencies,
-            warnings: warnings
+            warnings: warnings,
+            effects: effects,
+            properties: properties,
+            clones: clones,
+            laws: laws
         )
         report.history = history
         return report

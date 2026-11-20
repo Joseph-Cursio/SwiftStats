@@ -18,7 +18,10 @@ import Foundation
 
 extension SnapshotWorkspace {
     /// Collectors whose results a backfill without tools doesn't collect.
-    private static let toolCollectors: Set<String> = [SwiftLintAdapter.name, SwiftProjectLintAdapter.name]
+    private static let toolCollectors: Set<String> = [
+        SwiftLintAdapter.name, SwiftProjectLintAdapter.name, SwiftInferPropertiesAdapter.name,
+        SwiftCloneDetectorAdapter.name
+    ]
 
     /// The commits `plan` picks from `line` (oldest first), oldest first.
     static func picks(_ line: [(commit: String, time: Int)], plan: BackfillPlan) -> [String] {
@@ -106,8 +109,9 @@ extension SnapshotWorkspace {
         let manifest = packagePath.isEmpty ? "Package.swift" : "\(packagePath)/Package.swift"
         let list = FileManager.default.temporaryDirectory
             .appendingPathComponent("SwiftStats-manifests-\(UUID().uuidString)")
+        ScratchRegistry.shared.track(list)
+        defer { ScratchRegistry.shared.remove(list) }
         try Data(line.map { "\($0.commit):\(manifest)\n" }.joined().utf8).write(to: list)
-        defer { try? FileManager.default.removeItem(at: list) }
         let output = try ProcessRunner.run(
             executable: GitReader.git,
             arguments: ["--no-optional-locks", "cat-file", "--batch-check=%(objecttype)"],
@@ -141,7 +145,12 @@ extension SnapshotWorkspace {
                     return Self.kept(commit, holding: held)
                 }
             }
-            let (snapshot, note) = try scanExport(commit, git: git, scanner: backfillScanner)
+            let (snapshot, note) = try scanExport(
+                commit,
+                git: git,
+                scanner: backfillScanner,
+                history: .skipped("backfill")
+            )
             let ran = Set(snapshot.info.collectors.filter { $0.state == .ran }.map(\.name))
             let lost = existingRan.subtracting(ran)
             guard lost.isEmpty else {
@@ -151,39 +160,6 @@ extension SnapshotWorkspace {
             return BackfillStep(commit: commit, action: .scanned, note: note)
         } catch {
             return BackfillStep(commit: commit, action: .failed, note: String(describing: error))
-        }
-    }
-
-    /// Exports `commit` and scans it, with a note when the scan needed the
-    /// export's toolchain pin removed.
-    private func scanExport(
-        _ commit: String,
-        git: GitState,
-        scanner backfillScanner: SnapshotScanner
-    ) throws -> (ScannedSnapshot, String?) {
-        let exported = try RevisionExport.export(commit: commit, packagePath: git.packagePath, from: root)
-        defer { try? FileManager.default.removeItem(at: RevisionExport.workDirectory(of: exported)) }
-        let state = GitState(commit: commit, branch: nil, isDirty: false, dirtyHash: nil, packagePath: git.packagePath)
-        let scan = {
-            try backfillScanner.scan(
-                packageAt: exported,
-                configurationFile: self.configurationFile ?? StoreLocation.localConfiguration(packageRoot: exported),
-                git: state,
-                history: .skipped("backfill")
-            )
-        }
-        do {
-            return (try scan(), nil)
-        } catch {
-            // An old `.swift-version` can pin a toolchain that no longer
-            // installs or describes the manifest; the export is scratch, so
-            // try once without it.
-            let pin = exported.appendingPathComponent(".swift-version")
-            guard FileManager.default.fileExists(atPath: pin.path) else {
-                throw error
-            }
-            try FileManager.default.removeItem(at: pin)
-            return (try scan(), "scanned without its .swift-version toolchain pin")
         }
     }
 }

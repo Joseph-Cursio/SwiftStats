@@ -3,7 +3,8 @@
 //  SwiftStatsCore
 //
 //  Walks a test body for assertions and property or idempotency checks
-//  (PRD §7.8).
+//  (PRD §7.8), noting every callee's base name and every operator used,
+//  which link a property test to the suggestions it may check (§7.11).
 //
 
 import SwiftSyntax
@@ -20,6 +21,9 @@ final class TestBodyScan: SyntaxVisitor {
     var trials: Int?
     /// Whether a `propertyCheck` call's `count:` isn't a literal.
     var hasUnreadableTrials = false
+    /// The base names of the functions called, for `f(…)` and `x.f(…)`,
+    /// and the operators used, infix, prefix or postfix.
+    var callees: Set<String> = []
 
     /// The called function's base name, for `f(…)` and `x.f(…)`.
     static func calleeName(_ call: FunctionCallExprSyntax) -> String {
@@ -63,6 +67,9 @@ final class TestBodyScan: SyntaxVisitor {
 
     override func visit(_ node: FunctionCallExprSyntax) -> SyntaxVisitorContinueKind {
         let name = Self.calleeName(node)
+        if name.isEmpty == false {
+            callees.insert(name)
+        }
         if name.hasPrefix("XCTAssert") {
             assertions += 1
         } else if name == "assertIdempotentEffects" {
@@ -73,6 +80,21 @@ final class TestBodyScan: SyntaxVisitor {
                 addTrials(node)
             }
         }
+        return .visitChildren
+    }
+
+    override func visit(_ node: BinaryOperatorExprSyntax) -> SyntaxVisitorContinueKind {
+        callees.insert(node.operator.text)
+        return .visitChildren
+    }
+
+    override func visit(_ node: PrefixOperatorExprSyntax) -> SyntaxVisitorContinueKind {
+        callees.insert(node.operator.text)
+        return .visitChildren
+    }
+
+    override func visit(_ node: PostfixOperatorExprSyntax) -> SyntaxVisitorContinueKind {
+        callees.insert(node.operator.text)
         return .visitChildren
     }
 

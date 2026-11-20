@@ -83,7 +83,8 @@ public struct SnapshotScanner {
         )
     }
 
-    /// The snapshot's record of an external collector's run.
+    /// The snapshot's record of a collector's run other than SwiftStats' own
+    /// and the history's.
     private func info(for status: CollectorStatus, outcome: ScanOutcome, toolchain: Toolchain) -> CollectorRunInfo {
         var identity: (identity: String, label: String?)?
         if status.name == DependencyGraphAdapter.name {
@@ -91,6 +92,13 @@ public struct SnapshotScanner {
             // to match, since SwiftStats' own code reads the graph.
             if outcome.executables[status.name] != nil, let version = toolchain.swiftVersion {
                 identity = ("swift:\(version)", nil)
+            }
+        } else if status.name == EffectCollector.name {
+            // Linked, not run as a binary: the pinned revision is the
+            // build. Diff also requires `swiftstats` to match, since
+            // SwiftStats' own code maps the library's answers.
+            if status.state != .skipped {
+                identity = (EffectInferenceRevision.identity, nil)
             }
         } else if let executable = outcome.executables[status.name] {
             identity = BinaryIdentity.of(executable)

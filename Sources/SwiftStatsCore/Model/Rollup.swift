@@ -48,4 +48,17 @@ public struct Rollup: Codable, Hashable, Sendable {
     public let api: APISurface
     /// Tests by framework and kind, and the test-to-code line counts (PRD §7.8).
     public let tests: TestSummary
+    /// Side-effect tiers and purity verdicts (PRD §7.10); nil when
+    /// SwiftEffectInference didn't run, and on test modules and the `tests` part.
+    public let effects: EffectRollup?
+    /// Law-check pairs by state (PRD §7.11); nil on test modules and the
+    /// `tests` part, whose types are never subjects.
+    public let laws: LawRollup?
+    /// Property-test suggestions by tier, mapped and unmapped (PRD §7.11);
+    /// nil when SwiftInferProperties didn't run, and on scopes holding none.
+    public let properties: PropertyRollup?
+    /// Clone classes with a copy in the scope, by kind, and the stripped
+    /// lines copies cover (PRD §7.12); nil when SwiftCloneDetector didn't
+    /// run, and on test modules and the `tests` part, which it doesn't read.
+    public let clones: CloneRollup?
 }

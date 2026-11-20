@@ -32,22 +32,26 @@ struct SignalEdgeTests {
     private static func items(_ count: Int) -> [SignalItem] {
         (1...count).map { rank in
             SignalItem(
+                SignalItem.Draft(
+                    subject: "Lib::func f\(rank)()",
+                    file: "Sources/Lib/F.swift",
+                    line: rank,
+                    history: SignalItem.History(
+                        changes: 1,
+                        cognitive: 1,
+                        fixes: 0,
+                        allFixes: 0,
+                        fixScore: 0,
+                        reverts: 0,
+                        repeatedFixes: 0,
+                        testChanges: 0,
+                        firstSeen: nil,
+                        tracedBy: .key
+                    )
+                ),
                 rank: rank,
-                family: "Lib::func f\(rank)()",
-                file: "Sources/Lib/F.swift",
-                line: rank,
                 score: Double(count - rank + 1),
-                member: true,
-                changes: 1,
-                cognitive: 1,
-                fixes: 0,
-                allFixes: 0,
-                fixScore: 0,
-                reverts: 0,
-                repeatedFixes: 0,
-                testChanges: 0,
-                firstSeen: nil,
-                tracedBy: .key
+                member: true
             )
         }
     }
@@ -64,9 +68,9 @@ struct SignalEdgeTests {
         let id = try workspace.scanWorkingTree().id
 
         let hotspot = try #require(try workspace.signals(id: id).first { $0.name == .hotspot })
-        let item = try #require(hotspot.items.first { $0.family.contains("subscript") })
+        let item = try #require(hotspot.items.first { $0.subject.contains("subscript") })
 
-        #expect(item.cognitive == 1)
+        #expect(item.history?.cognitive == 1)
         #expect(item.score == 1)
     }
 

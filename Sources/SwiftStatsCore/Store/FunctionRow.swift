@@ -3,7 +3,9 @@
 //  SwiftStatsCore
 //
 //  The `function` table (PRD §9): one row per function record, with the
-//  columns `diff` and trends read.
+//  columns `diff` and trends read, and from store v3 whether its file is
+//  generated and its side-effect facts. Its columns are written out in
+//  `FunctionRow+Columns.swift`.
 //
 
 import GRDB
@@ -57,8 +59,19 @@ public struct FunctionRow: Codable, Hashable, Sendable, FetchableRecord, Persist
     public var swiftLintCompatible: Int?
     /// Maximum nesting depth; nil when unscored.
     public var maxNesting: Int?
+    /// The columns store v3 adds; nil on a row written before v3, or one
+    /// made in memory from a record alone.
+    public var facts: StoredFunctionFacts?
 
-    /// The row for `record` in snapshot `snapshotId`.
+    /// The stored row for `record` in snapshot `snapshotId`, whose file is
+    /// `generated` or not.
+    init(_ record: FunctionRecord, snapshotId: Int64, generated: Bool) {
+        self.init(record, snapshotId: snapshotId)
+        facts = StoredFunctionFacts(generated: generated, effect: record.effect.map(StoredEffect.init))
+    }
+
+    /// The row for `record` in snapshot `snapshotId`, without the v3 columns,
+    /// as history and matching use it.
     init(_ record: FunctionRecord, snapshotId: Int64) {
         self.snapshotId = snapshotId
         key = record.key

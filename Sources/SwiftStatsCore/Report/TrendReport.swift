@@ -5,7 +5,11 @@
 //  `swiftstats trend <metric>` (PRD §10): one roll-up number over the clean
 //  snapshots of HEAD's first-parent commits, oldest first. A point where
 //  the number's collector, or SwiftStats itself, ran a different build or
-//  options from the point before is marked as a break (PRD §13).
+//  options from the point before is marked as a break (PRD §13). A keyed
+//  count (findings by rule, side-effect records by tier, law pairs by state,
+//  …) reads 0 where its collector ran and the roll-up is there, once some
+//  point stores it there, as `diff` reads it, so a count falling to zero
+//  isn't shown as not collected, and one never collected there isn't 0.
 //
 
 /// A metric over time.

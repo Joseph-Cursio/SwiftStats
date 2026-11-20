@@ -85,7 +85,7 @@ struct BackfillTests {
         #expect(markdown.contains("| Commit | Date | Value | Break |"))
     }
 
-    @Test("a backfilled snapshot has no history and no tools, and says why")
+    @Test("a backfilled snapshot has no history and no tools, and says why, but has side effects")
     func backfilledCollectors() throws {
         let repository = try HistoryRepository()
         defer { repository.remove() }
@@ -103,6 +103,70 @@ struct BackfillTests {
         #expect(runs["history"]?.state == .skipped)
         #expect(runs["history"]?.reason == "backfill")
         #expect(runs["swiftlint"]?.reason == "backfill runs SwiftStats only; --with-tools adds the tools")
+        #expect(runs["swiftinferproperties"]?.reason == "backfill runs SwiftStats only; --with-tools adds the tools")
+        #expect(runs["swiftclonedetector"]?.reason == "backfill runs SwiftStats only; --with-tools adds the tools")
         #expect(runs["swiftstats"]?.state == .ran)
+        #expect(runs["swifteffectinference"]?.state == .ran)
+        #expect(runs["swifteffectinference"]?.identity == EffectInferenceRevision.identity)
+    }
+
+    @Test("""
+        a keyed count that falls to zero trends as 0, not missing, but stays missing where its module wasn't there \
+        or its collector didn't run
+        """)
+    func keyedCountFallsToZero() throws {
+        let repository = try HistoryRepository()
+        defer { repository.remove() }
+        let workspace = try repository.workspace()
+        let logged = "func writeLog(_ text: String) {\n    print(text)\n}\n"
+        let quiet = "func writeLog(_ text: String) {\n    _ = text\n}\n"
+        let steps: [[String: String]] = [
+            ["Sources/Core/Core.swift": "func core() -> Int {\n    1\n}\n"],
+            ["Sources/Extras/Log.swift": logged],
+            ["Sources/Extras/Log.swift": quiet],
+            [".swiftstats.yml": "collectors:\n  swifteffectinference:\n    enabled: false\n"]
+        ]
+        for (day, files) in steps.enumerated() {
+            try repository.write(files)
+            try repository.commit("Step \(day)", day: day)
+            _ = try workspace.scanWorkingTree()
+        }
+
+        let trend = try workspace.trend(metric: "effects.purity.refuted", scope: .module, name: "Extras")
+
+        #expect(trend.points.map(\.value) == [nil, 1, 0, nil])
+        #expect(trend.points.map { $0.breakReason == nil } == [true, true, true, false])
+    }
+
+    @Test("""
+        a keyed count trends as 0 only beside a point that stores it, so one never collected in test code, \
+        or a misspelt key, stays missing
+        """)
+    func keyedCountNeverStored() throws {
+        let repository = try HistoryRepository()
+        defer { repository.remove() }
+        let workspace = try repository.workspace()
+        let logged = "func writeLog(_ text: String) {\n    print(text)\n}\n"
+        let quiet = "func writeLog(_ text: String) {\n    _ = text\n}\n"
+        let testLog = "func logFromTest(_ text: String) {\n    print(text)\n}\n"
+        let steps: [[String: String]] = [
+            ["Sources/Extras/Log.swift": logged, "Tests/ExtrasTests/LogTests.swift": testLog],
+            ["Sources/Extras/Log.swift": quiet]
+        ]
+        for (day, files) in steps.enumerated() {
+            try repository.write(files)
+            try repository.commit("Step \(day)", day: day)
+            _ = try workspace.scanWorkingTree()
+        }
+
+        let production = try workspace.trend(metric: "effects.purity.refuted", scope: .module, name: "Extras")
+        let testModule = try workspace.trend(metric: "effects.purity.refuted", scope: .module, name: "ExtrasTests")
+        let testPart = try workspace.trend(metric: "effects.tier.pure", scope: .project, name: "tests")
+        let misspelt = try workspace.trend(metric: "laws.state.not_run", scope: .module, name: "Extras")
+
+        #expect(production.points.map(\.value) == [1, 0])
+        #expect(testModule.points.map(\.value) == [nil, nil])
+        #expect(testPart.points.map(\.value) == [nil, nil])
+        #expect(misspelt.points.map(\.value) == [nil, nil])
     }
 }

@@ -18,7 +18,7 @@ struct SnapshotReportTests {
             let store = try SnapshotStore(at: url)
             let report = SnapshotReport(
                 snapshot: try store.info(id: id),
-                signals: SignalEngine.signals(of: try store.load(id: id), thresholds: SignalThresholds()),
+                signals: SignalEngine.signals(of: SignalInputs(snapshot: try store.load(id: id)), thresholds: .init()),
                 scan: try store.report(id: id)
             )
             return (try ScanReportEncoder.encode(report), MarkdownReport.render(report))
@@ -61,7 +61,7 @@ struct SnapshotReportTests {
 
         let report = SnapshotReport(
             snapshot: try store.info(id: id),
-            signals: SignalEngine.signals(of: try store.load(id: id), thresholds: SignalThresholds()),
+            signals: SignalEngine.signals(of: SignalInputs(snapshot: try store.load(id: id)), thresholds: .init()),
             scan: try store.report(id: id)
         )
         let text = MarkdownReport.render(report)
@@ -69,12 +69,26 @@ struct SnapshotReportTests {
         let headings = text.split(separator: "\n").filter { $0.hasPrefix("#") }.map(String.init)
         let expected = [
             "# Probe", "## Signals", "### Hotspots", "### Bug-prone", "### Unstable fixes",
-            "### Tests not keeping up", "### Safe to leave", "## Collectors", "## Project",
-            "### Findings by rule", "### Findings by kind", "## Modules"
+            "### Tests not keeping up", "### Safe to leave", "### Untested properties", "### Tool disagreements",
+            "### Missing templates", "### Unchecked laws", "### Divergent clones", "### Clone hotspots",
+            "## Collectors", "## Project",
+            "### Findings by rule", "### Findings by kind", "## Side effects", "## Property candidates",
+            "## Law checks", "## Clones", "## Modules"
         ]
         #expect(headings == expected)
         #expect(text.contains("Left out: history was not collected: skipped, not in a git repository with commits."))
         // One `precondition` in four stripped lines: 250 per 1k.
         #expect(text.contains("| production | swiftstats | precondition | 1 | 250.0 |"))
+        // `check` traps, so purity is refuted and no tier resolves.
+        #expect(text.contains("| refuted | 1 |"))
+        #expect(text.contains("| pure | 0 |"))
+        #expect(text.contains(
+            "Not collected: skipped, `swift-infer` not found on PATH; set collectors.swiftinferproperties.path."
+        ))
+        #expect(text.contains(
+            "Not collected: skipped, `swift-clone-detector` not found on PATH; set collectors.swiftclonedetector.path."
+        ))
+        // The package declares no conformance the kit covers.
+        #expect(text.contains("| notRun | 0 |"))
     }
 }

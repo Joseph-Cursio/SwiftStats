@@ -13,11 +13,13 @@ struct ScanCommand: ParsableCommand {
         discussion: """
         The snapshot goes to the package's store (.swiftstats/stats.sqlite, or store: in .swiftstats.yml, \
         or --store), replacing any earlier snapshot of the same commit and dirtiness. --format json prints \
-        the scan's records, findings, test inventory, dependencies, roll-ups and Sitrep-compatible counts; \
-        -o writes them to a file. SwiftProjectLint and SwiftLint run when found on PATH (as swiftprojectlint \
-        and swiftlint), or at collectors.<name>.path in .swiftstats.yml; collectors.<name>.enabled: false \
-        turns one off. The dependency graph comes from `swift package show-dependencies`, run only when the \
-        package's dependencies are already resolved.
+        the scan's records, findings, test inventory, dependencies, law checks, property-test suggestions, \
+        clones, roll-ups and Sitrep-compatible counts; -o writes them to a file. SwiftProjectLint, SwiftLint, \
+        SwiftInferProperties and SwiftCloneDetector run when found on PATH (as swiftprojectlint, swiftlint, \
+        swift-infer and swift-clone-detector), or at collectors.<name>.path in .swiftstats.yml; \
+        collectors.<name>.enabled: false turns one off. Side effects come from the linked SwiftEffectInference \
+        (collectors.swifteffectinference.enabled: false turns it off). The dependency graph comes from \
+        `swift package show-dependencies`, run only when the package's dependencies are already resolved.
         """
     )
 

@@ -3,7 +3,8 @@
 //  SwiftStatsCore
 //
 //  One row per type declaration or extension (PRD §7.2), nested and local
-//  ones included, for type counts, body length and member count.
+//  ones included, for type counts, body length and member count, with the
+//  conformances its inheritance clause declares (PRD §7.11).
 //
 
 /// A single type declaration or extension and its size.
@@ -32,6 +33,11 @@ public struct TypeRecord: Codable, Hashable, Sendable {
     public let isLocal: Bool
     /// The `#if` condition the declaration sits under, if any.
     public let ifConfig: String?
+    /// The inheritance clause's entries, sorted (PRD §7.11): attributes
+    /// such as `@unchecked` unwrapped, a `Swift.` or `PropertyLawKit.`
+    /// qualifier stripped, compositions split at `&`, `~Copyable` dropped;
+    /// empty when there is no clause.
+    public let conformances: [String]
 
     /// Creates a record. Fields are documented on their properties.
     public init(
@@ -43,7 +49,8 @@ public struct TypeRecord: Codable, Hashable, Sendable {
         strippedLines: Int,
         memberCount: Int,
         isLocal: Bool,
-        ifConfig: String?
+        ifConfig: String?,
+        conformances: [String]
     ) {
         self.module = module
         self.kind = kind
@@ -54,5 +61,6 @@ public struct TypeRecord: Codable, Hashable, Sendable {
         self.memberCount = memberCount
         self.isLocal = isLocal
         self.ifConfig = ifConfig
+        self.conformances = conformances
     }
 }

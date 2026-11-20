@@ -17,6 +17,34 @@
       "state" : "skipped"
     },
     {
+      "name" : "swiftclonedetector",
+      "options" : [
+
+      ],
+      "reason" : "`swift-clone-detector` not found on PATH; set collectors.swiftclonedetector.path",
+      "state" : "skipped"
+    },
+    {
+      "name" : "swifteffectinference",
+      "options" : [
+        "calleeResolution: unique-signature",
+        "maxPasses: 50",
+        "heuristic: import-aware, all frameworks",
+        "recognition: default",
+        "universe: production files after exclusion, plugin targets excluded, sorted by String <"
+      ],
+      "state" : "ran",
+      "version" : "ba3624d754c3c9150c946f66468c2c356be3e7e0"
+    },
+    {
+      "name" : "swiftinferproperties",
+      "options" : [
+
+      ],
+      "reason" : "`swift-infer` not found on PATH; set collectors.swiftinferproperties.path",
+      "state" : "skipped"
+    },
+    {
       "name" : "swiftlint",
       "options" : [
 
@@ -51,6 +79,13 @@
     "direct" : [
 
     ]
+  },
+  "effects" : {
+    "passes" : 1,
+    "refutedTypes" : [
+
+    ],
+    "revision" : "ba3624d754c3c9150c946f66468c2c356be3e7e0"
   },
   "files" : [
     {
@@ -92,6 +127,17 @@
   "findings" : [
 
   ],
+  "laws" : {
+    "ambiguousNames" : [
+
+    ],
+    "checks" : [
+
+    ],
+    "kitDependency" : false,
+    "testOnlyConformances" : 0,
+    "unresolvedCalls" : 0
+  },
   "metrics" : {
     "complexityDefinition" : "complexity-1",
     "library" : "0.3.0",
@@ -174,6 +220,19 @@
         "swiftLintCompatible" : 0,
         "swiftLintScored" : true
       },
+      "effect" : {
+        "declaration" : {
+          "clockDeterministic" : false,
+          "unknown" : false
+        },
+        "function" : {
+          "inference" : "ambiguous",
+          "valueShaped" : true
+        },
+        "purity" : "pure",
+        "source" : "purity",
+        "tier" : "pure"
+      },
       "file" : "Sources/AllKinds/Resources.swift",
       "ifConfig" : "DEBUG",
       "isAsync" : false,
@@ -206,6 +265,19 @@
         "maxNesting" : 0,
         "swiftLintCompatible" : 0,
         "swiftLintScored" : true
+      },
+      "effect" : {
+        "declaration" : {
+          "clockDeterministic" : false,
+          "unknown" : false
+        },
+        "function" : {
+          "inference" : "ambiguous",
+          "valueShaped" : true
+        },
+        "purity" : "pure",
+        "source" : "purity",
+        "tier" : "pure"
       },
       "file" : "Sources/AllKinds/Resources.swift",
       "ifConfig" : "!(DEBUG)",
@@ -240,6 +312,23 @@
         "swiftLintCompatible" : 0,
         "swiftLintScored" : true
       },
+      "effect" : {
+        "declaration" : {
+          "clockDeterministic" : false,
+          "unknown" : false
+        },
+        "function" : {
+          "inference" : "ambiguous",
+          "valueShaped" : true
+        },
+        "purity" : "refuted",
+        "refutation" : {
+          "case" : "declaredAsync",
+          "detail" : "declares `async`",
+          "root" : "declaredAsync"
+        },
+        "source" : "none"
+      },
       "file" : "Sources/AllKinds/Resources.swift",
       "isAsync" : true,
       "isDocumented" : false,
@@ -271,6 +360,19 @@
         "maxNesting" : 0,
         "swiftLintCompatible" : 0,
         "swiftLintScored" : true
+      },
+      "effect" : {
+        "declaration" : {
+          "clockDeterministic" : false,
+          "unknown" : false
+        },
+        "function" : {
+          "inference" : "ambiguous",
+          "valueShaped" : true
+        },
+        "purity" : "pure",
+        "source" : "purity",
+        "tier" : "pure"
       },
       "file" : "Sources/AllKinds/Resources.swift",
       "isAsync" : false,
@@ -304,6 +406,19 @@
         "swiftLintCompatible" : 0,
         "swiftLintScored" : true
       },
+      "effect" : {
+        "declaration" : {
+          "clockDeterministic" : false,
+          "unknown" : false
+        },
+        "function" : {
+          "inference" : "unique",
+          "valueShaped" : false
+        },
+        "purity" : "pure",
+        "source" : "purity",
+        "tier" : "pure"
+      },
       "file" : "Sources/AllKinds/Resources.swift",
       "isAsync" : false,
       "isDocumented" : false,
@@ -335,6 +450,19 @@
         "maxNesting" : 0,
         "swiftLintCompatible" : 0,
         "swiftLintScored" : true
+      },
+      "effect" : {
+        "declaration" : {
+          "clockDeterministic" : false,
+          "unknown" : false
+        },
+        "function" : {
+          "inference" : "unique",
+          "valueShaped" : true
+        },
+        "purity" : "pure",
+        "source" : "purity",
+        "tier" : "pure"
       },
       "file" : "Sources/AllKinds/Resources.swift",
       "isAsync" : false,
@@ -368,6 +496,19 @@
         "swiftLintCompatible" : 0,
         "swiftLintScored" : true
       },
+      "effect" : {
+        "declaration" : {
+          "clockDeterministic" : false,
+          "unknown" : false
+        },
+        "function" : {
+          "inference" : "unique",
+          "valueShaped" : true
+        },
+        "purity" : "pure",
+        "source" : "purity",
+        "tier" : "pure"
+      },
       "file" : "Sources/AllKinds/Resources.swift",
       "isAsync" : false,
       "isDocumented" : false,
@@ -399,6 +540,19 @@
         "maxNesting" : 0,
         "swiftLintCompatible" : 0,
         "swiftLintScored" : true
+      },
+      "effect" : {
+        "declaration" : {
+          "clockDeterministic" : false,
+          "unknown" : false
+        },
+        "function" : {
+          "inference" : "unique",
+          "valueShaped" : true
+        },
+        "purity" : "pure",
+        "source" : "purity",
+        "tier" : "pure"
       },
       "file" : "Sources/AllKinds/Resources.swift",
       "isAsync" : false,
@@ -497,6 +651,15 @@
         "swiftLintCompatible" : 0,
         "swiftLintScored" : false
       },
+      "effect" : {
+        "declaration" : {
+          "clockDeterministic" : false,
+          "unknown" : false
+        },
+        "purity" : "pure",
+        "source" : "purity",
+        "tier" : "pure"
+      },
       "file" : "Sources/AllKinds/Shapes.swift",
       "isAsync" : false,
       "isDocumented" : false,
@@ -528,6 +691,19 @@
         "maxNesting" : 0,
         "swiftLintCompatible" : 0,
         "swiftLintScored" : false
+      },
+      "effect" : {
+        "declaration" : {
+          "clockDeterministic" : false,
+          "unknown" : false
+        },
+        "purity" : "refuted",
+        "refutation" : {
+          "case" : "notAGetter",
+          "detail" : "declares `set`, so it is not a derived value",
+          "root" : "notAGetter"
+        },
+        "source" : "none"
       },
       "file" : "Sources/AllKinds/Shapes.swift",
       "isAsync" : false,
@@ -656,6 +832,20 @@
         "swiftLintCompatible" : 0,
         "swiftLintScored" : true
       },
+      "effect" : {
+        "declaration" : {
+          "clockDeterministic" : false,
+          "unknown" : false
+        },
+        "function" : {
+          "inference" : "unique",
+          "shape" : "selfReturning",
+          "valueShaped" : true
+        },
+        "purity" : "pure",
+        "source" : "purity",
+        "tier" : "pure"
+      },
       "file" : "Sources/AllKinds/Shapes.swift",
       "isAsync" : false,
       "isDocumented" : false,
@@ -687,6 +877,20 @@
         "maxNesting" : 0,
         "swiftLintCompatible" : 0,
         "swiftLintScored" : true
+      },
+      "effect" : {
+        "declaration" : {
+          "clockDeterministic" : false,
+          "unknown" : false
+        },
+        "function" : {
+          "inference" : "unique",
+          "shape" : "endomorphism",
+          "valueShaped" : true
+        },
+        "purity" : "pure",
+        "source" : "purity",
+        "tier" : "pure"
       },
       "file" : "Sources/AllKinds/Shapes.swift",
       "isAsync" : false,
@@ -721,6 +925,11 @@
         "swiftLintCompatible" : 0,
         "swiftLintScored" : false
       },
+      "effect" : {
+        "purity" : "pure",
+        "source" : "purity",
+        "tier" : "pure"
+      },
       "file" : "Sources/AllKinds/Shapes.swift",
       "isAsync" : false,
       "isDocumented" : false,
@@ -745,6 +954,15 @@
     {
       "bodyHash" : "9288593763a41083",
       "bodyLines" : 2,
+      "effect" : {
+        "purity" : "refuted",
+        "refutation" : {
+          "case" : "notAGetter",
+          "detail" : "declares `set`, so it is not a derived value",
+          "root" : "notAGetter"
+        },
+        "source" : "none"
+      },
       "file" : "Sources/AllKinds/Shapes.swift",
       "isAsync" : false,
       "isDocumented" : false,
@@ -843,6 +1061,20 @@
         "swiftLintCompatible" : 0,
         "swiftLintScored" : true
       },
+      "effect" : {
+        "declaration" : {
+          "clockDeterministic" : false,
+          "unknown" : false
+        },
+        "function" : {
+          "inference" : "unique",
+          "shape" : "binaryOperation",
+          "valueShaped" : true
+        },
+        "purity" : "pure",
+        "source" : "purity",
+        "tier" : "pure"
+      },
       "file" : "Sources/AllKinds/Shapes.swift",
       "isAsync" : false,
       "isDocumented" : false,
@@ -875,6 +1107,20 @@
         "swiftLintCompatible" : 0,
         "swiftLintScored" : true
       },
+      "effect" : {
+        "declaration" : {
+          "clockDeterministic" : false,
+          "unknown" : false
+        },
+        "function" : {
+          "inference" : "unique",
+          "shape" : "endomorphism",
+          "valueShaped" : true
+        },
+        "purity" : "pure",
+        "source" : "purity",
+        "tier" : "pure"
+      },
       "file" : "Sources/AllKinds/Shapes.swift",
       "isAsync" : false,
       "isDocumented" : false,
@@ -906,6 +1152,20 @@
         "maxNesting" : 0,
         "swiftLintCompatible" : 0,
         "swiftLintScored" : true
+      },
+      "effect" : {
+        "declaration" : {
+          "clockDeterministic" : false,
+          "unknown" : false
+        },
+        "function" : {
+          "inference" : "unique",
+          "shape" : "predicate",
+          "valueShaped" : true
+        },
+        "purity" : "pure",
+        "source" : "purity",
+        "tier" : "pure"
       },
       "file" : "Sources/AllKinds/Shapes.swift",
       "isAsync" : false,
@@ -969,6 +1229,23 @@
         "maxNesting" : 0,
         "swiftLintCompatible" : 0,
         "swiftLintScored" : true
+      },
+      "effect" : {
+        "declaration" : {
+          "clockDeterministic" : false,
+          "unknown" : false
+        },
+        "function" : {
+          "inference" : "unique",
+          "valueShaped" : false
+        },
+        "purity" : "refuted",
+        "refutation" : {
+          "case" : "sideEffectMarker",
+          "detail" : "references the side-effect marker `print`",
+          "root" : "sideEffectMarker"
+        },
+        "source" : "none"
       },
       "file" : "Sources/Tool/main.swift",
       "isAsync" : false,
@@ -1248,6 +1525,15 @@
         "total" : 1
       },
       "documentedFunctions" : 0,
+      "effects" : {
+        "purity" : {
+          "pure" : 14,
+          "refuted" : 3
+        },
+        "tier" : {
+          "pure" : 14
+        }
+      },
       "fileLength" : {
         "count" : 2,
         "max" : 51,
@@ -1281,6 +1567,11 @@
         "func" : 13,
         "init" : 3,
         "subscript" : 2
+      },
+      "laws" : {
+        "state" : {
+
+        }
       },
       "maxNesting" : {
         "count" : 25,
@@ -1521,6 +1812,14 @@
         "total" : 0
       },
       "documentedFunctions" : 0,
+      "effects" : {
+        "purity" : {
+          "refuted" : 1
+        },
+        "tier" : {
+
+        }
+      },
       "fileLength" : {
         "count" : 1,
         "max" : 7,
@@ -1551,6 +1850,11 @@
       "functions" : {
         "func" : 1,
         "topLevel" : 1
+      },
+      "laws" : {
+        "state" : {
+
+        }
       },
       "maxNesting" : {
         "count" : 2,
@@ -1644,6 +1948,15 @@
         "total" : 1
       },
       "documentedFunctions" : 0,
+      "effects" : {
+        "purity" : {
+          "pure" : 14,
+          "refuted" : 4
+        },
+        "tier" : {
+          "pure" : 14
+        }
+      },
       "fileLength" : {
         "count" : 3,
         "max" : 51,
@@ -1678,6 +1991,11 @@
         "init" : 3,
         "subscript" : 2,
         "topLevel" : 1
+      },
+      "laws" : {
+        "state" : {
+
+        }
       },
       "maxNesting" : {
         "count" : 27,
@@ -1890,7 +2208,7 @@
       }
     }
   ],
-  "schemaVersion" : 5,
+  "schemaVersion" : 6,
   "sitrep" : {
     "imports" : [
       {
@@ -2035,6 +2353,9 @@
   },
   "types" : [
     {
+      "conformances" : [
+
+      ],
       "file" : "Sources/AllKinds/Resources.swift",
       "isLocal" : false,
       "kind" : "class",
@@ -2054,6 +2375,9 @@
       "strippedLines" : 16
     },
     {
+      "conformances" : [
+
+      ],
       "file" : "Sources/AllKinds/Resources.swift",
       "isLocal" : false,
       "kind" : "actor",
@@ -2073,6 +2397,9 @@
       "strippedLines" : 7
     },
     {
+      "conformances" : [
+
+      ],
       "file" : "Sources/AllKinds/Resources.swift",
       "isLocal" : false,
       "kind" : "extension",
@@ -2092,6 +2419,9 @@
       "strippedLines" : 3
     },
     {
+      "conformances" : [
+
+      ],
       "file" : "Sources/AllKinds/Shapes.swift",
       "isLocal" : false,
       "kind" : "protocol",
@@ -2111,6 +2441,9 @@
       "strippedLines" : 5
     },
     {
+      "conformances" : [
+        "Shape"
+      ],
       "file" : "Sources/AllKinds/Shapes.swift",
       "isLocal" : false,
       "kind" : "struct",
@@ -2130,6 +2463,9 @@
       "strippedLines" : 40
     },
     {
+      "conformances" : [
+
+      ],
       "file" : "Sources/AllKinds/Shapes.swift",
       "isLocal" : false,
       "kind" : "extension",
@@ -2149,6 +2485,9 @@
       "strippedLines" : 5
     },
     {
+      "conformances" : [
+
+      ],
       "file" : "Tests/AllKindsTests/SwiftTestingTests.swift",
       "isLocal" : false,
       "kind" : "struct",
@@ -2168,6 +2507,9 @@
       "strippedLines" : 6
     },
     {
+      "conformances" : [
+        "XCTestCase"
+      ],
       "file" : "Tests/AllKindsTests/XCTestTests.swift",
       "isLocal" : false,
       "kind" : "class",
@@ -2187,6 +2529,9 @@
       "strippedLines" : 3
     },
     {
+      "conformances" : [
+        "BaseTestCase"
+      ],
       "file" : "Tests/AllKindsTests/XCTestTests.swift",
       "isLocal" : false,
       "kind" : "class",
@@ -2206,6 +2551,9 @@
       "strippedLines" : 6
     },
     {
+      "conformances" : [
+
+      ],
       "file" : "Tests/AllKindsTests/XCTestTests.swift",
       "isLocal" : false,
       "kind" : "extension",

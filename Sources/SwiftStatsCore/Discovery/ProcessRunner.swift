@@ -61,6 +61,25 @@ enum ProcessRunner {
     }
 
     /// Runs `executable` as `run(executable:arguments:in:accepting:)` does,
+    /// with `environment` added to this process's.
+    static func run(
+        executable: String,
+        arguments: [String],
+        in directory: URL,
+        accepting accepted: Set<Int32>,
+        environment: [String: String]
+    ) throws -> ProcessOutput {
+        try run(
+            executable: executable,
+            arguments: arguments,
+            in: directory,
+            accepting: accepted,
+            environment: environment,
+            input: nil
+        )
+    }
+
+    /// Runs `executable` as `run(executable:arguments:in:accepting:)` does,
     /// with `environment` added to this process's and standard input read
     /// from `input` when given.
     private static func run(
@@ -90,25 +109,29 @@ enum ProcessRunner {
         let command = ([executable] + arguments).joined(separator: " ")
         let errorFile = FileManager.default.temporaryDirectory
             .appendingPathComponent("SwiftStats-stderr-\(UUID().uuidString)")
+        ScratchRegistry.shared.track(errorFile)
         guard FileManager.default.createFile(atPath: errorFile.path, contents: nil),
               let errorHandle = try? FileHandle(forWritingTo: errorFile) else {
+            ScratchRegistry.shared.remove(errorFile)
             throw ScanError.commandFailed(command, -1, "could not create a file for standard error")
         }
         defer {
             try? errorHandle.close()
-            try? FileManager.default.removeItem(at: errorFile)
+            ScratchRegistry.shared.remove(errorFile)
         }
         let outputPipe = Pipe()
         process.standardOutput = outputPipe
         process.standardError = errorHandle
 
+        // Registered while it runs, so an interruption terminates it.
         do {
-            try process.run()
+            try ScratchRegistry.shared.start(process)
         } catch {
             throw ScanError.commandFailed(command, -1, error.localizedDescription)
         }
         let output = outputPipe.fileHandleForReading.readDataToEndOfFile()
         process.waitUntilExit()
+        ScratchRegistry.shared.finished(process)
 
         let errorText = (try? String(contentsOf: errorFile, encoding: .utf8)) ?? ""
         guard accepted.contains(process.terminationStatus) else {

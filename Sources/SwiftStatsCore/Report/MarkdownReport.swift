@@ -4,7 +4,8 @@
 //
 //  `swiftstats report --format markdown` (PRD §10): derived signals first,
 //  then the collectors, the project roll-up with findings per 1k stripped
-//  lines (D6), the history's notes, and per-module detail.
+//  lines (D6), the side-effect, property-candidate, law-check and clone
+//  counts, the history's notes, and per-module detail.
 //
 
 /// Renders a snapshot report as Markdown.
@@ -25,6 +26,10 @@ public enum MarkdownReport {
         lines += ["", "## Project", ""] + summary(project)
         lines += ["", "### Findings by rule", ""] + findings(project, field: \.findings, label: "Rule")
         lines += ["", "### Findings by kind", ""] + findings(project, field: \.findingKinds, label: "Kind")
+        lines += ["", "## Side effects", ""] + MarkdownEffects.render(report.scan)
+        lines += ["", "## Property candidates", ""] + MarkdownProperties.render(report.scan)
+        lines += ["", "## Law checks", ""] + MarkdownLaws.render(report.scan)
+        lines += ["", "## Clones", ""] + MarkdownClones.render(report.scan)
         if let history = report.scan.history {
             lines += ["", "## History", ""] + MarkdownSignals.history(history)
         }

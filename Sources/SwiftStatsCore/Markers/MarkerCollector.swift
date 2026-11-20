@@ -20,6 +20,9 @@ final class MarkerCollector: SyntaxVisitor {
         "StableIdentityTests", "ValueSemanticTests"
     ]
 
+    /// The rule of a marker on an attribute that expands into property tests.
+    static let propertyTestRule = "propertyTestMacro"
+
     /// Markers found so far, in source order.
     private(set) var markers: [RawFinding] = []
 
@@ -37,6 +40,12 @@ final class MarkerCollector: SyntaxVisitor {
         let collector = Self(context: context)
         collector.walk(tree)
         return collector.markers
+    }
+
+    /// The message of the marker on `@name`, an attribute that expands into
+    /// property tests.
+    static func propertyTestMessage(_ name: String) -> String {
+        "@\(name) expands into property tests"
     }
 
     /// Whether `call` creates a task: `Task { … }` or `Task(…) { … }`,
@@ -104,7 +113,7 @@ final class MarkerCollector: SyntaxVisitor {
         if name == "MainActor", Self.isOnDeclaration(node) {
             add("mainActorDeclaration", kind: .census, at: Syntax(node), message: "@MainActor declaration")
         } else if Self.propertyTestMacros.contains(name) {
-            add("propertyTestMacro", kind: .census, at: Syntax(node), message: "@\(name) expands into property tests")
+            add(Self.propertyTestRule, kind: .census, at: Syntax(node), message: Self.propertyTestMessage(name))
         } else if name == "IdempotencyTests" {
             let message = "@IdempotencyTests expands into tests"
             add("idempotencyTestMacro", kind: .census, at: Syntax(node), message: message)

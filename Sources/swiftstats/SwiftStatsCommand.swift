@@ -20,4 +20,10 @@ struct SwiftStatsCommand: ParsableCommand {
             BackfillCommand.self
         ]
     )
+
+    /// Runs the command, cleaning up if a signal interrupts it.
+    static func main() {
+        InterruptCleanup.install()
+        main(nil)
+    }
 }

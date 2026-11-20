@@ -2,66 +2,148 @@
 //  SignalEngine.swift
 //  SwiftStatsCore
 //
-//  Computes M3's derived signals (PRD §8) from a stored snapshot's typed
-//  rows. Candidates are production families outside generated files whose
-//  history is known. A ranked signal keeps the top share of all candidates,
-//  by nearest rank, with ties at the cut kept; the others keep every
-//  family meeting their condition. Everything ranked is listed with a
-//  member flag, so `top` can show a full list where membership is short.
+//  Computes the derived signals (PRD §8) from a snapshot's typed rows and
+//  the other inputs the workspace gathers. Each signal declares the inputs
+//  it needs and is left out, with the reason, when one is missing; else it
+//  scores the candidates in its pool. A ranked signal lists the candidates
+//  scoring above zero and keeps the top share of its pool, by nearest
+//  rank, with ties at the cut kept; the others list only their members.
+//  Items sort by their signal's key, by default score, highest first, then
+//  subject, file and line, and are ranked by position. Everything listed
+//  carries a member flag, so `top` can show a full list where membership
+//  is short.
 //
-
-import Foundation
 
 /// Computes signals.
 public enum SignalEngine {
-    /// One candidate family with its inputs.
-    private struct Candidate {
-        let history: FamilyHistoryRow
-        let cognitive: Int?
-        let changes: Int
-    }
-
-    /// The fewest changes in the window for "tests not keeping up".
-    static let minimumChanges = 3
-    /// The share of changes with a test change below which tests aren't keeping up.
-    static let testChangeShare = 0.25
-
-    /// The signals of `snapshot`, in report order, with ranked signals'
+    /// The signals of `inputs`, in report order, with ranked signals'
     /// membership set by `thresholds`.
-    public static func signals(of snapshot: StoredSnapshot, thresholds: SignalThresholds) -> [SignalResult] {
-        guard let run = snapshot.history else {
-            let reason = historyAbsence(snapshot.info)
-            return SignalName.reportOrder.map { name in
-                SignalResult(
+    public static func signals(of inputs: SignalInputs, thresholds: SignalThresholds) -> [SignalResult] {
+        let snapshot = inputs.snapshot
+        lazy var families = HistorySignals.pool(snapshot)
+        var results: [SignalResult] = []
+        for name in SignalName.reportOrder {
+            let reason = leftOut(name.requirements, in: snapshot) ?? leftOut(name, comparing: inputs)
+            var computation: SignalComputation?
+            if reason == nil {
+                switch name {
+                case .bugProne, .hotspot, .safeToLeave, .testsNotKeepingUp, .unstableFixes:
+                    computation = HistorySignals.compute(
+                        name,
+                        pool: families,
+                        snapshot: snapshot,
+                        thresholds: thresholds
+                    )
+
+                case .cloneHotspot:
+                    computation = CloneHotspot.compute(snapshot, thresholds: thresholds)
+
+                case .divergentClones:
+                    computation = DivergentClones.compute(inputs)
+
+                case .missingTemplate:
+                    computation = MissingTemplate.compute(snapshot)
+
+                case .toolDisagreement:
+                    computation = ToolDisagreement.compute(snapshot)
+
+                case .uncheckedLaws:
+                    computation = UncheckedLaws.compute(snapshot)
+
+                case .untestedProperty:
+                    computation = UntestedProperty.compute(snapshot)
+                }
+            }
+            guard let computation else {
+                // A computation finds no input only where its requirements
+                // say one is missing: history, or an earlier snapshot.
+                results.append(SignalResult(
                     name: name,
-                    leftOut: reason,
-                    rule: rule(for: name, thresholds: thresholds, count: 0),
+                    leftOut: reason ?? historyAbsence(snapshot.info),
+                    rule: rule(for: name, thresholds: thresholds),
                     candidates: 0,
                     items: []
-                )
+                ))
+                continue
+            }
+            results.append(result(name, computation, thresholds: thresholds))
+        }
+        return results
+    }
+
+    /// Why a signal needing `requirements` can't be computed from
+    /// `snapshot`; nil when it can. A missing history says so as M3 did;
+    /// else a snapshot stored before M4, or without a row for a collector
+    /// or its scan facts, predates M4; else the first required collector
+    /// that didn't run is named with its state and reason.
+    static func leftOut(_ requirements: [SignalRequirement], in snapshot: StoredSnapshot) -> String? {
+        if requirements.contains(.history), snapshot.history == nil {
+            return historyAbsence(snapshot.info)
+        }
+        let predates = "the snapshot predates M4"
+        for requirement in requirements {
+            switch requirement {
+            case .collector(let name):
+                guard snapshot.reportSchemaVersion >= SignalRequirement.firstM4Schema,
+                      let run = snapshot.info.collectors.first(where: { $0.name == name }) else {
+                    return predates
+                }
+                guard run.state == .ran else {
+                    return "needs \(name): \(run.state.rawValue)" + (run.reason.map { ", \($0)" } ?? "")
+                }
+
+            case .history:
+                continue
+
+            case .m4Snapshot:
+                guard snapshot.reportSchemaVersion >= SignalRequirement.firstM4Schema, snapshot.scanFacts != nil else {
+                    return predates
+                }
             }
         }
-        let candidates = self.candidates(snapshot)
-        return SignalName.reportOrder.map { name in
-            let scored = candidates.compactMap { candidate in
-                score(name, candidate, windowStart: run.windowStart).map { value in (candidate, value) }
-            }
-            let ranked = scored.sorted { lhs, rhs in
-                let (left, right) = (lhs.0.history, rhs.0.history)
-                return (rhs.1, left.family, left.file, left.line) < (lhs.1, right.family, right.file, right.line)
-            }
-            let cut = memberCount(name, ranked: ranked.map(\.1), candidates: candidates.count, thresholds: thresholds)
-            let items = ranked.enumerated().map { offset, entry in
-                item(entry.0, rank: offset + 1, score: entry.1, member: offset < cut)
-            }
-            return SignalResult(
-                name: name,
-                leftOut: nil,
-                rule: rule(for: name, thresholds: thresholds, count: candidates.count),
-                candidates: candidates.count,
-                items: items
-            )
+        return nil
+    }
+
+    /// Why `signal`, which compares the snapshot with an earlier one, can't
+    /// be: git failed, or no earlier snapshot qualifies; nil when it can,
+    /// or when `signal` compares none.
+    static func leftOut(_ signal: SignalName, comparing inputs: SignalInputs) -> String? {
+        guard signal == .divergentClones else {
+            return nil
         }
+        if let failure = inputs.gitFailure {
+            return failure
+        }
+        guard inputs.earlier == nil else {
+            return nil
+        }
+        return inputs.earlierNote ?? DivergentClones.noEarlier
+    }
+
+    /// `computation` ranked: sorted by its keys, a ranked signal's
+    /// candidates scoring zero or less dropped, and members marked.
+    static func result(
+        _ signal: SignalName,
+        _ computation: SignalComputation,
+        thresholds: SignalThresholds
+    ) -> SignalResult {
+        let listed = signal.isRanked ? computation.scored.filter { $0.score > 0 } : computation.scored
+        let sorted = listed.sorted { $0.sortKey < $1.sortKey }
+        let cut = memberCount(
+            signal,
+            ranked: sorted.map(\.score),
+            candidates: computation.candidates,
+            thresholds: thresholds
+        )
+        return SignalResult(
+            name: signal,
+            leftOut: nil,
+            rule: computation.rule,
+            candidates: computation.candidates,
+            items: sorted.enumerated().map { offset, entry in
+                SignalItem(entry.draft, rank: offset + 1, score: entry.score, member: offset < cut)
+            }
+        )
     }
 
     /// Why a snapshot has no history, from its history collector's run.
@@ -72,70 +154,36 @@ public enum SignalEngine {
         return "history was not collected: \(run.state.rawValue)" + (run.reason.map { ", \($0)" } ?? "")
     }
 
-    /// Production families outside generated files with known history.
-    private static func candidates(_ snapshot: StoredSnapshot) -> [Candidate] {
-        let families = Dictionary(
-            FunctionFamily.families(snapshot.functions).map { (FamilyRef($0), $0) }
-        ) { first, _ in first }
-        return snapshot.familyHistory.compactMap { history in
-            guard history.generated == false, let changes = history.changes,
-                  let family = families[FamilyRef(id: history.family, file: history.file)] else {
-                return nil
-            }
-            guard (family.root ?? family.accessors.first)?.role == .production else {
-                return nil
-            }
-            return Candidate(history: history, cognitive: cognitive(of: family), changes: changes)
-        }
-    }
-
-    /// A family's cognitive complexity: its root's, or, for a root that has
-    /// none of its own (a subscript with explicit accessors), its direct
-    /// accessors' highest; a computed property's accessors' highest.
-    static func cognitive(of family: FunctionFamily) -> Int? {
-        guard let root = family.root else {
-            return family.accessors.compactMap(\.cognitive).max()
-        }
-        if let own = root.cognitive {
-            return own
-        }
-        return family.members
-            .filter { $0.kind == .accessor && $0.parentKey == root.key }
-            .compactMap(\.cognitive)
-            .max()
-    }
-
-    /// `candidate`'s score in `signal`, or nil when it doesn't qualify.
-    private static func score(_ signal: SignalName, _ candidate: Candidate, windowStart: String) -> Double? {
-        let history = candidate.history
-        let value: Double?
+    /// The rule a left-out signal states: as over an empty pool, without
+    /// the counts a computed M4 signal adds.
+    private static func rule(for signal: SignalName, thresholds: SignalThresholds) -> String {
         switch signal {
-        case .bugProne:
-            value = (history.allFixes ?? 0) >= 1 ? history.fixScore : nil
+        case .bugProne, .hotspot, .safeToLeave, .testsNotKeepingUp, .unstableFixes:
+            HistorySignals.rule(for: signal, thresholds: thresholds, count: 0)
 
-        case .hotspot:
-            value = Double(candidate.changes * (candidate.cognitive ?? 0))
+        case .cloneHotspot:
+            CloneHotspot.rule(thresholds: thresholds, count: nil)
 
-        case .safeToLeave:
-            let old = history.firstSeen.map { $0 < windowStart } ?? false
-            value = candidate.changes == 0 && history.allFixes == 0 && old ? Double(candidate.cognitive ?? 0) : nil
+        case .divergentClones:
+            DivergentClones.rule
 
-        case .testsNotKeepingUp:
-            let testChanges = history.testChanges ?? 0
-            let lagging = Double(testChanges) < testChangeShare * Double(candidate.changes)
-            value = history.hasTests && candidate.changes >= minimumChanges && lagging
-                ? Double(candidate.changes - testChanges) : nil
+        case .missingTemplate:
+            MissingTemplate.rule
 
-        case .unstableFixes:
-            value = Double((history.reverts ?? 0) + (history.repeatedFixes ?? 0))
+        case .toolDisagreement:
+            ToolDisagreement.rule
+
+        case .uncheckedLaws:
+            UncheckedLaws.rule
+
+        case .untestedProperty:
+            UntestedProperty.rule
         }
-        guard let value, value > 0 else {
-            return nil
-        }
-        return value
     }
 
-    /// How many of `ranked` (scores, highest first) are members.
+    /// How many of `ranked` (scores, in listed order) are members: for a
+    /// ranked signal, the top share of `candidates`, extended over ties at
+    /// the cut; for the others, all.
     private static func memberCount(
         _ signal: SignalName,
         ranked: [Double],
@@ -154,51 +202,5 @@ public enum SignalEngine {
             count += 1
         }
         return count
-    }
-
-    /// The membership rule as reports state it.
-    private static func rule(for signal: SignalName, thresholds: SignalThresholds, count: Int) -> String {
-        switch signal {
-        case .bugProne:
-            "top \(MarkdownNumber.value(thresholds.percent(for: signal.rawValue)))% of \(count) candidates "
-                + "by age-weighted fixes"
-
-        case .hotspot:
-            "top \(MarkdownNumber.value(thresholds.percent(for: signal.rawValue)))% of \(count) candidates "
-                + "by changes in the window × cognitive complexity"
-
-        case .safeToLeave:
-            "complex, unchanged in the window, never fixed, and older than the window"
-
-        case .testsNotKeepingUp:
-            "\(minimumChanges)+ changes in the window, a test file matching by name, "
-                + "and a test change in under \(Int(testChangeShare * 100))% of them"
-
-        case .unstableFixes:
-            "reverted, or fixed again within the repeat window"
-        }
-    }
-
-    /// The item for `candidate`.
-    private static func item(_ candidate: Candidate, rank: Int, score: Double, member: Bool) -> SignalItem {
-        let history = candidate.history
-        return SignalItem(
-            rank: rank,
-            family: history.family,
-            file: history.file,
-            line: history.line,
-            score: score,
-            member: member,
-            changes: candidate.changes,
-            cognitive: candidate.cognitive,
-            fixes: history.fixes ?? 0,
-            allFixes: history.allFixes ?? 0,
-            fixScore: history.fixScore ?? 0,
-            reverts: history.reverts ?? 0,
-            repeatedFixes: history.repeatedFixes ?? 0,
-            testChanges: history.testChanges ?? 0,
-            firstSeen: history.firstSeen,
-            tracedBy: history.tracedBy
-        )
     }
 }

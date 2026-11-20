@@ -126,9 +126,9 @@ struct LabelFixtureTests {
             history: .commit(top: repository, commit: labels.commit, packagePath: labels.packagePath)
         )
         let stored = try store.load(id: try store.save(snapshot))
-        let signals = SignalEngine.signals(of: stored, thresholds: SignalThresholds())
+        let signals = SignalEngine.signals(of: SignalInputs(snapshot: stored), thresholds: SignalThresholds())
         let hotspot = try #require(signals.first { $0.name == .hotspot })
-        let current = hotspot.items.prefix(Self.labelledHotspots).map { "\($0.family)\u{0}\($0.file)" }
+        let current = hotspot.items.prefix(Self.labelledHotspots).map { "\($0.subject)\u{0}\($0.file)" }
         let worth = Set(labels.items.filter { $0.label == "worth" }.map { "\($0.family)\u{0}\($0.file)" })
 
         let labelled = Set(labels.items.map { "\($0.family)\u{0}\($0.file)" })
