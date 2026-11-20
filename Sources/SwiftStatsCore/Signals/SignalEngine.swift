@@ -34,6 +34,18 @@ public enum SignalEngine {
                         snapshot: snapshot,
                         thresholds: thresholds
                     )
+
+                case .missingTemplate:
+                    computation = MissingTemplate.compute(snapshot)
+
+                case .toolDisagreement:
+                    computation = ToolDisagreement.compute(snapshot)
+
+                case .uncheckedLaws:
+                    computation = UncheckedLaws.compute(snapshot)
+
+                case .untestedProperty:
+                    computation = UntestedProperty.compute(snapshot)
                 }
             }
             guard let computation else {
@@ -55,9 +67,9 @@ public enum SignalEngine {
 
     /// Why a signal needing `requirements` can't be computed from
     /// `snapshot`; nil when it can. A missing history says so as M3 did;
-    /// else a snapshot stored before M4, or without a row for a collector,
-    /// predates M4; else the first required collector that didn't run is
-    /// named with its state and reason.
+    /// else a snapshot stored before M4, or without a row for a collector
+    /// or its scan facts, predates M4; else the first required collector
+    /// that didn't run is named with its state and reason.
     static func leftOut(_ requirements: [SignalRequirement], in snapshot: StoredSnapshot) -> String? {
         if requirements.contains(.history), snapshot.history == nil {
             return historyAbsence(snapshot.info)
@@ -78,7 +90,7 @@ public enum SignalEngine {
                 continue
 
             case .m4Snapshot:
-                guard snapshot.reportSchemaVersion >= SignalRequirement.firstM4Schema else {
+                guard snapshot.reportSchemaVersion >= SignalRequirement.firstM4Schema, snapshot.scanFacts != nil else {
                     return predates
                 }
             }
@@ -120,11 +132,24 @@ public enum SignalEngine {
         return "history was not collected: \(run.state.rawValue)" + (run.reason.map { ", \($0)" } ?? "")
     }
 
-    /// The rule a left-out signal states: as over an empty pool.
+    /// The rule a left-out signal states: as over an empty pool, without
+    /// the counts a computed M4 signal adds.
     private static func rule(for signal: SignalName, thresholds: SignalThresholds) -> String {
         switch signal {
         case .bugProne, .hotspot, .safeToLeave, .testsNotKeepingUp, .unstableFixes:
             HistorySignals.rule(for: signal, thresholds: thresholds, count: 0)
+
+        case .missingTemplate:
+            MissingTemplate.rule
+
+        case .toolDisagreement:
+            ToolDisagreement.rule
+
+        case .uncheckedLaws:
+            UncheckedLaws.rule
+
+        case .untestedProperty:
+            UntestedProperty.rule
         }
     }
 

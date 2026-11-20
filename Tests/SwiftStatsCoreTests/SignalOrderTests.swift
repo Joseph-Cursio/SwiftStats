@@ -172,7 +172,11 @@ struct SignalOrderTests {
         #expect(reason([.history], old) == history)
         let signals = SignalEngine.signals(of: SignalInputs(snapshot: old), thresholds: SignalThresholds())
         #expect(signals.map(\.name) == SignalName.reportOrder)
-        #expect(signals.allSatisfy { $0.leftOut == history && $0.items.isEmpty && $0.candidates == 0 })
+        #expect(signals.allSatisfy { $0.items.isEmpty && $0.candidates == 0 })
+        // M3's signals keep history's reason; M4's say the snapshot predates M4.
+        #expect(signals.map(\.leftOut) == signals.map { signal in
+            signal.name.requirements.contains(.history) ? history : "the snapshot predates M4"
+        })
     }
 
     @Test("report 3 and top 2 name each item's subject and carry M3's inputs in history, and no other payload")

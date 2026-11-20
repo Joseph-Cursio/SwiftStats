@@ -130,7 +130,7 @@ public enum MarkdownSignals {
     /// A table of signal items with the inputs `signal` uses.
     private static func table(_ items: [SignalItem], signal: SignalName, markMembers: Bool = false) -> [String] {
         let inputs = columns(for: signal)
-        var header = ["#", "Function", "Score"] + inputs.map(\.0)
+        var header = ["#", signal == .uncheckedLaws ? "Type" : "Function", "Score"] + inputs.map(\.0)
         if markMembers {
             header.append("Member")
         }
@@ -189,6 +189,18 @@ public enum MarkdownSignals {
                 ("Repeated fixes", history { String($0.repeatedFixes) }),
                 traced
             ]
+
+        case .missingTemplate:
+            missingTemplateColumns
+
+        case .toolDisagreement:
+            toolDisagreementColumns
+
+        case .uncheckedLaws:
+            uncheckedLawsColumns
+
+        case .untestedProperty:
+            untestedPropertyColumns
         }
     }
 

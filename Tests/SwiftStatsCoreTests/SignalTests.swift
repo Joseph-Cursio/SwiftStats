@@ -136,7 +136,19 @@ struct SignalTests {
 
         let skipped = try workspace.scanWorkingTree(history: .skipped("--no-history")).id
         let signals = try workspace.signals(id: skipped)
-        #expect(signals.allSatisfy { $0.leftOut == "history was not collected: skipped, --no-history" })
+        let fromHistory = signals.filter { $0.name.requirements.contains(.history) }
+        #expect(fromHistory.allSatisfy { $0.leftOut == "history was not collected: skipped, --no-history" })
+        #expect(fromHistory.map(\.name) == [.hotspot, .bugProne, .unstableFixes, .testsNotKeepingUp, .safeToLeave])
+        // M4's signals read no history: unchecked laws is computed, and
+        // those needing SwiftInferProperties name it.
+        let byName = Dictionary(uniqueKeysWithValues: signals.map { ($0.name, $0) })
+        let noIndexer = "needs swiftinferproperties: skipped, `swift-infer` not found on PATH; "
+            + "set collectors.swiftinferproperties.path"
+        for name in [SignalName.untestedProperty, .toolDisagreement, .missingTemplate] {
+            #expect(byName[name]?.leftOut == noIndexer, "\(name)")
+        }
+        #expect(byName[.uncheckedLaws]?.leftOut == nil)
+        #expect(byName[.uncheckedLaws]?.candidates == 0)
     }
 
     @Test("report and top give byte-identical JSON each time, and top marks members")

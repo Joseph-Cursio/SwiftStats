@@ -81,7 +81,8 @@ enum HistorySignals {
             .max()
     }
 
-    /// The membership rule as reports state it, over `count` candidates.
+    /// The membership rule as reports state it, over `count` candidates;
+    /// empty for a signal not computed from history, which states its own.
     static func rule(for signal: SignalName, thresholds: SignalThresholds, count: Int) -> String {
         switch signal {
         case .bugProne:
@@ -101,10 +102,14 @@ enum HistorySignals {
 
         case .unstableFixes:
             "reverted, or fixed again within the repeat window"
+
+        case .missingTemplate, .toolDisagreement, .uncheckedLaws, .untestedProperty:
+            ""
         }
     }
 
-    /// `candidate`'s score in `signal`, or nil when it doesn't score above zero.
+    /// `candidate`'s score in `signal`, or nil when it doesn't score above
+    /// zero or `signal` isn't computed from history.
     private static func score(_ signal: SignalName, _ candidate: Candidate, windowStart: String) -> Double? {
         let history = candidate.history
         let value: Double?
@@ -127,6 +132,9 @@ enum HistorySignals {
 
         case .unstableFixes:
             value = Double((history.reverts ?? 0) + (history.repeatedFixes ?? 0))
+
+        case .missingTemplate, .toolDisagreement, .uncheckedLaws, .untestedProperty:
+            value = nil
         }
         guard let value, value > 0 else {
             return nil

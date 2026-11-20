@@ -34,4 +34,9 @@ struct SignalSortKey: Comparable, Hashable, Sendable {
     static func < (lhs: Self, rhs: Self) -> Bool {
         lhs.fields.lexicographicallyPrecedes(rhs.fields)
     }
+
+    /// This key with `field` compared last, to break its remaining ties.
+    func appending(_ field: Field) -> Self {
+        Self(fields + [field])
+    }
 }

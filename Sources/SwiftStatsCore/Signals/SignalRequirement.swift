@@ -13,7 +13,8 @@ enum SignalRequirement: Hashable, Sendable {
     case collector(String)
     /// The snapshot's history.
     case history
-    /// A snapshot holding M4's rows: stored from a scan of schema 6 or later.
+    /// A snapshot holding M4's rows: stored from a scan of schema 6 or
+    /// later, with its scan facts.
     case m4Snapshot
 
     /// The first scan schema whose snapshots hold M4's rows.
