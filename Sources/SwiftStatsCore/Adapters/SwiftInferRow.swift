@@ -32,6 +32,9 @@ struct SwiftInferRow: Equatable, Sendable {
     let partner: String?
     /// Why no test can run the law as written, when something stops it.
     let blocker: String?
+    /// The hash of the subject's body, which verify evidence must match to
+    /// be fresh; nil when the tool couldn't read one.
+    let subjectFingerprint: String?
     /// Whether the row carries its carrier's type shape.
     let hasTypeShape: Bool
     /// Every field as written but the timestamps and the location, so two

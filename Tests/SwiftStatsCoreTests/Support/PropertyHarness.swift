@@ -24,6 +24,8 @@ enum PropertyHarness {
         var blocker = "null"
         /// Whether the subject is a computed property.
         var computed = false
+        /// The subject fingerprint, as JSON (`null` or a quoted string).
+        var fingerprint = "null"
         /// When the row was first seen.
         var seen = "2026-11-19T00:00:00Z"
         /// More fields, each as `, "key": value`.
@@ -37,7 +39,7 @@ enum PropertyHarness {
              "qualifiedTypeName": "Money", "firstSeenAt": "\(seen)", "lastSeenAt": "\(seen)",
              "isComputedProperty": \(computed), "isInstanceMethod": true, "isMutatingMethod": false, "isNullary": true,
              "returnsSelfType": false, "parameterTypeNames": [], "structuralBlocker": \(blocker),
-             "subjectFingerprint": null, "documentedRange": null, "secondaryMemberShape": null\(extra)}
+             "subjectFingerprint": \(fingerprint), "documentedRange": null, "secondaryMemberShape": null\(extra)}
             """
         }
     }

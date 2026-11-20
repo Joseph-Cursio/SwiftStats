@@ -22,4 +22,7 @@ struct CollectedRecords {
     var topLevelLines: [String: Set<Int>] = [:]
     /// Each file's law-detection facts.
     var laws: [LawFileFacts] = []
+    /// The test-target files whose leading comments carry a
+    /// SwiftInferProperties suggestion identity, by identity.
+    var stubs: [String: Set<String>] = [:]
 }

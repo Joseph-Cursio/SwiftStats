@@ -23,6 +23,11 @@ struct ScanMeasurements {
     let topLevelLines: [String: Set<Int>]
     /// The test inventory.
     let tests: [TestRecord]
+    /// The base names each property test calls, by test key.
+    let propertyCallees: [String: Set<String>]
+    /// The test-target files whose leading comments carry a
+    /// SwiftInferProperties suggestion identity, by identity.
+    let stubs: [String: Set<String>]
     /// Law checks per production conformance; `kitDependency` is set when
     /// the report is assembled, from the package's dependencies.
     let laws: LawReport

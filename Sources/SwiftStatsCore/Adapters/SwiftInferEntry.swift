@@ -14,8 +14,8 @@ import Foundation
 struct SwiftInferEntry: Decodable {
     private enum CodingKeys: String, CodingKey {
         case family, identityHash, isComputedProperty, location, primaryFunctionName, qualifiedTypeName
-        case reducerQualifiedName, score, secondaryFunctionName, structuralBlocker, templateName, tier
-        case typeName, typeShape
+        case reducerQualifiedName, score, secondaryFunctionName, structuralBlocker, subjectFingerprint
+        case templateName, tier, typeName, typeShape
     }
 
     /// The keys whose values change with every run, or name the run's directory.
@@ -45,6 +45,9 @@ struct SwiftInferEntry: Decodable {
     let secondaryFunctionName: String?
     /// Why no test can run the law as written.
     let structuralBlocker: String?
+    /// The hash of the subject's body at this scan; nil when the tool
+    /// couldn't read one, and on interaction rows.
+    let subjectFingerprint: String?
     /// Whether the subject is a computed property.
     let isComputedProperty: Bool
     /// Whether the row carries a type shape.
@@ -67,6 +70,7 @@ struct SwiftInferEntry: Decodable {
         qualifiedTypeName = try container.decodeIfPresent(String.self, forKey: .qualifiedTypeName)
         secondaryFunctionName = try container.decodeIfPresent(String.self, forKey: .secondaryFunctionName)
         structuralBlocker = try container.decodeIfPresent(String.self, forKey: .structuralBlocker)
+        subjectFingerprint = try container.decodeIfPresent(String.self, forKey: .subjectFingerprint)
         isComputedProperty = try container.decodeIfPresent(Bool.self, forKey: .isComputedProperty) ?? false
         hasTypeShape = try container.contains(.typeShape) && container.decodeNil(forKey: .typeShape) == false
         guard case .object(var members) = try JSONValue(from: decoder) else {
@@ -97,6 +101,7 @@ struct SwiftInferEntry: Decodable {
             isComputedProperty: isComputedProperty,
             partner: secondaryFunctionName,
             blocker: structuralBlocker,
+            subjectFingerprint: subjectFingerprint,
             hasTypeShape: hasTypeShape,
             fields: fields,
             target: target

@@ -209,6 +209,7 @@ struct PropertyCandidateTests {
                 isComputedProperty: false,
                 partner: nil,
                 blocker: blocker,
+                subjectFingerprint: nil,
                 hasTypeShape: false,
                 fields: .object(["blocker": blocker.map(JSONValue.string) ?? .null]),
                 target: target

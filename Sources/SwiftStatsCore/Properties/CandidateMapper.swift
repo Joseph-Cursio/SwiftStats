@@ -49,11 +49,15 @@ struct CandidateMapper {
         self.testModules = testModules
     }
 
-    /// The candidates of `merged`, sorted by file, line, identity, then
-    /// population; two locations with no file keep the merge's order.
-    func candidates(of merged: MergedCandidates) -> [PropertyCandidate] {
+    /// The candidates of `merged`, each passed with its row through
+    /// `finish`, sorted by file, line, identity, then population; two
+    /// locations with no file keep the merge's order.
+    func candidates(
+        of merged: MergedCandidates,
+        finishing finish: (SwiftInferRow, PropertyCandidate) -> PropertyCandidate
+    ) -> [PropertyCandidate] {
         merged.rows.enumerated()
-            .map { (order: $0.offset, candidate: candidate(for: $0.element)) }
+            .map { (order: $0.offset, candidate: finish($0.element.row, candidate(for: $0.element))) }
             .sorted { lhs, rhs in
                 let left = lhs.candidate
                 let right = rhs.candidate
