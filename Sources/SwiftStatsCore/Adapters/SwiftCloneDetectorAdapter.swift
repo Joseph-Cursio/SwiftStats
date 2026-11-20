@@ -2,16 +2,18 @@
 //  SwiftCloneDetectorAdapter.swift
 //  SwiftStatsCore
 //
-//  Runs SwiftCloneDetector over the production files (PRD §7.12). The
-//  files are given explicitly, root-relative and byte-sorted, from the
-//  package root, because the tool's results depend on the set of files and
-//  their order, and it forms each instance's path from the path it was
-//  given. Every flag that changes results is set, so a new default
-//  upstream can't change them silently. The three passes `--all` merges
-//  run separately, with `--type1` beside them, four processes at once; the
-//  merge happens in SwiftStats. Exits 0 (no clones) and 2 (clones) succeed;
-//  64 (a usage error, or no Swift files) and anything else fail the
-//  collector. With no files, the tool isn't run.
+//  Runs SwiftCloneDetector over the production files the scan read as
+//  UTF-8 (PRD §7.12). The files are given explicitly, root-relative and
+//  byte-sorted, from the package root, because the tool's results depend
+//  on the set of files and their order, and it forms each instance's path
+//  from the path it was given. Every flag that changes results is set, so
+//  a new default upstream can't change them silently. The three passes
+//  `--all` merges run separately, with `--type1` beside them, four
+//  processes at once; the merge happens in SwiftStats. Exits 0 (no clones)
+//  and 2 (clones) succeed; 64 (a usage error, or no Swift files) and
+//  anything else fail the collector, as does a report naming another tool
+//  or holding a copy whose positions aren't a range. With no files, the
+//  tool isn't run.
 //
 
 import Foundation
@@ -38,7 +40,7 @@ enum SwiftCloneDetectorAdapter {
         "--min-identifier-overlap", "0.25"
     ]
     /// The rule choosing the files, as recorded in the options.
-    static let fileRule = "files: production files after exclusion, generated ones left out, "
+    static let fileRule = "files: production files after exclusion, read as UTF-8, generated ones left out, "
         + "root-relative, byte-sorted, given explicitly"
     /// The tool's `tool` field.
     private static let toolName = "swift-clone-detector"
@@ -54,10 +56,13 @@ enum SwiftCloneDetectorAdapter {
         } + [fileRule]
     }
 
-    /// The files the tool reads: production files after exclusion, less
-    /// those in `generated`, sorted by their UTF-8 bytes.
-    static func files(of targets: [TargetSummary], generated: Set<String>) -> [String] {
-        Array(Set(targets.filter { $0.isTest == false }.flatMap(\.files)).subtracting(generated))
+    /// The files the tool reads: production files after exclusion that the
+    /// scan read, so have a record in `read`, less those it marks
+    /// generated, sorted by their UTF-8 bytes. A file the scan skipped as
+    /// unreadable is left out, as every other collector leaves it out.
+    static func files(of targets: [TargetSummary], read: [FileRecord]) -> [String] {
+        let measured = Set(read.filter { $0.generated == false }.map(\.path))
+        return Array(Set(targets.filter { $0.isTest == false }.flatMap(\.files)).intersection(measured))
             .sorted { $0.utf8.lexicographicallyPrecedes($1.utf8) }
     }
 
@@ -137,6 +142,21 @@ enum SwiftCloneDetectorAdapter {
         guard output.tool == toolName else {
             throw AdapterError.unreadableOutput(name, "the \(pass.label) run names its tool \"\(output.tool)\"")
         }
+        try checkPositions(of: output, pass: pass)
         return output
+    }
+
+    /// Throws when a copy in `pass`'s `output` has a position below 1 or
+    /// ends before it starts, which the mapper can't place.
+    private static func checkPositions(of output: CloneDetectorOutput, pass: CloneDetectorPass) throws {
+        for instance in output.clones.flatMap(\.instances) {
+            if let problem = instance.malformation {
+                let span = "\(instance.startLine):\(instance.startColumn)-\(instance.endLine):\(instance.endColumn)"
+                throw AdapterError.unreadableOutput(
+                    name,
+                    "the \(pass.label) run reports a copy of \(instance.path) at \(span), which \(problem)"
+                )
+            }
+        }
     }
 }

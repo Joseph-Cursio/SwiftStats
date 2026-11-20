@@ -24,6 +24,18 @@ struct CloneDetectorOutput: Decodable, Sendable {
         /// 1-based UTF-8 column just after the last character.
         let endColumn: Int
 
+        /// Why these positions can't be a copy's: one below 1, or an end
+        /// before the start; nil when they can.
+        var malformation: String? {
+            if [startLine, startColumn, endLine, endColumn].contains(where: { $0 < 1 }) {
+                return "has a position below 1"
+            }
+            if (startLine, startColumn) > (endLine, endColumn) {
+                return "ends before it starts"
+            }
+            return nil
+        }
+
         /// Path order, then position order.
         static func < (lhs: Self, rhs: Self) -> Bool {
             if lhs.path != rhs.path {

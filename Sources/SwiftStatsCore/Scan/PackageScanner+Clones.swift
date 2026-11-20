@@ -19,8 +19,8 @@ extension PackageScanner {
     }
 
     /// SwiftCloneDetector's runs over the production files of `targets`
-    /// that `measured` doesn't mark generated, in the package at `root`,
-    /// started in the background; nil when the tools are skipped.
+    /// that `measured` read and doesn't mark generated, in the package at
+    /// `root`, started in the background; nil when the tools are skipped.
     func startClones(
         root: URL,
         targets: [TargetSummary],
@@ -30,10 +30,9 @@ extension PackageScanner {
         guard toolSkipReason == nil else {
             return nil
         }
-        let generated = Set(measured.files.filter(\.generated).map(\.path))
         return CollectorRun.startClones(
             root: root,
-            files: SwiftCloneDetectorAdapter.files(of: targets, generated: generated),
+            files: SwiftCloneDetectorAdapter.files(of: targets, read: measured.files),
             configuration: configuration,
             locator: tools
         )

@@ -54,8 +54,8 @@ struct CloneRunTests {
             "near-miss: \(joined) --type3",
             "sequence: \(joined) --sequence",
             "type1: \(joined) --type1",
-            "files: production files after exclusion, generated ones left out, root-relative, byte-sorted, "
-                + "given explicitly"
+            "files: production files after exclusion, read as UTF-8, generated ones left out, root-relative, "
+                + "byte-sorted, given explicitly"
         ])
     }
 
