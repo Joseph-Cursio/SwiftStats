@@ -161,6 +161,8 @@ struct PropertyJoins {
 
     /// The records of the file `name` in the package at `root`, and its
     /// `sha256:` hash; nil, with a warning when present, if it can't be read.
+    /// The warning names the file relatively and gives a reason holding no
+    /// path or address, so two scans of one tree warn alike.
     private static func load<Record: Decodable>(
         _ name: String,
         of _: Record.Type,
@@ -172,17 +174,42 @@ struct PropertyJoins {
         guard FileManager.default.fileExists(atPath: url.path) else {
             return nil
         }
+        let data: Data
         do {
-            let data = try Data(contentsOf: url)
+            data = try Data(contentsOf: url)
+        } catch {
+            warnings.append(unreadable(path, because: reason(error)))
+            return nil
+        }
+        do {
             let file = try JSONDecoder().decode(File<Record>.self, from: data)
             return (file.records, "sha256:" + ContentHash.sha256(data))
         } catch {
-            warnings.append(ScanWarning(
-                file: path,
-                message: "not readable, so SwiftInferProperties' suggestions aren't joined to it: \(error)"
-            ))
+            // A decoding error names the coding path, never the file's.
+            warnings.append(unreadable(path, because: "\(error)"))
             return nil
         }
+    }
+
+    /// The warning that the file at `path` can't be read, for `reason`.
+    private static func unreadable(_ path: String, because reason: String) -> ScanWarning {
+        ScanWarning(
+            file: path,
+            message: "not readable, so SwiftInferProperties' suggestions aren't joined to it: \(reason)"
+        )
+    }
+
+    /// Why reading a file failed, with no path or address in it: the
+    /// system's text for the POSIX error behind it (`Is a directory`,
+    /// `Permission denied`), else the error's domain and code.
+    static func reason(_ error: any Error) -> String {
+        let failure = error as NSError
+        let underlying = failure.userInfo[NSUnderlyingErrorKey] as? NSError
+        let posix = [failure, underlying].compactMap(\.self).first { $0.domain == NSPOSIXErrorDomain }
+        guard let posix else {
+            return "\(failure.domain) error \(failure.code)"
+        }
+        return String(cString: strerror(Int32(posix.code)))
     }
 
     /// What `record` says of `candidate`, its row's subject fingerprint

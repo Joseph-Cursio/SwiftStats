@@ -6,8 +6,11 @@
 //  match wins. Generated: a test-target file whose leading comments hold
 //  `// Suggestion identity: 0x<16 uppercase hex>`, as the files
 //  SwiftInferProperties writes do, links its tests to that identity
-//  exactly. Macro: `@CheckProperty` on the suggestion's function or its
-//  partner expands into a property test. Handwritten, a heuristic: a
+//  exactly. Macro: `@CheckProperty` expands into a test of one law, so it
+//  links a suggestion of that law's template: `.idempotent` or
+//  `.preservesInvariant` on the suggestion's function, and for a round trip
+//  `.roundTrip` on the function paired with its partner, or on the
+//  resolved partner paired with the function. Handwritten, a heuristic: a
 //  property test outside generated files, in a test target depending on the
 //  function's module directly or through other targets, calls the function
 //  or its partner by base name, or uses it as an operator.
@@ -35,15 +38,14 @@ struct PropertyTestLinks {
     private static let hexDigits = 16
     /// The uppercase hex digits.
     private static let upperHex = Set("0123456789ABCDEF")
-    /// The attribute that expands into a property test on its function.
-    private static let checkProperty = "CheckProperty"
     /// The ASCII characters an operator is made of.
     private static let operatorCharacters = Set("/=-+!*%<>&|^~?.")
 
     /// The tests in each identity's generated files, sorted.
     private let stubTests: [String: [String]]
-    /// The function records `@CheckProperty` is on.
-    private let macroOwners: Set<String>
+    /// The laws the `@CheckProperty` tests on each function record check,
+    /// by record key.
+    private let macroChecks: [String: Set<CheckPropertyKind>]
     /// Function records by key.
     private let records: [String: FunctionRecord]
     /// Property tests outside generated files.
@@ -58,15 +60,20 @@ struct PropertyTestLinks {
         stubTests = measured.stubs.mapValues { files in
             files.flatMap { testsByFile[$0] ?? [] }.map(\.key).sorted()
         }
-        let message = MarkerCollector.propertyTestMessage(Self.checkProperty)
-        macroOwners = Set(findings.compactMap { finding in
-            guard finding.tool == MarkerCollector.tool, finding.rule == MarkerCollector.propertyTestRule,
-                  finding.message == message, let location = finding.locations.first,
-                  location.attachedTo == .function else {
-                return nil
+        let message = MarkerCollector.propertyTestMessage(CheckPropertyKind.attribute)
+        var checks: [String: Set<CheckPropertyKind>] = [:]
+        for finding in findings where finding.tool == MarkerCollector.tool
+            && finding.rule == MarkerCollector.propertyTestRule && finding.message == message {
+            guard let location = finding.locations.first, location.attachedTo == .function,
+                  let owner = location.owner,
+                  let kind = measured.checkProperties[
+                      RawFinding.Place(file: location.file, line: location.line, column: location.column)
+                  ] else {
+                continue
             }
-            return location.owner
-        })
+            checks[owner, default: []].insert(kind)
+        }
+        macroChecks = checks
         records = Dictionary(measured.records.map { ($0.key, $0) }) { first, _ in first }
         propertyTests = measured.tests
             .filter { $0.kind == .property && $0.generated == false }
@@ -126,6 +133,28 @@ struct PropertyTestLinks {
         return name.split(separator: ".").last.map(String.init) ?? String(name)
     }
 
+    /// Whether a `@CheckProperty` test checks `candidate`'s law, `primary`
+    /// being its function: `.idempotent` there for an idempotence template,
+    /// `.preservesInvariant` there for invariant preservation, and for a
+    /// round trip `.roundTrip` there paired with the partner's base name, or
+    /// on the resolved partner paired with `primary`'s name.
+    private func isCheckedByMacro(_ candidate: PropertyCandidate, primary: FunctionRecord) -> Bool {
+        let own = macroChecks[primary.key] ?? []
+        switch candidate.template {
+        case CheckPropertyKind.roundTripTemplate:
+            let onPrimary = candidate.partner.map { own.contains(.roundTrip(pairedWith: Self.baseName($0))) } ?? false
+            let onPartner = candidate.partnerKey.flatMap { macroChecks[$0] }?
+                .contains(.roundTrip(pairedWith: primary.name)) ?? false
+            return onPrimary || onPartner
+
+        case CheckPropertyKind.invariantTemplate:
+            return own.contains(.preservesInvariant)
+
+        default:
+            return CheckPropertyKind.idempotenceTemplates.contains(candidate.template) && own.contains(.idempotent)
+        }
+    }
+
     /// `candidate` with the first link that finds a property test checking it.
     func linked(_ candidate: PropertyCandidate) -> PropertyCandidate {
         var linked = candidate
@@ -138,7 +167,7 @@ struct PropertyTestLinks {
               let owner = location.owner, let primary = records[owner] else {
             return linked
         }
-        if ([owner] + [candidate.partnerKey].compactMap(\.self)).contains(where: macroOwners.contains) {
+        if isCheckedByMacro(candidate, primary: primary) {
             linked.testedBy = .macro
             return linked
         }

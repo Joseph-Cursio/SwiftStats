@@ -28,6 +28,9 @@ struct ScanMeasurements {
     /// The test-target files whose leading comments carry a
     /// SwiftInferProperties suggestion identity, by identity.
     let stubs: [String: Set<String>]
+    /// The law each `@CheckProperty` the macro accepts checks, by the
+    /// place its marker names.
+    let checkProperties: [RawFinding.Place: CheckPropertyKind]
     /// Law checks per production conformance; `kitDependency` is set when
     /// the report is assembled, from the package's dependencies.
     let laws: LawReport

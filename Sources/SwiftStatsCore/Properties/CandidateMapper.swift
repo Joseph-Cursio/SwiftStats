@@ -8,8 +8,13 @@
 //  located at its `var`, which can lie outside its getter's range, so it
 //  maps to the getter of that name starting on or after the line. A row
 //  with no usable location, or one that attaches to a type, a file or a
-//  file outside the scan, is kept as unmapped with the reason.
+//  file outside the scan, is kept as unmapped with the reason. A pair's
+//  partner is the one other function or getter its name and labels match
+//  in the primary's file and type; none or several leave it unresolved.
 //
+
+import SwiftParser
+import SwiftSyntax
 
 /// Attaches suggestions to records.
 struct CandidateMapper {
@@ -47,6 +52,34 @@ struct CandidateMapper {
         typesByFile = Dictionary(grouping: measured.types, by: \.file)
         filesByPath = Dictionary(measured.files.map { ($0.path, $0) }) { first, _ in first }
         self.testModules = testModules
+    }
+
+    /// The labels part of a name as SwiftInferProperties writes it,
+    /// `(_:)` for `decode(_:)` and `()` for `encoded()`; nil for a bare
+    /// name, which gives no labels to match.
+    static func labels(named name: String) -> String? {
+        guard let open = name.firstIndex(of: "("), name.last == ")" else {
+            return nil
+        }
+        return String(name[open...])
+    }
+
+    /// The labels part, as `labels(named:)` gives it, of the `func` record
+    /// keyed `key` and called `name`, read from the key's declaration: the
+    /// last `func <name>` followed by its generic or parameter clause, since
+    /// no type in a declaration holds one. nil when the key has none.
+    static func labels(inKey key: String, name: String) -> String? {
+        let start = key.ranges(of: "func " + name).last { range in
+            range.upperBound < key.endIndex && "(<".contains(key[range.upperBound])
+        }
+        guard let start else {
+            return nil
+        }
+        let tree = Parser.parse(source: String(key[start.lowerBound...]))
+        let function = tree.statements.first?.item.as(DeclSyntax.self)?.as(FunctionDeclSyntax.self)
+        return function.map { declaration in
+            "(" + declaration.signature.parameterClause.parameters.map { $0.firstName.text + ":" }.joined() + ")"
+        }
     }
 
     /// The candidates of `merged`, each passed with its row through
@@ -168,20 +201,26 @@ struct CandidateMapper {
         filesByPath[location.file].map { testModules.contains($0.module) ? .test : .production }
     }
 
-    /// The key of the function or getter called `partner`'s base name in
-    /// `primary`'s file and innermost type, first in source order.
+    /// The key of the one function or getter, other than `primary`, that
+    /// `partner` names in `primary`'s file and innermost type: by base
+    /// name, and by external labels when `partner` gives them, which a
+    /// getter has none of. nil when none or several match, as an ambiguous
+    /// partner stays unresolved (PRD §7.11).
     private func partner(of primary: FunctionRecord, named partner: String) -> String? {
-        let base = partner.split(separator: "(", maxSplits: 1).first.map(String.init) ?? partner
-        let records = recordsByFile[primary.file] ?? []
+        let base = PropertyTestLinks.baseName(partner)
+        let labels = Self.labels(named: partner)
         let owner = innermostType(holding: primary)
-        return records
-            .filter { record in
-                let isFunction = record.kind == .function
-                let isGetter = record.kind == .accessor && record.accessorKind == "get" && record.parentKey == nil
-                return (isFunction || isGetter) && record.name == base && innermostType(holding: record) == owner
+        let matches = (recordsByFile[primary.file] ?? []).filter { record in
+            guard record.key != primary.key, record.name == base, innermostType(holding: record) == owner else {
+                return false
             }
-            .min { ($0.range.start, $0.key) < ($1.range.start, $1.key) }?
-            .key
+            if record.kind == .function {
+                return labels == nil || Self.labels(inKey: record.key, name: record.name) == labels
+            }
+            let isGetter = record.kind == .accessor && record.accessorKind == "get" && record.parentKey == nil
+            return isGetter && (labels == nil || labels == "()")
+        }
+        return matches.count == 1 ? matches.first?.key : nil
     }
 
     /// The type of the innermost declaration or extension whose range

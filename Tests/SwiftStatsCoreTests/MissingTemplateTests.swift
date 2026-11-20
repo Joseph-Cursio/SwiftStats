@@ -4,7 +4,8 @@
 //
 //  Missing template (PRD §8) on the Ledger fixture: which functions the
 //  shape filters keep, that a suggestion of any tier takes a function off
-//  the list, and the order by shape, then body lines.
+//  the list, the order by shape, then body lines, and that a plugin
+//  target's functions, which SwiftInferProperties never indexes, stay out.
 //
 
 import Foundation
@@ -69,6 +70,55 @@ struct MissingTemplateTests {
         #expect(roundTrip.location?.owner == "Core::func shifted(_: Int) -> Int")
         #expect(roundTrip.partnerKey == "Core::func unshifted(_: Int) -> Int")
         #expect(signal.items.contains { $0.subject == "Core::func unshifted(_: Int) -> Int" } == false)
+    }
+
+    @Test("""
+        functions in a plugin target, which SwiftInferProperties never indexes, are neither listed nor counted, \
+        while the library's are
+        """)
+    func pluginLeftOut() throws {
+        let shapes = """
+            func tripled(_ value: Int) -> Int {
+                value * 3
+            }
+
+            func named(_ value: Int) -> String {
+                String(value)
+            }
+            """
+        let files = PropertyHarness.files.merging([
+            "Sources/Core/Shapes.swift": shapes,
+            "Plugins/Plug/Plugin.swift": shapes.replacingOccurrences(of: "tripled", with: "doubled")
+        ]) { _, new in new }
+        let targets = PropertyHarness.targets.map { target in
+            target.name == "Core"
+                ? PropertyHarness.target("Core", "library", "Sources/Core", ["Shapes.swift", "Values.swift"])
+                : target
+        }
+        let snapshot = try SignalHarness.stored(
+            files,
+            targets: targets,
+            indexes: [
+                "Core": PropertyHarness.emptyIndex,
+                "Macros": PropertyHarness.emptyIndex,
+                "Tool": PropertyHarness.emptyIndex
+            ]
+        )
+
+        let signal = try SignalHarness.signal(.missingTemplate, of: snapshot)
+
+        // The plugin's `doubled(_:)` and `named(_:)` mirror the library's
+        // `tripled(_:)` and `named(_:)`, and count nowhere.
+        #expect(signal.leftOut == nil)
+        #expect(signal.items.allSatisfy { $0.file.hasPrefix("Plugins/") == false })
+        #expect(signal.items.map(\.subject) == [
+            "Core::Money::func secret(_: Int) -> Int @ Sources/Core/Values.swift",
+            "Core::func tripled(_: Int) -> Int",
+            "Core::func reduce(_: Int, _: Int) -> Int"
+        ])
+        #expect(signal.candidates == 3)
+        #expect(signal.rule == MissingTemplate.rule
+            + "; 5 pure, value-shaped functions have no algebraic shape and are left out")
     }
 
     @Test("the table shows the shape, purity, body lines and cognitive complexity")

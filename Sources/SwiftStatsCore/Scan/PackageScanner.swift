@@ -135,6 +135,7 @@ public struct PackageScanner {
                 collected.types += TypeCollector.collect(file.tree, context: context)
                 collected.declarations += DeclarationCollector.collect(file.tree, module: target.name)
                 collected.markers += MarkerCollector.collect(file.tree, context: context)
+                collected.checkProperties.merge(CheckPropertyKind.collect(file, context: context)) { first, _ in first }
                 collected.laws.append(LawSyntaxCollector.collect(
                     file.tree,
                     context: context,
@@ -245,6 +246,7 @@ public struct PackageScanner {
             tests: inventory.tests,
             propertyCallees: inventory.callees,
             stubs: collected.stubs,
+            checkProperties: collected.checkProperties,
             laws: LawCheckCollector.detect(collected.laws, generatedFiles: generatedFiles),
             parsed: parsed,
             sitrep: sitrep,

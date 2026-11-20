@@ -8,7 +8,9 @@
 //  nested in another record, that SwiftEffectInference calls pure (or pure
 //  but for errors they throw), that are value-shaped and have an algebraic
 //  shape. Purity alone doesn't check mutation, so the value shape stands
-//  in for it. Every one with no algebraic suggestion of any tier attached,
+//  in for it. A plugin target's functions get no facts, as swift-infer
+//  never indexes them, so they stay out of the pool and the counts. Every
+//  one with no algebraic suggestion of any tier attached,
 //  Advisory rows included, is listed, scored by its body lines; the signal
 //  isn't ranked. A suggestion covers its partner too (the inverse of a
 //  round trip, the other side of a differential equivalence), since a
