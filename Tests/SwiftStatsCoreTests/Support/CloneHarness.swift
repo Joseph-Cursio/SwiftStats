@@ -20,6 +20,17 @@ enum CloneHarness {
         .deletingLastPathComponent()
         .appendingPathComponent("Fixtures/Clones")
 
+    /// The fixture's real path, as a tool's `pwd -P` prints it. Not
+    /// `resolvingSymlinksInPath()`, which drops a leading `/private`, so a
+    /// checkout under `/tmp` or `/var` would never match.
+    static var fixtureRealPath: String {
+        guard let real = realpath(fixture.path, nil) else {
+            return fixture.path
+        }
+        defer { free(real) }
+        return String(cString: real)
+    }
+
     /// The files the tool reads: production, not generated, byte-sorted.
     static let files = [
         "Sources/Core/Parsing.swift", "Sources/Core/Paths.swift", "Sources/Core/Reports.swift",

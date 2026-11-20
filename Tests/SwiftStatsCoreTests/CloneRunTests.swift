@@ -46,7 +46,7 @@ struct CloneRunTests {
         ]
         for (run, flag) in flags {
             #expect(CloneHarness.arguments(of: tool, run: run) == shared + flag + CloneHarness.files)
-            #expect(FakeTool.log("cwd-\(run).txt", of: tool) == [CloneHarness.fixture.resolvingSymlinksInPath().path])
+            #expect(FakeTool.log("cwd-\(run).txt", of: tool) == [CloneHarness.fixtureRealPath])
         }
         let joined = shared.joined(separator: " ")
         #expect(status.options == [
