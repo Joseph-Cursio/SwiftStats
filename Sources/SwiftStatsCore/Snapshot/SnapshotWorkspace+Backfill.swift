@@ -109,8 +109,9 @@ extension SnapshotWorkspace {
         let manifest = packagePath.isEmpty ? "Package.swift" : "\(packagePath)/Package.swift"
         let list = FileManager.default.temporaryDirectory
             .appendingPathComponent("SwiftStats-manifests-\(UUID().uuidString)")
+        ScratchRegistry.shared.track(list)
+        defer { ScratchRegistry.shared.remove(list) }
         try Data(line.map { "\($0.commit):\(manifest)\n" }.joined().utf8).write(to: list)
-        defer { try? FileManager.default.removeItem(at: list) }
         let output = try ProcessRunner.run(
             executable: GitReader.git,
             arguments: ["--no-optional-locks", "cat-file", "--batch-check=%(objecttype)"],
@@ -165,7 +166,7 @@ extension SnapshotWorkspace {
         scanner backfillScanner: SnapshotScanner
     ) throws -> (ScannedSnapshot, String?) {
         let exported = try RevisionExport.export(commit: commit, packagePath: git.packagePath, from: root)
-        defer { try? FileManager.default.removeItem(at: RevisionExport.workDirectory(of: exported)) }
+        defer { ScratchRegistry.shared.remove(RevisionExport.workDirectory(of: exported)) }
         let state = GitState(commit: commit, branch: nil, isDirty: false, dirtyHash: nil, packagePath: git.packagePath)
         let scan = {
             try backfillScanner.scan(

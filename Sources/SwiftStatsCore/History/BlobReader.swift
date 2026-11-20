@@ -22,8 +22,9 @@ enum BlobReader {
         }
         let list = FileManager.default.temporaryDirectory
             .appendingPathComponent("SwiftStats-blobs-\(UUID().uuidString)")
+        ScratchRegistry.shared.track(list)
+        defer { ScratchRegistry.shared.remove(list) }
         try Data((blobs.joined(separator: "\n") + "\n").utf8).write(to: list)
-        defer { try? FileManager.default.removeItem(at: list) }
         let output = try ProcessRunner.run(
             executable: GitReader.git,
             arguments: ["--no-optional-locks", "cat-file", "--batch"],

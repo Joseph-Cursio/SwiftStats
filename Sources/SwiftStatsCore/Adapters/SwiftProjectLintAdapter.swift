@@ -43,8 +43,9 @@ enum SwiftProjectLintAdapter {
         do {
             let directory = FileManager.default.temporaryDirectory
                 .appendingPathComponent("SwiftStats-\(UUID().uuidString)")
+            ScratchRegistry.shared.track(directory)
+            defer { ScratchRegistry.shared.remove(directory) }
             try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
-            defer { try? FileManager.default.removeItem(at: directory) }
             var findings: [RawFinding] = []
             var warnings: [ScanWarning] = []
             var version = ""

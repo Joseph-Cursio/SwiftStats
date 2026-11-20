@@ -22,8 +22,8 @@ enum SwiftInferPropertiesAdapter {
     static let executableName = "swift-infer"
     /// Target types the tool indexes.
     static let indexedTypes: Set<String> = ["executable", "library", "macro"]
-    /// The placeholder for the temporary directory in a failure's text.
-    private static let workPlaceholder = "<work>"
+    /// The placeholder for the package root in a failure's text.
+    private static let packagePlaceholder = "<package>"
 
     /// The production targets the tool indexes, sorted by name.
     static func indexed(_ targets: [TargetSummary]) -> [TargetSummary] {
@@ -84,29 +84,37 @@ enum SwiftInferPropertiesAdapter {
         targets: [TargetSummary]
     ) throws -> (version: String?, merged: MergedCandidates) {
         let work = FileManager.default.temporaryDirectory.appendingPathComponent("SwiftStats-\(UUID().uuidString)")
+        // Registered, so an interrupted scan removes it too.
+        ScratchRegistry.shared.track(work)
+        defer { ScratchRegistry.shared.remove(work) }
         try FileManager.default.createDirectory(at: work, withIntermediateDirectories: true)
-        defer { try? FileManager.default.removeItem(at: work) }
         do {
             let output = try ProcessRunner.run(executable: executable.path, arguments: ["--version"], in: work)
             let version = String(bytes: output, encoding: .utf8)?.trimmingCharacters(in: .whitespacesAndNewlines)
             let copy = work.appendingPathComponent("package")
             try SwiftInferCopy.make(root: root, targets: targets, at: copy)
-            let results = SwiftInferTargetRun.run(
+            let invocation = SwiftInferTargetRun.Invocation(
                 executable: executable,
+                arguments: SwiftInferVocabulary.of(root: root).arguments,
                 copy: copy,
-                targets: indexed(targets).map(\.name),
                 work: work
             )
+            let results = SwiftInferTargetRun.run(invocation, targets: indexed(targets).map(\.name))
             var rows: [SwiftInferRow] = []
             for result in results {
                 rows += try result.get()
             }
             return (version.flatMap { $0.isEmpty ? nil : $0 }, CandidateMerge.merge(rows))
         } catch let failure as SwiftInferTargetRun.Failure {
-            throw failure
+            let package = [(root, packagePlaceholder)]
+            throw SwiftInferTargetRun.Failure(
+                description: SwiftInferTargetRun.redacted(failure.description, replacing: package)
+            )
         } catch {
-            let reason = SwiftInferTargetRun.redacted("\(error)", replacing: [(work, workPlaceholder)])
-            throw SwiftInferTargetRun.Failure(description: reason)
+            let replacements = [(work, SwiftInferTargetRun.workPlaceholder), (root, packagePlaceholder)]
+            throw SwiftInferTargetRun.Failure(
+                description: SwiftInferTargetRun.reason(for: error, replacing: replacements)
+            )
         }
     }
 }

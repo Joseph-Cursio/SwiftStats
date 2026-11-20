@@ -27,7 +27,8 @@ enum RevisionExport {
     /// Exports the package at `packagePath` (from the repository's top
     /// level) as of `commit` into a new temporary directory and returns it,
     /// with the nearest `.swift-version` above the package at that commit
-    /// in the directory above it; the caller removes that directory. Throws
+    /// in the directory above it; the caller removes that directory, with
+    /// `ScratchRegistry.shared.remove`, which an interruption also does. Throws
     /// when the package isn't there at that commit. Submodules are not
     /// exported.
     static func export(commit: String, packagePath: String, from directory: URL) throws -> URL {
@@ -45,6 +46,8 @@ enum RevisionExport {
         let work = FileManager.default.temporaryDirectory.appendingPathComponent("SwiftStats-\(UUID().uuidString)")
         let target = work.appendingPathComponent("package")
         let index = work.appendingPathComponent("index")
+        // Registered until the caller removes it, so an interruption does.
+        ScratchRegistry.shared.track(work)
         do {
             try FileManager.default.createDirectory(at: target, withIntermediateDirectories: true)
             let environment = ["GIT_INDEX_FILE": index.path]
@@ -65,7 +68,7 @@ enum RevisionExport {
                 try pin.write(to: work.appendingPathComponent(toolchainPinName))
             }
         } catch {
-            try? FileManager.default.removeItem(at: work)
+            ScratchRegistry.shared.remove(work)
             throw error
         }
         return target

@@ -6,10 +6,13 @@
 //  holding the manifest and any versioned ones (`Package@swift-6.0.swift`,
 //  which SwiftPM reads in its place), its resolved pins, the toolchain pin, every
 //  target's files left after exclusion (tests too, which its test lifter
-//  reads) and SwiftInferProperties' own settings. Files are copied as
-//  bytes, symlinks followed. The index, decisions and verify evidence are
-//  never copied: the tool upserts into an index it finds and joins
-//  decisions itself, and SwiftStats joins those from the package instead.
+//  reads) and SwiftInferProperties' own settings: `config.toml` and the
+//  vocabulary file it names, or the conventional `vocabulary.json`. Files
+//  are copied as bytes, symlinks followed. A target file the measure step
+//  skips, one unreadable or not UTF-8, is left out too, so both tools see
+//  one universe. The index, decisions and verify evidence are never
+//  copied: the tool upserts into an index it finds and joins decisions
+//  itself, and SwiftStats joins those from the package instead.
 //
 
 import Foundation
@@ -18,8 +21,9 @@ import Foundation
 enum SwiftInferCopy {
     /// SwiftInferProperties' settings directory.
     static let settingsDirectory = ".swiftinfer"
-    /// The settings files that change the tool's results, in options order.
-    static let settingsFiles = ["config.toml", "vocabulary.json"]
+    /// The settings file that changes the tool's results and can name its
+    /// vocabulary.
+    private static let configFile = "config.toml"
     /// The toolchain pin swiftly reads.
     private static let toolchainPin = ".swift-version"
     /// The manifest files copied when present; `Package.swift` must be.
@@ -32,15 +36,32 @@ enum SwiftInferCopy {
     static func make(root: URL, targets: [TargetSummary], at copy: URL) throws {
         let fileManager = FileManager.default
         try fileManager.createDirectory(at: copy, withIntermediateDirectories: true)
-        let settings = settingsFiles.map { "\(settingsDirectory)/\($0)" }
-        let optional = Set(manifestFiles.dropFirst() + settings)
-        let manifests = manifestFiles + (try versionedManifests(in: root))
-        for path in manifests + targets.flatMap(\.files) + settings {
+        let settings = ["\(settingsDirectory)/\(configFile)"]
+            + [SwiftInferVocabulary.of(root: root).copiedPath].compactMap(\.self)
+        let optional = Set(manifestFiles.dropFirst())
+        for path in manifestFiles + (try versionedManifests(in: root)) {
             let source = root.appendingPathComponent(path)
             if optional.contains(path), fileManager.fileExists(atPath: source.path) == false {
                 continue
             }
             try write(Data(contentsOf: source), to: copy.appendingPathComponent(path))
+        }
+        // The settings are copied when readable: the tool reads one it
+        // can't, or a directory in its place, as it reads no file.
+        for path in settings {
+            guard let data = try? Data(contentsOf: root.appendingPathComponent(path)) else {
+                continue
+            }
+            try write(data, to: copy.appendingPathComponent(path))
+        }
+        // The measure step skips, with a warning, a file it can't read as
+        // UTF-8 (`PackageScanner.parseFiles`); so does the copy.
+        for path in targets.flatMap(\.files) {
+            guard let data = try? Data(contentsOf: root.appendingPathComponent(path)),
+                  String(data: data, encoding: .utf8) != nil else {
+                continue
+            }
+            try write(data, to: copy.appendingPathComponent(path))
         }
         // The tool finds a target at `Sources/<name>` or the manifest's
         // path, so each target's directory exists even when exclusion
@@ -101,13 +122,13 @@ enum SwiftInferCopy {
         return "\(toolchainPin): " + (text ?? "absent")
     }
 
-    /// Each settings file of the package at `root` as an option:
-    /// `<file>: sha256:<hex>`, or `<file>: absent`.
+    /// The settings of the package at `root` as options:
+    /// `config.toml: sha256:<hex>`, or `config.toml: absent`, then the
+    /// vocabulary that applies (`SwiftInferVocabulary.option`).
     static func settingsOptions(root: URL) -> [String] {
-        settingsFiles.map { file in
-            let url = root.appendingPathComponent(settingsDirectory).appendingPathComponent(file)
-            return "\(file): " + (ContentHash.sha256(ofFileAt: url).map { "sha256:\($0)" } ?? "absent")
-        }
+        let config = root.appendingPathComponent(settingsDirectory).appendingPathComponent(configFile)
+        let hash = ContentHash.sha256(ofFileAt: config).map { "sha256:\($0)" } ?? "absent"
+        return ["\(configFile): " + hash, SwiftInferVocabulary.of(root: root).option]
     }
 
     /// Writes `data` to `url`, creating its directory.
