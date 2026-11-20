@@ -27,6 +27,9 @@ struct RollupInput {
     /// SwiftInferProperties' suggestions; nil when it didn't run. Its
     /// candidates are narrowed by file when counted, like findings.
     var properties: PropertyReport?
+    /// SwiftCloneDetector's classes and the lines they cover; nil when it
+    /// didn't run. Counted by file, like findings.
+    var clones: CloneMapping?
 
     /// These facts for `modules` only.
     func narrowed(to modules: Set<String>) -> Self {
@@ -39,7 +42,8 @@ struct RollupInput {
             findings: findings,
             effectsCollected: effectsCollected,
             laws: laws.filter { modules.contains($0.module) },
-            properties: properties
+            properties: properties,
+            clones: clones
         )
     }
 }

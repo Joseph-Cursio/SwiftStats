@@ -21,10 +21,10 @@ struct BackfillCommand: ParsableCommand {
         discussion: """
         Picks every Nth commit counting from the first (--every), or each week's latest commit in UTC \
         (--weekly, the default). Each is exported without touching the repository and scanned with \
-        SwiftStats' own measurements and side effects; --with-tools adds SwiftLint, SwiftProjectLint and \
-        SwiftInferProperties, and git history is never read. A commit that already has a snapshot is \
-        skipped; --rerun rescans those taken by another SwiftStats build, except snapshots holding history \
-        or tool results a backfill wouldn't collect.
+        SwiftStats' own measurements and side effects; --with-tools adds SwiftLint, SwiftProjectLint, \
+        SwiftInferProperties and SwiftCloneDetector, and git history is never read. A commit that already \
+        has a snapshot is skipped; --rerun rescans those taken by another SwiftStats build, except snapshots \
+        holding history or tool results a backfill wouldn't collect.
         """
     )
 
@@ -46,7 +46,7 @@ struct BackfillCommand: ParsableCommand {
     @Flag(help: "Rescan picks whose snapshot came from another SwiftStats build.")
     var rerun = false
 
-    @Flag(help: "Also run SwiftLint, SwiftProjectLint and SwiftInferProperties on each commit (slow).")
+    @Flag(help: "Also run SwiftLint, SwiftProjectLint, SwiftInferProperties and SwiftCloneDetector (slow).")
     var withTools = false
 
     @OptionGroup var options: PackageOptions

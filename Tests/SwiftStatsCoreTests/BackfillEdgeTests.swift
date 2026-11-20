@@ -145,6 +145,42 @@ struct BackfillEdgeTests {
             == id)
     }
 
+    @Test("--rerun without tools keeps a snapshot holding SwiftCloneDetector's results")
+    func rerunKeepsHeldClones() throws {
+        let repository = try HistoryRepository()
+        defer { repository.remove() }
+        try repository.write(["Sources/Lib/One.swift": Self.one(1)])
+        try repository.commit("One", day: 0)
+        let empty = """
+            {"cloneCount": 0, "clones": [], "duplicatedLines": 0, "fileCount": 1, "mode": "type1-2",
+             "tool": "swift-clone-detector", "version": "0.1.0"}
+            """
+        let runs = ["default", "--type3", "--sequence", "--type1"]
+        let outputs = Dictionary(uniqueKeysWithValues: runs.map { ($0, empty) })
+        let tool = try FakeTool.makeCloneDetector(outputs: outputs, errors: [:], statuses: [:])
+        defer { CloneHarness.remove(tool) }
+        let detected = try SnapshotWorkspace(
+            packageRoot: repository.root,
+            configurationFile: nil,
+            storeOverride: nil,
+            build: SnapshotHarness.build,
+            describer: HistoryRepository.DiskDescriber(),
+            tools: CloneHarness.locator(tool)
+        )
+        let id = try detected.scanWorkingTree(history: .skipped("test")).id
+        let run = try detected.store.info(id: id).collectors.first { $0.name == SwiftCloneDetectorAdapter.name }
+        try #require(run?.state == .ran)
+        #expect(run?.identity?.hasPrefix("sha256:") == true)
+        let other = try repository.workspace(build: SwiftStatsBuild(identity: "inputs:other", label: nil))
+
+        let steps = try Self.backfill(other, Self.every(1, rerun: true))
+
+        #expect(steps.map(\.action) == [.kept])
+        #expect(steps.first?.note?.contains("swiftclonedetector") == true)
+        #expect(try other.store.snapshotID(package: "Probe", packagePath: "", commit: steps[0].commit, isDirty: false)
+            == id)
+    }
+
     @Test("a tool metric doesn't break between snapshots where the tool ran on neither side")
     func toolMetricWithoutTool() throws {
         let repository = try HistoryRepository()

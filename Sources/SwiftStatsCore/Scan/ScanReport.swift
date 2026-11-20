@@ -15,7 +15,7 @@ public struct ScanReport: Codable, Hashable, Sendable {
     /// generated files, findings, risk markers, API surface, the test
     /// inventory and dependencies (M1b); 4 adds each function's body lines
     /// (M2); 5 adds history (M3); 6 adds side effects, conformances, law
-    /// checks and property-test suggestions (M4).
+    /// checks, property-test suggestions and clones (M4).
     public static let currentSchemaVersion = 6
 
     /// The output format version (`currentSchemaVersion` when written).
@@ -56,6 +56,9 @@ public struct ScanReport: Codable, Hashable, Sendable {
     /// SwiftInferProperties' suggestions, attached to records; absent when
     /// it didn't run (PRD §7.11).
     public let properties: PropertyReport?
+    /// SwiftCloneDetector's clone classes in the production files, attached
+    /// to records; absent when it didn't run (PRD §7.12).
+    public let clones: CloneReport?
     /// Law checks per production conformance; always present (PRD §7.11).
     public let laws: LawReport
     /// What the history collector found; absent when it didn't run (PRD §7.13).
@@ -83,6 +86,7 @@ public struct ScanReport: Codable, Hashable, Sendable {
             warnings: warnings,
             effects: effects,
             properties: properties,
+            clones: clones,
             laws: laws
         )
         report.history = history

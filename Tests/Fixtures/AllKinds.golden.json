@@ -17,6 +17,14 @@
       "state" : "skipped"
     },
     {
+      "name" : "swiftclonedetector",
+      "options" : [
+
+      ],
+      "reason" : "`swift-clone-detector` not found on PATH; set collectors.swiftclonedetector.path",
+      "state" : "skipped"
+    },
+    {
       "name" : "swifteffectinference",
       "options" : [
         "calleeResolution: unique-signature",

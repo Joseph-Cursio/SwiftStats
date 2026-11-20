@@ -57,4 +57,8 @@ public struct Rollup: Codable, Hashable, Sendable {
     /// Property-test suggestions by tier, mapped and unmapped (PRD §7.11);
     /// nil when SwiftInferProperties didn't run, and on scopes holding none.
     public let properties: PropertyRollup?
+    /// Clone classes with a copy in the scope, by kind, and the stripped
+    /// lines copies cover (PRD §7.12); nil when SwiftCloneDetector didn't
+    /// run, and on test modules and the `tests` part, which it doesn't read.
+    public let clones: CloneRollup?
 }

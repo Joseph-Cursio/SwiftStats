@@ -71,7 +71,7 @@ struct SnapshotReportTests {
             "# Probe", "## Signals", "### Hotspots", "### Bug-prone", "### Unstable fixes",
             "### Tests not keeping up", "### Safe to leave", "## Collectors", "## Project",
             "### Findings by rule", "### Findings by kind", "## Side effects", "## Property candidates",
-            "## Law checks", "## Modules"
+            "## Law checks", "## Clones", "## Modules"
         ]
         #expect(headings == expected)
         #expect(text.contains("Left out: history was not collected: skipped, not in a git repository with commits."))
@@ -82,6 +82,9 @@ struct SnapshotReportTests {
         #expect(text.contains("| pure | 0 |"))
         #expect(text.contains(
             "Not collected: skipped, `swift-infer` not found on PATH; set collectors.swiftinferproperties.path."
+        ))
+        #expect(text.contains(
+            "Not collected: skipped, `swift-clone-detector` not found on PATH; set collectors.swiftclonedetector.path."
         ))
         // The package declares no conformance the kit covers.
         #expect(text.contains("| notRun | 0 |"))

@@ -98,6 +98,53 @@ enum FakeTool {
         return tool
     }
 
+    /// A new script standing in for `swift-clone-detector`. A run is
+    /// named by its pass flag, `--type3`, `--sequence` or `--type1`, or
+    /// `default` without one; it prints `outputs[name]` (nothing when
+    /// absent), writes `errors[name]` to stderr and exits with
+    /// `statuses[name]` (2 when absent, as when clones are found). Each run
+    /// writes its arguments, one per line, to `arguments-<name>.txt` and its
+    /// working directory to `cwd-<name>.txt`, beside the script.
+    static func makeCloneDetector(
+        outputs: [String: String],
+        errors: [String: String],
+        statuses: [String: Int32]
+    ) throws -> URL {
+        let directory = FileManager.default.temporaryDirectory
+            .appendingPathComponent("FakeCloneDetector-\(UUID().uuidString)")
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        for (name, output) in outputs {
+            try output.write(to: directory.appendingPathComponent("out\(name)"), atomically: true, encoding: .utf8)
+        }
+        for (name, text) in errors {
+            try text.write(to: directory.appendingPathComponent("err\(name)"), atomically: true, encoding: .utf8)
+        }
+        for (name, status) in statuses {
+            let file = directory.appendingPathComponent("status\(name)")
+            try "\(status)".write(to: file, atomically: true, encoding: .utf8)
+        }
+        let script = """
+        #!/bin/sh
+        here="$(dirname "$0")"
+        name=default
+        for argument in "$@"; do
+            case "$argument" in
+                --type3|--sequence|--type1) name="$argument" ;;
+            esac
+        done
+        printf '%s\\n' "$@" > "$here/arguments-$name.txt"
+        pwd -P > "$here/cwd-$name.txt"
+        if [ -f "$here/out$name" ]; then cat "$here/out$name"; fi
+        if [ -f "$here/err$name" ]; then cat "$here/err$name" >&2; fi
+        if [ -f "$here/status$name" ]; then exit "$(cat "$here/status$name")"; fi
+        exit 2
+        """
+        let tool = directory.appendingPathComponent("tool")
+        try script.write(to: tool, atomically: true, encoding: .utf8)
+        try FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: tool.path)
+        return tool
+    }
+
     /// The lines of the file `name` beside the fake tool at `tool`.
     static func log(_ name: String, of tool: URL) -> [String] {
         let file = tool.deletingLastPathComponent().appendingPathComponent(name)

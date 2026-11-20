@@ -1,0 +1,94 @@
+{
+  "cloneCount" : 4,
+  "clones" : [
+    {
+      "fingerprint" : "e62cd083b9ff4abe",
+      "instances" : [
+        {
+          "endColumn" : 6,
+          "endLine" : 14,
+          "path" : "Sources/Core/Reports.swift",
+          "startColumn" : 5,
+          "startLine" : 3
+        },
+        {
+          "endColumn" : 6,
+          "endLine" : 31,
+          "path" : "Sources/Core/Reports.swift",
+          "startColumn" : 5,
+          "startLine" : 20
+        }
+      ],
+      "lineSpan" : 12,
+      "mass" : 233
+    },
+    {
+      "fingerprint" : "be4f28734b561292",
+      "instances" : [
+        {
+          "endColumn" : 15,
+          "endLine" : 7,
+          "path" : "Sources/Core/Totals.swift",
+          "startColumn" : 5,
+          "startLine" : 3
+        },
+        {
+          "endColumn" : 15,
+          "endLine" : 9,
+          "path" : "Sources/Extras/Ledger.swift",
+          "startColumn" : 5,
+          "startLine" : 5
+        }
+      ],
+      "lineSpan" : 5,
+      "mass" : 65
+    },
+    {
+      "fingerprint" : "ce65d4d074903674",
+      "instances" : [
+        {
+          "endColumn" : 21,
+          "endLine" : 26,
+          "path" : "Sources/Core/Paths.swift",
+          "startColumn" : 5,
+          "startLine" : 24
+        },
+        {
+          "endColumn" : 22,
+          "endLine" : 35,
+          "path" : "Sources/Core/Paths.swift",
+          "startColumn" : 5,
+          "startLine" : 33
+        }
+      ],
+      "lineSpan" : 3,
+      "mass" : 43
+    },
+    {
+      "fingerprint" : "de282440e9f44a8f",
+      "instances" : [
+        {
+          "endColumn" : 25,
+          "endLine" : 6,
+          "path" : "Sources/Core/Paths.swift",
+          "startColumn" : 9,
+          "startLine" : 5
+        },
+        {
+          "endColumn" : 25,
+          "endLine" : 17,
+          "path" : "Sources/Core/Paths.swift",
+          "startColumn" : 9,
+          "startLine" : 16
+        }
+      ],
+      "lineSpan" : 2,
+      "mass" : 40
+    }
+  ],
+  "duplicatedLines" : 22,
+  "fileCount" : 8,
+  "mode" : "type1-2",
+  "tool" : "swift-clone-detector",
+  "version" : "0.1.0"
+}

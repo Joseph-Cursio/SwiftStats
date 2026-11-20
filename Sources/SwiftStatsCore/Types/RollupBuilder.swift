@@ -30,7 +30,8 @@ enum RollupBuilder {
     }
 
     /// The roll-up of `input`, with its test summary; a production scope
-    /// also counts law checks, and side effects when they were collected.
+    /// also counts law checks, and side effects and clones when they were
+    /// collected.
     /// Suggestions count by file, and the project's production part also
     /// counts those placed in no scanned file.
     private static func rollup(
@@ -70,6 +71,9 @@ enum RollupBuilder {
             laws: isProduction ? LawRollup(input.laws) : nil,
             properties: input.properties.flatMap { properties in
                 PropertyRollup(properties.candidates, in: paths, countsUnplaced: scope == .project && isProduction)
+            },
+            clones: input.clones.flatMap { clones in
+                isProduction ? CloneRollup(clones.report, linesByFile: clones.linesByFile, in: paths) : nil
             }
         )
     }

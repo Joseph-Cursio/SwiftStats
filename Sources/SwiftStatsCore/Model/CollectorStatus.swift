@@ -9,7 +9,7 @@
 /// One collector's run.
 public struct CollectorStatus: Codable, Hashable, Sendable {
     /// The collector: `swiftprojectlint`, `swiftlint`, `swifteffectinference`,
-    /// `swiftinferproperties`, `dependencies` or `history`.
+    /// `swiftinferproperties`, `swiftclonedetector`, `dependencies` or `history`.
     public let name: String
     /// How the run went.
     public let state: CollectorState

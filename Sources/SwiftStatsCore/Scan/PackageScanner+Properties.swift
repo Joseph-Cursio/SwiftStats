@@ -8,7 +8,8 @@
 //  collectors have run, when its suggestions are attached to the measured
 //  records, joined to the package's own decisions and verify evidence and
 //  linked to property tests, and every finding is attached to its place.
-//  The tools' skip reason covers all of them.
+//  SwiftCloneDetector starts beside the other external collectors and is
+//  waited for with them. The tools' skip reason covers all of them.
 //
 
 import Foundation
@@ -16,7 +17,8 @@ import Foundation
 extension PackageScanner {
     /// The external collectors' part of a scan.
     struct ExternalScan {
-        /// Each external collector's run, SwiftInferProperties' included.
+        /// Each external collector's run, SwiftInferProperties' and
+        /// SwiftCloneDetector's included.
         let timed: [TimedAdapterResult]
         /// SwiftStats' markers and the tools' findings, attached.
         let findings: [Finding]
@@ -27,6 +29,8 @@ extension PackageScanner {
         let properties: PropertyReport?
         /// Problems joining the suggestions to the package's own files.
         let joinWarnings: [ScanWarning]
+        /// SwiftCloneDetector's classes, attached; nil unless it ran.
+        let clones: CloneMapping?
 
         /// Each external collector's result.
         var adapters: [AdapterResult] {
@@ -86,9 +90,10 @@ extension PackageScanner {
         return CollectorRun.startProperties(root: root, targets: targets, configuration: configuration, locator: tools)
     }
 
-    /// Runs the other external collectors on `targets` of the package at
-    /// `root`, waits for `pending`, SwiftInferProperties' run, and attaches
-    /// its suggestions and every finding to `measured`'s records.
+    /// Starts SwiftCloneDetector and runs the other external collectors on
+    /// `targets` of the package at `root`, waits for it and for `pending`,
+    /// SwiftInferProperties' run, and attaches the classes, the
+    /// suggestions and every finding to `measured`'s records.
     func externalRuns(
         root: URL,
         targets: [TargetSummary],
@@ -96,21 +101,25 @@ extension PackageScanner {
         pending: BackgroundJob<SwiftInferRun>?,
         measured: ScanMeasurements
     ) -> ExternalScan {
+        let cloneJob = startClones(root: root, targets: targets, configuration: configuration, measured: measured)
         let adapters = toolSkipReason.map(CollectorRun.skipped)
             ?? CollectorRun.run(root: root, targets: targets, configuration: configuration, locator: tools)
+        let cloneRun = cloneJob?.wait()
         let run = pending?.wait()
         let findings = Self.attach(measured.markers + adapters.flatMap(\.result.findings), to: measured)
-        // SwiftInferProperties reports no findings, so it gets no counts.
+        // SwiftInferProperties and SwiftCloneDetector report no findings,
+        // so they get no counts.
         let ran = adapters.map(\.result.status).filter { $0.state == .ran }.map(\.name)
         let properties = run.map { completed in
             Self.properties(of: completed, measured: measured, targets: targets, root: root, findings: findings)
         }
         return ExternalScan(
-            timed: adapters + [run?.timed].compactMap(\.self),
+            timed: adapters + [run?.timed, cloneRun?.timed].compactMap(\.self),
             findings: findings,
             tally: FindingTally(findings: findings, tools: Set(ran).union([MarkerCollector.tool])),
             properties: properties?.report,
-            joinWarnings: properties?.warnings ?? []
+            joinWarnings: properties?.warnings ?? [],
+            clones: cloneRun.flatMap { Self.clones(of: $0, measured: measured) }
         )
     }
 }

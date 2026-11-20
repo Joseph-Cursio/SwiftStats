@@ -13,7 +13,8 @@ import Yams
 extension SwiftStatsConfiguration {
     /// Collectors SwiftStats runs.
     static let builtCollectors: Set<String> = [
-        "dependencies", "swifteffectinference", "swiftinferproperties", "swiftlint", "swiftprojectlint"
+        "dependencies", "swiftclonedetector", "swifteffectinference", "swiftinferproperties", "swiftlint",
+        "swiftprojectlint"
     ]
     /// Keys a collector's entry may hold.
     private static let collectorKeys: Set<String> = ["enabled", "options", "path"]

@@ -29,6 +29,8 @@ enum RollupMetrics {
     private static let effectsField = "effects"
     /// The roll-up field whose numbers come from SwiftInferProperties.
     private static let propertiesField = "properties"
+    /// The roll-up field whose numbers come from SwiftCloneDetector.
+    private static let clonesField = "clones"
 
     /// Every number in `rollup`, sorted by path. Nulls and booleans are left
     /// out: a null is a value not collected, and a flag isn't a metric.
@@ -52,6 +54,9 @@ enum RollupMetrics {
         }
         if path.first == propertiesField {
             return SwiftInferPropertiesAdapter.name
+        }
+        if path.first == clonesField {
+            return SwiftCloneDetectorAdapter.name
         }
         return SwiftStatsCollector.name
     }

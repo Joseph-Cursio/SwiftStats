@@ -4,15 +4,17 @@
 //
 //  The scan itself (PRD M0–M2, M4): describe the package, start
 //  SwiftInferProperties, measure its files, infer side effects, run the
-//  other external collectors, attach the suggestions and assemble the
-//  report, timing each collector for the snapshot (PRD §6.2).
+//  other external collectors, SwiftCloneDetector among them, attach the
+//  suggestions and clones and assemble the report, timing each collector
+//  for the snapshot (PRD §6.2).
 //
 
 import Foundation
 
 extension PackageScanner {
-    /// The roll-ups of `measured` over `targets`, with `external`'s findings
-    /// and SwiftInferProperties' suggestions counted.
+    /// The roll-ups of `measured` over `targets`, with `external`'s findings,
+    /// SwiftInferProperties' suggestions and SwiftCloneDetector's classes
+    /// counted.
     private static func rollups(
         _ targets: [TargetSummary],
         measured: ScanMeasurements,
@@ -29,7 +31,8 @@ extension PackageScanner {
                 findings: external.tally,
                 effectsCollected: measured.effectsCollected,
                 laws: measured.laws.checks,
-                properties: external.properties
+                properties: external.properties,
+                clones: external.clones
             )
         )
     }
@@ -42,6 +45,12 @@ extension PackageScanner {
     ) -> [CollectorStatus] {
         (adapters.map(\.status) + [effects.status, dependencies.status, HistoryCollector.notRequested])
             .sorted { $0.name < $1.name }
+    }
+
+    /// A warning for each Swift file under `Tests/Generated/` of the
+    /// package at `root` that no target of `package` compiles.
+    private static func unbuiltTests(_ package: DescribedPackage, root: URL) -> [ScanWarning] {
+        UnbuiltTests.warnings(root: root, compiled: Set(TargetResolver.resolve(package).flatMap(\.files)))
     }
 
     /// The scan of `packageRoot`, with each collector's run time and binary.
@@ -63,10 +72,9 @@ extension PackageScanner {
             pending: pending,
             measured: measured
         )
-        let compiled = Set(TargetResolver.resolve(package).flatMap(\.files))
         let dependencies = dependencies(of: package, root: root, configuration: configuration)
         let warnings = measured.warnings + Self.unusedKeyWarnings(configuration) + external.warnings
-            + UnbuiltTests.warnings(root: root, compiled: compiled) + dependencies.warnings
+            + Self.unbuiltTests(package, root: root) + dependencies.warnings
         let report = ScanReport(
             schemaVersion: ScanReport.currentSchemaVersion,
             tool: .current,
@@ -86,6 +94,7 @@ extension PackageScanner {
             warnings: warnings.sorted(by: Self.warningOrder),
             effects: effects.summary,
             properties: external.properties,
+            clones: external.clones?.report,
             laws: measured.laws.with(kitDependency: KitProtocols.isDependency(in: dependencies.report))
         )
         return ScanOutcome(
