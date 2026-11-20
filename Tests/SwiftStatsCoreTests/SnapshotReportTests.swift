@@ -70,7 +70,8 @@ struct SnapshotReportTests {
         let expected = [
             "# Probe", "## Signals", "### Hotspots", "### Bug-prone", "### Unstable fixes",
             "### Tests not keeping up", "### Safe to leave", "### Untested properties", "### Tool disagreements",
-            "### Missing templates", "### Unchecked laws", "## Collectors", "## Project",
+            "### Missing templates", "### Unchecked laws", "### Divergent clones", "### Clone hotspots",
+            "## Collectors", "## Project",
             "### Findings by rule", "### Findings by kind", "## Side effects", "## Property candidates",
             "## Law checks", "## Clones", "## Modules"
         ]

@@ -40,11 +40,17 @@ extension SnapshotWorkspace {
 
     /// HEAD's first-parent commits with their committer dates, oldest first.
     func firstParentLine() throws -> [(commit: String, time: Int)] {
+        try firstParentLine(of: "HEAD")
+    }
+
+    /// The first-parent commits leading to `revision`, it included, with
+    /// their committer dates, oldest first.
+    func firstParentLine(of revision: String) throws -> [(commit: String, time: Int)] {
         let data = try ProcessRunner.run(
             executable: GitReader.git,
             arguments: [
                 "--no-optional-locks", "-c", "log.showSignature=false", "log", "--first-parent",
-                "--no-show-signature", "--no-color", "--format=%H %ct", "HEAD"
+                "--no-show-signature", "--no-color", "--format=%H %ct", revision, "--"
             ],
             in: root
         )

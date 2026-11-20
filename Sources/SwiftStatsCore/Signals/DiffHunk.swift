@@ -21,4 +21,15 @@ public struct DiffHunk: Hashable, Sendable {
         self.start = start
         self.count = count
     }
+
+    /// Whether the hunk touches lines `lower...upper` of the earlier file:
+    /// a replacement when the lines it replaces meet them; a pure insertion
+    /// when it inserts after a line from `lower` up to, not including,
+    /// `upper`, so inside the range rather than before or after it.
+    func overlaps(lower: Int, upper: Int) -> Bool {
+        guard count >= 1 else {
+            return lower <= start && start < upper
+        }
+        return start <= upper && start + count - 1 >= lower
+    }
 }

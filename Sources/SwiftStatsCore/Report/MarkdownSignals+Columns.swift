@@ -54,6 +54,66 @@ extension MarkdownSignals {
         ]
     }
 
+    /// Divergent clones: the copies that changed since the earlier
+    /// snapshot, and the class.
+    static var divergentClonesColumns: [Column] {
+        [
+            ("Changed copies", divergence { $0.changed.map(changedCopy).joined(separator: "; ") }),
+            ("Kind", clone(kind)),
+            ("Copies", clone { String($0.copies) }),
+            ("Lines", clone { String($0.lines) }),
+            ("Folded", divergence { $0.folded.isEmpty ? "—" : $0.folded.map { "#\($0)" }.joined(separator: ", ") })
+        ]
+    }
+
+    /// Clone hotspot: the class and how often its copies changed.
+    static var cloneHotspotColumns: [Column] {
+        [
+            ("Kind", clone(kind)),
+            ("Copies", clone { String($0.copies) }),
+            ("Mass", clone { String($0.mass) }),
+            ("Churn", clone { MarkdownNumber.optional($0.churn) })
+        ]
+    }
+
+    /// The input columns of M4's signal `signal`; none for M3's.
+    static func m4Columns(for signal: SignalName) -> [Column] {
+        switch signal {
+        case .bugProne, .hotspot, .safeToLeave, .testsNotKeepingUp, .unstableFixes:
+            []
+
+        case .cloneHotspot:
+            cloneHotspotColumns
+
+        case .divergentClones:
+            divergentClonesColumns
+
+        case .missingTemplate:
+            missingTemplateColumns
+
+        case .toolDisagreement:
+            toolDisagreementColumns
+
+        case .uncheckedLaws:
+            uncheckedLawsColumns
+
+        case .untestedProperty:
+            untestedPropertyColumns
+        }
+    }
+
+    /// A clone class's kind: exact, renamed, sequence or near-miss.
+    private static func kind(_ clone: SignalItem.Clone) -> String {
+        CloneKind(pass: clone.pass, exact: clone.exact).rawValue
+    }
+
+    /// A changed copy: its family, its commits since the earlier snapshot,
+    /// and when the latest was made.
+    private static func changedCopy(_ copy: SignalItem.CloneCopy) -> String {
+        let last = copy.lastChange.map { String($0.prefix(shortLength)) } ?? "—"
+        return "\(display(copy.family, file: copy.file, line: copy.line)): \(copy.changes) commits, last \(last)"
+    }
+
     /// What to do about unchecked pairs: call the kit's checks, or first
     /// depend on the kit.
     private static func action(_ laws: SignalItem.Laws) -> String {
@@ -78,6 +138,16 @@ extension MarkdownSignals {
     /// A cell reading an item's function size with `cell`.
     private static func function(_ cell: @escaping (SignalItem.Function) -> String) -> (SignalItem) -> String {
         { item in item.function.map(cell) ?? "—" }
+    }
+
+    /// A cell reading an item's clone class with `cell`.
+    private static func clone(_ cell: @escaping (SignalItem.Clone) -> String) -> (SignalItem) -> String {
+        { item in item.clone.map(cell) ?? "—" }
+    }
+
+    /// A cell reading how an item's clone class diverged with `cell`.
+    private static func divergence(_ cell: @escaping (SignalItem.Divergence) -> String) -> (SignalItem) -> String {
+        { item in item.clone?.divergence.map(cell) ?? "—" }
     }
 
     /// A cell reading an item's law pairs with `cell`.

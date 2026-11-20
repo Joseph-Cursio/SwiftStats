@@ -138,7 +138,9 @@ struct SignalTests {
         let signals = try workspace.signals(id: skipped)
         let fromHistory = signals.filter { $0.name.requirements.contains(.history) }
         #expect(fromHistory.allSatisfy { $0.leftOut == "history was not collected: skipped, --no-history" })
-        #expect(fromHistory.map(\.name) == [.hotspot, .bugProne, .unstableFixes, .testsNotKeepingUp, .safeToLeave])
+        #expect(fromHistory.map(\.name) == [
+            .hotspot, .bugProne, .unstableFixes, .testsNotKeepingUp, .safeToLeave, .divergentClones, .cloneHotspot
+        ])
         // M4's signals read no history: unchecked laws is computed, and
         // those needing SwiftInferProperties name it.
         let byName = Dictionary(uniqueKeysWithValues: signals.map { ($0.name, $0) })

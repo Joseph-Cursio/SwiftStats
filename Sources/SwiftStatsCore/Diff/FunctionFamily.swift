@@ -40,6 +40,11 @@ struct FunctionFamily {
         root?.bodyLines ?? accessors.reduce(0) { $0 + $1.bodyLines }
     }
 
+    /// The root's stripped lines, or its accessors' together.
+    var strippedLines: Int {
+        root?.strippedLines ?? accessors.reduce(0) { $0 + $1.strippedLines }
+    }
+
     /// A computed property's accessors; empty for a family with a root.
     var accessors: [FunctionRow] {
         root == nil ? members.filter(Self.isPropertyAccessor) : []

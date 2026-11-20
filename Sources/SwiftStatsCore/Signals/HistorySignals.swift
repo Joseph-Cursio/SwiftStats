@@ -103,7 +103,7 @@ enum HistorySignals {
         case .unstableFixes:
             "reverted, or fixed again within the repeat window"
 
-        case .missingTemplate, .toolDisagreement, .uncheckedLaws, .untestedProperty:
+        case .cloneHotspot, .divergentClones, .missingTemplate, .toolDisagreement, .uncheckedLaws, .untestedProperty:
             ""
         }
     }
@@ -133,7 +133,7 @@ enum HistorySignals {
         case .unstableFixes:
             value = Double((history.reverts ?? 0) + (history.repeatedFixes ?? 0))
 
-        case .missingTemplate, .toolDisagreement, .uncheckedLaws, .untestedProperty:
+        case .cloneHotspot, .divergentClones, .missingTemplate, .toolDisagreement, .uncheckedLaws, .untestedProperty:
             value = nil
         }
         guard let value, value > 0 else {

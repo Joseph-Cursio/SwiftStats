@@ -10,7 +10,7 @@
 /// The membership thresholds of the ranked signals.
 public struct SignalThresholds: Hashable, Sendable {
     /// The signals that take a threshold.
-    static let rankedSignals: Set<String> = ["hotspot", "bug-prone"]
+    static let rankedSignals: Set<String> = ["hotspot", "bug-prone", "clone-hotspot"]
     /// The default percent of candidates a ranked signal keeps.
     public static let defaultPercent = 10.0
 

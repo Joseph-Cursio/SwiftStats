@@ -91,7 +91,8 @@ public struct SignalItem: Codable, Hashable, Sendable {
 
     /// The clone class an item is about.
     public struct Clone: Codable, Hashable, Sendable {
-        /// The class's ordinal in its snapshot.
+        /// The class's ordinal in its snapshot: for divergent clones, the
+        /// earlier snapshot.
         public let ordinal: Int
         /// The run that found it.
         public let pass: CloneClass.Pass
@@ -99,9 +100,12 @@ public struct SignalItem: Codable, Hashable, Sendable {
         public let exact: Bool
         /// Its mass, as the tool counts it.
         public let mass: Int
-        /// The stripped lines the score counts.
+        /// Its stripped lines: for divergent clones, those of the units
+        /// in its diverging slots, which the score counts; for a hotspot,
+        /// those its copies cover.
         public let lines: Int
-        /// Its copies.
+        /// Its copies: for divergent clones, those with a production family
+        /// outside generated files now.
         public let copies: Int
         /// Distinct commits in the window that changed its families; nil
         /// when the signal doesn't count them.

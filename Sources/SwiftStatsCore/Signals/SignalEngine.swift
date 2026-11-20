@@ -23,7 +23,7 @@ public enum SignalEngine {
         lazy var families = HistorySignals.pool(snapshot)
         var results: [SignalResult] = []
         for name in SignalName.reportOrder {
-            let reason = leftOut(name.requirements, in: snapshot)
+            let reason = leftOut(name.requirements, in: snapshot) ?? leftOut(name, comparing: inputs)
             var computation: SignalComputation?
             if reason == nil {
                 switch name {
@@ -34,6 +34,12 @@ public enum SignalEngine {
                         snapshot: snapshot,
                         thresholds: thresholds
                     )
+
+                case .cloneHotspot:
+                    computation = CloneHotspot.compute(snapshot, thresholds: thresholds)
+
+                case .divergentClones:
+                    computation = DivergentClones.compute(inputs)
 
                 case .missingTemplate:
                     computation = MissingTemplate.compute(snapshot)
@@ -50,7 +56,7 @@ public enum SignalEngine {
             }
             guard let computation else {
                 // A computation finds no input only where its requirements
-                // say one is missing: history, for M3's signals.
+                // say one is missing: history, or an earlier snapshot.
                 results.append(SignalResult(
                     name: name,
                     leftOut: reason ?? historyAbsence(snapshot.info),
@@ -98,6 +104,22 @@ public enum SignalEngine {
         return nil
     }
 
+    /// Why `signal`, which compares the snapshot with an earlier one, can't
+    /// be: git failed, or no earlier snapshot qualifies; nil when it can,
+    /// or when `signal` compares none.
+    static func leftOut(_ signal: SignalName, comparing inputs: SignalInputs) -> String? {
+        guard signal == .divergentClones else {
+            return nil
+        }
+        if let failure = inputs.gitFailure {
+            return failure
+        }
+        guard inputs.earlier == nil else {
+            return nil
+        }
+        return inputs.earlierNote ?? DivergentClones.noEarlier
+    }
+
     /// `computation` ranked: sorted by its keys, a ranked signal's
     /// candidates scoring zero or less dropped, and members marked.
     static func result(
@@ -138,6 +160,12 @@ public enum SignalEngine {
         switch signal {
         case .bugProne, .hotspot, .safeToLeave, .testsNotKeepingUp, .unstableFixes:
             HistorySignals.rule(for: signal, thresholds: thresholds, count: 0)
+
+        case .cloneHotspot:
+            CloneHotspot.rule(thresholds: thresholds, count: nil)
+
+        case .divergentClones:
+            DivergentClones.rule
 
         case .missingTemplate:
             MissingTemplate.rule

@@ -65,9 +65,10 @@ public struct SnapshotWorkspace {
         return commit
     }
 
-    /// The signals of snapshot `id`, with this workspace's thresholds.
+    /// The signals of snapshot `id`, with this workspace's thresholds, and
+    /// for divergent clones the earlier snapshot it chooses.
     public func signals(id: Int64) throws -> [SignalResult] {
-        SignalEngine.signals(of: SignalInputs(snapshot: try store.load(id: id)), thresholds: configuration.signals)
+        SignalEngine.signals(of: try signalInputs(for: try store.load(id: id)), thresholds: configuration.signals)
     }
 
     /// Scans the working tree, reading history from `history`, stores the

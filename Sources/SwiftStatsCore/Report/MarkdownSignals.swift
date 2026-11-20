@@ -130,7 +130,7 @@ public enum MarkdownSignals {
     /// A table of signal items with the inputs `signal` uses.
     private static func table(_ items: [SignalItem], signal: SignalName, markMembers: Bool = false) -> [String] {
         let inputs = columns(for: signal)
-        var header = ["#", signal == .uncheckedLaws ? "Type" : "Function", "Score"] + inputs.map(\.0)
+        var header = ["#", subjectHeading(for: signal), "Score"] + inputs.map(\.0)
         if markMembers {
             header.append("Member")
         }
@@ -190,17 +190,26 @@ public enum MarkdownSignals {
                 traced
             ]
 
-        case .missingTemplate:
-            missingTemplateColumns
+        case .cloneHotspot, .divergentClones, .missingTemplate, .toolDisagreement, .uncheckedLaws, .untestedProperty:
+            m4Columns(for: signal)
+        }
+    }
 
-        case .toolDisagreement:
-            toolDisagreementColumns
+    /// What the subject column of `signal`'s table heads: a type for
+    /// unchecked laws, a copy or class for the clone signals, else a function.
+    private static func subjectHeading(for signal: SignalName) -> String {
+        switch signal {
+        case .cloneHotspot:
+            "Class (first copy)"
+
+        case .divergentClones:
+            "Unchanged copy"
 
         case .uncheckedLaws:
-            uncheckedLawsColumns
+            "Type"
 
-        case .untestedProperty:
-            untestedPropertyColumns
+        default:
+            "Function"
         }
     }
 
