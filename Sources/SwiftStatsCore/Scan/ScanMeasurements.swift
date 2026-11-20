@@ -23,6 +23,9 @@ struct ScanMeasurements {
     let topLevelLines: [String: Set<Int>]
     /// The test inventory.
     let tests: [TestRecord]
+    /// Law checks per production conformance; `kitDependency` is set when
+    /// the report is assembled, from the package's dependencies.
+    let laws: LawReport
     /// Each parsed file with its module.
     let parsed: [(module: String, file: ParsedFile)]
     /// Sitrep-compatible counts.

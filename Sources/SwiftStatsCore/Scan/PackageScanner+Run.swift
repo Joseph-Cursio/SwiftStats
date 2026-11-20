@@ -25,10 +25,22 @@ extension PackageScanner {
                 declarations: measured.declarations,
                 tests: measured.tests,
                 findings: findings,
-                effectsCollected: measured.effectsCollected
+                effectsCollected: measured.effectsCollected,
+                laws: measured.laws.checks
             )
         )
     }
+
+    /// Every collector's status but history's real one, sorted by name.
+    private static func statuses(
+        _ adapters: [AdapterResult],
+        effects: EffectScan,
+        dependencies: DependencyScan
+    ) -> [CollectorStatus] {
+        (adapters.map(\.status) + [effects.status, dependencies.status, HistoryCollector.notRequested])
+            .sorted { $0.name < $1.name }
+    }
+
     /// The scan of `packageRoot`, with each collector's run time and binary.
     func run(packageAt packageRoot: URL, configurationFile: URL?) throws -> ScanOutcome {
         let root = packageRoot.standardizedFileURL
@@ -65,13 +77,13 @@ extension PackageScanner {
                 findings: FindingTally(findings: findings, tools: ranTools)
             ),
             sitrep: measured.sitrep,
-            collectors: (adapters.map(\.status) + [effects.status, dependencies.status, HistoryCollector.notRequested])
-                .sorted { $0.name < $1.name },
+            collectors: Self.statuses(adapters, effects: effects, dependencies: dependencies),
             findings: findings.sorted(by: Self.findingOrder),
             tests: measured.tests.sorted { ($0.file, $0.key) < ($1.file, $1.key) },
             dependencies: dependencies.report,
             warnings: warnings.sorted(by: Self.warningOrder),
-            effects: effects.summary
+            effects: effects.summary,
+            laws: measured.laws.with(kitDependency: KitProtocols.isDependency(in: dependencies.report))
         )
         return ScanOutcome(
             report: report,

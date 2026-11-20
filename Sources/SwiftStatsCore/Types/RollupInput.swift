@@ -22,6 +22,8 @@ struct RollupInput {
     var findings: FindingTally
     /// Whether SwiftEffectInference ran, so production scopes count effects.
     var effectsCollected: Bool
+    /// Law checks per production conformance.
+    var laws: [LawCheck]
 
     /// These facts for `modules` only.
     func narrowed(to modules: Set<String>) -> Self {
@@ -32,7 +34,8 @@ struct RollupInput {
             declarations: declarations.filter { modules.contains($0.module) },
             tests: tests.filter { modules.contains($0.module) },
             findings: findings,
-            effectsCollected: effectsCollected
+            effectsCollected: effectsCollected,
+            laws: laws.filter { modules.contains($0.module) }
         )
     }
 }

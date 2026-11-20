@@ -20,4 +20,6 @@ struct CollectedRecords {
     var markers: [RawFinding] = []
     /// Each file's top-level statement lines, by path.
     var topLevelLines: [String: Set<Int>] = [:]
+    /// Each file's law-detection facts.
+    var laws: [LawFileFacts] = []
 }

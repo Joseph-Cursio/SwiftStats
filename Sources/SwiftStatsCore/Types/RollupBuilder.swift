@@ -24,19 +24,19 @@ enum RollupBuilder {
                 name: name,
                 input: input.narrowed(to: modules),
                 tests: TestSummaryBuilder.summary(of: modules, scope: scope, targets: targets, scan: input),
-                countsEffects: input.effectsCollected && isTest == false
+                isProduction: isTest == false
             )
         }
     }
 
-    /// The roll-up of `input`, with its test summary, and with side effects
-    /// counted when `countsEffects` is set.
+    /// The roll-up of `input`, with its test summary; a production scope
+    /// also counts law checks, and side effects when they were collected.
     private static func rollup(
         scope: RollupScope,
         name: String,
         input: RollupInput,
         tests: TestSummary,
-        countsEffects: Bool
+        isProduction: Bool
     ) -> Rollup {
         let records = input.records
         let types = input.types
@@ -64,7 +64,8 @@ enum RollupBuilder {
             findingKinds: input.findings.byKind(in: paths),
             api: APISurface(input.declarations, overExposed: input.findings.overExposed(in: paths)),
             tests: tests,
-            effects: countsEffects ? EffectRollup(records) : nil
+            effects: isProduction && input.effectsCollected ? EffectRollup(records) : nil,
+            laws: isProduction ? LawRollup(input.laws) : nil
         )
     }
 

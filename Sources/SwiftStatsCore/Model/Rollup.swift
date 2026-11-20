@@ -51,4 +51,7 @@ public struct Rollup: Codable, Hashable, Sendable {
     /// Side-effect tiers and purity verdicts (PRD §7.10); nil when
     /// SwiftEffectInference didn't run, and on test modules and the `tests` part.
     public let effects: EffectRollup?
+    /// Law-check pairs by state (PRD §7.11); nil on test modules and the
+    /// `tests` part, whose types are never subjects.
+    public let laws: LawRollup?
 }

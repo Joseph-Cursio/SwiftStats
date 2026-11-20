@@ -30,11 +30,16 @@ enum GeneratedCode {
 
     /// Whether the comments before the file's first token hold a known header.
     static func hasHeader(_ tree: SourceFileSyntax) -> Bool {
+        headers.contains { hasHeader(tree, containing: $0) }
+    }
+
+    /// Whether the comments before the file's first token hold `header`.
+    static func hasHeader(_ tree: SourceFileSyntax, containing header: String) -> Bool {
         let trivia = tree.firstToken(viewMode: .sourceAccurate)?.leadingTrivia ?? []
         return trivia.contains { piece in
             switch piece {
             case .lineComment(let text), .blockComment(let text), .docLineComment(let text), .docBlockComment(let text):
-                return headers.contains { text.contains($0) }
+                return text.contains(header)
 
             default:
                 return false

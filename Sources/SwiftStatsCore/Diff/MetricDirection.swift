@@ -3,8 +3,9 @@
 //  SwiftStatsCore
 //
 //  Which way is better for each metric (PRD §6.6): lower for sizes,
-//  complexity, nesting, parameters and findings; higher for tests,
-//  assertions, documentation and the test line ratio; neutral for counts.
+//  complexity, nesting, parameters, findings and unchecked law pairs;
+//  higher for tests, assertions, documentation and the test line ratio;
+//  neutral for counts.
 //
 
 /// Whether a metric going up is good, bad or neither.
@@ -29,7 +30,8 @@ public enum MetricDirection: String, Codable, Hashable, Sendable {
     private static let lowerPaths = [
         "findings.", "findingKinds.", "api.overExposed", "tests.xctestWithoutAssertions",
         "tests.swiftTestingWithoutAssertions", "tests.parameterizedUnknownCases",
-        "strippedLines", "parameterCount", "cognitive", "decisionCount", "swiftLintCompatible", "maxNesting"
+        "strippedLines", "parameterCount", "cognitive", "decisionCount", "swiftLintCompatible", "maxNesting",
+        "laws.state.notRun"
     ]
     /// Paths, or path prefixes ending in a dot, that are better higher.
     private static let higherPaths = [

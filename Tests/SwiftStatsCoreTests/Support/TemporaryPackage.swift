@@ -4,15 +4,6 @@ import Foundation
 /// A package written to a temporary directory and scanned with a fixed
 /// description, so tests need neither SwiftPM nor installed tools.
 struct TemporaryPackage {
-    /// A describer that returns the same description for any path.
-    private struct FixedDescriber: PackageDescriber {
-        let package: DescribedPackage
-
-        func describePackage(at _: URL) -> DescribedPackage {
-            package
-        }
-    }
-
     /// The package root.
     let root: URL
     /// The targets the description lists.

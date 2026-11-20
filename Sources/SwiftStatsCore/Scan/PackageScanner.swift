@@ -134,6 +134,7 @@ public struct PackageScanner {
                 collected.types += TypeCollector.collect(file.tree, context: context)
                 collected.declarations += DeclarationCollector.collect(file.tree, module: target.name)
                 collected.markers += MarkerCollector.collect(file.tree, context: context)
+                collected.laws.append(LawSyntaxCollector.collect(file.tree, context: context))
                 collected.topLevelLines[file.path] = FunctionCollector.topLevelLines(
                     in: file.tree,
                     converter: context.converter
@@ -219,6 +220,7 @@ public struct PackageScanner {
             ignoresCaseStatements: ignoresCases
         )
         let (sitrep, sitrepWarnings) = sitrep(parsedByTarget)
+        let generatedFiles = Set(collected.files.filter(\.generated).map(\.path))
         return ScanMeasurements(
             records: records,
             types: collected.types,
@@ -230,8 +232,9 @@ public struct PackageScanner {
                 records: records,
                 parsed: parsed,
                 testModules: Set(targets.filter(\.isTest).map(\.name)),
-                generatedFiles: Set(collected.files.filter(\.generated).map(\.path))
+                generatedFiles: generatedFiles
             ),
+            laws: LawCheckCollector.detect(collected.laws, generatedFiles: generatedFiles),
             parsed: parsed,
             sitrep: sitrep,
             metrics: ComplexityScorer.metricsInfo(ignoresCaseStatements: ignoresCases),

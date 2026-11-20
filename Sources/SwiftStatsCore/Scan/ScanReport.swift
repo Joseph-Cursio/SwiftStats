@@ -14,7 +14,8 @@ public struct ScanReport: Codable, Hashable, Sendable {
     /// would notice: 2 adds complexity, size and shape (M1a); 3 adds
     /// generated files, findings, risk markers, API surface, the test
     /// inventory and dependencies (M1b); 4 adds each function's body lines
-    /// (M2); 5 adds history (M3); 6 adds side effects (M4).
+    /// (M2); 5 adds history (M3); 6 adds side effects, conformances and
+    /// law checks (M4).
     public static let currentSchemaVersion = 6
 
     /// The output format version (`currentSchemaVersion` when written).
@@ -52,6 +53,8 @@ public struct ScanReport: Codable, Hashable, Sendable {
     /// What the side-effect run produced beyond each record's facts; absent
     /// when SwiftEffectInference didn't run (PRD §7.10).
     public let effects: EffectSummary?
+    /// Law checks per production conformance; always present (PRD §7.11).
+    public let laws: LawReport
     /// What the history collector found; absent when it didn't run (PRD §7.13).
     public internal(set) var history: HistoryReport?
 
@@ -75,7 +78,8 @@ public struct ScanReport: Codable, Hashable, Sendable {
             tests: tests,
             dependencies: dependencies,
             warnings: warnings,
-            effects: effects
+            effects: effects,
+            laws: laws
         )
         report.history = history
         return report

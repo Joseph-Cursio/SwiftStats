@@ -131,6 +131,41 @@ struct SnapshotDiffTests {
         #expect(text.contains("No function changes") == false)
     }
 
+    @Test("a law state or side-effect count missing from one snapshot is zero, so a fall to zero is judged")
+    func countsFallToZero() throws {
+        let directory = try SnapshotHarness.temporaryDirectory("Diff")
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let source = ["Sources/Lib/Lib.swift": "public struct Amount: Equatable {\n    let value: Int\n}\n"]
+        let unchecked = try TemporaryPackage(source.merging([
+            "Tests/LibTests/LibTests.swift": "import Testing\n@Test func amounts() {}\n"
+        ]) { $1 })
+        defer { unchecked.remove() }
+        let checked = try TemporaryPackage(source.merging([
+            "Tests/LibTests/LibTests.swift": """
+            import Testing
+            @Test func amounts() async throws {
+                try await checkEquatablePropertyLaws(for: Amount.self, using: Amount.gen())
+            }
+            """
+        ]) { $1 })
+        defer { checked.remove() }
+
+        let first = try Self.stored(unchecked, build: SnapshotHarness.build, store: "a.sqlite", in: directory)
+        let second = try Self.stored(checked, build: SnapshotHarness.build, store: "b.sqlite", in: directory)
+        let laws = SnapshotDiff.diff(first, second).rollups.filter { $0.delta.metric.hasPrefix("laws.") }
+
+        // `laws.state` has no `notRun` key once nothing is unchecked, and
+        // no `run` key before anything is checked.
+        #expect(laws.map { "\($0.name) \($0.delta.metric) \($0.delta.before ?? -1) \($0.delta.after ?? -1)" } == [
+            "Lib laws.state.notRun 1.0 0.0", "Lib laws.state.run 0.0 1.0",
+            "production laws.state.notRun 1.0 0.0", "production laws.state.run 0.0 1.0"
+        ])
+        #expect(laws.map(\.delta.verdict) == [.better, .neutral, .better, .neutral])
+        #expect(CountedMetrics.value(nil, metric: "effects.tier.idempotent") == 0)
+        #expect(CountedMetrics.value(nil, metric: "effects.purity.pure") == 0)
+        #expect(CountedMetrics.value(nil, metric: "cognitive.p90") == nil)
+    }
+
     @Test("a change to excluded or generated globs makes SwiftStats' measurements not comparable")
     func differentOptions() throws {
         let directory = try SnapshotHarness.temporaryDirectory("Diff")

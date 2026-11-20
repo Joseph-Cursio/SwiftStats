@@ -111,7 +111,8 @@ struct ScannerRobustnessTests {
             strippedLines: type.strippedLines,
             memberCount: type.memberCount,
             isLocal: type.isLocal,
-            ifConfig: type.ifConfig
+            ifConfig: type.ifConfig,
+            conformances: type.conformances
         )
         #expect(PackageScanner.typeOrder(type, twin))
         #expect(PackageScanner.typeOrder(twin, type) == false)
