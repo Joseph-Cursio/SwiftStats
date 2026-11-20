@@ -7,6 +7,14 @@
 
 /// Decides each collector's comparability.
 enum Comparability {
+    /// Collectors whose results SwiftStats' own code reads or maps, so they
+    /// compare only when `swiftstats` does, with the reason they don't.
+    private static let needingOwnBuild = [
+        DependencyGraphAdapter.name: "SwiftStats' build differs, and its own code reads the graph",
+        HistoryCollector.name: "SwiftStats' build differs, and its own code reads the history",
+        EffectCollector.name: "SwiftStats' build differs, and its own code maps the side effects"
+    ]
+
     /// Each collector in either snapshot, sorted by name.
     static func compare(_ old: SnapshotInfo, _ new: SnapshotInfo) -> [CollectorComparison] {
         let oldRuns = Dictionary(old.collectors.map { ($0.name, $0) }) { first, _ in first }
@@ -15,11 +23,8 @@ enum Comparability {
         let ownOutcome = outcome(oldRuns[SwiftStatsCollector.name], newRuns[SwiftStatsCollector.name])
         return names.map { name in
             var result = outcome(oldRuns[name], newRuns[name])
-            if name == DependencyGraphAdapter.name, result.outcome == .compared, ownOutcome.outcome != .compared {
-                result = (.notComparable, "SwiftStats' build differs, and its own code reads the graph")
-            }
-            if name == HistoryCollector.name, result.outcome == .compared, ownOutcome.outcome != .compared {
-                result = (.notComparable, "SwiftStats' build differs, and its own code reads the history")
+            if let reason = needingOwnBuild[name], result.outcome == .compared, ownOutcome.outcome != .compared {
+                result = (.notComparable, reason)
             }
             return CollectorComparison(name: name, outcome: result.outcome, reason: result.reason)
         }

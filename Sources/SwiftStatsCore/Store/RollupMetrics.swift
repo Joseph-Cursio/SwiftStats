@@ -25,6 +25,8 @@ enum RollupMetrics {
     private static let swiftProjectLintPaths: Set<String> = ["api.overExposed", "tests.swiftTestingWithoutAssertions"]
     /// Roll-up fields whose next key names the tool.
     private static let perToolFields: Set<String> = ["findings", "findingKinds"]
+    /// The roll-up field whose numbers come from SwiftEffectInference.
+    private static let effectsField = "effects"
 
     /// Every number in `rollup`, sorted by path. Nulls and booleans are left
     /// out: a null is a value not collected, and a flag isn't a metric.
@@ -42,6 +44,9 @@ enum RollupMetrics {
         }
         if swiftProjectLintPaths.contains(path.joined(separator: ".")) {
             return SwiftProjectLintAdapter.name
+        }
+        if path.first == effectsField {
+            return EffectCollector.name
         }
         return SwiftStatsCollector.name
     }

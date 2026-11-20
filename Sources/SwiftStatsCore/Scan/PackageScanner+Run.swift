@@ -2,9 +2,9 @@
 //  PackageScanner+Run.swift
 //  SwiftStatsCore
 //
-//  The scan itself (PRD M0–M2): describe the package, measure its files, run
-//  the external collectors and assemble the report, timing each collector
-//  for the snapshot (PRD §6.2).
+//  The scan itself (PRD M0–M2, M4): describe the package, measure its files,
+//  infer side effects, run the external collectors and assemble the report,
+//  timing each collector for the snapshot (PRD §6.2).
 //
 
 import Foundation
@@ -24,7 +24,8 @@ extension PackageScanner {
                 files: measured.files,
                 declarations: measured.declarations,
                 tests: measured.tests,
-                findings: findings
+                findings: findings,
+                effectsCollected: measured.effectsCollected
             )
         )
     }
@@ -37,15 +38,13 @@ extension PackageScanner {
         let configuration = try SwiftStatsConfiguration.load(configurationFile, root: root)
         let package = try describer.describePackage(at: root)
         let (targets, excludedFiles) = Self.excluding(TargetResolver.resolve(package), by: configuration)
-        let (measured, measureMilliseconds) = Stopwatch.time {
-            Self.measure(targets, root: root, configuration: configuration)
-        }
+        let scan = Self.measured(targets, root: root, configuration: configuration)
+        let (measured, effects) = (scan.measurements, scan.effects)
         let timed = toolSkipReason.map(CollectorRun.skipped)
             ?? CollectorRun.run(root: root, targets: targets, configuration: configuration, locator: tools)
         let adapters = timed.map(\.result)
         let findings = Self.attach(measured.markers + adapters.flatMap(\.findings), to: measured)
-        let ranTools = Set(adapters.filter { $0.status.state == .ran }.map(\.status.name))
-            .union([MarkerCollector.tool])
+        let ranTools = Set(adapters.filter { $0.status.state == .ran }.map(\.status.name)).union([MarkerCollector.tool])
         let compiled = Set(TargetResolver.resolve(package).flatMap(\.files))
         let dependencies = dependencies(of: package, root: root, configuration: configuration)
         let warnings = measured.warnings + Self.unusedKeyWarnings(configuration) + adapters.flatMap(\.warnings)
@@ -66,18 +65,20 @@ extension PackageScanner {
                 findings: FindingTally(findings: findings, tools: ranTools)
             ),
             sitrep: measured.sitrep,
-            collectors: (adapters.map(\.status) + [dependencies.status, HistoryCollector.notRequested])
+            collectors: (adapters.map(\.status) + [effects.status, dependencies.status, HistoryCollector.notRequested])
                 .sorted { $0.name < $1.name },
             findings: findings.sorted(by: Self.findingOrder),
             tests: measured.tests.sorted { ($0.file, $0.key) < ($1.file, $1.key) },
             dependencies: dependencies.report,
-            warnings: warnings.sorted(by: Self.warningOrder)
+            warnings: warnings.sorted(by: Self.warningOrder),
+            effects: effects.summary
         )
         return ScanOutcome(
             report: report,
             configuration: configuration,
-            measureMilliseconds: measureMilliseconds,
+            measureMilliseconds: scan.milliseconds,
             adapters: timed,
+            effects: effects,
             dependencies: dependencies
         )
     }

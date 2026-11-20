@@ -3,17 +3,20 @@
 //  SwiftStatsCore
 //
 //  The `collectors` key (PRD §10.1, §7.16): per collector, `enabled` and
-//  `path`. `options`, and collectors no milestone has built yet, are
-//  accepted with a warning; any other key is an error.
+//  `path`, though a collector SwiftStats runs in process takes no `path`.
+//  `options`, and collectors no milestone has built yet, are accepted with
+//  a warning; any other key is an error.
 //
 
 import Yams
 
 extension SwiftStatsConfiguration {
     /// Collectors SwiftStats runs.
-    static let builtCollectors: Set<String> = ["dependencies", "swiftlint", "swiftprojectlint"]
+    static let builtCollectors: Set<String> = ["dependencies", "swifteffectinference", "swiftlint", "swiftprojectlint"]
     /// Keys a collector's entry may hold.
     private static let collectorKeys: Set<String> = ["enabled", "options", "path"]
+    /// Collectors SwiftStats runs in process, which take no `path`.
+    private static let inProcessCollectors: Set<String> = ["swifteffectinference"]
 
     /// The settings `value` gives each collector, and the keys it holds that
     /// nothing reads yet, as `collectors.<name>[.options]`.
@@ -61,6 +64,12 @@ extension SwiftStatsConfiguration {
         guard unknown.isEmpty else {
             let names = unknown.map { "collectors.\(name).\($0)" }.joined(separator: ", ")
             throw ScanError.configurationInvalid(path, "unknown key(s): \(names)")
+        }
+        if inProcessCollectors.contains(name), mapping["path"] != nil {
+            throw ScanError.configurationInvalid(
+                path,
+                "`collectors.\(name).path`: a collector SwiftStats runs itself has no path"
+            )
         }
         return mapping
     }

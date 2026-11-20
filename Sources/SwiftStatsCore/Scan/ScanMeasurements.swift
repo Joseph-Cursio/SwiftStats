@@ -8,8 +8,9 @@
 
 /// SwiftStats' own measurements of a package.
 struct ScanMeasurements {
-    /// Function records, keys resolved and scores joined.
-    let records: [FunctionRecord]
+    /// Function records, keys resolved and scores joined; side effects are
+    /// joined after measuring.
+    var records: [FunctionRecord]
     /// Type records.
     let types: [TypeRecord]
     /// File records.
@@ -30,4 +31,7 @@ struct ScanMeasurements {
     let metrics: MetricsInfo
     /// Problems found while measuring.
     let warnings: [ScanWarning]
+    /// Whether SwiftEffectInference ran, so `records` carry side effects
+    /// and production roll-ups count them.
+    var effectsCollected = false
 }

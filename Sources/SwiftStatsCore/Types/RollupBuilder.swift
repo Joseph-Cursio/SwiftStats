@@ -12,23 +12,32 @@ enum RollupBuilder {
     /// One roll-up per module, by name, then `production` and `tests` for
     /// the project when the package has modules of that kind.
     static func rollups(targets: [TargetSummary], input: RollupInput) -> [Rollup] {
-        let scopes = targets.sorted { $0.name < $1.name }.map { (RollupScope.module, $0.name, Set([$0.name])) }
+        let scopes = targets.sorted { $0.name < $1.name }
+            .map { (RollupScope.module, $0.name, Set([$0.name]), $0.isTest) }
             + [("production", false), ("tests", true)].compactMap { name, isTest in
                 let modules = Set(targets.filter { $0.isTest == isTest }.map(\.name))
-                return modules.isEmpty ? nil : (RollupScope.project, name, modules)
+                return modules.isEmpty ? nil : (RollupScope.project, name, modules, isTest)
             }
-        return scopes.map { scope, name, modules in
+        return scopes.map { scope, name, modules, isTest in
             rollup(
                 scope: scope,
                 name: name,
                 input: input.narrowed(to: modules),
-                tests: TestSummaryBuilder.summary(of: modules, scope: scope, targets: targets, scan: input)
+                tests: TestSummaryBuilder.summary(of: modules, scope: scope, targets: targets, scan: input),
+                countsEffects: input.effectsCollected && isTest == false
             )
         }
     }
 
-    /// The roll-up of `input`, with its test summary.
-    private static func rollup(scope: RollupScope, name: String, input: RollupInput, tests: TestSummary) -> Rollup {
+    /// The roll-up of `input`, with its test summary, and with side effects
+    /// counted when `countsEffects` is set.
+    private static func rollup(
+        scope: RollupScope,
+        name: String,
+        input: RollupInput,
+        tests: TestSummary,
+        countsEffects: Bool
+    ) -> Rollup {
         let records = input.records
         let types = input.types
         let files = input.files
@@ -54,7 +63,8 @@ enum RollupBuilder {
             findings: input.findings.byRule(in: paths),
             findingKinds: input.findings.byKind(in: paths),
             api: APISurface(input.declarations, overExposed: input.findings.overExposed(in: paths)),
-            tests: tests
+            tests: tests,
+            effects: countsEffects ? EffectRollup(records) : nil
         )
     }
 

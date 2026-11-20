@@ -53,6 +53,10 @@ public struct FunctionRecord: Codable, Hashable, Sendable {
     public let ifConfig: String?
     /// Production code, a test, or a test-target helper.
     public let role: CodeRole
+    /// What SwiftEffectInference says about the record (PRD §7.10): set on
+    /// production `func`s, computed-property getters and `subscript`s when
+    /// the collector ran; nil for every other record, and when it didn't.
+    public internal(set) var effect: EffectFacts?
 
     /// Creates a record. Fields are documented on their properties.
     public init(

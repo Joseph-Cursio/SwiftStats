@@ -46,7 +46,10 @@ struct SnapshotStoreTests {
         let production = loaded.rollups.filter { $0.scope == .project && $0.name == "production" }
         #expect(production.first { $0.metric == "functions.func" }?.value == 2)
         #expect(production.first { $0.metric == "findings.swiftstats.precondition" }?.collector == "swiftstats")
-        let collectorNames = ["dependencies", "history", "swiftlint", "swiftprojectlint", "swiftstats"]
+        #expect(production.first { $0.metric == "effects.purity.pure" }?.collector == "swifteffectinference")
+        let collectorNames = [
+            "dependencies", "history", "swifteffectinference", "swiftlint", "swiftprojectlint", "swiftstats"
+        ]
         #expect(snapshot.info.collectors.map(\.name) == collectorNames)
     }
 

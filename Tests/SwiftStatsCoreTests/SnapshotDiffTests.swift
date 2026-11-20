@@ -45,8 +45,8 @@ struct SnapshotDiffTests {
         #expect(diff.families.isEmpty && diff.functions.isEmpty && diff.rollups.isEmpty)
         let outcomes = Dictionary(uniqueKeysWithValues: diff.collectors.map { ($0.name, $0.outcome) })
         #expect(outcomes == [
-            "dependencies": .notCollected, "history": .notCollected, "swiftlint": .notCollected,
-            "swiftprojectlint": .notCollected, "swiftstats": .compared
+            "dependencies": .notCollected, "history": .notCollected, "swifteffectinference": .compared,
+            "swiftlint": .notCollected, "swiftprojectlint": .notCollected, "swiftstats": .compared
         ])
         #expect(MarkdownDiff.render(diff).contains("No changes."))
     }
@@ -77,6 +77,32 @@ struct SnapshotDiffTests {
         #expect(diff.rollups.isEmpty)
         #expect(diff.isEmpty == false)
         #expect(MarkdownDiff.render(diff).contains("| swiftstats | not-comparable | different builds |"))
+    }
+
+    @Test("side effects compare only when SwiftStats' build does, since SwiftStats' own code maps them")
+    func sideEffectsNeedOwnBuild() throws {
+        let directory = try SnapshotHarness.temporaryDirectory("Diff")
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let package = try TemporaryPackage(Self.files)
+        defer { package.remove() }
+        let older = SwiftStatsBuild(identity: "inputs:aaa", label: nil)
+        let newer = SwiftStatsBuild(identity: "inputs:bbb", label: nil)
+
+        let first = try Self.stored(package, build: older, store: "a.sqlite", in: directory)
+        let second = try Self.stored(package, build: newer, store: "b.sqlite", in: directory)
+        let effects = SnapshotDiff.diff(first, second).collectors.first { $0.name == EffectCollector.name }
+        let same = SnapshotDiff.diff(first, first).collectors.first { $0.name == EffectCollector.name }
+
+        let runs = [first, second].compactMap { snapshot in
+            snapshot.info.collectors.first { $0.name == EffectCollector.name }
+        }
+        #expect(runs.map(\.identity) == [EffectInferenceRevision.identity, EffectInferenceRevision.identity])
+        #expect(runs.map(\.version) == [EffectInferenceRevision.pinned, EffectInferenceRevision.pinned])
+        #expect(runs[0].options == runs[1].options)
+        #expect(effects?.outcome == .notComparable)
+        #expect(effects?.reason == "SwiftStats' build differs, and its own code maps the side effects")
+        #expect(same?.outcome == .compared)
+        #expect(second.rollups.contains { $0.collector == EffectCollector.name })
     }
 
     @Test("when SwiftStats' builds differ, changed code gives no function or roll-up deltas, and the Markdown says why")

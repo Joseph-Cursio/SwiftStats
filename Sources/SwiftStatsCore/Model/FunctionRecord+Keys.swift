@@ -27,6 +27,7 @@ extension FunctionRecord {
             role: role
         )
         copy.complexity = complexity
+        copy.effect = effect
         return copy
     }
 }

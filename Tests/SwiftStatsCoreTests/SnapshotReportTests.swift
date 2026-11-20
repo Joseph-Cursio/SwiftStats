@@ -70,11 +70,14 @@ struct SnapshotReportTests {
         let expected = [
             "# Probe", "## Signals", "### Hotspots", "### Bug-prone", "### Unstable fixes",
             "### Tests not keeping up", "### Safe to leave", "## Collectors", "## Project",
-            "### Findings by rule", "### Findings by kind", "## Modules"
+            "### Findings by rule", "### Findings by kind", "## Side effects", "## Modules"
         ]
         #expect(headings == expected)
         #expect(text.contains("Left out: history was not collected: skipped, not in a git repository with commits."))
         // One `precondition` in four stripped lines: 250 per 1k.
         #expect(text.contains("| production | swiftstats | precondition | 1 | 250.0 |"))
+        // `check` traps, so purity is refuted and no tier resolves.
+        #expect(text.contains("| refuted | 1 |"))
+        #expect(text.contains("| pure | 0 |"))
     }
 }

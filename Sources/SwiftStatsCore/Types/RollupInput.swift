@@ -20,6 +20,8 @@ struct RollupInput {
     var tests: [TestRecord]
     /// Findings, with the tools that ran; narrowed by file when counted.
     var findings: FindingTally
+    /// Whether SwiftEffectInference ran, so production scopes count effects.
+    var effectsCollected: Bool
 
     /// These facts for `modules` only.
     func narrowed(to modules: Set<String>) -> Self {
@@ -29,7 +31,8 @@ struct RollupInput {
             files: files.filter { modules.contains($0.module) },
             declarations: declarations.filter { modules.contains($0.module) },
             tests: tests.filter { modules.contains($0.module) },
-            findings: findings
+            findings: findings,
+            effectsCollected: effectsCollected
         )
     }
 }

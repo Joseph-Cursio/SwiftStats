@@ -48,4 +48,7 @@ public struct Rollup: Codable, Hashable, Sendable {
     public let api: APISurface
     /// Tests by framework and kind, and the test-to-code line counts (PRD §7.8).
     public let tests: TestSummary
+    /// Side-effect tiers and purity verdicts (PRD §7.10); nil when
+    /// SwiftEffectInference didn't run, and on test modules and the `tests` part.
+    public let effects: EffectRollup?
 }

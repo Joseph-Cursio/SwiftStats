@@ -16,8 +16,9 @@ struct ScanCommand: ParsableCommand {
         the scan's records, findings, test inventory, dependencies, roll-ups and Sitrep-compatible counts; \
         -o writes them to a file. SwiftProjectLint and SwiftLint run when found on PATH (as swiftprojectlint \
         and swiftlint), or at collectors.<name>.path in .swiftstats.yml; collectors.<name>.enabled: false \
-        turns one off. The dependency graph comes from `swift package show-dependencies`, run only when the \
-        package's dependencies are already resolved.
+        turns one off. Side effects come from the linked SwiftEffectInference \
+        (collectors.swifteffectinference.enabled: false turns it off). The dependency graph comes from \
+        `swift package show-dependencies`, run only when the package's dependencies are already resolved.
         """
     )
 

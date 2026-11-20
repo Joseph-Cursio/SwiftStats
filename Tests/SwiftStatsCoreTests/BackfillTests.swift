@@ -85,7 +85,7 @@ struct BackfillTests {
         #expect(markdown.contains("| Commit | Date | Value | Break |"))
     }
 
-    @Test("a backfilled snapshot has no history and no tools, and says why")
+    @Test("a backfilled snapshot has no history and no tools, and says why, but has side effects")
     func backfilledCollectors() throws {
         let repository = try HistoryRepository()
         defer { repository.remove() }
@@ -104,5 +104,7 @@ struct BackfillTests {
         #expect(runs["history"]?.reason == "backfill")
         #expect(runs["swiftlint"]?.reason == "backfill runs SwiftStats only; --with-tools adds the tools")
         #expect(runs["swiftstats"]?.state == .ran)
+        #expect(runs["swifteffectinference"]?.state == .ran)
+        #expect(runs["swifteffectinference"]?.identity == EffectInferenceRevision.identity)
     }
 }
