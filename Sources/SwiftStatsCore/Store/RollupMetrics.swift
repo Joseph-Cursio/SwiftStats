@@ -27,6 +27,8 @@ enum RollupMetrics {
     private static let perToolFields: Set<String> = ["findings", "findingKinds"]
     /// The roll-up field whose numbers come from SwiftEffectInference.
     private static let effectsField = "effects"
+    /// The roll-up field whose numbers come from SwiftInferProperties.
+    private static let propertiesField = "properties"
 
     /// Every number in `rollup`, sorted by path. Nulls and booleans are left
     /// out: a null is a value not collected, and a flag isn't a metric.
@@ -47,6 +49,9 @@ enum RollupMetrics {
         }
         if path.first == effectsField {
             return EffectCollector.name
+        }
+        if path.first == propertiesField {
+            return SwiftInferPropertiesAdapter.name
         }
         return SwiftStatsCollector.name
     }

@@ -52,6 +52,22 @@ struct TemporaryPackage {
         ].filter { $0.sources.isEmpty == false }
     }
 
+    /// A package holding `files` (paths relative to the root) and a
+    /// `Package.swift` unless `files` has one, whose description lists `targets`.
+    init(_ files: [String: String], targets: [DescribedTarget]) throws {
+        root = FileManager.default.temporaryDirectory
+            .appendingPathComponent("TemporaryPackage-\(UUID().uuidString)")
+        for (path, contents) in files.merging(["Package.swift": ""], uniquingKeysWith: { first, _ in first }) {
+            let url = root.appendingPathComponent(path)
+            try FileManager.default.createDirectory(
+                at: url.deletingLastPathComponent(),
+                withIntermediateDirectories: true
+            )
+            try contents.write(to: url, atomically: true, encoding: .utf8)
+        }
+        self.targets = targets
+    }
+
     /// Scans the package, finding tools with `tools`.
     func scan(tools: ToolLocator) throws -> ScanReport {
         try PackageScanner(describer: describer, tools: tools).scan(packageAt: root)

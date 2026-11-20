@@ -29,6 +29,14 @@
       "version" : "ba3624d754c3c9150c946f66468c2c356be3e7e0"
     },
     {
+      "name" : "swiftinferproperties",
+      "options" : [
+
+      ],
+      "reason" : "`swift-infer` not found on PATH; set collectors.swiftinferproperties.path",
+      "state" : "skipped"
+    },
+    {
       "name" : "swiftlint",
       "options" : [
 

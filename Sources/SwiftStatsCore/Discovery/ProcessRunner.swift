@@ -61,6 +61,25 @@ enum ProcessRunner {
     }
 
     /// Runs `executable` as `run(executable:arguments:in:accepting:)` does,
+    /// with `environment` added to this process's.
+    static func run(
+        executable: String,
+        arguments: [String],
+        in directory: URL,
+        accepting accepted: Set<Int32>,
+        environment: [String: String]
+    ) throws -> ProcessOutput {
+        try run(
+            executable: executable,
+            arguments: arguments,
+            in: directory,
+            accepting: accepted,
+            environment: environment,
+            input: nil
+        )
+    }
+
+    /// Runs `executable` as `run(executable:arguments:in:accepting:)` does,
     /// with `environment` added to this process's and standard input read
     /// from `input` when given.
     private static func run(

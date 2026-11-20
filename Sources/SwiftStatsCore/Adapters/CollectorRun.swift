@@ -2,7 +2,8 @@
 //  CollectorRun.swift
 //  SwiftStatsCore
 //
-//  Runs the external tools' collectors in a fixed order (PRD §7.16).
+//  Runs the external tools' collectors in a fixed order (PRD §7.16), and
+//  starts SwiftInferProperties' slower run in the background (§7.11).
 //
 
 import Foundation
@@ -41,9 +42,36 @@ enum CollectorRun {
         ]
     }
 
+    /// Starts the SwiftInferProperties collector on the package at `root`,
+    /// whose scanned targets are `targets`, on a background thread: it needs
+    /// only the package's files, so it runs while the scan measures them.
+    static func startProperties(
+        root: URL,
+        targets: [TargetSummary],
+        configuration: SwiftStatsConfiguration,
+        locator: ToolLocator
+    ) -> BackgroundJob<SwiftInferRun> {
+        let resolution = ToolResolution.resolve(
+            SwiftInferPropertiesAdapter.name,
+            executable: SwiftInferPropertiesAdapter.executableName,
+            configuration: configuration,
+            locator: locator,
+            root: root
+        )
+        return BackgroundJob {
+            switch resolution {
+            case .found(let executable):
+                return SwiftInferPropertiesAdapter.run(executable: executable, root: root, targets: targets)
+
+            case .skip(let reason):
+                return SwiftInferRun.skipped(reason)
+            }
+        }
+    }
+
     /// Every external collector skipped for `reason`.
     static func skipped(_ reason: String) -> [TimedAdapterResult] {
-        [SwiftProjectLintAdapter.name, SwiftLintAdapter.name].map { name in
+        [SwiftProjectLintAdapter.name, SwiftLintAdapter.name, SwiftInferPropertiesAdapter.name].map { name in
             TimedAdapterResult(result: .skipped(name, reason: reason), executable: nil, milliseconds: 0)
         }
     }

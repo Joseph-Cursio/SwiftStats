@@ -70,8 +70,8 @@ struct SnapshotReportTests {
         let expected = [
             "# Probe", "## Signals", "### Hotspots", "### Bug-prone", "### Unstable fixes",
             "### Tests not keeping up", "### Safe to leave", "## Collectors", "## Project",
-            "### Findings by rule", "### Findings by kind", "## Side effects", "## Law checks",
-            "## Modules"
+            "### Findings by rule", "### Findings by kind", "## Side effects", "## Property candidates",
+            "## Law checks", "## Modules"
         ]
         #expect(headings == expected)
         #expect(text.contains("Left out: history was not collected: skipped, not in a git repository with commits."))
@@ -80,6 +80,9 @@ struct SnapshotReportTests {
         // `check` traps, so purity is refuted and no tier resolves.
         #expect(text.contains("| refuted | 1 |"))
         #expect(text.contains("| pure | 0 |"))
+        #expect(text.contains(
+            "Not collected: skipped, `swift-infer` not found on PATH; set collectors.swiftinferproperties.path."
+        ))
         // The package declares no conformance the kit covers.
         #expect(text.contains("| notRun | 0 |"))
     }

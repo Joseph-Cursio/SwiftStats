@@ -109,6 +109,42 @@ struct BackfillEdgeTests {
             == id)
     }
 
+    @Test("--rerun without tools keeps a snapshot holding SwiftInferProperties' results")
+    func rerunKeepsHeldSuggestions() throws {
+        let repository = try HistoryRepository()
+        defer { repository.remove() }
+        try repository.write(["Sources/Lib/One.swift": Self.one(1)])
+        try repository.commit("One", day: 0)
+        let row = PropertyHarness.Row(identity: "0x00000000000000AA", location: "@ROOT@/Sources/Lib/One.swift:1")
+        let tool = try FakeTool.makeIndexer(
+            indexes: ["Lib": PropertyHarness.index([row])],
+            errors: [:],
+            statuses: [:],
+            delays: [:]
+        )
+        defer { PropertyHarness.remove(tool) }
+        let indexed = try SnapshotWorkspace(
+            packageRoot: repository.root,
+            configurationFile: nil,
+            storeOverride: nil,
+            build: SnapshotHarness.build,
+            describer: HistoryRepository.DiskDescriber(),
+            tools: PropertyHarness.locator(tool)
+        )
+        let id = try indexed.scanWorkingTree(history: .skipped("test")).id
+        let run = try indexed.store.info(id: id).collectors.first { $0.name == SwiftInferPropertiesAdapter.name }
+        try #require(run?.state == .ran)
+        #expect(run?.identity?.hasPrefix("sha256:") == true)
+        let other = try repository.workspace(build: SwiftStatsBuild(identity: "inputs:other", label: nil))
+
+        let steps = try Self.backfill(other, Self.every(1, rerun: true))
+
+        #expect(steps.map(\.action) == [.kept])
+        #expect(steps.first?.note?.contains("swiftinferproperties") == true)
+        #expect(try other.store.snapshotID(package: "Probe", packagePath: "", commit: steps[0].commit, isDirty: false)
+            == id)
+    }
+
     @Test("a tool metric doesn't break between snapshots where the tool ran on neither side")
     func toolMetricWithoutTool() throws {
         let repository = try HistoryRepository()

@@ -18,7 +18,9 @@ import Foundation
 
 extension SnapshotWorkspace {
     /// Collectors whose results a backfill without tools doesn't collect.
-    private static let toolCollectors: Set<String> = [SwiftLintAdapter.name, SwiftProjectLintAdapter.name]
+    private static let toolCollectors: Set<String> = [
+        SwiftLintAdapter.name, SwiftProjectLintAdapter.name, SwiftInferPropertiesAdapter.name
+    ]
 
     /// The commits `plan` picks from `line` (oldest first), oldest first.
     static func picks(_ line: [(commit: String, time: Int)], plan: BackfillPlan) -> [String] {

@@ -24,6 +24,9 @@ struct RollupInput {
     var effectsCollected: Bool
     /// Law checks per production conformance.
     var laws: [LawCheck]
+    /// SwiftInferProperties' suggestions; nil when it didn't run. Its
+    /// candidates are narrowed by file when counted, like findings.
+    var properties: PropertyReport?
 
     /// These facts for `modules` only.
     func narrowed(to modules: Set<String>) -> Self {
@@ -35,7 +38,8 @@ struct RollupInput {
             tests: tests.filter { modules.contains($0.module) },
             findings: findings,
             effectsCollected: effectsCollected,
-            laws: laws.filter { modules.contains($0.module) }
+            laws: laws.filter { modules.contains($0.module) },
+            properties: properties
         )
     }
 }

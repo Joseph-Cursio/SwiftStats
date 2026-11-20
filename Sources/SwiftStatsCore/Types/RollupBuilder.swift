@@ -31,6 +31,8 @@ enum RollupBuilder {
 
     /// The roll-up of `input`, with its test summary; a production scope
     /// also counts law checks, and side effects when they were collected.
+    /// Suggestions count by file, and the project's production part also
+    /// counts those placed in no scanned file.
     private static func rollup(
         scope: RollupScope,
         name: String,
@@ -65,7 +67,10 @@ enum RollupBuilder {
             api: APISurface(input.declarations, overExposed: input.findings.overExposed(in: paths)),
             tests: tests,
             effects: isProduction && input.effectsCollected ? EffectRollup(records) : nil,
-            laws: isProduction ? LawRollup(input.laws) : nil
+            laws: isProduction ? LawRollup(input.laws) : nil,
+            properties: input.properties.flatMap { properties in
+                PropertyRollup(properties.candidates, in: paths, countsUnplaced: scope == .project && isProduction)
+            }
         )
     }
 
