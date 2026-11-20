@@ -2,7 +2,7 @@
 //  SignalName.swift
 //  SwiftStatsCore
 //
-//  The derived signals M3 computes (PRD §8).
+//  The derived signals (PRD §8), and the inputs each needs.
 //
 
 /// A derived signal.
@@ -45,5 +45,13 @@ public enum SignalName: String, CaseIterable, Codable, Hashable, Sendable {
     /// than a fixed condition.
     var isRanked: Bool {
         self == .hotspot || self == .bugProne
+    }
+
+    /// The inputs the signal needs; without one it is left out.
+    var requirements: [SignalRequirement] {
+        switch self {
+        case .bugProne, .hotspot, .safeToLeave, .testsNotKeepingUp, .unstableFixes:
+            [.history]
+        }
     }
 }

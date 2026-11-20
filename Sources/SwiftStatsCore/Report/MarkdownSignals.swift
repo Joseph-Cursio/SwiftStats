@@ -20,21 +20,16 @@ public enum MarkdownSignals {
     /// Characters of a commit hash or date a report shows.
     static let shortLength = 10
 
-    /// The signals section's lines, after its heading.
+    /// The signals section's lines, after its heading. What the history
+    /// numbers rest on heads the first signal computed from history.
     static func render(_ signals: [SignalResult], history: HistoryReport?) -> [String] {
         var lines: [String] = []
-        if let history {
-            let source = "From the history of \(history.commit.prefix(shortLength)) over the "
-                + "\(history.windowDays) days to \(history.date); "
-                + "thresholds come from the configuration the report was made with."
-            lines += ["", source]
-            if history.mergeStyle == .squash {
-                let coarse = "This repository squashes its merges, so each branch counts as one commit and the "
-                    + "history is coarse."
-                lines += ["", coarse]
-            }
-        }
+        var source = history.map(Self.source)
         for signal in signals {
+            if let header = source, signal.name.requirements.contains(.history) {
+                lines += header
+                source = nil
+            }
             lines += ["", "### \(signal.name.title)", ""]
             if let reason = signal.leftOut {
                 lines.append("Left out: \(reason).")
@@ -99,6 +94,21 @@ public enum MarkdownSignals {
         return lines
     }
 
+    /// What the history signals rest on: the history read and, for a
+    /// squashing repository, that it is coarse.
+    private static func source(_ history: HistoryReport) -> [String] {
+        let source = "From the history of \(history.commit.prefix(shortLength)) over the "
+            + "\(history.windowDays) days to \(history.date); "
+            + "thresholds come from the configuration the report was made with."
+        var lines = ["", source]
+        if history.mergeStyle == .squash {
+            let coarse = "This repository squashes its merges, so each branch counts as one commit and the "
+                + "history is coarse."
+            lines += ["", coarse]
+        }
+        return lines
+    }
+
     /// A list of commit notes under `title`.
     private static func notes(_ title: String, _ notes: [HistoryCommitNote]) -> [String] {
         var lines = ["", "### \(title)", ""]
@@ -119,26 +129,8 @@ public enum MarkdownSignals {
 
     /// A table of signal items with the inputs `signal` uses.
     private static func table(_ items: [SignalItem], signal: SignalName, markMembers: Bool = false) -> [String] {
-        let inputs: [(String, (SignalItem) -> String)] = switch signal {
-        case .bugProne:
-            [("Fixes (window / all)", { "\($0.fixes) / \($0.allFixes)" }), ("Changes", { String($0.changes) })]
-
-        case .hotspot:
-            [("Changes", { String($0.changes) }), ("Cognitive", { MarkdownNumber.optional($0.cognitive) })]
-
-        case .safeToLeave:
-            [
-                ("Cognitive", { MarkdownNumber.optional($0.cognitive) }),
-                ("First seen", { String(($0.firstSeen ?? "—").prefix(shortLength)) })
-            ]
-
-        case .testsNotKeepingUp:
-            [("Changes", { String($0.changes) }), ("With a test change", { String($0.testChanges) })]
-
-        case .unstableFixes:
-            [("Reverts", { String($0.reverts) }), ("Repeated fixes", { String($0.repeatedFixes) })]
-        }
-        var header = ["#", "Function", "Score"] + inputs.map(\.0) + ["Traced by"]
+        let inputs = columns(for: signal)
+        var header = ["#", "Function", "Score"] + inputs.map(\.0)
         if markMembers {
             header.append("Member")
         }
@@ -146,17 +138,64 @@ public enum MarkdownSignals {
         for item in items {
             var row = [
                 String(item.rank),
-                display(item.family, file: item.file, line: item.line),
+                display(item.subject, file: item.file, line: item.line),
                 MarkdownNumber.value(item.score)
             ]
             row += inputs.map { $0.1(item) }
-            row.append(item.tracedBy.rawValue)
             if markMembers {
                 row.append(item.member ? "yes" : "no")
             }
             table.rows.append(row)
         }
         return table.lines(empty: "")
+    }
+
+    /// The input columns of `signal`'s table, after the score: headings,
+    /// and how each cell reads an item.
+    private static func columns(for signal: SignalName) -> [(String, (SignalItem) -> String)] {
+        let traced = ("Traced by", history { $0.tracedBy.rawValue })
+        return switch signal {
+        case .bugProne:
+            [
+                ("Fixes (window / all)", history { "\($0.fixes) / \($0.allFixes)" }),
+                ("Changes", history { String($0.changes) }),
+                traced
+            ]
+
+        case .hotspot:
+            [
+                ("Changes", history { String($0.changes) }),
+                ("Cognitive", history { MarkdownNumber.optional($0.cognitive) }),
+                traced
+            ]
+
+        case .safeToLeave:
+            [
+                ("Cognitive", history { MarkdownNumber.optional($0.cognitive) }),
+                ("First seen", history { String(($0.firstSeen ?? "—").prefix(shortLength)) }),
+                traced
+            ]
+
+        case .testsNotKeepingUp:
+            [
+                ("Changes", history { String($0.changes) }),
+                ("With a test change", history { String($0.testChanges) }),
+                traced
+            ]
+
+        case .unstableFixes:
+            [
+                ("Reverts", history { String($0.reverts) }),
+                ("Repeated fixes", history { String($0.repeatedFixes) }),
+                traced
+            ]
+        }
+    }
+
+    /// A cell reading an item's history payload with `cell`; a dash
+    /// without one.
+    private static func history(_ cell: @escaping (SignalItem.History) -> String) -> (SignalItem) -> String {
+        { item in item.history.map(cell) ?? "—" }
     }
 
     /// A family as a report names it: its key without the module, and where it is.

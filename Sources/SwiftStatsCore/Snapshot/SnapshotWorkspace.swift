@@ -67,7 +67,7 @@ public struct SnapshotWorkspace {
 
     /// The signals of snapshot `id`, with this workspace's thresholds.
     public func signals(id: Int64) throws -> [SignalResult] {
-        SignalEngine.signals(of: try store.load(id: id), thresholds: configuration.signals)
+        SignalEngine.signals(of: SignalInputs(snapshot: try store.load(id: id)), thresholds: configuration.signals)
     }
 
     /// Scans the working tree, reading history from `history`, stores the

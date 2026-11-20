@@ -18,7 +18,7 @@ struct SnapshotReportTests {
             let store = try SnapshotStore(at: url)
             let report = SnapshotReport(
                 snapshot: try store.info(id: id),
-                signals: SignalEngine.signals(of: try store.load(id: id), thresholds: SignalThresholds()),
+                signals: SignalEngine.signals(of: SignalInputs(snapshot: try store.load(id: id)), thresholds: .init()),
                 scan: try store.report(id: id)
             )
             return (try ScanReportEncoder.encode(report), MarkdownReport.render(report))
@@ -61,7 +61,7 @@ struct SnapshotReportTests {
 
         let report = SnapshotReport(
             snapshot: try store.info(id: id),
-            signals: SignalEngine.signals(of: try store.load(id: id), thresholds: SignalThresholds()),
+            signals: SignalEngine.signals(of: SignalInputs(snapshot: try store.load(id: id)), thresholds: .init()),
             scan: try store.report(id: id)
         )
         let text = MarkdownReport.render(report)

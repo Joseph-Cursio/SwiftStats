@@ -15,9 +15,10 @@ public struct SignalResult: Codable, Hashable, Sendable {
     public let leftOut: String?
     /// How membership was decided, such as "top 10% of 812 candidates".
     public let rule: String
-    /// Families it was computed over.
+    /// The size of the pool it was computed over.
     public let candidates: Int
-    /// Families with a score above zero, ranked; members first.
+    /// What it lists, in its order: a ranked signal's candidates scoring
+    /// above zero, members first; another signal's members.
     public let items: [SignalItem]
 
     /// The members.

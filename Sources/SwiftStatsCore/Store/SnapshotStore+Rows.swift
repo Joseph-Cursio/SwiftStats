@@ -48,6 +48,11 @@ extension SnapshotStore {
         return StoredSnapshot(
             id: id,
             info: try info(id: id, in: database),
+            reportSchemaVersion: try Int.fetchOne(
+                database,
+                sql: "SELECT reportSchemaVersion FROM snapshot WHERE id = ?",
+                arguments: [id]
+            ) ?? 0,
             functions: try FunctionRow.filter(mine)
                 .order(Column("key"), Column("file"), Column("startLine"))
                 .fetchAll(database),

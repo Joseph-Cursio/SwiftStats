@@ -83,13 +83,13 @@ struct SignalTests {
         let hotspot = try #require(byName[.hotspot])
 
         #expect(signals.map(\.name) == SignalName.reportOrder)
-        #expect(hotspot.items.map(\.family) == ["Lib::func busy(_: Int) -> Int"])
+        #expect(hotspot.items.map(\.subject) == ["Lib::func busy(_: Int) -> Int"])
         #expect(hotspot.items.first?.score == 9)
         #expect(hotspot.items.first?.member == true)
         #expect(hotspot.candidates == 2)
-        #expect(byName[.bugProne]?.members.map(\.family) == ["Lib::func busy(_: Int) -> Int"])
-        #expect(byName[.safeToLeave]?.members.map(\.family) == ["Lib::func calm(_: Int) -> Int"])
-        #expect(byName[.testsNotKeepingUp]?.members.map(\.family) == ["Lib::func busy(_: Int) -> Int"])
+        #expect(byName[.bugProne]?.members.map(\.subject) == ["Lib::func busy(_: Int) -> Int"])
+        #expect(byName[.safeToLeave]?.members.map(\.subject) == ["Lib::func calm(_: Int) -> Int"])
+        #expect(byName[.testsNotKeepingUp]?.members.map(\.subject) == ["Lib::func busy(_: Int) -> Int"])
         #expect(byName[.unstableFixes]?.members.isEmpty == true)
     }
 
@@ -108,7 +108,7 @@ struct SignalTests {
         try repository.commit("Change two", day: 1)
         let workspace = try repository.workspace()
         let id = try workspace.scanWorkingTree().id
-        let stored = try workspace.store.load(id: id)
+        let stored = SignalInputs(snapshot: try workspace.store.load(id: id))
 
         let hotspot = { (percent: Double) in
             SignalEngine.signals(of: stored, thresholds: SignalThresholds(percents: ["hotspot": percent]))

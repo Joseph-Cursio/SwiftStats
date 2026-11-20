@@ -13,6 +13,8 @@ public struct StoredSnapshot: Hashable, Sendable {
     public let id: Int64
     /// The metadata and collector runs.
     public let info: SnapshotInfo
+    /// The `schemaVersion` of the scan report it was stored from.
+    public let reportSchemaVersion: Int
     /// Its function records.
     public let functions: [FunctionRow]
     /// Its finding locations.

@@ -59,12 +59,13 @@ def hotspots(name, repo, package_path, store, scan):
     path = os.path.join(ROOT, "Tests", "Fixtures", "HotspotLabels", f"{name}.json")
     kept = existing_labels(path, lambda item: (item["family"], item["file"]))
     items = []
+    # top's JSON schema 2 names the family `subject` and moves its history into `history`.
     for item in top["signal"]["items"]:
-        label, note = kept.get((item["family"], item["file"]), (None, ""))
+        label, note = kept.get((item["subject"], item["file"]), (None, ""))
         items.append({
-            "rank": item["rank"], "family": item["family"], "file": item["file"], "line": item["line"],
-            "score": item["score"], "member": item["member"], "changes": item["changes"],
-            "cognitive": item["cognitive"], "label": label, "note": note,
+            "rank": item["rank"], "family": item["subject"], "file": item["file"], "line": item["line"],
+            "score": item["score"], "member": item["member"], "changes": item["history"]["changes"],
+            "cognitive": item["history"].get("cognitive"), "label": label, "note": note,
         })
     write(path, {
         "repo": name, "packagePath": package_path, "commit": top["commit"],
