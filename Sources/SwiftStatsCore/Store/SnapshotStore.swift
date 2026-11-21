@@ -243,6 +243,13 @@ public struct SnapshotStore: Sendable {
         try queue.read { database in try Self.snapshot(id: id, in: database) }
     }
 
+    /// Whether snapshot `id` holds coverage a rescan would have to carry
+    /// or drop, read without reading the coverage itself
+    /// (`SnapshotStore+Coverage`).
+    func holdsCoverage(id: Int64) throws -> Bool {
+        try queue.read { database in try Self.holdsCoverage(id: id, in: database) }
+    }
+
     /// The coverage snapshot `id` holds, for a rescan that may carry it
     /// (`SnapshotStore+Coverage`); nil when it holds none.
     func heldCoverage(id: Int64) throws -> HeldCoverage? {

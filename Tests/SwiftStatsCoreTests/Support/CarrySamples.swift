@@ -29,6 +29,17 @@ enum CarrySamples {
     )
     /// A clean git state at `c1`.
     static let clean = SnapshotHarness.git(commit: "c1")
+    /// The run a scan whose `swift` can't be found skips coverage with.
+    static let notFound = CollectorRunInfo(
+        name: CoverageAdapter.name,
+        state: .skipped,
+        reason: "`swift` not found on PATH; set collectors.coverage.path",
+        version: nil,
+        identity: nil,
+        identityLabel: nil,
+        options: [],
+        durationMilliseconds: 0
+    )
     /// The shapes package's `Kit` file.
     static let kit = CoverageSamples.shapesFiles["Sources/Kit/Kit.swift"] ?? ""
     /// The shapes package's `Lib` file without its internal helper.
@@ -36,6 +47,11 @@ enum CarrySamples {
         "Sources/Lib/Lib.swift": (CoverageSamples.shapesFiles["Sources/Lib/Lib.swift"] ?? "")
             .replacingOccurrences(of: "func helper() -> Int {\n    1\n}", with: "")
     ]
+
+    /// A git state at `c1` with uncommitted changes hashed as `hash`.
+    static func dirty(_ hash: String) -> GitState {
+        GitState(commit: "c1", branch: nil, isDirty: true, dirtyHash: hash, packagePath: "")
+    }
 
     /// The shapes package scanned at `git` on the harness date as the test
     /// build, without history.

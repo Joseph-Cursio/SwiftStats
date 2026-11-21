@@ -22,6 +22,8 @@ extension SnapshotWorkspace {
     /// Collectors whose results a backfill never collects: it reads no
     /// history and never runs the tests.
     private static let neverCollected: Set<String> = [HistoryCollector.name, CoverageAdapter.name]
+    /// Why a backfill without tools skips the external collectors.
+    static let backfillToolSkipReason = "backfill runs SwiftStats only; --with-tools adds the tools"
     /// Collectors whose results a backfill without tools doesn't collect.
     private static let toolCollectors: Set<String> = [
         SwiftLintAdapter.name, SwiftProjectLintAdapter.name, SwiftInferPropertiesAdapter.name,
@@ -88,7 +90,7 @@ extension SnapshotWorkspace {
             scanner: PackageScanner(
                 describer: describer,
                 tools: scanner.scanner.tools,
-                toolSkipReason: plan.withTools ? nil : "backfill runs SwiftStats only; --with-tools adds the tools"
+                toolSkipReason: plan.withTools ? nil : Self.backfillToolSkipReason
             ),
             build: scanner.build
         )

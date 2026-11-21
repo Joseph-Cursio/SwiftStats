@@ -4,9 +4,11 @@ import Testing
 
 /// What a rescan does to coverage it could carry or can't (M5, design §6),
 /// on hand-made snapshots: `--drop-coverage` drops only coverage that
-/// doesn't carry, carried coverage keeps the warnings mapping it gave, and
-/// a rescan whose coverage run failed carries what it can, saying so, while
-/// a run that ran replaces the coverage as any scan does.
+/// doesn't carry, or that is too damaged to read, carried coverage keeps
+/// the warnings mapping it gave, and a rescan whose coverage run was asked
+/// for and failed or was skipped carries what it can, saying so, or is
+/// refused naming the run's reason, while a run that ran replaces the
+/// coverage as any scan does.
 @Suite("Coverage carry replacements")
 struct CoverageCarryReplacementTests {
     /// A coverage run whose build failed.
@@ -133,10 +135,133 @@ struct CoverageCarryReplacementTests {
         let droppedPlainCoverage = try workspace.store.load(id: droppedPlain.id).coverage
 
         let helper = try CarrySamples.key("helper", in: plain)
-        #expect(refusal.error == CarrySamples.refused("`\(helper)` names no record now"))
+        #expect(refusal.error == CarrySamples.refused(
+            "`\(helper)` names no record now; this scan's coverage run failed (the build failed)"
+        ))
         #expect(refusal.kept)
         #expect(dropped.snapshot == failedGone && droppedCoverage == nil)
         #expect(droppedPlain.snapshot == gone && droppedPlainCoverage == nil)
+    }
+
+    @Test("""
+        a rescan whose coverage run was asked for and skipped carries the coverage, with a warning naming the skip \
+        that a later carry doesn't repeat, while a backfill's skip gives none
+        """)
+    func skippedRunCarries() throws {
+        let (package, workspace) = try CarrySamples.store()
+        defer { package.remove() }
+        let held = try CarrySamples.covered(try CarrySamples.scan(git: CarrySamples.clean))
+        let skipped = CoverageSnapshots.replacing(
+            try CarrySamples.scan(git: CarrySamples.clean, date: SnapshotHarness.date + CarrySamples.day),
+            git: CarrySamples.clean,
+            coverage: nil,
+            run: CarrySamples.notFound
+        )
+        let backfillRun = CollectorRunInfo(
+            name: CoverageAdapter.name,
+            state: .skipped,
+            reason: SnapshotWorkspace.backfillToolSkipReason,
+            version: nil,
+            identity: nil,
+            identityLabel: nil,
+            options: [],
+            durationMilliseconds: 0
+        )
+        let backfilled = CoverageSnapshots.replacing(
+            try CarrySamples.scan(git: CarrySamples.clean, date: SnapshotHarness.date + 3 * CarrySamples.day),
+            git: CarrySamples.clean,
+            coverage: nil,
+            run: backfillRun
+        )
+        let collected = SnapshotScanner.format(SnapshotHarness.date)
+        let notice = ScanWarning(
+            file: nil,
+            message: "coverage: this scan's coverage run was skipped (`swift` not found on PATH; "
+                + "set collectors.coverage.path), so it keeps the coverage collected \(collected)"
+        )
+
+        _ = try workspace.save(held, dropCoverage: false)
+        let carried = try workspace.save(skipped, dropCoverage: false)
+        let storedCarried = try workspace.store.report(id: carried.id)
+        let later = try workspace.save(
+            try CarrySamples.scan(git: CarrySamples.clean, date: SnapshotHarness.date + 2 * CarrySamples.day),
+            dropCoverage: false
+        )
+        let afterBackfill = try workspace.save(backfilled, dropCoverage: false)
+
+        #expect(carried.snapshot.report.coverage == held.report.coverage)
+        #expect(CarryHarness.coverageRun(carried.snapshot.info)?.reason
+            == "carried from the scan of \(collected); \(CarrySamples.failing)")
+        let expected = (held.report.warnings + [notice]).sorted(by: PackageScanner.warningOrder)
+        #expect(carried.snapshot.report.warnings == expected)
+        #expect(storedCarried == carried.snapshot.report)
+        #expect(later.snapshot.report.warnings == held.report.warnings)
+        #expect(afterBackfill.snapshot.report.warnings == held.report.warnings)
+        #expect(afterBackfill.snapshot.report.coverage == held.report.coverage)
+    }
+
+    @Test("""
+        a rescan whose coverage run was asked for and skipped is refused, naming the skip, when the coverage \
+        can't carry
+        """)
+    func skippedRunRefused() throws {
+        let (package, workspace) = try CarrySamples.store()
+        defer { package.remove() }
+        let plain = try CarrySamples.scan(git: CarrySamples.clean)
+        let gone = try CarrySamples.scan(git: CarrySamples.clean, files: CarrySamples.withoutHelper)
+        let skippedGone = CoverageSnapshots.replacing(
+            gone,
+            git: CarrySamples.clean,
+            coverage: nil,
+            run: CarrySamples.notFound
+        )
+
+        let held = try CarrySamples.covered(plain)
+        let refusal = try CarryHarness.refusal(in: workspace, held: held, rescan: skippedGone)
+        let plainRefusal = try CarryHarness.refusal(in: workspace, held: held, rescan: gone)
+
+        let helper = try CarrySamples.key("helper", in: plain)
+        #expect(refusal.error == CarrySamples.refused(
+            "`\(helper)` names no record now; this scan's coverage run was skipped "
+                + "(`swift` not found on PATH; set collectors.coverage.path)"
+        ))
+        #expect(plainRefusal.error == CarrySamples.refused("`\(helper)` names no record now"))
+        #expect(refusal.kept && plainRefusal.kept)
+    }
+
+    @Test("""
+        held coverage too damaged to read stops a rescan, naming --drop-coverage, which replaces it \
+        without coverage
+        """)
+    func damagedHeldCoverage() throws {
+        let (package, workspace) = try CarrySamples.store()
+        defer { package.remove() }
+        let covered = try CarrySamples.covered(try CarrySamples.scan(git: CarrySamples.clean))
+        let held = try workspace.save(covered, dropCoverage: false)
+        try SnapshotHarness.sqlite(
+            workspace.store.url,
+            "UPDATE coverageLine SET lines = '1:5' WHERE snapshotId = \(held.id) AND file = 'Sources/Kit/Kit.swift'"
+        )
+        let rescan = try CarrySamples.scan(git: CarrySamples.clean, date: SnapshotHarness.date + CarrySamples.day)
+
+        let damaged = StoreError.damagedCoverage(
+            snapshot: "Probe at c1",
+            reason: "the coverage line data of Sources/Kit/Kit.swift"
+        )
+        #expect(throws: damaged) {
+            try workspace.save(rescan, dropCoverage: false)
+        }
+        #expect(damaged.description == "the snapshot of Probe at c1 holds coverage too damaged to read "
+            + "(the coverage line data of Sources/Kit/Kit.swift); run scan --coverage to collect it again, "
+            + "or --drop-coverage to replace it without its coverage")
+        #expect(try workspace.store.snapshotID(package: "Probe", packagePath: "", commit: "c1", isDirty: false)
+            == held.id)
+        let dropped = try workspace.save(rescan, dropCoverage: true)
+
+        #expect(dropped.snapshot == rescan)
+        #expect(try workspace.store.load(id: dropped.id).coverage == nil)
+        #expect(try workspace.store.snapshotID(package: "Probe", packagePath: "", commit: "c1", isDirty: false)
+            == dropped.id)
     }
 
     @Test("a scan whose coverage run ran replaces held coverage without carrying it")

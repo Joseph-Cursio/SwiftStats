@@ -4,9 +4,9 @@ import Testing
 
 /// The store's v4 rows (M5, design §5): a snapshot's coverage reads back
 /// from its rows exactly as the scan JSON holds it, with when it was
-/// collected; function rows keep their access level and owning type; null
-/// stays null; and a store written before v4 migrates with nulls and no
-/// coverage.
+/// collected, and goes with the snapshot when a rescan replaces it;
+/// function rows keep their access level and owning type; null stays null;
+/// and a store written before v4 migrates with nulls and no coverage.
 @Suite("Store v4 rows")
 struct StoreCoverageTests {
     /// A small library to scan when the coverage is made by hand, with a
@@ -25,6 +25,13 @@ struct StoreCoverageTests {
         """,
         "Tests/LibTests/LibTests.swift": "func testOne() {\n    _ = 1\n}\n"
     ]
+
+    /// The statement counting the rows of each coverage table.
+    private static let rowCounts = """
+        SELECT (SELECT count(*) FROM functionCoverage), (SELECT count(*) FROM coverageAttachment),
+            (SELECT count(*) FROM coverageLine), (SELECT count(*) FROM coverageUnmapped),
+            (SELECT count(*) FROM coverageRun)
+        """
 
     /// The condition picking the library file's line row.
     private static let libFile = "file = 'Sources/Lib/Lib.swift'"
@@ -53,7 +60,8 @@ struct StoreCoverageTests {
 
     @Test("""
         a scan's coverage reads back from its rows as the scan JSON holds it, dated by the scan or by the scan it \
-        was carried from, beside function rows with their access and owning type and roll-up numbers from coverage
+        was carried from, beside function rows with their access and owning type and roll-up numbers from coverage, \
+        and a replaced snapshot leaves no coverage rows behind
         """)
     func roundTrip() throws {
         let directory = try SnapshotHarness.temporaryDirectory("StoreCoverage")
@@ -84,11 +92,7 @@ struct StoreCoverageTests {
         let unmeasured = numbers.filter { $0.name == "Unlinked" }.map(\.metric)
         #expect(unmeasured.contains { $0.hasPrefix("coverage.lines.") || $0.hasPrefix("coverage.regions.") } == false)
         #expect(numbers.contains { $0.name == "Unlinked" && $0.metric == "coverage.functions.noData" && $0.value == 1 })
-        let counts = try Self.query(url, """
-            SELECT (SELECT count(*) FROM functionCoverage), (SELECT count(*) FROM coverageAttachment),
-                (SELECT count(*) FROM coverageLine), (SELECT count(*) FROM coverageUnmapped),
-                (SELECT count(*) FROM coverageRun)
-            """)
+        let counts = try Self.query(url, Self.rowCounts)
         #expect(counts == "\(coverage.records.count)|\(coverage.attachments.count)|\(coverage.files.count)|"
             + "\(coverage.unmapped.count)|1\n")
 
@@ -96,6 +100,13 @@ struct StoreCoverageTests {
 
         #expect(try store.load(id: carried).coverage?.collectedAt == "2026-12-01T09:30:00Z")
         #expect(try store.load(id: carried).coverage?.report == coverage)
+        #expect(carried != id)
+        let tables = ["functionCoverage", "coverageAttachment", "coverageLine", "coverageUnmapped", "coverageRun"]
+        let leftBehind = tables.map { table in
+            "(SELECT count(*) FROM \(table) WHERE snapshotId NOT IN (SELECT id FROM snapshot))"
+        }
+        #expect(try Self.query(url, "SELECT " + leftBehind.joined(separator: ", ")) == "0|0|0|0|0\n")
+        #expect(try Self.query(url, Self.rowCounts) == counts)
     }
 
     @Test("""

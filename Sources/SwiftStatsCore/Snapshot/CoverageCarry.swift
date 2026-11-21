@@ -13,14 +13,22 @@
 //  version, options and duration, and says when its coverage was collected;
 //  the roll-ups are rebuilt from it as a scan builds them, and the warnings
 //  mapping it gave come with it, so the report is the one the collecting
-//  scan gave. A rescan whose run failed says so in a warning. Otherwise the
-//  rescan is refused, saying why.
+//  scan gave. A rescan whose run was asked for and failed or was skipped
+//  (no `swift`, a bad `collectors.coverage.path`, coverage disabled) says
+//  so in a warning. Otherwise the rescan is refused, saying why, and why
+//  the run asked for didn't collect coverage.
 //
 
 /// Decides whether stored coverage carries onto a rescan, and carries it.
 enum CoverageCarry {
     /// The start of a carried run's reason, before the collection date.
     static let carriedPrefix = "carried from the scan of "
+
+    /// Skip reasons a coverage run gives when it wasn't asked for: a plain
+    /// scan's, and a backfill's without tools.
+    private static let unaskedSkips: Set<String> = [
+        CoverageAdapter.notRequestedReason, SnapshotWorkspace.backfillToolSkipReason
+    ]
 
     /// Why `held` can't be carried onto `snapshot`, a scan of the same
     /// package, commit and dirtiness whose coverage collector didn't run;
@@ -64,17 +72,37 @@ enum CoverageCarry {
         return nil
     }
 
+    /// What became of `snapshot`'s own coverage run when it was asked for
+    /// and didn't run: "this scan's coverage run failed (…)" or "was
+    /// skipped (…)", with its reason; nil when it ran, wasn't asked for, or
+    /// isn't there.
+    static func ownRun(of snapshot: ScannedSnapshot) -> String? {
+        guard let run = snapshot.info.collectors.first(where: { $0.name == CoverageAdapter.name }) else {
+            return nil
+        }
+        let reason = run.reason ?? "no reason given"
+        switch run.state {
+        case .ran:
+            return nil
+
+        case .failed:
+            return "this scan's coverage run failed (\(reason))"
+
+        case .skipped:
+            return unaskedSkips.contains(reason) ? nil : "this scan's coverage run was skipped (\(reason))"
+        }
+    }
+
     /// `snapshot` with `held`'s coverage and its warnings attached, its
     /// coverage run the original's with a reason saying when the coverage
     /// was collected, and the roll-ups' coverage rebuilt; when `snapshot`'s
-    /// own coverage run failed, a warning says so.
+    /// own coverage run was asked for and failed or was skipped, a warning
+    /// says so, which a later carry doesn't repeat.
     static func carried(_ held: HeldCoverage, onto snapshot: ScannedSnapshot) -> ScannedSnapshot {
-        let failed = snapshot.info.collectors.first { $0.name == CoverageAdapter.name && $0.state == .failed }
-        let failure = failed.map { run in
+        let notice = ownRun(of: snapshot).map { what in
             ScanWarning(
                 file: nil,
-                message: "coverage: this scan's coverage run failed (\(run.reason ?? "no reason given")), "
-                    + "so it keeps the coverage collected \(held.coverage.collectedAt)"
+                message: "coverage: \(what), so it keeps the coverage collected \(held.coverage.collectedAt)"
             )
         }
         let original = held.run
@@ -100,7 +128,7 @@ enum CoverageCarry {
             report: snapshot.report.with(
                 coverage: held.coverage.report,
                 status: status,
-                warnings: held.warnings + [failure].compactMap(\.self)
+                warnings: held.warnings + [notice].compactMap(\.self)
             )
         )
     }

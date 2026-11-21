@@ -47,7 +47,7 @@ struct ScanCommand: ParsableCommand {
     @Flag(help: "Also build and run the package's tests with code coverage (minutes on a real package).")
     var coverage = false
 
-    @Flag(help: "Replace a snapshot holding coverage this scan can't keep, dropping the coverage.")
+    @Flag(help: "Replace a snapshot holding coverage this scan can't keep or can't read, dropping the coverage.")
     var dropCoverage = false
 
     @OptionGroup var options: PackageOptions

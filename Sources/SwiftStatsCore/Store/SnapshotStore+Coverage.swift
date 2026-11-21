@@ -3,10 +3,11 @@
 //  SwiftStatsCore
 //
 //  Reading the coverage a snapshot holds for a rescan that may carry it
-//  (M5, design §6). Only the snapshot's metadata, its coverage rows and its
-//  production records' keys and lines are read, and the report blob only
-//  for the warnings mapping the coverage gave, when there is coverage, so a
-//  plain scan stays fast.
+//  (M5, design §6). Whether there is any is checked first without reading
+//  it, so coverage too damaged to read can still be dropped. Then only the
+//  snapshot's metadata, its coverage rows and its production records' keys
+//  and lines are read, and the report blob only for the warnings mapping
+//  the coverage gave, so a plain scan stays fast.
 //
 
 import Foundation
@@ -31,6 +32,22 @@ extension SnapshotStore {
         let json = try ReportCompression.inflate(row.data, length: row.uncompressedLength)
         return try JSONDecoder().decode(StoredWarnings.self, from: json).warnings
             .filter(PackageScanner.coverageMappingWarnings.contains)
+    }
+
+    /// Whether snapshot `id` holds coverage, read in `database`: a
+    /// coverage run row beside a coverage collector run that ran, the
+    /// condition `heldCoverage(id:in:)` reads the coverage under. Nothing
+    /// of the coverage itself is read, so damaged coverage can still be
+    /// dropped.
+    static func holdsCoverage(id: Int64, in database: Database) throws -> Bool {
+        try Bool.fetchOne(
+            database,
+            sql: """
+                SELECT EXISTS (SELECT 1 FROM coverageRun WHERE snapshotId = ?)
+                    AND EXISTS (SELECT 1 FROM collectorRun WHERE snapshotId = ? AND name = ? AND state = ?)
+                """,
+            arguments: [id, id, CoverageAdapter.name, CollectorState.ran.rawValue]
+        ) ?? false
     }
 
     /// The coverage snapshot `id` holds, with its git state, coverage run

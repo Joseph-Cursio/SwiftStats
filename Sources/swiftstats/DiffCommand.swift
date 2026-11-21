@@ -37,7 +37,7 @@ struct DiffCommand: ParsableCommand {
     @Flag(help: "Rescan both commits with this build first.")
     var rescan = false
 
-    @Flag(help: "Replace a snapshot holding coverage a rescan can't keep, dropping the coverage.")
+    @Flag(help: "Replace a snapshot holding coverage a rescan can't keep or can't read, dropping the coverage.")
     var dropCoverage = false
 
     @OptionGroup var options: PackageOptions
