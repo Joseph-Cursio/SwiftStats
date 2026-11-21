@@ -1,6 +1,6 @@
 # M5 results
 
-**Date:** 2026-11-20 · **Toolchain:** Apple Swift 6.4.2 (Xcode 27), macOS 27.2 SDK, Apple LLVM 21.0.0; SwiftInferProperties is built, tested and scanned under its own `.swift-version` pin, swift.org 6.4.1 with its LLVM 21.0.0 tools · **Machine:** Apple M3, 8 cores, macOS 27.2.1 · **Git:** 2.54.0 (Apple Git-157) · **Tools:** SwiftLint 0.65.1, GRDB 7.12.0, SwiftEffectInference `ba3624d` (linked), SwiftProjectLint 1.1.0 (release build of SwiftProjectLint `6477efac`, product `CLI`), swift-infer 1.160.0 (release build of SwiftInferProperties `79908525`), swift-clone-detector 0.1.0 (release build of SwiftCloneDetector `97eee1c`) · **SwiftStats:** release build of tree `a7ed6c25`, the M5 working tree over `c5f51d1`; `swiftstats` 0.0.1, sha256 `3433c203…6f26`
+**Date:** 2026-11-20 · **Toolchain:** Apple Swift 6.4.2 (Xcode 27), macOS 27.2 SDK, Apple LLVM 21.0.0; SwiftInferProperties is built, tested and scanned under its own `.swift-version` pin, swift.org 6.4.1 with its LLVM 21.0.0 tools · **Machine:** Apple M3, 8 cores, macOS 27.2.1 · **Git:** 2.54.0 (Apple Git-157) · **Tools:** SwiftLint 0.65.1, GRDB 7.12.0, SwiftEffectInference `ba3624d` (linked), SwiftProjectLint 1.1.0 (release build of SwiftProjectLint `6477efac`, product `CLI`), swift-infer 1.160.0 (release build of SwiftInferProperties `79908525`), swift-clone-detector 0.1.0 (release build of SwiftCloneDetector `97eee1c`) · **SwiftStats:** release build of tree `a7ed6c25`, the M5 working tree over `c5f51d1`; `swiftstats` 0.0.1, sha256 `3433c203…6f26`. Tests per public function was re-measured after the links were tightened, with a release build of tree `9759b3c8` (sha256 `5fb328dd…aba1`)
 
 M5 scope (PRD §11): the T2 coverage join (line and region coverage per function, closures folded into their parent), tests per public function, and two signals: risky + untested and the coverage part of uneven clone testing. The done-when packages are SwiftInferProperties (SIP) at `79908525` and swift-algorithms at `5b7143f`. The design is PRD v0.2.11: §6.2, §6.5, §6.6, §7.5, §7.8, §7.13, §7.14, §7.16, §8, §9, §10, §10.1, §11, §13 and D9.
 
@@ -12,7 +12,7 @@ M5 scope (PRD §11): the T2 coverage join (line and region coverage per function
 | 2 | Unmapped regions listed on both; in-body regions mapped ≥ 95%, attachments and unscanned-file entries counted apart | Met | 0 unmapped entries on both, so the list is empty and the report says "Every export entry in a production file was mapped." In-body regions: 1,755 of 1,755 and 22,135 of 22,135 (100.00%). Attached: 7 entries on 6 owners and 483 entries on 122 owners. Unscanned-file entries: 0 and 0. |
 | 3 | Risky + untested produced on both with its counts; on swift-algorithms 12 `forceUnwrap` markers, 12 on mapped lines, 0 untested, no rows; every marker's verdict hand-checked; the fixture's exact rows pass in `swift test` | Met | swift-algorithms: "12 markers: 12 tested (0 on partly run lines), 0 untested, 0 with no coverage data", no rows, as expected. SIP: 2 markers, both with no coverage data, no rows. All 14 verdicts agree with the rule. The `RiskyUntested` suite passes (4 tests). SIP has no crash markers, so it exercises only the race-on-a-type case. |
 | 4 | `report` byte-identical twice; a plain `scan` after `scan --coverage` carries it; a SwiftStats rebuild then a plain scan carries (keys match); `git status --porcelain` empty with the default and a non-default store; an interrupt during build and during tests leaves no `swift-build`, `swift-test`, `xctest` or `swiftpm-testing-helper`, and the next `scan --coverage` hits no SwiftPM lock | Met, with limits | Byte-identical reports and carries on both; trees clean after every step on both. The release rebuild left the binary byte-identical, so a debug build stood in for a different build identity; carry never consults the binary identity. Interrupts ran on swift-algorithms only, and the "no lock" evidence is the next `scan --coverage` completing. |
-| 5 | Uneven clone testing and tests per public function produced on both; links hand-checked on a sample of 20 per package | Met as produced; link quality weak | Uneven clone testing: 5 members (swift-algorithms) and 138 (SIP), every listed copy figure recomputed. Every sampled link count equals an independent count under the stated heuristic (40 of 40). A human agrees with 10 of 20 on swift-algorithms, and on SIP with 15 of 20, partly with 2 more. The auditors' fresh samples did worse (below). |
+| 5 | Uneven clone testing and tests per public function produced on both; links hand-checked on a sample of 20 per package | Met; links tightened and re-checked, overloads with the same labels still over-count | Uneven clone testing: 5 members (swift-algorithms) and 138 (SIP), every listed copy figure recomputed. The first, name-only links followed their rule on 40 of 40 sampled counts, but a human agreed with only 10 of 20 on swift-algorithms and 15 of 20 on SIP (2 more partly), and the auditors' fresh samples did worse. At the user's request the links were tightened and item 5 re-run. Every count in fresh samples of 20 and an auditor's 10 per package follows the new rule (60 of 60). A human agrees with 12 of 20 and 3 of 10 (5 partly) on swift-algorithms, and 18 of 20 (1 partly) and 9 of 10 on SIP; on the first run's samples, now 13 of 20 and 17 of 20 (1 partly). |
 
 `report` gave byte-identical Markdown and JSON on two runs for each package. Each package's results were then audited independently: the auditors re-derived the numbers from the stored JSON and the stores, re-ran the checker (the swift-algorithms auditor also made its own lcov export), and re-ran `report` and `top`. They confirmed every key number; their findings, and the few wording errors they found in the runs' notes, are folded into the sections below.
 
@@ -20,9 +20,9 @@ M5 scope (PRD §11): the T2 coverage join (line and region coverage per function
 
 - **The `coverage` collector**, opt-in with `scan --coverage` and never run by `backfill` or `diff`'s exports; `collectors.coverage.enabled: false` skips it even when `--coverage` asks for it. It finds the toolchain through `<swift> -print-target-info` in the package root, so swiftly's proxy honours `.swift-version`, and runs that toolchain's own `swift`: `build --build-tests`, then `test --skip-build`, both with `--build-system swiftbuild --enable-code-coverage --scratch-path .swiftstats/coverage-build`. Every exit status of `swift test` is accepted: failing tests give `ran` with option `tests: failing` when every bundle wrote its profiles. Profiles are grouped by signature, one group per bundle and both frameworks' processes together. Each group is merged and read with `llvm-profdata show` for per-target counts, and every profile is merged into `swiftstats.profdata`, over which `llvm-cov export` exports all bundles. Identity is `swift:<version line>`, version the `LLVM version` line. A bundle that is no test target, by the coverage toolchain's own `swift package describe`, fails the run. `Package.resolved` is put back as it was, after the run, after a failure and after an interrupt. An interrupt sends SIGINT first, then SIGTERM, then SIGKILL.
 - **Decoding and mapping.** Files are kept (scanned production files), unmapped, or dropped as `build`, `outsideRoot`, `testFiles`, `otherPackage` or `otherLanguage`. Entries go to the innermost record holding `regions[0]`'s start; closures fold into it; what lies in no record is attached to the innermost type, else the file. Record lines follow llvm-cov's per-function line rule, file lines its file line rule (equal to lcov DA lines), with partly run lines flagged. A record with no entry has null coverage and a reason, never 0. The rule string is stored as the option `map:`.
-- **Tests per public function**, labelled "heuristic: the test's target ran it and the test names it". Records carry their effective `access`. A public `func`, `init` or accessor is linked to a test when its target's own profile ran it and the test names it: member and type name for a concrete type's member, or a test file named for the member's file or type; base name alone for protocol extension members and free functions. Witnesses of standard protocols such as `Sequence`, `Collection`, `Equatable` and `CustomStringConvertible` count as reached generically. Operators are never linked.
+- **Tests per public function**, labelled "heuristic: the test's target ran it and the test, or a test helper it calls, calls it with fitting labels or reads it (a subscript: names its type)" (tightened after the done-when hand-checks; the first build linked by name). Records carry their effective `access`. A public `func`, `init` or accessor is linked to a test when its target's own profile ran it, the coverage run's `--skip` regexes didn't leave the test out, and the test, or a test helper of its target that it calls, writes it: a function or initialiser by a call whose argument labels fit its parameters (defaults, variadics, `_` and the trailing closure handled) or a reference with all its labels, a member function only by a call written on something; an accessor by a member read or key path component, never a bare identifier. A concrete type's member also needs the test to name the type, by its simple name or a qualifier that fits the record's module and parent types, or a test file named for the member's file or type; an initialiser's call names its type. Protocol extension members and free functions need no type. Helpers are followed transitively where they are visible, a `private` one only in its file. Witnesses of standard protocols such as `Sequence`, `Collection`, `Equatable` and `CustomStringConvertible` count as reached generically. Operators are never linked. Argument types are never read, so overloads with the same labels are not told apart.
 - **Two signals**, both needing an M5 snapshot with coverage: `risky-untested` (crash and race markers no test ran, needing SwiftProjectLint) and `uneven-clone-testing` (needing SwiftCloneDetector; a class with a copy at least 80% covered and one at most 20%, scored by the poor copies' uncovered lines, folded on poor copies).
-- **Keeping coverage across rescans.** A rescan that collects no coverage of its own (a plain scan, a `scan --coverage` whose run failed or was skipped, or `diff`'s rescan) carries the snapshot's coverage when the commit and tree state are the same, the map rule is the same, and stored keys and the new records match both ways with the same ranges; a requested run that failed or was skipped adds a warning saying so. Otherwise it refuses before writing, naming `scan --coverage` and `--drop-coverage`; `scan --drop-coverage` and `diff --drop-coverage` replace the snapshot without its coverage. A coverage run that ran always replaces held coverage. `backfill` keeps snapshots holding coverage.
+- **Keeping coverage across rescans.** A rescan that collects no coverage of its own (a plain scan, a `scan --coverage` whose run failed or was skipped, or `diff`'s rescan) carries the snapshot's coverage when the commit and tree state are the same, the map and link rules are the same (the options `map:` and `links:`), and stored keys and the new records match both ways with the same ranges; a requested run that failed or was skipped adds a warning saying so. Otherwise it refuses before writing, naming `scan --coverage` and `--drop-coverage`; `scan --drop-coverage` and `diff --drop-coverage` replace the snapshot without its coverage. A coverage run that ran always replaces held coverage. `backfill` keeps snapshots holding coverage.
 - **Store migration v4**: `access`, `typePath` and `typeFile` on `function`; `coverageRun`, `functionCoverage`, `coverageAttachment`, `coverageLine` and `coverageUnmapped`. Scan JSON `schemaVersion: 7`, report 4, top 3, diff 2.
 - **Configuration**: `collectors.coverage.{enabled, path, arguments}`; `arguments` takes only `--skip <regex>` pairs.
 - **Reports**: a Markdown Coverage section (status, carried date, bundles, lines and regions per scope, records with no data, public functions, saturated lines, the first 50 unmapped entries), roll-ups per production module and project, and per-record coverage deltas in `diff`.
@@ -204,73 +204,167 @@ Both lists were recomputed from the scan JSON's clone classes and per-line data,
 
 SIP's row 1 is five poor copies of 12 uncovered lines each: `roundTrip`, `idempotence`, `commutativity`, `monotonicity` and `reduceEquivalence` are 0/12, while `countInvariance` is 12/12. `top uneven-clone-testing --limit 1000` prints all members.
 
+**The links re-run (5b)** ran `scan --coverage` again on both packages. swift-algorithms' uneven clone testing came out byte-identical, Markdown and JSON. SIP's has 139 members against 138 (subtree 79): 136 items are identical, `CalleeNameCollector.freeCalleeName(of:)` (score 6) left, `RoundTripTemplate.docstringCorroborationSignal(for:)` (5) and `IdempotenceTemplate.inferredEffectSignal(for:)` (near-miss, 4) joined, and one class went from 4 to 5. The signal reads only coverage, and covered lines differed in 10 records, the run-to-run variation of §1. The earlier checker, pointed at the new outputs, agrees on all 139.
+
 ### 5b. Tests per public function
+
+The first build linked a test when it named the function: by base name for free functions and protocol extension members, and by name with the type's simple name for members, labelled "heuristic: the test's target ran it and the test names it". Its hand-checks (below) found six ways that misled it: (a) overloads sharing a base name, (b) tuple labels and unrelated members, (c) local variables, (d) calls through test helpers, missed, (e) tests `--skip` left out, still counted, and (f) types sharing a simple name. At the user's request the links were tightened (PRD §7.8): calls must fit the function's argument labels, accessors link only through member reads, qualified type names must fit, test helpers are followed, and skipped tests count for nothing. Item 5 was then re-run on both packages with a release build of tree `9759b3c8`, into new stores, with the same configs. The coverage itself didn't move: on swift-algorithms every coverage record equals the first run's apart from `linkedTests`; on SIP, covered lines differed in 10 records, the run-to-run variation of §1. Figures are "first run → re-run".
 
 | Scope | Public | With coverage | Linked | Unlinked | Reached generically | Extension members | Linked tests median / p90 / max | Links |
 |---|---|---|---|---|---|---|---|---|
-| swift-algorithms, production | 299 | 299 | 94 | 10 | 195 | 98 | 5 / 12 / 21 | 593 over 104 functions |
-| SIP, production | 1,350 | 1,350 | 877 | 456 | 17 | 1 | 2 / 17 / 147 | |
+| swift-algorithms, production | 299 | 299 | 94 → 94 | 10 → 10 | 195 | 98 | 5 / 12 / 21 → 3 / 8 / 28 | 593 → 457 over 104 functions |
+| SIP, production | 1,350 | 1,350 | 877 → 856 | 456 → 477 | 17 | 1 | 2 / 17 / 147 → 2 / 18 / 1,693 | 9,311 → 18,370 over 1,333 functions |
 
-- swift-algorithms' 104 counted functions are 98 protocol extension members, 4 concrete-type members and 2 free functions; every unlinked one has 0 lines covered (the six deprecated `scan` overloads, `rotate(toStartAt:)`, `Sequence::partitioned(by:)` and the two `striding(by:)`). The package has one test target, so the target condition separates almost nothing.
-- SIP per module: SwiftInferCLI 212 linked / 148 unlinked, SwiftInferCore 422 / 158, SwiftInferTemplates 189 / 120, SwiftInferTestLifter 53 / 28, SwiftInferKitEvidence 1 / 1, SwiftInferMacroImpl 0 / 1.
+- **swift-algorithms' 104 counted functions** are 98 protocol extension members, 4 concrete-type members and 2 free functions, in both runs. Every unlinked one has 0 lines covered (the six deprecated `scan` overloads, `rotate(toStartAt:)`, `Sequence::partitioned(by:)` and the two `striding(by:)`), so on this package the unlinked agree trivially. The package has one test target, so the target condition separates almost nothing.
+- **swift-algorithms per record:** 55 counts fell, 45 stayed the same and 4 rose; none moved between linked and unlinked. The largest falls are `permutations(ofCount:)`, 21 → 7 for the range overload and 21 → 9 for the `Int?` one, both `min(count:sortedBy:)` 13 → 2, and all four `max(count:…)` 14 → 4. The 4 rises are the lazy `split` overloads, reached through `SplitTests`' `Validator` helper: 1 → 27 for the two `whereSeparator:` ones and 1 → 28 for the two `separator:` ones, the new maximum. The `separator:` counts are right (an auditor checked one, 28 of 28); the `whereSeparator:` ones over-count, since the helper writes both branches and only one test takes the closure branch.
+- **SIP per module, linked / unlinked:** SwiftInferCLI 212 → 191 / 148 → 169, SwiftInferCore 422 → 406 / 158 → 174, SwiftInferTemplates 189 → 200 / 120 → 109, SwiftInferTestLifter 53 → 58 / 28 → 23; SwiftInferKitEvidence 1 / 1 and SwiftInferMacroImpl 0 / 1, unchanged.
+- **SIP per record:** of the 1,333 counted public functions, 982 are unchanged (569 above 0, 413 at 0), 202 rose (43 of them from 0) and 149 fell (64 of them to 0). By link kind: member 875 linked and 456 unlinked → 854 and 477; 17 witnesses, 1 extension member and 1 free function linked in both runs.
+- **SIP's high end is fixture use.** Through helpers, a value type's initialiser counts every test whose fixture builds it:
 
-**Sample of 20 per package.** swift-algorithms: every 6th of the 94 linked records sorted by key (15) and every 2nd of the 10 unlinked (5). SIP: every 58th of the 877 linked and every 91st of the 456 unlinked, in record order. Each count was re-derived by a script that shares no SwiftStats code, then the tests were read by hand, resolving each call to its overload.
+  | Function | First run → re-run |
+  |---|---|
+  | `SourceLocation.init(file:line:column:)` | 147 → 1,693 |
+  | `FunctionSummary.init(…)` | 72 → 1,455 |
+  | `Parameter.init(label:internalName:typeText:isInout:hasDefault:)` | 101 → 1,300 |
+  | `SuggestionIdentity.init(canonicalInput:)` | 47 → 553 |
+  | `Score.init(signals:)` | 27 → 405 |
+
+  For `SourceLocation.init`, 180 tests write `SourceLocation(…)` themselves; the rest reach it through helpers such as `makeIdempotenceSummary` (53 tests), `makeRoundTripPair` (40) and `makeCommutativitySummary` (39). The tests do run these initialisers, so the counts follow the rule, but the maximum and p90 then measure how often a fixture is used, not how much testing a function gets. While the rule was being built, scoping helpers by visibility brought SIP from 20,996 links (maximum 1,798) to 19,042 (1,694), and the review fixes, chiefly reading what a helper call is written on, brought it to 18,370 (1,693); they took the four test-lifter detectors' `detect(in:)` from 147 links each to 16, 17, 19 and 24.
+- **How the re-run's counts were checked.** On swift-algorithms the runner listed every test and helper writing each sampled name and read each call. On SIP the scan gives only counts, so a separate copy of the same tree, differing by one guarded line that writes each record's linked tests to stderr, was scanned; all 1,333 of its lists have exactly the official count. The auditors re-derived every figure above from copies of the stores, and SIP's auditor re-ran `report` to a byte-identical Markdown file.
+
+**Sample of 20 per package (first run).** swift-algorithms: every 6th of the 94 linked records sorted by key (15) and every 2nd of the 10 unlinked (5). SIP: every 58th of the 877 linked and every 91st of the 456 unlinked, in record order. Each count was re-derived by a script that shares no SwiftStats code, then the tests were read by hand, resolving each call to its overload. The re-run checked the same records again under the new rule. A human count counts the tests that reach the overload directly or through a test helper, not through another production function; for rows 6 and 9 of swift-algorithms and rows 8, 15 and 18 of SIP the counts are the re-checked ones, since the first readings counted callers of a forwarding overload or missed helper routes.
 
 **swift-algorithms:**
 
-| # | Public function | Link kind | Linked (= independent count) | Human count and view |
-|---|---|---|---|---|
-| 1 | `BidirectionalCollection where Element: Equatable::ends(with:)` | extension | 12 | 6; the 6 `EndsWithNonEquatableTests` call `ends(with:by:)`. Over-counts |
-| 2 | `BidirectionalCollection::startOfSuffix(while:)` | extension | 1 | 1. Agrees |
-| 3 | `Collection where Element: Comparable::max(count:)` | extension | 14 | 3; the rest name other overloads, the tuple label `.max` of `minAndMax()` (7 tests) or `Int.max`. Over-counts |
-| 4 | `Collection::adjacentPairs()` | extension | 12 | 7; 5 `(0...).prefix(n)` tests use the Sequence overload. Over-counts |
-| 5 | `Collection::compacted()` | extension | 3 | 3. Agrees |
-| 6 | `Collection::max(count:sortedBy:)` | extension | 14 | 5 (3 direct, 2 through `max(count:)`), and it misses `testStability`, which calls through the helper `assertStability`. Over-counts |
-| 7 | `Collection::randomSample(count:)` | extension | 5 | 2. Over-counts |
-| 8 | `Collection::windows(ofCount:)` | extension | 8 | 8. Agrees |
-| 9 | `LazySequenceProtocol … ::joined(by: closure)` | extension | 10 | 4. Over-counts |
-| 10 | `LazySequenceProtocol::reductions(_:_:)` (exclusive, lazy) | extension | 6 | 2. Over-counts |
-| 11 | `MutableCollection … ::rotate(subrange:toStartAt:)` | extension | 6 | 4 direct, 2 through `rotate(toStartAt:)`. Partly |
-| 12 | `PermutationsSequence::var count` | member (file match) | 2 | 2. Agrees |
-| 13 | `Sequence where Element: Sequence::joined(by: Element.Element)` | extension | 10 | 1; arrays resolve to the Collection overload. Over-counts |
-| 14 | `Sequence::grouped(by:)` | extension | 2 | 2. Agrees |
-| 15 | `Sequence::minAndMax(by:)` | extension | 8 | 2 direct, 6 through `minAndMax()`. Partly |
-| 16–20 | deprecated `scan(_:)`, `scan(into:_:)`, `Sequence::scan(_:_:)`; `Sequence::partitioned(by:)`; `StridingCollection::striding(by:)` | unlinked | 0 | No test runs these overloads. Agree |
+| # | Public function | Link kind | First run → re-run | Human count | Agrees now (first run) |
+|---|---|---|---|---|---|
+| 1 | `BidirectionalCollection where Element: Equatable::ends(with:)` | extension | 12 → 6 | 6; the 6 `EndsWithNonEquatableTests` call `ends(with:by:)`, which no longer fits | **yes** (over) |
+| 2 | `BidirectionalCollection::startOfSuffix(while:)` | extension | 1 → 1 | 1 | yes (yes) |
+| 3 | `Collection where Element: Comparable::max(count:)` | extension | 14 → 4 | 3; the `.max` tuple labels and `Int.max` no longer count, and `testMinMaxSequences` takes the Sequence overload | over by 1 (over by 11) |
+| 4 | `Collection::adjacentPairs()` | extension | 12 → 12 | 7; 5 `(0...).prefix(n)` tests use the Sequence overload, with the same labels | over by 5 (same) |
+| 5 | `Collection::compacted()` | extension | 3 → 3 | 3 | yes (yes) |
+| 6 | `Collection::max(count:sortedBy:)` | extension | 14 → 4 | 1; `testStability` now counts through `assertStability`, but the `.enumerated()` callers take the Sequence overload | over by 3 (over by 13) |
+| 7 | `Collection::randomSample(count:)` | extension | 5 → 3 | 2; the `randomSample(count:using:)`-only callers dropped | over by 1 (over by 3) |
+| 8 | `Collection::windows(ofCount:)` | extension | 8 → 8 | 8 | yes (yes) |
+| 9 | `LazySequenceProtocol … ::joined(by: closure)` | extension | 10 → 6 | 2; bare `joined()` no longer counts | over by 4 (over by 8) |
+| 10 | `LazySequenceProtocol::reductions(_:_:)` (exclusive, lazy) | extension | 6 → 3 | 2; the inclusive one-argument calls don't fit | over by 1 (over by 4) |
+| 11 | `MutableCollection … ::rotate(subrange:toStartAt:)` | extension | 6 → 4 | 4; the `rotate(toStartAt:)`-only tests dropped | **yes** (partly) |
+| 12 | `PermutationsSequence::var count` | member (file match) | 2 → 2 | 2 | yes (yes) |
+| 13 | `Sequence where Element: Sequence::joined(by: Element.Element)` | extension | 10 → 6 | 1; arrays resolve to the Collection overload | over by 5 (over by 9) |
+| 14 | `Sequence::grouped(by:)` | extension | 2 → 2 | 2 | yes (yes) |
+| 15 | `Sequence::minAndMax(by:)` | extension | 8 → 2 | 2; the six `minAndMax()` callers dropped | **yes** (partly) |
+| 16–20 | deprecated `scan(_:)`, `scan(into:_:)`, `Sequence::scan(_:_:)`; `Sequence::partitioned(by:)`; `StridingCollection::striding(by:)` | unlinked | 0 → 0 | 0; no test runs these overloads | yes (yes) |
 
-Under the stated heuristic, 20 of 20 are right. A human agrees with 10 of 20: 5 of the 15 linked functions and all 5 unlinked ones. The other 10 linked functions over-count, two of them (11, 15) by tests that reach the function only through a wrapper.
+Under each run's own rule, 20 of 20 are right. A human agreed with 10 of 20 in the first run and agrees with 13 of 20 now: rows 1, 2, 5, 8, 11, 12, 14, 15 and the 5 unlinked. The 7 left over-count are all overloads with the same labels that differ only in type, and their total excess over the human counts fell from 67 links to 20.
 
 **SIP:**
 
-| # | Public function | Linked | Human view |
+| # | Public function | First run → re-run | Human count | Agrees now (first run) |
+|---|---|---|---|---|
+| 1 | `AcceptBridgeRequest.init(identity:decisionRaw:peerIndex:explicitDecisionsPath:)` | 5 → 5 | 5 | yes (yes) |
+| 2 | `IndexStore.upsert(_:into:at:typeShapes:sourceFiles:)` | 7 → 7 | 7 | yes (yes) |
+| 3 | `MonotonicityPairResolver.resolve(_:)` | 4 → 4 | 4 | yes (yes) |
+| 4 | `VerifierWorkdir.Inputs.init(workdir:userPackage:stubSource:mode:inlinedSources:)` | 37 → 4 | 4; the 33 tests building other nested types named `Inputs` no longer count | **yes** (no) |
+| 5 | `CalleeReference.displaySignature` | 1 → 1 | 1 | yes (yes) |
+| 6 | `DualStyleNamePair.init(mutating:nonMutating:)` | 2 → 2 | 2 | yes (yes) |
+| 7 | `InteractionDecisionsAggregator.Bucket.init(accepted:acceptedAsConformance:rejected:skipped:)` | 1 → 1 | 1 | yes (yes) |
+| 8 | `MutationMethod.init(name:isMutating:parameterCount:)` | 8 → 10 | 10; 2 `DiscoverReducersCommandTests` build it through the private `valueSemanticCandidate(…)` | yes (yes, as then read) |
+| 9 | `RegisteredGenerator.encode(to:)` | 2 → 0 | 1; the wrong link (`inversePairEncodesAsArray`) is gone, and the real one, through `JSONEncoder` in `roundTripPreservesContents`, writes no `encode(to:)` | partly (partly) |
+| 10 | `SetAlgebraShape.isSelfTypedBinaryOp(_:)` | 7 → 7 | 7 | yes (yes) |
+| 11 | `TemplateMatch.guardDomainMatch` | 4 → 4 | 4 | yes (yes) |
+| 12 | `BiconditionalWitnessDetector.detect(stateTypeName:in: URL)` | 25 → 25 | 0; all 25 call the `String` overload, which has the same labels | no (no) |
+| 13 | `IdentityElementTemplate.suggest(for:opsWithIdentitySeed:inheritedTypesByName:carrierKindResolver:)` | 34 → 29 | 29; the 5 `suggest(forLifted:…)` callers are gone | **yes** (partly) |
+| 14 | `LiftedTestEmitter.liftedCountInvarianceRegression(funcName:elementTypeName:inputSource:)` | 1 → 1 | 1 | yes (yes) |
+| 15 | `TemplateRegistry.applyImpureSubjectVeto(to:summaries:)` | 2 → 7 | 7; 2 direct, 5 through `Self.apply(_:)` | yes (yes, as then read) |
+| 16 | `AssociativityPairResolver.Resolved.init(functionCall:)` | 0 → 0 | 0 | yes (yes) |
+| 17 | `SwiftInferCommand.Drift.init()` | 0 → 0 | 0 | yes (yes) |
+| 18 | `EffectAnnotationAdvice.init(displayName:signature:location:recommendedAnnotation:…)` | 0 → 2 | 2; `rendersAdvice` and `pluralizes`, through the private `advice(_:)` | yes (yes, as then read) |
+| 19 | `TemplateMatch.sortedOutputMatch` | 0 → 0 | 2; the tests read `suggestion.match?.sortedOutputMatch`, naming neither `TemplateMatch` nor a matching file | no (no) |
+| 20 | `LiftedTestEmitter.UniquifierStub.init(…)` | 0 → 0 | 0 | yes (yes) |
+
+Under the stated rule, 20 of 20 were right in the first run. A human agreed with 15, partly with 2, and disagreed with 3 then; now 17, 1 partly (#9) and 2 (#12, the same-label overload, and #19, a member read that doesn't name its type). The first readings of #8, #15 and #18 missed tests that reach the function through a test helper, so the first run's 15 was generous.
+
+**The auditors' samples in the first run did worse.**
+- **swift-algorithms**, 10 linked functions outside the runs' sample. The heuristic matched the auditor's independent count on 10 of 10, but a human agreed with 1 fully (`indexed()`) and 1 partly (`stablePartition(subrange:by:)`, one test direct and one through `stablePartition(by:)`). Seven over-counted, because overloads sharing a base name each got every test that writes the name: the `joined(by:)` overloads got 10 links each against 1 or 2 real callers, and `Sequence::min(count:sortedBy:)` got 13 against 0 direct callers, mostly from the `.min` tuple label in `MinAndMaxTests`. One linked the wrong test: `LazySequenceProtocol::split(maxSplits:omittingEmptySubsequences:whereSeparator:)` was linked to `SplitTests.testLaziness`, which calls only the Equatable `split(separator:)`. Helper-mediated calls were missed: the real `split` caller is `testSequenceDocExamples`, through its `Validator` helper, and `min(count:sortedBy:)` is reached 27 times by `testStability` through `assertStability`. The 6 member and free-function links outside the sample agreed.
+- **SIP**, 10 more. The auditor's reimplementation matched 9 counts exactly; the tenth was off by one from the auditor's own regex. A human agreed with 6, partly with 1, and disagreed with 3. Across the 30 sampled links, about 21 agreed, 3 partly and 6 disagreed. The new failure modes: a local variable named like the member counted (`ConstructionUniverse.root(forScanOf:)` had 35 links against about 6 call sites; most tests only declare `let root = …`); helper-mediated calls were missed (`ReducerPurityAnalyzer.analyzeForPurity(_:readingTCANames:)` was unlinked though `ReducerPurityNameTokenTests` calls it through `private static func purity(_:tca:)`); tests excluded by the configured `--skip` still counted, since the link is per target profile (`CorpusPackager.packageMultiModule` was linked to `MultiModuleVerifyMeasuredTests::multiModuleSurveyVerifies`); and type names collided (`SwiftInferCommand.Corpus.init()` was linked to a test that builds `SyntaxSnippetHarvester.Corpus(…)`).
+
+**All 63 earlier links under the new rule.** The runs' 20 and the auditors' 10 per package, plus 3 more swift-algorithms links the auditor checked (`CombinationsSequence::var count`, `chain`, `product`, unchanged at 1, 5 and 5), were kept as an evaluation set, with human counts re-checked in six records: three readings had missed helper routes, two had counted callers of a forwarding overload, and the auditors' `InteractionSuggestionRenderer.render(_:)` was transcribed as 8, while 4 tests call `render(target)` and the other 4 the `render(_:includePossible:)` overload.
+
+| Package | Links | Closer than in the first run | Same distance | Further | Exact now |
+|---|---|---|---|---|---|
+| swift-algorithms | 33 | 16 | 16 | 1 | 19 |
+| SIP | 30 | 9 | 20 | 0 | 26 |
+
+- SIP's 30th, `analyzeForPurity`, went from 0 to 4 links; it has only a lower-bound human count (at least 1), so it is in none of the columns. It is a true link the first run missed.
+- The auditors' records now: `root(forScanOf:)` 35 → 6 (about 6), `packageMultiModule` 2 → 1 (1; the skipped measured test is gone), `SwiftInferCommand.Corpus.init()` 1 → 0 (0), `render(_:)` 8 → 4 (4); the other 5 SIP records are unchanged and agree. On swift-algorithms the `joined(by:)` overloads fell from 10 to 6 each (human 1 or 2), `Sequence::min(count:sortedBy:)` from 13 to 2 (human 1), `chunked(on:)` from 5 to 3 (human 2), and `stablePartition(subrange:by:)` from 2 to 1, now exact.
+- The one link further off is `LazySequenceProtocol::split(…whereSeparator:)`, 1 → 27 against 1: the `Validator` helper is read whole, whichever branch the test's arguments select.
+
+**Fresh samples under the new rule.** The re-run drew new samples that leave out the 63 links above.
+- **swift-algorithms:** the pool was the public records with a count minus those 33, which left 66 linked and 5 unlinked. Sorted by key, every 4th linked one from index 0 (15) and all 5 unlinked; all 15 linked are protocol extension members.
+- **SIP:** sorted by key, every 57th of the 856 linked from index 28 and every 95th of the 477 unlinked from index 47; no draw hit a key of the evaluation set.
+
+| # | swift-algorithms public function | First run → re-run | Human count, view |
 |---|---|---|---|
-| 1 | `AcceptBridgeRequest.init(identity:decisionRaw:peerIndex:explicitDecisionsPath:)` | 5 | agrees |
-| 2 | `IndexStore.upsert(_:into:at:typeShapes:sourceFiles:)` | 7 | agrees |
-| 3 | `MonotonicityPairResolver.resolve(_:)` | 4 | agrees |
-| 4 | `VerifierWorkdir.Inputs.init(workdir:userPackage:stubSource:mode:inlinedSources:)` | 37 | **4 of 37**: 33 tests build other nested types named `Inputs`; the type matches by simple name |
-| 5 | `CalleeReference.displaySignature` | 1 | agrees |
-| 6 | `DualStyleNamePair.init(mutating:nonMutating:)` | 2 | agrees |
-| 7 | `InteractionDecisionsAggregator.Bucket.init(accepted:acceptedAsConformance:rejected:skipped:)` | 1 | agrees |
-| 8 | `MutationMethod.init(name:isMutating:parameterCount:)` | 8 | agrees |
-| 9 | `RegisteredGenerator.encode(to:)` | 2 | **partly, 1 of 2**: one matched on `JSONEncoder().encode` plus the `VocabularyTests` file name |
-| 10 | `SetAlgebraShape.isSelfTypedBinaryOp(_:)` | 7 | agrees |
-| 11 | `TemplateMatch.guardDomainMatch` | 4 | agrees |
-| 12 | `BiconditionalWitnessDetector.detect(stateTypeName:in: URL)` | 25 | **0 of 25**: all call the `String` overload |
-| 13 | `IdentityElementTemplate.suggest(for:opsWithIdentitySeed:inheritedTypesByName:carrierKindResolver:)` | 34 | **partly, 29 of 34**: 5 call `suggest(forLifted:carrierKindResolver:)` |
-| 14 | `LiftedTestEmitter.liftedCountInvarianceRegression(funcName:elementTypeName:inputSource:)` | 1 | agrees |
-| 15 | `TemplateRegistry.applyImpureSubjectVeto(to:summaries:)` | 2 | agrees |
-| 16 | `AssociativityPairResolver.Resolved.init(functionCall:)` | 0 | agrees |
-| 17 | `SwiftInferCommand.Drift.init()` | 0 | agrees |
-| 18 | `EffectAnnotationAdvice.init(displayName:signature:location:recommendedAnnotation:…)` | 0 | agrees |
-| 19 | `TemplateMatch.sortedOutputMatch` | 0 | **disagrees**: two tests assert `suggestion.match?.sortedOutputMatch`, naming neither `TemplateMatch` nor a matching file |
-| 20 | `LiftedTestEmitter.UniquifierStub.init(…)` | 0 | agrees |
+| 1 | `BidirectionalCollection where Self == SubSequence::trim(while:)` | 2 → 2 | 1; `testTrimRangeReplaceable` trims an `Array`, which takes the `@_disfavoredOverload` RangeReplaceable one. Over |
+| 2 | `BidirectionalCollection::suffix(while:)` | 4 → 1 | 1; `range.suffix(5)` doesn't fit, and the local `let suffix` in PartitionTests no longer counts. Agrees |
+| 3 | `Collection where Element: Comparable::min(count:)` | 13 → 5 | 4; `testMinMaxSequences` takes the Sequence overload. Over |
+| 4 | `Collection where Self: RangeReplaceableCollection::trimPrefix(while:)` | 2 → 2 | 1; disfavoured, so the `ArraySlice` test takes the other overload. Over |
+| 5 | `Collection::combinations<R: RangeExpression>(ofCount:)` | 4 → 4 | 4. Agrees |
+| 6 | `Collection::evenlyChunked(in:)` | 2 → 2 | 2. Agrees |
+| 7 | `Collection::permutations(ofCount: Int? = nil)` | 21 → 9 | 7; examples 4 and 6 call only the range overload. Over |
+| 8 | `Collection::striding(by:)` | 10 → 10 | 10. Agrees |
+| 9 | `LazySequenceProtocol where Element: Sequence::joined(by: (Element, Element) -> Separator)` | 10 → 6 | 1 direct; 2 more reach it only through a forwarding overload. Over |
+| 10 | `LazySequenceProtocol … ::split(maxSplits:omittingEmptySubsequences:whereSeparator:)` | 1 → 27 | 1; only `testSequenceDocExamples` passes `.closure` to the `Validator` helper. Over |
+| 11 | `MutableCollection where Self: BidirectionalCollection::partition(subrange:by:)` | 2 → 2 | 2. Agrees |
+| 12 | `MutableCollection::rotate(subrange:toStartAt:)` (the non-bidirectional one) | 6 → 4 | 0 direct; the four tests call it on arrays, which take the bidirectional overload, and it runs only through `stablePartition`. Over |
+| 13 | `Sequence where Element: Comparable::minAndMax()` | 8 → 6 | 6; the `by:` callers don't fit. Agrees |
+| 14 | `Sequence::adjacentPairs()` | 12 → 12 | 6; the range tests take the Collection overload. Over |
+| 15 | `Sequence::keyed(by:)` | 6 → 4 | 4; the `keyed(by:resolvingConflictsWith:)` callers no longer count. Agrees |
+| 16–20 | `LazySequenceProtocol::scan(_:_:)`, `MutableCollection::rotate(toStartAt:)`, `Sequence::scan(_:)`, `Sequence::scan(into:_:)`, `StridingSequence::striding(by:)` | 0 → 0 | 0; none ran. Agree |
 
-Under the stated heuristic, 20 of 20 are right. A human agrees with 15, partly with 2, and disagrees with 3.
+Under the rule, 20 of 20 are right. A human agrees with 12 of 20: 7 of the 15 linked and all 5 unlinked, which never ran and so say nothing about recall. Of the 8 over-counts, 7 (1, 3, 4, 7, 9, 12, 14) are overloads with the same labels that differ only in types or constraints, and one (10) is the path-insensitive helper.
 
-**The auditors' fresh samples did worse.**
-- **swift-algorithms**, 10 linked functions outside the runs' sample. The heuristic matched the auditor's independent count on 10 of 10, but a human agrees with 1 fully (`indexed()`) and 1 partly (`stablePartition(subrange:by:)`, one test direct and one through `stablePartition(by:)`). Seven over-count, because overloads sharing a base name each get every test that writes the name: the `joined(by:)` overloads get 10 links each against 1 or 2 real callers, and `Sequence::min(count:sortedBy:)` gets 13 against 0 direct callers, mostly from the `.min` tuple label in `MinAndMaxTests`. One links the wrong test: `LazySequenceProtocol::split(maxSplits:omittingEmptySubsequences:whereSeparator:)` is linked to `SplitTests.testLaziness`, which calls only the Equatable `split(separator:)`. Helper-mediated calls are missed: the real `split` caller is `testSequenceDocExamples`, through its `Validator` helper, and `min(count:sortedBy:)` is reached 27 times by `testStability` through `assertStability`. The 6 member and free-function links outside the sample agree. On this package the median of 5 and the 593 links are inflated.
-- **SIP**, 10 more. The auditor's reimplementation matched 9 counts exactly; the tenth was off by one from the auditor's own regex. A human agrees with 6, partly with 1, and disagrees with 3. Across the 30 sampled links, about 21 agree, 3 partly and 6 disagree. New failure modes: a local variable named like the member counts (`ConstructionUniverse.root(forScanOf:)` has 35 links against about 6 call sites; most tests only declare `let root = …`); helper-mediated calls are missed (`ReducerPurityAnalyzer.analyzeForPurity(_:readingTCANames:)` is unlinked though `ReducerPurityNameTokenTests` calls it through `private static func purity(_:tca:)`); tests excluded by the configured `--skip` still count, since the link is per target profile (`CorpusPackager.packageMultiModule` is linked to `MultiModuleVerifyMeasuredTests::multiModuleSurveyVerifies`); and type names collide (`SwiftInferCommand.Corpus.init()` is linked to a test that builds `SyntaxSnippetHarvester.Corpus(…)`).
+| # | SIP public function | First run → re-run | Reader view |
+|---|---|---|---|
+| 1 | `DecisionsLoader.load(startingFrom:explicitPath:fileSystem:)` | 8 → 8 | agrees |
+| 2 | `InteractionVerifyOutcomeParser.Result.init(outcome:…)` | 13 → 16 | agrees; 3 through private `entry(…)` helpers, and the common name is always qualified |
+| 3 | `SwiftInferCommand.Verify.SurveyRecord.init(…)` | 5 → 12 | agrees; 7 through `Self.record` helpers |
+| 4 | `BodySignals.init(hasNonDeterministicCall:…)` | 20 → 113 | **partly**: all 113 are real, 93 through fixture helpers, but 4 `MarkerDispatchTemplateTests` reach it through static stored properties (`Self.front`, `Self.chain`), which aren't followed |
+| 5 | `Decisions.init(schemaVersion:records:)` | 56 → 63 | agrees; 7 through helpers |
+| 6 | `IndexedTypeShape.InitializerParameter.init(label:typeName:)` | 3 → 9 | agrees; `PropertyLawCore.InitializerParameter(…)` is excluded by its qualifier |
+| 7 | `ManifestConditions.read(manifest:)` | 3 → 3 | agrees |
+| 8 | `ReducerDiscoverer.discover(directory:)` | 91 → 4 | agrees; `discover(source:file:)` and `discover(file:)` no longer fit |
+| 9 | `SemanticIndexEntry.updated(from:)` | 5 → 11 | agrees; `InteractionIndexEntry.updated(from:)` callers don't name the type |
+| 10 | `SyntaxSnippetHarvester.Corpus.init(snippets:nodeTypeNames:)` | 1 → 4 | agrees; 3 through `Self.source()`, and no other `Corpus` counts |
+| 11 | `AssociativityTemplate.makeConstraint(vocabulary:reducerOps:inheritedTypesByName:)` | 1 → 1 | agrees |
+| 12 | `HomomorphismTemplate.suggestMemberForm(for:)` | 1 → 1 | agrees; an unapplied reference with its label, passed to `flatMap` |
+| 13 | `LiftedTestEmitter.emptinessAgreement(predicate:measure:holdsWhenPositive:carrier:seed:)` | 1 → 1 | agrees |
+| 14 | `ReorderPartitionTemplate.suggest(for:)` | 4 → 4 | agrees |
+| 15 | `LiftedSuggestion.commutativity(from:origin:)` | 10 → 12 | agrees; 2 through `commutativityLifted(…)` |
+| 16 | `JSONArtifactStore.write(_:to:)` (unlinked) | 0 → 0 | agrees |
+| 17 | `ValueSemanticStubEmitter.Inputs.init(typeName:mutationMethods:moduleName:testable:)` (unlinked) | 37 → 0 | **disagrees: 2**, built as `ValueSemanticStubEmitter.emit(.init(typeName:…))`, an implicit `.init` passed as an argument; the first run's 37 came from the `Inputs` collision |
+| 18 | `MemberAccessShape.spelling(of:)` (unlinked) | 0 → 0 | agrees; a test's own `spelling(of:style:)` helper doesn't fit |
+| 19 | `ViewModelNameHeuristics.isBool(_:)` (unlinked) | 0 → 0 | agrees |
+| 20 | `RoleClosureTemplate.role(of:)` (unlinked) | 1 → 0 | agrees; reached only through `suggest`, a production function |
 
-The figure is produced and labelled a heuristic, as decided. As a measure of how many tests exercise a function, it is not reliable on either package.
+Under the rule, 20 of 20 are right. A reader agrees with 18, partly with 1 (#4), and disagrees with 1 (#17). The first run's counts matched a reader's on only 9 of these 20: 8 linked functions missed helper-reached tests, #8 was over by 87, and #17 and #20 had links from name collisions.
+
+**The auditors' fresh samples.**
+- **swift-algorithms**, 10 linked protocol extension members drawn at random from outside every earlier sample. Every count equals the rule, 10 of 10. A human agrees with 3 (`stablePartition(by:)` 1, `cycled(times:)` 7, and the lazy Collection Equatable `split(separator:)` 28, a recall gain from the helper), partly with 5, and disagrees with 2 (the lazy `reductions(into:_:)`, 2 against 0 direct, reached only through a forwarding production overload; the eager `joined(by:)` with an element closure, 6 against 1). Every miss is an overload with the same labels.
+- **SIP**, 7 linked and 3 unlinked, drawn at random from outside every earlier sample. Every count equals the rule, 10 of 10. A human agrees with 9, among them `DocumentedRangeTemplate.suggest(for:)` (25, 20 through private helpers) and `PackageTree.init` (8, 2 across suites through a private typealias). The one disagreement is `IndexedTypeShape.init(from: Decoder)`, 15: all are callers of the same-labelled `init(from: TypeShape)`, and `Codable`'s requirements aren't in the witness list.
+
+**The first run's failure modes now:**
+
+| | Failure mode | Now |
+|---|---|---|
+| (a) | Overloads sharing a base name | Fixed where labels differ (`ends(with:)` 12 → 6, `ReducerDiscoverer.discover(directory:)` 91 → 4); open where only types or constraints differ, the main error left on swift-algorithms |
+| (b) | Tuple labels and unrelated members | Fixed: the `.max` and `.min` tuple labels and `Int.max` no longer count (`Sequence::min(count:sortedBy:)` 13 → 2) |
+| (c) | Local variables | Fixed (`ConstructionUniverse.root(forScanOf:)` 35 → 6) |
+| (d) | Calls through test helpers, missed | Followed (`analyzeForPurity` 0 → 4, `applyImpureSubjectVeto` 2 → 7, `testStability` through `assertStability`); a helper is read whole, so `Validator` over-counts the lazy `whereSeparator:` overloads |
+| (e) | Tests `--skip` left out, counted | Fixed (`CorpusPackager.packageMultiModule` 2 → 1); swift-algorithms' config has no `--skip` |
+| (f) | Types sharing a simple name | Fixed (`VerifierWorkdir.Inputs.init` 37 → 4, `SwiftInferCommand.Corpus.init()` 1 → 0, `ValueSemanticStubEmitter.Inputs.init` 37 → 0) |
+
+The figure is produced and labelled a heuristic, as decided. On SIP, where most public functions are members of concrete types, a reader now agrees with 27 of 30 fresh links, though helpers make the distribution's high end a count of fixture use. On swift-algorithms, where 98 of the 104 counted functions are protocol extension members and many overloads differ only in type, 22 of the 40 linked functions sampled in the re-run (both runner samples and the auditor's) still over-count.
 
 ## Times
 
@@ -286,6 +380,7 @@ Release build, this Mac. The two package runs overlapped in time: SIP's first `s
 | `report`, Markdown (two runs) | 2.24 s, 1.68 s | 2.11 s, 2.18 s |
 | `report`, JSON (two runs) | 1.57 s, 1.66 s | 2.75 s, 2.73 s |
 | `top risky-untested`, `top uneven-clone-testing` | 1.37 to 1.64 s | 1.61 to 1.87 s |
+| `scan --coverage` with the tightened links (tree `9759b3c8`), warm build | 12.06 s (collector 7.2 s) | 162.48 s (collector 150.9 s) |
 
 - **SIP's cold coverage run:** the build took about 168 s (to the last bundle's mtime at about 17:28:41), the tests about 140 s (to the last profile at 17:31:01), and the remaining 17 s or so covers merging, export, `show`, decoding, mapping and the store write. SwiftStats' own share was not timed apart from the LLVM tools, so the design's bound of under 15 s for it is not shown either way. The design expected about 150 s of build and 150 s of tests cold.
 - **The plain scans** include SwiftProjectLint, which M4's runs skipped; the carry reads only the old coverage rows. §12 criterion 1 (swift-collections) was not re-measured for M5.
@@ -312,6 +407,12 @@ Decided during the review:
 - **Deinitialisers, like initialisers, don't count as running** in the race-on-a-type rule.
 - **A requested coverage run that failed or was skipped still carries, with a warning** saying so; damaged held coverage gives an error naming both `scan --coverage` and `--drop-coverage`.
 
+Decided after the done-when hand-checks:
+
+- **Tighten the links** (the user, after seeing item 5's samples): calls must fit the function's argument labels, accessors link only through member reads, qualified type names must fit, test helpers are followed, and tests `--skip` leaves out count for nothing (PRD §7.8). The label became "heuristic: the test's target ran it and the test, or a test helper it calls, calls it with fitting labels or reads it (a subscript: names its type)".
+- **The coverage run records the link rule** as the option `links:`, and a carry refuses coverage linked by another rule ("its functions were linked to tests by another rule"), so a store holding the first build's links can't carry them.
+- **Left open:** whether helpers should count for value-type initialisers. As built they do, so SIP's fixture initialisers count most of its tests (5b).
+
 Choices made while building, where the design left room or strict SwiftLint forced a shape:
 
 - **The carry's record check goes both ways**: a production record with no stored coverage also refuses. A carried reason keeps the original run's reason. A `scan --coverage` whose run fails carries the held coverage with a warning, or is refused, like a plain rescan; only a run that ran replaces held coverage.
@@ -319,7 +420,7 @@ Choices made while building, where the design left room or strict SwiftLint forc
 - **Files are risky + untested subjects too**, for global and file-level markers. In the race-on-a-type verdict a type's attachments neither clear it nor give it data, since summed attachments can't tell a lazy getter from a stored-property initialiser. An attachment-only type stays in the pool, so crash markers on its attachment lines are judged by line. Production is inferred for type and file markers, since the stored snapshot has no targets.
 - **`functionCoverage` stores `reason` and `link`**, so a carried report can tell witnesses and extension members apart; `saturated` is a list of `{file, line}`; uneven clone testing's copies sit under `clone.coverage`, as `clone.copies` was already M4's count.
 - **Record lines include the entries' skipped `#if` regions**, as llvm's per-function view does.
-- **Access:** setters take a written `private(set)` level; subscripts with no accessor records count as public functions; free functions link by base name; operators are always unlinked.
+- **Access:** setters take a written `private(set)` level; subscripts with no accessor records count as public functions; free functions link by a fitting call, bare or module-qualified (by base name in the first build); operators are always unlinked.
 - **A `--skip` regex may not be empty or start with `-`**, so no flag gets past the allowlist. Reasons redact the toolchain directory as `<toolchain>`.
 
 ## Review
@@ -358,15 +459,28 @@ The finished code then had an adversarial review across eight areas: the run, ma
 | check | The damaged-coverage error didn't mention `--drop-coverage` | It names both ways out |
 | check | A generated type with an attached stored-property initialiser still counted as a risky + untested candidate | Left out when all its rows are in generated files |
 
+**Tightening the links** (5b) was built and reviewed the same way. Each piece of the new rule was reverted on its own and rebuilt, and each time named tests failed or, for the cycle guard, the ping/pong test hung (stopped after 90 s). Reverting accessors-as-member-reads needed two places undone, since candidates come from member reads; undoing only the match check passed. A review of the change then raised findings of which thirteen were real, fixed in the eight groups below, each with a regression test. Overloads with the same labels were confirmed but only documented, since no rule that ignores types can separate them; a partial fix through `@_disfavoredOverload` was not taken, since it would undercount `Array.trimPrefix`, which can reach only the disfavoured overload. Each fix and each of the reviewers' 13 mutants was then undone in turn, and a named test failed on all 29 undos. The Coverage fixture's expectations didn't move: its 33 public functions keep their counts (25 linked, 8 unlinked or null). On tree `9759b3c8`, `swift build --build-tests` gives no warnings, `swift test` passes 532 tests in 108 suites, and strict SwiftLint reports 0 violations.
+
+| Finding | Fix |
+|---|---|
+| (medium) A call reached a test helper whatever it was written on | A call on `self`, `Self` or `super` reaches only members of the caller's own types; a chain of names reaches no free helper, a chain ending in a type of the target (typealiases resolved) only that type's members, and another capitalised name none |
+| (medium) `--skip` read Swift Testing IDs unlike Swift Testing | The location is where the `@Test` attribute's name starts; the IDs and tags of `@Suite` types the test's ID passes through are matched; `tag:`, `id:` and backticks are read as Swift Testing reads them |
+| (low) Bare calls in a test-target extension of a production type were missed | `Self(…)`, `Self.init(…)` and `self.init(…)` call the enclosing type's initialiser; bare calls there also count as calls on `self` |
+| (low) A nested test type couldn't reach an enclosing type's static helper | Every enclosing type, and what each inherits, counts as around the caller |
+| (low) Calling a closure-valued property, `x.maker()`, didn't read it | A member called with no argument labels also counts as a member read |
+| (low) Module qualifiers used the target name | The C99 module name |
+| (low) Carried coverage kept the old link counts | The run records `links:`, and the carry refuses coverage linked by another rule |
+| Dead code: an unused initialiser, and a no-record fallback that would have bypassed the skip filter and helper expansion | Removed; the fallback returns nil |
+
 ## Known limits
 
-- **Test links over-count and under-count.** Overloads share a base name, so each gets every test that writes the name; tuple labels (`.max`), local variables (`let root`) and unrelated nested types with the same simple name (`Inputs`, `Corpus`) count as naming a function; tests reaching a function through a helper or a property chain are missed; tests excluded by `--skip` still count; `make(.init(…))` and `.init() as T` stay unlinked. On the sampled links a human agreed with 10 of 20 and 15 of 20, and on the auditors' fresh samples with 1 of 10 and 6 of 10. The figure is a heuristic, and labelled one.
+- **Test links still over-count and under-count.** Argument types are never read, so overloads with the same labels (Sequence vs Collection, lazy vs eager, `Int?` vs a range, `detect(stateTypeName:in:)` with `String` vs `URL`) each get every fitting call; this is the main error left on swift-algorithms. A helper is read as everything it writes, whichever branch the test takes (`Validator`: 27 links against 1). Through helpers, value types' initialisers count every test whose fixture builds them (`SourceLocation.init` 1,693), so SIP's p90 and maximum measure fixture use; whether helpers should count for initialisers is left open. Missed: `emit(.init(…))` and `.init() as T`, fixtures built in stored properties, member reads that name neither the type nor a matching file (`suggestion.match?.sortedOutputMatch`), and functions reached only generically (`encode(to:)` through `JSONEncoder`). `Codable`'s `init(from:)` and `encode(to:)` aren't witnesses, so they are linked as members, through the callers of a same-labelled overload where there is one (31 on SIP, 1 of them linked). On fresh samples under the tightened rule a human agreed with 12 of 20 and 3 of 10 on swift-algorithms, and 18 of 20 and 9 of 10 on SIP; the first, name-only rule got 10 of 20 and 1 of 10, and 15 of 20 and 6 of 10, on its own samples. The figure is a heuristic, and labelled one.
 - **Swift 6.1 and the native build system are not supported.** Coverage needs `--build-system swiftbuild`, accepted by Swift 6.2 and later; Swift 6.1.2 fails with "this toolchain's swift doesn't accept `--build-system swiftbuild`, and coverage needs Swift Build's test bundles, one per test target (Swift 6.2 or later)". On 6.3.3 with Swift Build, the fixture built into per-target bundles by hand, but only with a scratch developer directory and extra linker flags the collector can't pass, so a full end-to-end scan on 6.3.3 was not verified on this machine. 6.2.4's bundle layout was checked; its build failed here for SDK and deployment-target reasons.
 - **`llvm-cov report`'s line totals differ from SwiftStats'** (4,390 against 4,006 lines on swift-algorithms), since SwiftStats follows lcov's DA lines. Regions agree.
 - **Done-when 1(b) was reworded**, and swift-algorithms never exercises the shared-line case that motivated it.
 - **Risky + untested:** a type's stored-property initialisers and lazy getters are attached coverage and, in the race-on-a-type verdict, neither count as running nor give the type data; a type with attached coverage and no function is counted wherever it is declared, generated files included, as the store keeps no file for a type; a marker on a line where other code ran reads as tested, and one reached only by crashing exit tests reads as untested. On SIP the one verdict a reader would call wrong (`LargeStackWorkers.Box`) is harmless but reads "no coverage data". Neither package exercises the untested or partly run line cases.
-- **Coverage varies between runs** more than the design said: on SIP the set of run lines moved in 11 files and uneven clone testing gained two items.
-- **The carry never consults the SwiftStats build**, nor the link heuristic: a rebuild that changes how tests are linked keeps the old links until `scan --coverage` runs again. Only the map rule string is compared. A `DecodingError` from a held report's warnings still comes through raw, not as damaged coverage.
+- **Coverage varies between runs** more than the design said: on SIP the set of run lines moved in 11 files and uneven clone testing gained two items; the links re-run's coverage moved covered lines in 10 records and gave 139 members against the first run's 138.
+- **The carry never consults the SwiftStats build**, only the map and link rule strings (`map:` and `links:`): a rebuild that changes how tests are linked without changing the `links:` rule, such as the witness list or the access rules, keeps the old links until `scan --coverage` runs again. A `DecodingError` from a held report's warnings still comes through raw, not as damaged coverage.
 - **The interrupt checks ran only on swift-algorithms**, signalled only the `swiftstats` process, and show no SwiftPM lock only by the next scan completing.
 - **No timeout on the coverage run**, so a test that hangs blocks the scan; SwiftStats' own share of its time was not measured.
 - **A Swift file with lone-CR line endings** makes `llvm-cov` reject the export, which fails the collector (PRD §7.8).
