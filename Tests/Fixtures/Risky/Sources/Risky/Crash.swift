@@ -66,4 +66,25 @@ public enum Crash {
     public static func unreachable() -> Never {
         fatalError("unreachable")
     }
+
+    /// Run by no test: two force unwraps on lines that didn't run.
+    public static func twice(_ first: Int?, _ second: Int?) -> Int {
+        let head = first!
+        return head + second!
+    }
+
+    /// Run with `flag` false: its first force unwrap's line ran, its
+    /// second's didn't.
+    public static func mixed(_ value: Int?, _ flag: Bool) -> Int {
+        let base = value!
+        if flag {
+            return base + value!
+        }
+        return base
+    }
+
+    /// Run by the tests: its force cast's line ran.
+    public static func cast(_ value: Any) -> Int {
+        value as! Int
+    }
 }

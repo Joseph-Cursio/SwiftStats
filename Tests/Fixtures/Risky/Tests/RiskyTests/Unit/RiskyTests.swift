@@ -9,6 +9,8 @@ import Testing
     #expect(Crash.inactive(nil) == 2)
     #expect(Crash.outer(nil) == 3)
     #expect(Crash.pair(1, 2) == 3)
+    #expect(Crash.mixed(4, false) == 4)
+    #expect(Crash.cast(5) == 5)
 }
 
 @Test func races() {
@@ -21,4 +23,5 @@ import Testing
     let boxed = Boxed()
     boxed.value = 3
     #expect(boxed.value == 3)
+    #expect(Released().count == 0)
 }

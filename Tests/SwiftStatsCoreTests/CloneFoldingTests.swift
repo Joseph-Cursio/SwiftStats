@@ -3,7 +3,8 @@
 //  SwiftStatsCoreTests
 //
 //  Folding nested divergent classes (PRD §8): a member whose changed and
-//  unchanged families lie within another's is listed only as part of it.
+//  unchanged families lie within another's is listed only as part of it;
+//  and the shared helper's order.
 //
 
 import Foundation
@@ -97,5 +98,34 @@ struct CloneFoldingTests {
         #expect(signal.items.map { $0.clone?.divergence?.folded } == [[2], []])
         #expect(signal.items.map(\.score) == [16, 16])
         #expect(signal.items.map { $0.clone?.pass } == [.nearMiss, .sequence])
+    }
+
+    @Test("the classes left standing come back in ordinal order, though one stands for a lower ordinal")
+    func ordinalOrder() {
+        let cloneClass = { (ordinal: Int, pass: CloneClass.Pass) in
+            CloneClass(
+                ordinal: ordinal,
+                pass: pass,
+                exact: false,
+                mass: 10,
+                similarity: nil,
+                lineSpan: 4,
+                fingerprint: "f\(ordinal)",
+                instances: []
+            )
+        }
+        // 1 and 5 hold each other, and 5, a subtree class, stands for both;
+        // 3 holds and is held by nothing else.
+        let members = [cloneClass(5, .subtree), cloneClass(3, .sequence), cloneClass(1, .nearMiss)]
+        let pairs: Set<[Int]> = [[1, 5], [5, 1]]
+
+        let holds = { (lhs: CloneClass, rhs: CloneClass) in
+            lhs.ordinal == rhs.ordinal || pairs.contains([lhs.ordinal, rhs.ordinal])
+        }
+
+        let folded = CloneFolding.folded(members, cloneClass: { $0 }, holds: holds)
+
+        #expect(folded.map(\.member.ordinal) == [3, 5])
+        #expect(folded.map(\.folded) == [[], [1]])
     }
 }

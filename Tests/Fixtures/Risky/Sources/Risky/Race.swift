@@ -91,3 +91,22 @@ public final class Boxed: @unchecked Sendable {
     /// The boxed value.
     public var value = 0
 }
+
+/// A counter the tests built, and nothing more; its deinitialiser ran when
+/// the built instance was released.
+public final class Released: @unchecked Sendable {
+    /// Times worked.
+    public var count = 0
+
+    /// A new counter.
+    public init() {}
+
+    deinit {
+        count = -1
+    }
+
+    /// Counts once.
+    public func work() {
+        count += 1
+    }
+}

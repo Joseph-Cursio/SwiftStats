@@ -9,7 +9,8 @@
 //  fake SwiftProjectLint reporting a marker at each risky line, found by
 //  its text, so the signal is computed from a real coverage run without
 //  building or running anything. SwiftStats' own implicitly unwrapped
-//  optional markers are its real ones.
+//  optional markers are its real ones. One file is generated, by the
+//  default `*.generated.swift` glob.
 //
 
 import Foundation
@@ -39,7 +40,8 @@ enum RiskyFixture {
     /// The fixture's files, relative to its root.
     static let files = [
         "Sources/Orphan/Orphan.swift", "Sources/Risky/Crash.swift", "Sources/Risky/Globals.swift",
-        "Sources/Risky/Race.swift", "Tests/RiskyTests/Support.swift", "Tests/RiskyTests/Unit/RiskyTests.swift"
+        "Sources/Risky/Race.swift", "Sources/Risky/Stubs.generated.swift", "Tests/RiskyTests/Support.swift",
+        "Tests/RiskyTests/Unit/RiskyTests.swift"
     ]
 
     /// The fixture's targets, as `swift package describe` lists them.
@@ -56,7 +58,7 @@ enum RiskyFixture {
             type: "library",
             moduleType: "SwiftTarget",
             path: "Sources/Risky",
-            sources: ["Crash.swift", "Globals.swift", "Race.swift"]
+            sources: ["Crash.swift", "Globals.swift", "Race.swift", "Stubs.generated.swift"]
         ),
         DescribedTarget(
             name: "RiskyTests",
@@ -69,10 +71,11 @@ enum RiskyFixture {
     ]
 
     /// SwiftProjectLint's markers in the fixture: every force unwrap,
-    /// `try!`, `@unchecked Sendable` and `nonisolated(unsafe)`, the two
-    /// force unwraps on one line as two findings, a trap the signal leaves
-    /// out, and a force unwrap and a file's `nonisolated(unsafe)` global in
-    /// test code.
+    /// `try!`, `as!`, `@unchecked Sendable` and `nonisolated(unsafe)`, the
+    /// two force unwraps on one line as two findings, a trap the signal
+    /// leaves out, a force unwrap and a file's `nonisolated(unsafe)` global
+    /// in test code, and a function's, a type's and a file's marker in the
+    /// generated file.
     static let markers = [
         Marker(rule: "forceUnwrap", file: crash, text: "value!", after: "func unwrapped"),
         Marker(rule: "forceUnwrap", file: crash, text: "value!", after: "func neverRun("),
@@ -83,16 +86,25 @@ enum RiskyFixture {
         Marker(rule: "forceUnwrap", file: crash, text: "first!", after: "func pair"),
         Marker(rule: "forceUnwrap", file: crash, text: "second!", after: "func pair"),
         Marker(rule: "unconditionalTrap", file: crash, text: "fatalError", after: ""),
+        Marker(rule: "forceUnwrap", file: crash, text: "first!", after: "func twice"),
+        Marker(rule: "forceUnwrap", file: crash, text: "second!", after: "func twice"),
+        Marker(rule: "forceUnwrap", file: crash, text: "let base = value!", after: "func mixed"),
+        Marker(rule: "forceUnwrap", file: crash, text: "base + value!", after: "func mixed"),
+        Marker(rule: "forceCast", file: crash, text: "as! Int", after: "func cast"),
         Marker(rule: "uncheckedSendable", file: race, text: "class Worked", after: ""),
         Marker(rule: "uncheckedSendable", file: race, text: "class OnlyBuilt", after: ""),
         Marker(rule: "uncheckedSendable", file: race, text: "class Untouched", after: ""),
         Marker(rule: "uncheckedSendable", file: race, text: "class Bare", after: ""),
         Marker(rule: "uncheckedSendable", file: race, text: "class Boxed", after: ""),
+        Marker(rule: "uncheckedSendable", file: race, text: "class Released", after: ""),
         Marker(rule: "nonisolatedUnsafe", file: race, text: "nonisolated(unsafe)", after: ""),
         Marker(rule: "forceTry", file: race, text: "try!", after: "struct Settings"),
         Marker(rule: "forceTry", file: race, text: "try!", after: "struct UnbuiltSettings"),
         Marker(rule: "nonisolatedUnsafe", file: globals, text: "nonisolated(unsafe)", after: ""),
         Marker(rule: "forceTry", file: globals, text: "try!", after: ""),
+        Marker(rule: "nonisolatedUnsafe", file: generated, text: "nonisolated(unsafe)", after: ""),
+        Marker(rule: "uncheckedSendable", file: generated, text: "class GeneratedWorker", after: ""),
+        Marker(rule: "forceUnwrap", file: generated, text: "value!", after: ""),
         Marker(rule: "forceUnwrap", file: "Sources/Orphan/Orphan.swift", text: "value!", after: ""),
         Marker(rule: "forceUnwrap", file: "Tests/RiskyTests/Unit/RiskyTests.swift", text: "Worked()", after: ""),
         Marker(rule: "nonisolatedUnsafe", file: support, text: "nonisolated(unsafe)", after: "")
@@ -104,6 +116,8 @@ enum RiskyFixture {
     static let race = "Sources/Risky/Race.swift"
     /// The file of the globals.
     static let globals = "Sources/Risky/Globals.swift"
+    /// The generated file.
+    static let generated = "Sources/Risky/Stubs.generated.swift"
     /// The test file holding no function.
     static let support = "Tests/RiskyTests/Support.swift"
 

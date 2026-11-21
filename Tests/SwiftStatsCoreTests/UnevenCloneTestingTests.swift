@@ -3,7 +3,8 @@
 //  SwiftStatsCoreTests
 //
 //  Uneven clone testing, coverage part (PRD §8, M5): which classes are
-//  listed, their scores and subjects, the copies skipped, folding on the
+//  listed, their scores and subjects, the 80% and 20% bounds, the copies
+//  skipped (in generated files, with no mapped line), folding on the
 //  poorly covered copies (a nested trio, an equal pair), and the lines
 //  more than one item counts.
 //
@@ -66,9 +67,10 @@ struct UnevenCloneTestingTests {
 
         #expect(signal.leftOut == nil)
         #expect(signal.candidates == 3)
-        #expect(signal.rule == UnevenCloneTesting.rule + "; 1 copies with no mapped line are skipped, leaving 1 "
-            + "classes with fewer than 2 measurable copies out; 0 classes whose poorly covered copies lie inside a "
-            + "listed class's are folded into it; 0 uncovered lines are counted by more than one item")
+        #expect(signal.rule == UnevenCloneTesting.rule + "; 0 copies in generated files and 1 copies with no mapped "
+            + "line are skipped, leaving 1 classes with fewer than 2 measurable copies out; 0 classes whose poorly "
+            + "covered copies lie inside a listed class's are folded into it; 0 uncovered lines are counted by more "
+            + "than one item")
         // Equal scores: the larger mass first.
         #expect(signal.items.map(\.subject) == [UnevenHarness.key(1), UnevenHarness.key(4)])
         #expect(signal.items.map(\.score) == [4, 4])
@@ -86,6 +88,75 @@ struct UnevenCloneTestingTests {
             + "(Sources/Lib/Twins.swift:21): 0/4; `func f5(_: Int) -> Int` (Sources/Lib/Twins.swift:26): 4/4 | "
             + "sequence | — | yes |"
         #expect(SignalHarness.rows(signal).last == row)
+    }
+
+    /// Copies exactly 80% and 20% covered count as well and poorly covered;
+    /// copies just short of either bound don't.
+    @Test("the 80% and 20% bounds are inclusive; a copy just outside either doesn't count")
+    func bounds() throws {
+        // Nine-line functions h0…h5, each after a blank line: h<n> on lines
+        // 10n + 1 through 10n + 9.
+        let text = (0..<6).map { index in
+            "func h\(index)(_ value: Int) -> Int {\n    var total = value\n"
+                + (1...5).map { "    total += \($0 + index)\n" }.joined() + "    return total\n}\n"
+        }
+        .joined(separator: "\n")
+        let span = { (index: Int) in (index * 10 + 1)...(index * 10 + 9) }
+        let clones = [
+            // Lines 1–5 of h0 at 4/5 and of h1 at 1/5: exactly 80% and 20%.
+            FakeClone(run: "default", mass: 50, spans: [(Self.file, 1...5), (Self.file, 11...15)]),
+            // 7/9 (77.8%) and 0/9: no copy is well covered.
+            FakeClone(run: "default", mass: 40, spans: [(Self.file, span(2)), (Self.file, span(3))]),
+            // 9/9 and 2/9 (22.2%): no copy is poorly covered.
+            FakeClone(run: "default", mass: 30, spans: [(Self.file, span(4)), (Self.file, span(5))])
+        ]
+        let covered: Set<Int> = Set(1...4).union(6...9).union([11]).union(21...27).union(41...49).union([51, 52])
+        let fileRuns = (0..<6).flatMap(span).map { UnevenHarness.run($0...$0, covered.contains($0) ? 1 : 0) }
+
+        let signal = try SignalHarness.signal(
+            .unevenCloneTesting,
+            of: try UnevenHarness.stored([Self.file: text], clones: clones, runs: [Self.file: fileRuns])
+        )
+
+        #expect(signal.candidates == 3)
+        #expect(signal.items.map { $0.clone?.mass } == [50])
+        #expect(signal.items.map(\.score) == [4])
+        #expect(signal.items.first?.clone?.coverage?.copies.map { "\($0.covered)/\($0.mapped)" } == ["4/5", "1/5"])
+    }
+
+    @Test("copies in generated files are skipped and counted apart from copies with no mapped line")
+    func generatedCopies() throws {
+        let generated = "Sources/Lib/Twins.generated.swift"
+        let files = [
+            Self.file: UnevenHarness.functions(3),
+            generated: UnevenHarness.functions(2).replacingOccurrences(of: "func f", with: "func g")
+        ]
+        let clones = [
+            // 100% here, 0% in the generated file: one measurable copy.
+            FakeClone(run: "default", mass: 40, spans: [(Self.file, Self.lines(0)), (generated, Self.lines(0))]),
+            // 100% and 0% here, and 0% in the generated file, uncounted.
+            FakeClone(run: "default", mass: 30, spans: [
+                (Self.file, Self.lines(1)), (Self.file, Self.lines(2)), (generated, Self.lines(1))
+            ])
+        ]
+        let runs = [
+            Self.file: [
+                UnevenHarness.run(Self.lines(0), 1), UnevenHarness.run(Self.lines(1), 1),
+                UnevenHarness.run(Self.lines(2), 0)
+            ],
+            generated: [UnevenHarness.run(Self.lines(0), 0), UnevenHarness.run(Self.lines(1), 0)]
+        ]
+
+        let snapshot = try UnevenHarness.stored(files, clones: clones, runs: runs)
+        let signal = try SignalHarness.signal(.unevenCloneTesting, of: snapshot)
+
+        #expect(snapshot.functions.filter { $0.facts?.generated == true }.map(\.file) == [generated, generated])
+        #expect(signal.candidates == 1)
+        #expect(signal.items.map { $0.clone?.mass } == [30])
+        #expect(signal.items.map(\.score) == [4])
+        #expect(signal.items.first?.clone?.copies == 2)
+        #expect(signal.rule.hasPrefix(UnevenCloneTesting.rule + "; 2 copies in generated files and 0 copies with no "
+            + "mapped line are skipped, leaving 1 classes with fewer than 2 measurable copies out; "))
     }
 
     /// A nested trio folds into the outermost class, an equal pair into the
@@ -133,9 +204,9 @@ struct UnevenCloneTestingTests {
         let folded: [[Int]] = signal.items.map { $0.clone?.coverage?.folded ?? [-1] }
         #expect(folded == [[], [], trio, pair, []])
         // Lines 21, 22, 24, 26 and 27 are each counted by two or three items.
-        #expect(signal.rule.hasSuffix("; 0 copies with no mapped line are skipped, leaving 0 classes with fewer "
-            + "than 2 measurable copies out; 3 classes whose poorly covered copies lie inside a listed class's are "
-            + "folded into it; 5 uncovered lines are counted by more than one item"))
+        #expect(signal.rule.hasSuffix("; 0 copies in generated files and 0 copies with no mapped line are skipped, "
+            + "leaving 0 classes with fewer than 2 measurable copies out; 3 classes whose poorly covered copies lie "
+            + "inside a listed class's are folded into it; 5 uncovered lines are counted by more than one item"))
         // The equal pair keeps the subtree class, though its mass is smaller.
         #expect(signal.items[3].clone?.pass == .subtree)
         // A copy no family holds is named by its file and first line.

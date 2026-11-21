@@ -66,7 +66,11 @@ enum CloneFolding {
             let ordinal = cloneClass(representative).ordinal
             foldedInto[cloneClass(holder).ordinal, default: []] += [ordinal] + (foldedInto[ordinal] ?? [])
         }
-        return maximal.map { ($0, (foldedInto[cloneClass($0).ordinal] ?? []).sorted()) }
+        // Groups follow their lowest ordinal, but the class standing for one
+        // may come later than the next group's, so sort as the doc says.
+        return maximal
+            .sorted { cloneClass($0).ordinal < cloneClass($1).ordinal }
+            .map { ($0, (foldedInto[cloneClass($0).ordinal] ?? []).sorted()) }
     }
 
     /// Where `cloneClass`'s kind sorts among the strongest claims.

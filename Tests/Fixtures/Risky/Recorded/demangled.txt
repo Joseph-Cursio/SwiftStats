@@ -3,6 +3,9 @@ $s10RiskyTests28__SwiftPMGeneratedTestRunnerV14testingLibrary33_1F2EB4456274DF14
 $s10RiskyTests28__SwiftPMGeneratedTestRunnerV4mainyyYaFZ	static RiskyTests.__SwiftPMGeneratedTestRunner.main() async -> ()
 $s10RiskyTests5racesyyF	RiskyTests.races() -> ()
 $s10RiskyTests7crashesyyF	RiskyTests.crashes() -> ()
+$s5Risky15GeneratedWorkerC4workyS2iSgF	Risky.GeneratedWorker.work(Swift.Int?) -> Swift.Int
+$s5Risky15GeneratedWorkerC5tallySivpfi	variable initialization expression of Risky.GeneratedWorker.tally : Swift.Int
+$s5Risky15GeneratedWorkerCACycfc	Risky.GeneratedWorker.init() -> Risky.GeneratedWorker
 $s5Risky15UnbuiltSettingsV6parsedSivpfi	variable initialization expression of Risky.UnbuiltSettings.parsed : Swift.Int
 $s5Risky15UnbuiltSettingsVACycfC	Risky.UnbuiltSettings.init() -> Risky.UnbuiltSettings
 $s5Risky5BoxedC5valueSivpfi	variable initialization expression of Risky.Boxed.value : Swift.Int
@@ -10,10 +13,13 @@ $s5Risky5CrashO11unreachables5NeverOyFZ	static Risky.Crash.unreachable() -> Swif
 $s5Risky5CrashO11unreachables5NeverOyFZSSyXEfu_	implicit closure #1 () -> Swift.String in static Risky.Crash.unreachable() -> Swift.Never
 $s5Risky5CrashO12ranSignatureyS2iSgFZ	static Risky.Crash.ranSignature(Swift.Int?) -> Swift.Int
 $s5Risky5CrashO17neverRunSignatureyS2iSgFZ	static Risky.Crash.neverRunSignature(Swift.Int?) -> Swift.Int
+$s5Risky5CrashO4castySiypFZ	static Risky.Crash.cast(Any) -> Swift.Int
 $s5Risky5CrashO4pairyS2iSg_AEtFZ	static Risky.Crash.pair(Swift.Int?, Swift.Int?) -> Swift.Int
+$s5Risky5CrashO5mixedyS2iSg_SbtFZ	static Risky.Crash.mixed(Swift.Int?, Swift.Bool) -> Swift.Int
 $s5Risky5CrashO5outeryS2iSgFZ	static Risky.Crash.outer(Swift.Int?) -> Swift.Int
 $s5Risky5CrashO5outeryS2iSgFZ5innerL_ySiAEF	inner #1 (Swift.Int?) -> Swift.Int in static Risky.Crash.outer(Swift.Int?) -> Swift.Int
 $s5Risky5CrashO5outeryS2iSgFZSiyKXEfu_	implicit closure #1 () throws -> Swift.Int in static Risky.Crash.outer(Swift.Int?) -> Swift.Int
+$s5Risky5CrashO5twiceyS2iSg_AEtFZ	static Risky.Crash.twice(Swift.Int?, Swift.Int?) -> Swift.Int
 $s5Risky5CrashO6branchyS2iSg_SbtFZ	static Risky.Crash.branch(Swift.Int?, Swift.Bool) -> Swift.Int
 $s5Risky5CrashO8fallbackyS2iSg_AEtFZ	static Risky.Crash.fallback(Swift.Int?, Swift.Int?) -> Swift.Int
 $s5Risky5CrashO8inactiveyS2iSgFZ	static Risky.Crash.inactive(Swift.Int?) -> Swift.Int
@@ -23,6 +29,10 @@ $s5Risky5TallyO4bumpyyFZ	static Risky.Tally.bump() -> ()
 $s5Risky6WorkedC4workyyF	Risky.Worked.work() -> ()
 $s5Risky6WorkedC5countSivpfi	variable initialization expression of Risky.Worked.count : Swift.Int
 $s5Risky6WorkedCACycfc	Risky.Worked.init() -> Risky.Worked
+$s5Risky8ReleasedC4workyyF	Risky.Released.work() -> ()
+$s5Risky8ReleasedC5countSivpfi	variable initialization expression of Risky.Released.count : Swift.Int
+$s5Risky8ReleasedCACycfc	Risky.Released.init() -> Risky.Released
+$s5Risky8ReleasedCfd	Risky.Released.deinit
 $s5Risky8SettingsV5parseySiSSKFZ	static Risky.Settings.parse(Swift.String) throws -> Swift.Int
 $s5Risky8SettingsV6parsedSivpfi	variable initialization expression of Risky.Settings.parsed : Swift.Int
 $s5Risky8SettingsVACycfC	Risky.Settings.init() -> Risky.Settings

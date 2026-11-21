@@ -42,8 +42,8 @@ enum RiskyUntested {
         + "forceUnwrap, forceTry, forceCast; swiftstats implicitlyUnwrappedOptional) or a race marker "
         + "(swiftprojectlint uncheckedSendable, nonisolatedUnsafe) no test ran: on a line that ran 0 times, or "
         + "in a function that ran nothing; a race marker on a type is untested when none of the type's functions "
-        + "but its initialisers ran, and has no coverage data when none of them has any (what is attached to "
-        + "the type, stored-property initialisers and lazy getters, isn't counted)"
+        + "but its initialisers and deinitialisers ran, and has no coverage data when none of them has any (what "
+        + "is attached to the type, stored-property initialisers and lazy getters, isn't counted)"
 
     /// The limits the rule states after the counts.
     static let limits = "a marker on a line where other code ran reads as tested, and one reached only by "

@@ -7,8 +7,9 @@
 //  1. no coverage data: the marker's function has none, or its line is in
 //     an inactive `#if` branch;
 //  2. a race marker on a type: untested when none of the type's functions
-//     but its initialisers ran anything and one of its functions has
-//     coverage data; no function with data, no coverage data. Its
+//     but its initialisers and deinitialisers ran anything (building an
+//     instance runs both) and one of its functions has coverage data; no
+//     function with data, no coverage data. Its
 //     attachments neither clear it nor give it data: a type's attachments
 //     are summed, so a lazy getter can't be told from a stored-property
 //     initialiser, which runs with the initialisers;
@@ -195,9 +196,15 @@ struct MarkerJudge {
     }
 
     /// The types with coverage data: those with a production function that
-    /// has data, outside generated files, or with coverage attached.
+    /// has data, outside generated files, or with coverage attached, unless
+    /// all their production functions lie in generated files. The store
+    /// keeps no file for a type, so one with coverage attached and no
+    /// function is counted wherever it is declared.
     func typesWithData() -> Set<String> {
-        var types = Set(attachments.keys.filter { $0.target == .type }.map(\.name))
+        var types: Set<String> = []
+        for subject in attachments.keys where subject.target == .type && isGenerated(type: subject.name) == false {
+            types.insert(subject.name)
+        }
         for (owner, rows) in members where rows.contains(where: hasData) {
             types.insert(owner)
         }
@@ -215,6 +222,15 @@ struct MarkerJudge {
         functions.row(key: row.key) != nil && records[row.key]?.regions != nil
     }
 
+    /// Whether every production function of the type `owner` lies in a
+    /// generated file; false for a type with none.
+    private func isGenerated(type owner: String) -> Bool {
+        guard let rows = members[owner], rows.isEmpty == false else {
+            return false
+        }
+        return rows.allSatisfy { generatedFiles.contains($0.file) }
+    }
+
     /// Whether the file at `path` lies in a test directory or below one.
     private func isTestFile(_ path: String) -> Bool {
         var directory = Self.directory(of: path)
@@ -228,7 +244,8 @@ struct MarkerJudge {
     }
 
     /// The verdict on a race marker on the type `subject`, by its
-    /// functions alone.
+    /// functions alone: building an instance runs an initialiser and,
+    /// when it is released, the deinitialiser, so neither clears it.
     private func typeVerdict(_ subject: RiskSubject) -> MarkerVerdict {
         let rows = members[subject.name] ?? []
         let withData = rows.filter { records[$0.key]?.regions != nil }
@@ -236,7 +253,7 @@ struct MarkerJudge {
             return .noData(MarkerVerdict.typeWithoutData)
         }
         let ran = withData.contains { row in
-            row.kind != .initializer && (records[row.key]?.regions?.covered ?? 0) > 0
+            row.kind != .initializer && row.kind != .deinitializer && (records[row.key]?.regions?.covered ?? 0) > 0
         }
         return ran ? .tested(partlyRun: false) : .untested
     }

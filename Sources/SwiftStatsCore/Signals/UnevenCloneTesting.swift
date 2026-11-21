@@ -5,10 +5,10 @@
 //  Uneven clone testing, coverage part (PRD §8, M5): copies of one piece
 //  of code that the tests cover unevenly, so a copy's tests could be copied
 //  or the code merged. A copy's coverage is the file's line data over its
-//  inclusive range, covered of mapped lines; a copy with no mapped line is
-//  skipped and counted. The pool is the snapshot's clone classes with two
-//  or more measurable copies (the clone tool reads production files
-//  outside generated ones only). A class is listed when one copy is at
+//  inclusive range, covered of mapped lines; a copy with no mapped line, or
+//  in a generated file (which the clone tool isn't given), is skipped and
+//  counted. The pool is the snapshot's clone classes with two or more
+//  measurable copies. A class is listed when one copy is at
 //  least 80% covered and another at most 20%, scored by the uncovered
 //  mapped lines of its copies at most 20% covered, and named by its least
 //  covered copy's family. A listed class whose poorly covered copies all
@@ -38,14 +38,15 @@ enum UnevenCloneTesting {
         let lines = CoverageLines(coverage)
         let index = FamilyIndex(snapshot.functions)
         let generated = Set(snapshot.functions.filter { $0.facts?.generated == true }.map(\.file))
+        var inGenerated = 0
         var skipped = 0
         var fewCopies = 0
         var members: [UnevenMember] = []
         for cloneClass in snapshot.cloneClasses {
-            let copies = cloneClass.instances
-                .filter { generated.contains($0.file) == false }
-                .compactMap { measured($0, lines: lines, index: index) }
-            skipped += cloneClass.instances.count - copies.count
+            let outside = cloneClass.instances.filter { generated.contains($0.file) == false }
+            let copies = outside.compactMap { measured($0, lines: lines, index: index) }
+            inGenerated += cloneClass.instances.count - outside.count
+            skipped += outside.count - copies.count
             guard copies.count >= minimumCopies else {
                 fewCopies += 1
                 continue
@@ -61,10 +62,10 @@ enum UnevenCloneTesting {
         let shared = Dictionary(grouping: counted) { $0 }.values.filter { $0.count > 1 }.count
         let pool = snapshot.cloneClasses.count - fewCopies
         return SignalComputation(
-            rule: rule + "; \(skipped) copies with no mapped line are skipped, leaving \(fewCopies) classes with "
-                + "fewer than \(minimumCopies) measurable copies out; \(foldedCount) classes whose poorly covered "
-                + "copies lie inside a listed class's are folded into it; \(shared) uncovered lines are counted by "
-                + "more than one item",
+            rule: rule + "; \(inGenerated) copies in generated files and \(skipped) copies with no mapped line are "
+                + "skipped, leaving \(fewCopies) classes with fewer than \(minimumCopies) measurable copies out; "
+                + "\(foldedCount) classes whose poorly covered copies lie inside a listed class's are folded into it; "
+                + "\(shared) uncovered lines are counted by more than one item",
             candidates: pool,
             scored: kept.map { item($0.member, folded: $0.folded) }
         )

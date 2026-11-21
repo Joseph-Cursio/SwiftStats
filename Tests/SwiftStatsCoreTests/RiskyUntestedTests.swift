@@ -5,7 +5,8 @@
 //  Risky + untested (PRD §8, M5) on the Risky fixture: its real coverage
 //  run, recorded, with SwiftProjectLint's markers faked at each risky line
 //  and SwiftStats' own implicitly unwrapped optionals; every marker's
-//  verdict and the signal's exact rows, counts and payloads.
+//  verdict, the generated file's markers left out, and the signal's exact
+//  rows, counts and payloads.
 //
 
 import Foundation
@@ -61,6 +62,13 @@ struct RiskyUntestedTests {
             // Two findings on one line, without columns, are two markers.
             "\(crash):62 forceUnwrap: tested",
             "\(crash):62 forceUnwrap: tested",
+            // Two untested markers in one function.
+            "\(crash):72 forceUnwrap: untested",
+            "\(crash):73 forceUnwrap: untested",
+            // A tested and an untested marker in one function.
+            "\(crash):79 forceUnwrap: tested",
+            "\(crash):81 forceUnwrap: untested",
+            "\(crash):88 forceCast: tested",
             // Globals hold no code region, so their file has no line data.
             "\(globals):2 nonisolatedUnsafe: no data: in a file with no coverage data",
             "\(globals):5 forceTry: no data: in a file with no coverage data",
@@ -77,12 +85,20 @@ struct RiskyUntestedTests {
             "\(race):76 forceTry: untested",
             // Case 2: a type whose only code, attached to it, ran: no
             // function has data, so coverage can't say.
-            "\(race):90 uncheckedSendable: no data: on a type with no coverage data"
+            "\(race):90 uncheckedSendable: no data: on a type with no coverage data",
+            // Case 2: only the initialiser and the deinitialiser ran, as
+            // building and releasing an instance runs them.
+            "\(race):97 uncheckedSendable: untested"
         ])
+        #expect(markers.filter { $0.rule == "forceCast" }.map(\.isRace) == [false])
         // The test files' markers and the trap are never judged: a test
         // function's, and the global's in a file above every test function.
         #expect(markers.contains { $0.file.hasPrefix("Tests/") } == false)
         #expect(markers.contains { $0.rule == "unconditionalTrap" } == false)
+        // Nor are the generated file's function, type and file markers.
+        #expect(markers.contains { $0.file == RiskyFixture.generated } == false)
+        let generated = snapshot.findings.filter { $0.file == RiskyFixture.generated }
+        #expect(generated.map(\.attachedTo.rawValue).sorted() == ["file", "function", "type"])
         #expect(snapshot.findings.contains { $0.file.hasPrefix("Tests/") && $0.rule == "forceUnwrap" })
         #expect(snapshot.findings.contains { $0.file == "Tests/RiskyTests/Support.swift" && $0.attachedTo == .file })
     }
@@ -93,10 +109,14 @@ struct RiskyUntestedTests {
         let signal = try SignalHarness.signal(.riskyUntested, of: snapshot)
 
         #expect(signal.leftOut == nil)
-        // 21 production functions, 8 types and 2 files have coverage data.
-        #expect(signal.candidates == 31)
-        #expect(signal.rule.hasPrefix(RiskyUntested.rule + "; 22 markers: 7 tested (1 on partly run lines), "
-            + "7 untested, 8 with no coverage data (2 in a file with no coverage data, 1 in a function with no "
+        // 27 production functions, 9 types and 2 files have coverage data;
+        // the generated file's function, type and file aren't counted, the
+        // type though its stored-property initialiser is attached to it.
+        #expect(signal.candidates == 38)
+        let attached = snapshot.coverage?.report.attachments.filter { $0.attachedTo == .type }.map(\.owner)
+        #expect(attached?.contains("Risky::GeneratedWorker") == true)
+        #expect(signal.rule.hasPrefix(RiskyUntested.rule + "; 28 markers: 9 tested (1 on partly run lines), "
+            + "11 untested, 8 with no coverage data (2 in a file with no coverage data, 1 in a function with no "
             + "coverage data, 1 in an inactive #if branch, 1 on a line with no code region in a function that ran, "
             + "1 on a line with no code region outside functions, 2 on a type with no coverage data); left out: "))
         #expect(signal.rule.contains("swiftprojectlint unconditionalTrap 1 (deliberate unreachable code)"))
@@ -106,21 +126,31 @@ struct RiskyUntestedTests {
             "| # | Function, type or file | Score | Untested by rule | On partly run lines | Lines | Regions "
                 + "| Member |",
             "| --- | --- | --- | --- | --- | --- | --- | --- |",
-            "| 1 | `Crash::static func neverRun(_: Int?) -> Int` (Sources/Risky/Crash.swift:9) | 1 | "
+            // Two untested markers score 2, listed first though other
+            // subjects' regions are as low.
+            "| 1 | `Crash::static func twice(_: Int?, _: Int?) -> Int` (Sources/Risky/Crash.swift:71) | 2 | "
+                + "forceUnwrap 2/2 | 0 | 0/4 (0%) | 0/1 (0%) | yes |",
+            "| 2 | `Crash::static func neverRun(_: Int?) -> Int` (Sources/Risky/Crash.swift:9) | 1 | "
                 + "forceUnwrap 1/1 | 0 | 0/3 (0%) | 0/1 (0%) | yes |",
-            "| 2 | `Crash::static func neverRunSignature(_: Int!) -> Int` (Sources/Risky/Crash.swift:30) | 1 | "
+            "| 3 | `Crash::static func neverRunSignature(_: Int!) -> Int` (Sources/Risky/Crash.swift:30) | 1 | "
                 + "implicitlyUnwrappedOptional 1/1 | 0 | 0/3 (0%) | 0/1 (0%) | yes |",
-            "| 3 | `Crash::static func outer(_: Int?) -> Int / func inner(_: Int?) -> Int` "
+            "| 4 | `Crash::static func outer(_: Int?) -> Int / func inner(_: Int?) -> Int` "
                 + "(Sources/Risky/Crash.swift:56) | 1 | forceUnwrap 1/1 | 0 | 0/1 (0%) | 0/1 (0%) | yes |",
-            "| 4 | `UnbuiltSettings` (Sources/Risky/Race.swift:76) | 1 | forceTry 1/1 | 0 | 0/2 (0%) | 0/2 (0%) "
+            "| 5 | `UnbuiltSettings` (Sources/Risky/Race.swift:76) | 1 | forceTry 1/1 | 0 | 0/2 (0%) | 0/2 (0%) "
                 + "| yes |",
-            "| 5 | `Untouched` (Sources/Risky/Race.swift:30) | 1 | uncheckedSendable 1/1 | 0 | 0/4 (0%) | 0/2 (0%) "
+            "| 6 | `Untouched` (Sources/Risky/Race.swift:30) | 1 | uncheckedSendable 1/1 | 0 | 0/4 (0%) | 0/2 (0%) "
                 + "| yes |",
-            "| 6 | `OnlyBuilt` (Sources/Risky/Race.swift:16) | 1 | uncheckedSendable 1/1 | 0 | 2/5 (40%) "
+            "| 7 | `OnlyBuilt` (Sources/Risky/Race.swift:16) | 1 | uncheckedSendable 1/1 | 0 | 2/5 (40%) "
                 + "| 2/3 (66.67%) | yes |",
-            "| 7 | `Crash::static func branch(_: Int?, _: Bool) -> Int` (Sources/Risky/Crash.swift:21) | 1 | "
-                + "forceUnwrap 1/1 | 0 | 5/6 (83.33%) | 3/4 (75%) | yes |"
+            "| 8 | `Crash::static func branch(_: Int?, _: Bool) -> Int` (Sources/Risky/Crash.swift:21) | 1 | "
+                + "forceUnwrap 1/1 | 0 | 5/6 (83.33%) | 3/4 (75%) | yes |",
+            // One untested marker of two scores 1: untested, then all.
+            "| 9 | `Crash::static func mixed(_: Int?, _: Bool) -> Int` (Sources/Risky/Crash.swift:78) | 1 | "
+                + "forceUnwrap 1/2 | 0 | 6/7 (85.71%) | 3/4 (75%) | yes |",
+            "| 10 | `Released` (Sources/Risky/Race.swift:97) | 1 | uncheckedSendable 1/1 | 0 | 5/8 (62.50%) "
+                + "| 3/4 (75%) | yes |"
         ])
+        #expect(signal.items.map(\.score) == [2, 1, 1, 1, 1, 1, 1, 1, 1, 1])
     }
 
     @Test("an item carries its markers by rule and its subject's coverage, and the JSON round-trips")
@@ -140,6 +170,10 @@ struct RiskyUntestedTests {
         // stored property's initialiser (1 of 1).
         #expect(item.coverage?.regions == CoverageTally(covered: 2, total: 3))
         #expect(try JSONDecoder().decode(SignalItem.self, from: try ScanReportEncoder.encode(item)) == item)
+        // Untested, then all markers, by rule.
+        let byRule = { (subject: String) in signal.items.first { $0.subject == subject }?.markers?.byRule }
+        #expect(byRule("Risky::Crash::static func twice(_: Int?, _: Int?) -> Int") == ["forceUnwrap": [2, 2]])
+        #expect(byRule("Risky::Crash::static func mixed(_: Int?, _: Bool) -> Int") == ["forceUnwrap": [1, 2]])
     }
 
     @Test("findings merge only when tool, rule, file, line and a known column agree; other rules aren't markers")
@@ -171,6 +205,8 @@ struct RiskyUntestedTests {
             row("swiftstats", "precondition", 5, 1),
             row("swiftprojectlint", "unsafeMemoryAPI", 6, nil),
             row("swiftprojectlint", "uncheckedSendable", 7, nil),
+            row("swiftprojectlint", "forceCast", 8, nil),
+            row("swiftlint", "force_cast", 8, 5),
             unscanned
         ]
 
@@ -178,8 +214,8 @@ struct RiskyUntestedTests {
 
         #expect(markers.map { "\($0.rule)@\($0.line ?? 0):\($0.column ?? 0)" } == [
             "forceUnwrap@3:0", "forceUnwrap@3:0", "implicitlyUnwrappedOptional@4:10",
-            "implicitlyUnwrappedOptional@4:20", "uncheckedSendable@7:0"
+            "implicitlyUnwrappedOptional@4:20", "uncheckedSendable@7:0", "forceCast@8:0"
         ])
-        #expect(markers.map(\.isRace) == [false, false, false, false, true])
+        #expect(markers.map(\.isRace) == [false, false, false, false, true, false])
     }
 }
