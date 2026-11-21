@@ -3,8 +3,8 @@
 //  SwiftStatsCore
 //
 //  Compares two stored snapshots (PRD §6.6): which collectors compare, which
-//  function families were added, removed, moved, renamed or changed, and
-//  which metrics moved.
+//  function families were added, removed, moved, renamed or changed, which
+//  metrics moved, and which test bundles came or went (M5).
 //
 
 /// Diffs two snapshots.
@@ -25,12 +25,15 @@ public enum SnapshotDiff {
             families += result.removed.map { unmatched($0, status: .removed) }
             families += result.added.map { unmatched($0, status: .added) }
             let counts = FindingCounts(old: old.findings, new: new.findings, tools: compared)
+            let coverage = CoverageMetrics(old: old.coverage, new: new.coverage, compared: compared)
             for match in result.matches {
                 let members = MemberPairing.pair(match.old, match.new)
                 if let change = change(match, members: members) {
                     families.append(change)
                 }
-                functions += members.pairs.compactMap { FunctionMetrics.delta($0.0, $0.1, counts: counts) }
+                functions += members.pairs.compactMap { pair in
+                    FunctionMetrics.delta(pair.0, pair.1, counts: counts, coverage: coverage)
+                }
             }
         }
         return SnapshotDiffReport(
@@ -41,6 +44,7 @@ public enum SnapshotDiff {
             families: families.sorted { ($0.key, $0.oldKey ?? "") < ($1.key, $1.oldKey ?? "") },
             functions: functions.sorted { $0.key < $1.key },
             rollups: rollupDeltas(old.rollups, new.rollups, compared: compared),
+            bundles: CoverageBundleChange(old: old.coverage, new: new.coverage),
             warnings: warnings.sorted()
         )
     }

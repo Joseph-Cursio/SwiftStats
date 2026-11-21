@@ -6,16 +6,17 @@
 //  flatten into nullable columns: `generated` and the side-effect columns
 //  are null on a row written before v3, and a group comes back only when
 //  its leading column (`generated`, `effectSource`, `valueShaped`) holds a
-//  value. `inferredVia` is newline-joined.
+//  value. `inferredVia` is newline-joined. v4's `access`, `typePath` and
+//  `typeFile` are null on a row written before v4.
 //
 
 extension FunctionRow {
     /// The table's columns.
     private enum CodingKeys: String, CodingKey {
-        case accessorKind, bodyHash, bodyLines, cognitive, decisionCount, effectSource, effectTier, endLine, file
-        case generated, ifConfig, inference, inferredAnchor, inferredDepth, inferredTier, inferredVia, isAsync
+        case access, accessorKind, bodyHash, bodyLines, cognitive, decisionCount, effectSource, effectTier, endLine
+        case file, generated, ifConfig, inference, inferredAnchor, inferredDepth, inferredTier, inferredVia, isAsync
         case isDocumented, key, kind, maxNesting, module, name, parameterCount, parentKey, purity, refutation, role
-        case shape, snapshotId, startLine, strippedLines, swiftLintCompatible, valueShaped
+        case shape, snapshotId, startLine, strippedLines, swiftLintCompatible, typeFile, typePath, valueShaped
     }
 
     /// Reads a row.
@@ -46,6 +47,9 @@ extension FunctionRow {
         facts = try container.decodeIfPresent(Bool.self, forKey: .generated).map { generated in
             StoredFunctionFacts(generated: generated, effect: try Self.effect(in: container))
         }
+        access = try container.decodeIfPresent(FunctionAccess.self, forKey: .access)
+        typePath = try container.decodeIfPresent(String.self, forKey: .typePath)
+        typeFile = try container.decodeIfPresent(String.self, forKey: .typeFile)
     }
 
     /// The side-effect columns in `container`; nil when `effectSource` is null.
@@ -112,6 +116,9 @@ extension FunctionRow {
         try container.encodeIfPresent(maxNesting, forKey: .maxNesting)
         try container.encodeIfPresent(facts?.generated, forKey: .generated)
         try encodeEffect(facts?.effect, into: &container)
+        try container.encodeIfPresent(access, forKey: .access)
+        try container.encodeIfPresent(typePath, forKey: .typePath)
+        try container.encodeIfPresent(typeFile, forKey: .typeFile)
     }
 
     /// Writes the side-effect columns of `effect`, all null when it is nil.

@@ -17,8 +17,8 @@ public struct ScanReport: Codable, Hashable, Sendable {
     /// inventory and dependencies (M1b); 4 adds each function's body lines
     /// (M2); 5 adds history (M3); 6 adds side effects, conformances, law
     /// checks, property-test suggestions and clones (M4); 7 adds the
-    /// coverage collector, its coverage mapped to records and each record's
-    /// owning type (M5).
+    /// coverage collector, its coverage mapped to records and rolled up,
+    /// and each record's access level and owning type (M5).
     public static let currentSchemaVersion = 7
 
     /// The output format version (`currentSchemaVersion` when written).

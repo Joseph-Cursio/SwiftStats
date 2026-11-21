@@ -13,14 +13,14 @@ import Foundation
 
 extension PackageScanner {
     /// The roll-ups of `measured` over `targets`, with `external`'s findings,
-    /// SwiftInferProperties' suggestions and SwiftCloneDetector's classes
-    /// counted.
+    /// SwiftInferProperties' suggestions, SwiftCloneDetector's classes and
+    /// the coverage counted.
     private static func rollups(
         _ targets: [TargetSummary],
         measured: ScanMeasurements,
         external: ExternalScan
     ) -> [Rollup] {
-        RollupBuilder.rollups(
+        let rollups = RollupBuilder.rollups(
             targets: targets,
             input: RollupInput(
                 records: measured.records,
@@ -35,6 +35,10 @@ extension PackageScanner {
                 clones: external.clones
             )
         )
+        guard let coverage = external.coverage else {
+            return rollups
+        }
+        return CoverageRollupBuilder(targets: targets, records: measured.records, coverage: coverage).rollups(rollups)
     }
 
     /// Every collector's status but history's real one, sorted by name.

@@ -18,6 +18,16 @@ public struct CoverageLineRun: Codable, Hashable, Sendable {
     /// branch, closure or autoclosure on a run line).
     public let partlyRun: Bool
 
+    /// How many lines it holds.
+    var length: Int {
+        end - start + 1
+    }
+
+    /// Whether its lines ran at least once.
+    var ran: Bool {
+        count > .zero
+    }
+
     /// Creates a run. Fields are documented on their properties.
     public init(start: Int, end: Int, count: Int64, partlyRun: Bool) {
         self.start = start

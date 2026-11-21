@@ -3,8 +3,9 @@
 //  SwiftStatsCore
 //
 //  The `function` table (PRD §9): one row per function record, with the
-//  columns `diff` and trends read, and from store v3 whether its file is
-//  generated and its side-effect facts. Its columns are written out in
+//  columns `diff` and trends read, from store v3 whether its file is
+//  generated and its side-effect facts, and from store v4 its access level
+//  and owning type. Its columns are written out in
 //  `FunctionRow+Columns.swift`.
 //
 
@@ -62,6 +63,13 @@ public struct FunctionRow: Codable, Hashable, Sendable, FetchableRecord, Persist
     /// The columns store v3 adds; nil on a row written before v3, or one
     /// made in memory from a record alone.
     public var facts: StoredFunctionFacts?
+    /// The effective access level (store v4); nil on a row written before v4.
+    public var access: FunctionAccess?
+    /// The enclosing types' names joined with dots (store v4); nil at the
+    /// top level, inside records, and on a row written before v4.
+    public var typePath: String?
+    /// The file when an enclosing type is private or fileprivate (store v4).
+    public var typeFile: String?
 
     /// The stored row for `record` in snapshot `snapshotId`, whose file is
     /// `generated` or not.
@@ -95,5 +103,8 @@ public struct FunctionRow: Codable, Hashable, Sendable, FetchableRecord, Persist
         decisionCount = record.complexity?.decisionCount
         swiftLintCompatible = record.complexity.flatMap { $0.swiftLintScored ? $0.swiftLintCompatible : nil }
         maxNesting = record.complexity?.maxNesting
+        access = record.access
+        typePath = record.typePath
+        typeFile = record.typeFile
     }
 }

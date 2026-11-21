@@ -4,7 +4,8 @@
 //
 //  A snapshot read back from the store's tables, as `diff` and the
 //  signals use it. A snapshot stored before v3 has no scan facts, empty
-//  M4 lists, and function rows without their v3 columns.
+//  M4 lists, and function rows without their v3 columns; one stored before
+//  v4 has no coverage and function rows without access or owning type.
 //
 
 /// A snapshot's metadata and its rows.
@@ -38,4 +39,7 @@ public struct StoredSnapshot: Hashable, Sendable {
     public let historyCommits: [HistoryLogEntry]
     /// Each commit that changed each family, by family, file, then position.
     public let familyChanges: [FamilyChangeRow]
+    /// Its coverage, as the scan JSON holds it, and when it was collected;
+    /// nil when it holds none.
+    public let coverage: StoredCoverage?
 }

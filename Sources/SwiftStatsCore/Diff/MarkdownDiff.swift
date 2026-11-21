@@ -3,8 +3,9 @@
 //  SwiftStatsCore
 //
 //  `swiftstats diff --format markdown` (PRD §6.6, §10): a summary, the
-//  function families that changed, metric deltas grouped into worse, better
-//  and neutral, and what couldn't be compared.
+//  function families that changed, the test bundles that came or went,
+//  metric deltas grouped into worse, better and neutral, and what couldn't
+//  be compared.
 //
 
 /// Renders a diff as Markdown.
@@ -27,6 +28,7 @@ public enum MarkdownDiff {
             lines += summary(diff)
             lines += ["", "## Functions", ""] + families(diff.families)
         }
+        lines += bundles(diff.bundles)
         let deltas = diff.functions.flatMap { function in
             function.metrics.map { (place: function.key, delta: $0) }
         } + diff.rollups.map { (place: "\($0.scope.rawValue) \($0.name)", delta: $0.delta) }
@@ -76,6 +78,18 @@ public enum MarkdownDiff {
             ]
         }
         return table.lines(empty: "No function changes.")
+    }
+
+    /// The test bundles that came or went, as a fact beside the coverage
+    /// deltas.
+    private static func bundles(_ change: CoverageBundleChange?) -> [String] {
+        guard let change else {
+            return []
+        }
+        let parts = [("added", change.added), ("removed", change.removed)].compactMap { verb, names in
+            names.isEmpty ? nil : "\(verb) " + names.map { "`\($0)`" }.joined(separator: ", ")
+        }
+        return ["", "Test bundles " + parts.joined(separator: "; ") + "."]
     }
 
     /// The collectors that weren't compared, and why.

@@ -17,6 +17,7 @@ enum StoreMigrations {
         steps.registerMigration("v1", migrate: version1)
         steps.registerMigration("v2", migrate: version2)
         steps.registerMigration("v3", migrate: version3)
+        steps.registerMigration("v4", migrate: version4)
         return steps
     }
 
@@ -270,7 +271,7 @@ enum StoreMigrations {
 
     /// A `snapshotId` column whose rows go when their snapshot does.
     @discardableResult
-    private static func snapshotColumn(_ table: TableDefinition) -> ColumnDefinition {
+    static func snapshotColumn(_ table: TableDefinition) -> ColumnDefinition {
         table.column("snapshotId", .integer)
             .notNull()
             .references(SnapshotRow.databaseTableName, onDelete: .cascade)

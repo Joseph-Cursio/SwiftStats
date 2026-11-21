@@ -74,8 +74,50 @@ enum CoverageFixture {
     static func report(_ scenario: FakeToolchain.Scenario) throws -> ScanReport {
         let toolchain = try FakeToolchain.make(scenario)
         defer { toolchain.remove() }
-        let package = try TemporaryPackage([:], targets: targets)
+        let package = try copy(toolchain: toolchain)
         defer { package.remove() }
+        return try PackageScanner(describer: package.describer, tools: SnapshotHarness.noTools)
+            .scan(packageAt: package.root, coverage: true)
+    }
+
+    /// The fixture scanned with coverage as a snapshot of a clean tree at
+    /// `commit`, as the test build, the fake toolchain acting out the
+    /// recorded run.
+    static func snapshot(commit: String) throws -> ScannedSnapshot {
+        let toolchain = try FakeToolchain.make(FakeToolchain.recorded())
+        defer { toolchain.remove() }
+        let package = try copy(toolchain: toolchain)
+        defer { package.remove() }
+        return try SnapshotScanner(
+            scanner: PackageScanner(describer: package.describer, tools: SnapshotHarness.noTools),
+            build: SnapshotHarness.build
+        )
+        .scan(
+            packageAt: package.root,
+            configurationFile: StoreLocation.localConfiguration(packageRoot: package.root),
+            git: SnapshotHarness.git(commit: commit),
+            toolchain: SnapshotHarness.toolchain,
+            date: SnapshotHarness.date,
+            coverage: true
+        )
+    }
+
+    /// A temporary copy of the fixture whose configuration points the
+    /// coverage collector at `toolchain`; removed again if it can't be made.
+    private static func copy(toolchain: FakeToolchain) throws -> TemporaryPackage {
+        let package = try TemporaryPackage([:], targets: targets)
+        do {
+            try fill(package, toolchain: toolchain)
+        } catch {
+            package.remove()
+            throw error
+        }
+        return package
+    }
+
+    /// Copies the fixture into `package`, with a configuration pointing the
+    /// coverage collector at `toolchain`.
+    private static func fill(_ package: TemporaryPackage, toolchain: FakeToolchain) throws {
         for part in ["Sources", "Tests", "Nested"] {
             try FileManager.default.copyItem(
                 at: directory.appendingPathComponent(part),
@@ -97,7 +139,5 @@ enum CoverageFixture {
             atomically: true,
             encoding: .utf8
         )
-        return try PackageScanner(describer: package.describer, tools: SnapshotHarness.noTools)
-            .scan(packageAt: package.root, coverage: true)
     }
 }

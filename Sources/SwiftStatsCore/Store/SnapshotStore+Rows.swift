@@ -4,7 +4,8 @@
 //
 //  The rows store v3 adds (M4): scan-wide facts, property candidates, law
 //  checks, clone classes and their copies, and history's commit log with
-//  each family's changes; and reading a snapshot back with all its rows.
+//  each family's changes; and reading a snapshot back with all its rows,
+//  v4's coverage (`CoverageRows`) among them.
 //  Signals read these rows, never the report blob.
 //
 
@@ -79,7 +80,8 @@ extension SnapshotStore {
                 .map(\.entry),
             familyChanges: try FamilyChangeRow.filter(mine)
                 .order(Column("family"), Column("file"), Column("commitOrdinal"))
-                .fetchAll(database)
+                .fetchAll(database),
+            coverage: try CoverageRows(id: id, in: database)?.stored
         )
     }
 

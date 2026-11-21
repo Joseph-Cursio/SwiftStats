@@ -7,15 +7,18 @@
 //  resolved, since it needs only the package's files, so it runs while the
 //  package is measured. The tools' skip reason covers a requested run.
 //  Once the package is measured, a run that ran is mapped onto its
-//  records, the unmapped entries' names demangled by the run's toolchain.
+//  records, the unmapped entries' names demangled by the run's toolchain,
+//  and passed through the store's rows (`CoverageRows`), so the scan JSON
+//  is what a carried copy would give.
 //
 
 import Foundation
 
 extension PackageScanner {
     /// `run`'s export mapped onto `measured`, the package at `root` with
-    /// `targets` and `configuration`; nil unless it ran. The warning says
-    /// when the unmapped entries' names couldn't be demangled.
+    /// `targets` and `configuration`, as the store's rows hold it; nil
+    /// unless it ran. The warning says when the unmapped entries' names
+    /// couldn't be demangled.
     static func coverage(
         of run: CoverageRun,
         measured: ScanMeasurements,
@@ -47,7 +50,7 @@ extension PackageScanner {
                 return [:]
             }
         }
-        return (report, warnings)
+        return (CoverageRows.normalized(report), warnings)
     }
 
     /// The coverage collector's run on the package at `root`, started in
