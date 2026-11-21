@@ -43,6 +43,7 @@ enum StandardProtocols {
         "Hashable": ["Equatable"],
         "Comparable": ["Equatable"],
         "Strideable": ["Comparable"],
+        "LosslessStringConvertible": ["CustomStringConvertible"],
         "StringProtocol": ["BidirectionalCollection", "Comparable", "Hashable", "CustomStringConvertible"],
         "SetAlgebra": ["Equatable"],
         "OptionSet": ["SetAlgebra", "RawRepresentable"],

@@ -141,11 +141,11 @@ struct StoreCoverageTests {
             """)
         let run = """
             SELECT collectedAt, replace(bundles, char(10), ','), tests, droppedBuild, droppedOutsideRoot,
-                droppedTestFiles, droppedOtherPackage, saturated
+                droppedTestFiles, droppedOtherPackage, droppedOtherLanguage, saturated
             FROM coverageRun
             """
         #expect(try Self.query(url, run) == """
-            \(snapshot.info.date)|ATests,BTests|failing|10|1|28|2|[{"file":"Sources/Lib/Lib.swift","line":5}]
+            \(snapshot.info.date)|ATests,BTests|failing|10|1|28|2|3|[{"file":"Sources/Lib/Lib.swift","line":5}]
 
             """)
     }

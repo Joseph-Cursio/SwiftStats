@@ -6,10 +6,11 @@
 //  package root in every spelling, first match wins: under the coverage
 //  build directory, or a root-relative path in `.build/`, is a build
 //  product; outside the root is dropped; in a test target's directory is a
-//  test file; in a production target's directory is kept when the scan
-//  parsed it, else listed as unmapped (`excluded` when the configuration
-//  excludes it, else `not parsed`); anything else under the root is
-//  another package's.
+//  test file; any other file that isn't Swift (a C, C++ or assembly
+//  target's, which SwiftPM instruments too) is another language's; in a
+//  production target's directory is kept when the scan parsed it, else
+//  listed as unmapped (`excluded` when the configuration excludes it, else
+//  `not parsed`); anything else under the root is another package's.
 //
 
 import Foundation
@@ -31,6 +32,8 @@ struct CoverageFileClassifier {
     private static let packageBuild = ".build/"
     /// What a path relative to the root may start with.
     private static let currentDirectory = "./"
+    /// What a Swift file's name ends with.
+    private static let swiftExtension = ".swift"
 
     /// The package root's spellings, longest first.
     private let rootSpellings: [String]
@@ -101,11 +104,18 @@ struct CoverageFileClassifier {
         if path.hasPrefix(Self.packageBuild) {
             return .build
         }
-        guard let target = targets.first(where: { path.hasPrefix($0.prefix) }) else {
-            return .otherPackage
-        }
-        if target.isTest {
+        let target = targets.first { path.hasPrefix($0.prefix) }
+        if target?.isTest == true {
             return .testFile
+        }
+        // The scan's targets are its Swift ones, and SwiftStats parses
+        // only Swift: a C target's file is neither another package's nor
+        // a production file left unparsed.
+        if path.hasSuffix(Self.swiftExtension) == false {
+            return .otherLanguage
+        }
+        guard let target else {
+            return .otherPackage
         }
         if parsed.contains(path) {
             return .kept(path: path, module: target.name)

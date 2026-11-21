@@ -639,10 +639,12 @@ class Package:
         if path.startswith(".build/"):
             return ("build", None, None, None)
         target = next((t for prefix, t in self.targets if path.startswith(prefix)), None)
+        if target is not None and target["isTest"]:
+            return ("testFile", path, target["name"], None)
+        if not path.endswith(".swift"):
+            return ("otherLanguage", None, None, None)
         if target is None:
             return ("otherPackage", None, None, None)
-        if target["isTest"]:
-            return ("testFile", path, target["name"], None)
         if path in self.parsed:
             return ("kept", path, target["name"], None)
         excluded = path in self.excluded_files or any(g.match(path) for g in self.excluded_globs)
@@ -737,8 +739,23 @@ class Mapping:
         if top_level is not None and function["name"] in (f"{c99_name(module)}_main", "main"):
             statements = self.package.statement_lines(path)
             own = [r for r in code if r.start[0] in statements]
-            self.entries[top_level["key"]].append((function["name"], own, skipped, regions))
-            self.placed.append((function, path, top_level["key"]))
+            # No region on a statement line: the record gets no entry (null).
+            if own:
+                self.entries[top_level["key"]].append((function["name"], own, skipped, regions))
+                self.placed.append((function, path, top_level["key"]))
+            # Statement lines no region spans are in a top-level `#if` with
+            # no active clause (the compiler emits nothing): skipped.
+            start = None
+            for line in sorted(statements) + [None]:
+                spanned = line is not None and any(r.start[0] <= line <= r.end[0] for r in regions)
+                if line is not None and not spanned and start is not None and line == end + 1:
+                    end = line
+                    continue
+                if start is not None:
+                    self.skipped[path].add((start, end))
+                    start = None
+                if line is not None and not spanned:
+                    start = end = line
             rest = [r for r in code if r.start[0] not in statements]
             if rest:
                 self.attached_regions[("file", path)][path] += rest
@@ -854,7 +871,7 @@ class Mapping:
                 item["demangled"] = names[item["name"]]
             unmapped.append(item)
 
-        dropped = {"build": 0, "otherPackage": 0, "outsideRoot": 0, "testFiles": 0}
+        dropped = {"build": 0, "otherLanguage": 0, "otherPackage": 0, "outsideRoot": 0, "testFiles": 0}
         for file in package.export["files"]:
             kind = self.classes[file["filename"]][0]
             key = "testFiles" if kind == "testFile" else kind

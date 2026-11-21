@@ -12,7 +12,10 @@ enum CoverageFileClass: Equatable {
     /// A production file the scan parsed, at this root-relative path in
     /// this module: its entries are mapped.
     case kept(path: String, module: String)
-    /// Under the root but in no target's directory.
+    /// Not a Swift file, outside test targets (a C, C++ or assembly
+    /// target's source or header): no record can hold its entries.
+    case otherLanguage
+    /// A Swift file under the root but in no target's directory.
     case otherPackage
     /// Outside the package root.
     case outsideRoot

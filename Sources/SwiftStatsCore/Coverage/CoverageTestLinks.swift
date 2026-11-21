@@ -17,10 +17,12 @@
 //  name or such a file. A type path names a protocol unless the record's
 //  module declares a concrete type of that path. A member witnessing a
 //  requirement of a standard protocol its type declares a conformance to
-//  anywhere in the module (`StandardProtocols`, decided from syntax) is
-//  reached generically, and no tests are counted for it; a conformance is
-//  read in the module first, then across the package. Operators are never
-//  names, so no operator function is ever linked.
+//  anywhere in the module (`StandardProtocols`, decided from syntax), or
+//  inherits one from a superclass the module declares, is reached
+//  generically, and no tests are counted for it; a conformance is read in
+//  the module first, then across the package. Names are compared without
+//  the backticks an escaped identifier is written with. Operators are
+//  never names, so no operator function is ever linked.
 //
 
 /// Links public functions to the tests that name them.
@@ -122,6 +124,12 @@ struct CoverageTestLinks {
         path.split(separator: ".").last.map(String.init) ?? path
     }
 
+    /// The name tests write `record`'s type by: its last component, without
+    /// backticks; empty at top level.
+    private static func typeName(of record: FunctionRecord) -> String {
+        record.typePath.map { TestReferences.unescaped(simpleName(of: $0)) } ?? ""
+    }
+
     /// The rule `record`'s tests are counted by; nil when it isn't a
     /// public function.
     func link(of record: FunctionRecord) -> CoverageLink? {
@@ -145,7 +153,8 @@ struct CoverageTestLinks {
     /// name it by `link`; nil for a witness.
     func linkedTests(of record: FunctionRecord, link: CoverageLink, targets: [String]) -> Int? {
         let ran = Set(targets)
-        let typeName = record.typePath.map(Self.simpleName(of:)) ?? ""
+        let typeName = Self.typeName(of: record)
+        let name = TestReferences.unescaped(record.name)
         switch link {
         case .witness:
             return nil
@@ -154,10 +163,10 @@ struct CoverageTestLinks {
             return typeNamed(record, typeName: typeName, targets: targets)
 
         case .function, .extensionMember:
-            return (byName[record.name] ?? []).count { ran.contains(tests[$0].module) }
+            return (byName[name] ?? []).count { ran.contains(tests[$0].module) }
 
         case .member:
-            let named = record.kind == .initializer ? byCall[typeName] : byName[record.name]
+            let named = record.kind == .initializer ? byCall[typeName] : byName[name]
             let files = matcher.matches(file: record.file, typeName: typeName)
             return (named ?? []).count { index in
                 ran.contains(tests[index].module) && names(typeName, inTest: index, orFileIn: files)
@@ -198,13 +207,15 @@ struct CoverageTestLinks {
         return concretePaths.contains(path) == false && StandardProtocols.names.contains(Self.simpleName(of: path))
     }
 
-    /// What the protocol `name`, as `module` writes it, refines: `module`'s
-    /// own protocol of that name, or else any module's; none when `module`
-    /// declares a concrete type of that name (a superclass).
+    /// What a type conforming to `name`, as `module` writes it, conforms to
+    /// through it: when `module` declares a concrete type of that name (a
+    /// superclass), what that type's declarations and extensions conform
+    /// to, which its subclasses inherit; otherwise what the protocol
+    /// refines, `module`'s own protocol of that name, or else any module's.
     private func refinements(of name: String, in module: String) -> [String] {
         let identity = TypeIdentity(module: module, path: name)
         if concreteTypes.contains(identity) {
-            return []
+            return (typeRecords[identity] ?? []).flatMap(\.conformances)
         }
         return protocols[identity] ?? protocolPaths[name] ?? []
     }
@@ -217,8 +228,8 @@ struct CoverageTestLinks {
     /// Whether `record`, a member of the type at `path`, matches a
     /// requirement of a standard protocol its type conforms to, as the
     /// declarations and extensions of the type in the module write it (in
-    /// the record's file only for a file-scoped type), refinements and the
-    /// package's own protocols followed.
+    /// the record's file only for a file-scoped type), refinements, the
+    /// package's own protocols and the module's superclasses followed.
     private func isWitness(_ record: FunctionRecord, of path: String) -> Bool {
         guard let selector = selectors[record.file]?[record.range.start] else {
             return false

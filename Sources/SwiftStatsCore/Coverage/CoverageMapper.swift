@@ -9,7 +9,10 @@
 //  holding an expansion region is unmapped. A testable executable's
 //  top-level entry (`<module>_main`) goes to its file's top-level-code
 //  record without the anchor rule: its regions starting on statement lines
-//  to the record, the rest (eager globals) to the file. Every production
+//  to the record (none: the record has no entry), the rest (eager
+//  globals) to the file; statement lines none of its regions spans are in
+//  a top-level `#if` with no active clause, for which the compiler emits
+//  nothing, and become skipped ranges of the file. Every production
 //  record then gets its figures (`CoverageRecordLines`) and the test
 //  targets that ran it, or a reason for having none, and a public function
 //  its link rule and linked tests (`CoverageTestLinks`); attachments get
@@ -108,7 +111,8 @@ struct CoverageMapper {
             build: classes.count { $0 == .build },
             outsideRoot: classes.count { $0 == .outsideRoot },
             testFiles: classes.count { $0 == .testFile },
-            otherPackage: classes.count { $0 == .otherPackage }
+            otherPackage: classes.count { $0 == .otherPackage },
+            otherLanguage: classes.count { $0 == .otherLanguage }
         )
     }
 
@@ -119,7 +123,7 @@ struct CoverageMapper {
             case let .kept(_, module), let .unmapped(_, module, _):
                 return module
 
-            case .build, .outsideRoot, .testFile, .otherPackage:
+            case .build, .outsideRoot, .testFile, .otherPackage, .otherLanguage:
                 return nil
             }
         })
@@ -208,7 +212,7 @@ struct CoverageMapper {
             path = file
             module = owner
 
-        case .build, .outsideRoot, .testFile, .otherPackage:
+        case .build, .outsideRoot, .testFile, .otherPackage, .otherLanguage:
             return
         }
         let counts = function.regions.map { (line: $0.start.line, count: $0.executionCount) }
@@ -228,12 +232,7 @@ struct CoverageMapper {
         }
         let entry = MappedEntry(name: function.name, regions: code, skipped: skipped)
         if Self.isTopLevelEntry(function, module: module), let topLevel = placement.topLevelRecord(in: path) {
-            let statements = placement.statementLines(in: path)
-            let own = code.filter { statements.contains($0.start.line) }
-            gathered.entries[topLevel.key, default: []]
-                .append(MappedEntry(name: entry.name, regions: own, skipped: skipped))
-            let globals = code.filter { statements.contains($0.start.line) == false }
-            gathered.attachments.attach(globals, in: path, to: .file, owner: path)
+            gatherTopLevel(function, entry: entry, record: topLevel, path: path, into: &gathered)
             return
         }
         switch placement.place(anchor, in: path) {
@@ -249,6 +248,32 @@ struct CoverageMapper {
         case .unmapped(let reason):
             gathered.unmapped.append(Self.unmapped(function, path: path, reason: reason))
         }
+    }
+
+    /// Adds where `function`, the top-level entry `entry` of the file at
+    /// `path`, goes to `gathered`: its regions starting on statement lines
+    /// to `record`, the file's top-level-code record, unless there are
+    /// none (null, never 0 of 0); the rest to the file; and the statement
+    /// lines none of its regions spans as skipped ranges.
+    private func gatherTopLevel(
+        _ function: CoverageExportFunction,
+        entry: MappedEntry,
+        record: FunctionRecord,
+        path: String,
+        into gathered: inout Gathered
+    ) {
+        let statements = placement.statementLines(in: path)
+        let own = entry.regions.filter { statements.contains($0.start.line) }
+        if own.isEmpty == false {
+            gathered.entries[record.key, default: []]
+                .append(MappedEntry(name: entry.name, regions: own, skipped: entry.skipped))
+        }
+        let uncompiled = statements.filter { line in
+            function.regions.contains { $0.start.line <= line && line <= $0.end.line } == false
+        }
+        gathered.skipped[path, default: []].formUnion(CoverageLineRange.ranges(covering: uncompiled))
+        let globals = entry.regions.filter { statements.contains($0.start.line) == false }
+        gathered.attachments.attach(globals, in: path, to: .file, owner: path)
     }
 
     /// `record`'s coverage from `entries`, the test targets ran by

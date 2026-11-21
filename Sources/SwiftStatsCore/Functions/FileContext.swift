@@ -23,4 +23,7 @@ struct FileContext {
     /// Columns to add on line 1: 3 when the file starts with a byte order
     /// mark, which the tree doesn't contain but the compiler counts.
     let firstLineColumnOffset: Int
+    /// The member caps of the module's types, for extensions' members; nil
+    /// to index the file's own types only.
+    var typeAccess: TypeAccessIndex?
 }

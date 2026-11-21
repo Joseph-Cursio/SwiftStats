@@ -48,7 +48,7 @@ struct MarkdownCoverageTests {
             "No saturated counts.",
             "",
             "Files left out by design: 2 build products and dependencies, 0 outside the package, 4 test files, "
-                + "1 in other packages.",
+                + "1 in other packages, 0 not Swift.",
             "",
             "Unmapped entries: 1.",
             "",

@@ -122,6 +122,7 @@ public struct PackageScanner {
             let testCaseClasses = target.isTest
                 ? TestCaseClassIndex.testCaseClasses(in: parsed.map(\.tree)).union(packageTestCases)
                 : []
+            let typeAccess = TypeAccessIndex(files: parsed.map { ($0.path, $0.tree) })
             for file in parsed {
                 let context = FileContext(
                     module: target.name,
@@ -129,13 +130,14 @@ public struct PackageScanner {
                     isTestTarget: target.isTest,
                     testCaseClasses: testCaseClasses,
                     converter: SourceLocationConverter(fileName: file.path, tree: file.tree),
-                    firstLineColumnOffset: file.hasByteOrderMark ? byteOrderMark.count : 0
+                    firstLineColumnOffset: file.hasByteOrderMark ? byteOrderMark.count : 0,
+                    typeAccess: typeAccess
                 )
                 let functions = FunctionCollector.walked(file.tree, context: context)
                 collected.records += functions.records
                 collected.selectors[file.path] = functions.selectors
                 collected.types += TypeCollector.collect(file.tree, context: context)
-                collected.declarations += DeclarationCollector.collect(file.tree, module: target.name)
+                collected.declarations += DeclarationCollector.collect(file.tree, context: context)
                 collected.markers += MarkerCollector.collect(file.tree, context: context)
                 collected.checkProperties.merge(CheckPropertyKind.collect(file, context: context)) { first, _ in first }
                 collected.laws.append(LawSyntaxCollector.collect(

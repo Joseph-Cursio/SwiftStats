@@ -187,7 +187,13 @@ struct CoverageMappingTests {
                 reason: "excluded"
             )
         ])
-        #expect(coverage.dropped == CoverageDropped(build: 2, outsideRoot: 0, testFiles: 4, otherPackage: 1))
+        #expect(coverage.dropped == CoverageDropped(
+            build: 2,
+            outsideRoot: 0,
+            testFiles: 4,
+            otherPackage: 1,
+            otherLanguage: 0
+        ))
         #expect(coverage.bundles == ["ProbeTests", "SwiftTestKitTests"])
         #expect(coverage.tests == "passed")
         #expect(coverage.saturated.isEmpty)

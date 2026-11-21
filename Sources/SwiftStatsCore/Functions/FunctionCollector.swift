@@ -32,6 +32,9 @@ final class FunctionCollector: SyntaxVisitor {
     /// What each member record of a type is, by its start, for telling
     /// protocol requirements' witnesses (`MemberSelector`).
     var selectors: [SourcePosition: String] = [:]
+    /// The member caps of the types extensions extend: the context's, or
+    /// the file's own types'.
+    var typeAccess = TypeAccessIndex()
 
     /// Creates a collector for the file described by `context`.
     init(context: FileContext) {
@@ -43,6 +46,7 @@ final class FunctionCollector: SyntaxVisitor {
 
     override func visit(_ node: SourceFileSyntax) -> SyntaxVisitorContinueKind {
         fileScopedTypes = FileScopedTypes.paths(in: node)
+        typeAccess = context.typeAccess ?? TypeAccessIndex(files: [(context.file, node)])
         addTopLevelCode(node)
         return .visitChildren
     }
@@ -104,7 +108,7 @@ final class FunctionCollector: SyntaxVisitor {
             typeName: extended,
             simpleName: simpleName,
             isFileScoped: isFileScoped,
-            members: enclosingAccess.members(ofExtensionWith: node.modifiers)
+            members: enclosingAccess.members(ofExtensionWith: node.modifiers, typeCap: typeCap(of: extended))
         )))
         return .visitChildren
     }

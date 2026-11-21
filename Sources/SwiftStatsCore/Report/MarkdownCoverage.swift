@@ -130,7 +130,8 @@ enum MarkdownCoverage {
     /// The export's files left out by design.
     private static func dropped(_ dropped: CoverageDropped) -> String {
         "Files left out by design: \(dropped.build) build products and dependencies, \(dropped.outsideRoot) outside "
-            + "the package, \(dropped.testFiles) test files, \(dropped.otherPackage) in other packages."
+            + "the package, \(dropped.testFiles) test files, \(dropped.otherPackage) in other packages, "
+            + "\(dropped.otherLanguage) not Swift."
     }
 
     /// The first unmapped entries, and how many there are.

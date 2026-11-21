@@ -100,6 +100,70 @@ struct FunctionAccessTests {
         ])
     }
 
+    @Test("""
+        an extension's members are capped by the type it extends, as swiftc exports them: a `public` member of a \
+        `private`, `fileprivate` or `internal` extension of a public type is public, one of a plain extension of \
+        an internal or private type is not; the extension's modifier is only their default
+        """)
+    func extensionMembers() {
+        let extensions = """
+            public struct Shelf {}
+            struct Engine { init() {} }
+            private struct Hidden {}
+            private extension Shelf {
+                public func viaPrivate() {}
+                func defaulted() {}
+            }
+            fileprivate extension Shelf { public func viaFileprivate() {} }
+            internal extension Shelf { public func viaInternal() {} }
+            extension Engine { public func start() -> Int { 1 } }
+            extension Engine { public struct Part { public func turn() {} } }
+            extension Engine.Part { public func spin() {} }
+            extension Hidden { public func peek() {} }
+            extension Array { public func external() {} }
+
+            """
+        let file = " @ Sources/Lib/File.swift"
+        let access = Dictionary(uniqueKeysWithValues: CollectorHarness.collect(extensions).map { ($0.key, $0.access) })
+
+        #expect(access == [
+            "Lib::Engine::init()": .internal,
+            "Lib::Shelf::func viaPrivate()" + file: .public,
+            "Lib::Shelf::func defaulted()" + file: .fileprivate,
+            "Lib::Shelf::func viaFileprivate()" + file: .public,
+            "Lib::Shelf::func viaInternal()": .public,
+            "Lib::Engine::func start() -> Int": .internal,
+            "Lib::Engine.Part::func turn()": .internal,
+            "Lib::Engine.Part::func spin()": .internal,
+            "Lib::Hidden::func peek()" + file: .fileprivate,
+            "Lib::Array::func external()": .public
+        ])
+    }
+
+    @Test("""
+        in a scan, an extension's members are capped by the type it extends in another file of the module, in \
+        the records and the API surface alike
+        """)
+    func extensionMembersAcrossFiles() throws {
+        let package = try TemporaryPackage([
+            "Sources/Lib/Types.swift": "public struct Shelf {}\nstruct Engine {}\n",
+            "Sources/Lib/Extensions.swift": """
+                private extension Shelf { public func viaPrivate() {} }
+                extension Engine { public func start() {} }
+
+                """
+        ])
+        defer { package.remove() }
+        let targets = TargetResolver.resolve(try package.describer.describePackage(at: package.root))
+        let measured = PackageScanner.measure(targets, root: package.root, configuration: SwiftStatsConfiguration())
+        let access = Dictionary(uniqueKeysWithValues: measured.records.map { ($0.key, $0.access) })
+
+        #expect(access["Lib::Shelf::func viaPrivate() @ Sources/Lib/Extensions.swift"] == .public)
+        #expect(access["Lib::Engine::func start()"] == .internal)
+        // Shelf and viaPrivate are public; Engine and start internal.
+        #expect(measured.declarations.map(\.access).sorted() == [.internal, .internal, .public, .public])
+    }
+
     @Test("a record's access is the level the API surface gives its declaration", arguments: [
         "public func f() {}",
         "private func f() {}",
@@ -110,6 +174,10 @@ struct FunctionAccessTests {
         "public enum E { struct S { public func f() {} } }",
         "public extension S { func f() {} }",
         "private extension S { public func f() {} }",
+        "public struct S {}\nprivate extension S { public func f() {} }",
+        "struct S {}\nextension S { public func f() {} }",
+        "private struct S {}\nextension S { public func f() {} }",
+        "struct S {}\nextension S { public struct T { public func f() {} } }",
         "fileprivate extension S { func f() {} }",
         "public protocol P {}\nextension P { public func f() {} }",
         "public class C { open func f() {} }",

@@ -82,6 +82,12 @@ struct CoverageMapperTests {
     }
 
     /// The mapping of an export of `files` and `functions` onto the small
+    /// library holding `text`, with no test process's counts.
+    static func mapping(files: String, functions: String, text: String) throws -> CoverageReport {
+        try report(files: files, functions: functions, counts: [:], text: text)
+    }
+
+    /// The mapping of an export of `files` and `functions` onto the small
     /// library holding `text`, with `counts` its test target's.
     private static func report(
         files: String,
@@ -191,7 +197,7 @@ struct CoverageMapperTests {
 
     @Test("""
         export files sort by the root in any spelling: build products, outside the root, test files, kept, \
-        excluded or unparsed production files, and other packages
+        excluded or unparsed production files, other packages, and files that aren't Swift, such as a C target's
         """)
     func fileClasses() throws {
         let base = FileManager.default.temporaryDirectory
@@ -221,7 +227,11 @@ struct CoverageMapperTests {
             "/Sources/Lib/Gone.swift",
             "/Sources/Lib/Odd.swift",
             "/Packages/Dep/Sources/Dep/D.swift",
-            "/Sources/LibExtra/E.swift"
+            "/Sources/LibExtra/E.swift",
+            "/Sources/CFoo/cfoo.c",
+            "/Sources/CFoo/include/cfoo.h",
+            "/Sources/Lib/shim.c",
+            "/Tests/LibTests/helper.c"
         ].map { path + $0 } + ["/elsewhere/C.swift"]
 
         for root in [link, real] {
@@ -238,7 +248,7 @@ struct CoverageMapperTests {
                 .kept(path: "Sources/Lib/Lib.swift", module: "Lib"),
                 .unmapped(path: "Sources/Lib/Gone.swift", module: "Lib", reason: "excluded"),
                 .unmapped(path: "Sources/Lib/Odd.swift", module: "Lib", reason: "not parsed"),
-                .otherPackage, .otherPackage, .outsideRoot
+                .otherPackage, .otherPackage, .otherLanguage, .otherLanguage, .otherLanguage, .testFile, .outsideRoot
             ], "root \(root.path)")
         }
     }

@@ -16,13 +16,16 @@ import Testing
 /// another file, a package protocol refining a standard one, protocol
 /// extensions, a container subscript, free and generated functions; a
 /// second library declaring protocols named like the first's types and
-/// protocols; two test targets whose tests name them in different ways;
-/// and a hand-written export with one entry per function, run by
-/// `LibTests` except a few, and by `OtherTests` for two.
+/// protocols; members named with backticks, built with an implicit
+/// `.init(…)` or named only in a parameterized test's declaration, and
+/// witnesses through a refining protocol or a superclass; two test
+/// targets whose tests name them in different ways; and a hand-written
+/// export with one entry per function, run by `LibTests` except a few, and
+/// by `OtherTests` for two.
 enum LinkPackage {
     /// One export entry: its file under `Sources/Lib`, without `.swift`,
     /// the text its region's braces follow, first in that file, and its name.
-    private struct Entry {
+    struct Entry {
         /// The file's base name.
         let file: String
         /// The text the region's braces follow.
@@ -36,7 +39,10 @@ enum LinkPackage {
     /// refining a standard one, protocol extensions, a container subscript,
     /// free and generated functions; in `Kit`, protocols named like `Lib`'s
     /// `Bag` and `Ring`.
-    static let sources = [
+    static let sources = coreSources.merging(namingSources) { first, _ in first }
+
+    /// The files of every case but the naming ones (`namingSources`).
+    private static let coreSources = [
         "Sources/Lib/Bag.swift": """
             public struct Bag {
                 public init(items: [Int]) { self.items = items }
@@ -139,7 +145,10 @@ enum LinkPackage {
     ]
 
     /// The entries of the export.
-    private static let entries: [Entry] = [
+    private static let entries = coreEntries + namingEntries
+
+    /// The entries of `coreSources`' functions.
+    private static let coreEntries: [Entry] = [
         Entry(file: "Bag", marker: "init(", name: "init"),
         Entry(file: "Bag", marker: "func grow", name: "grow"),
         Entry(file: "Bag", marker: "var total", name: "total"),
@@ -218,14 +227,14 @@ enum LinkPackage {
                 type: "library",
                 moduleType: "SwiftTarget",
                 path: "Sources/Lib",
-                sources: ["Bag+Collection.swift", "Bag.swift", "Ring.swift", "Stub.swift"]
+                sources: ["Bag+Collection.swift", "Bag.swift", "Edge.swift", "Ring.swift", "Stub.swift"]
             ),
             DescribedTarget(
                 name: "LibTests",
                 type: "test",
                 moduleType: "SwiftTarget",
                 path: "Tests/LibTests",
-                sources: ["BagTests.swift", "MiscTests.swift"]
+                sources: ["BagTests.swift", "MiscTests.swift", "SundryTests.swift"]
             ),
             DescribedTarget(
                 name: "OtherTests",
@@ -249,7 +258,7 @@ enum LinkPackage {
                 "regions":[[\(line),\(columns.lowerBound),\(line),\(columns.upperBound + 1),\(count),0,0,0]]}
                 """)
         }
-        let files = ["Bag", "Bag+Collection", "Ring", "Stub"]
+        let files = ["Bag", "Bag+Collection", "Ring", "Stub", "Edge"]
             .map { #"{"filename":"\#(root)/Sources/Lib/\#($0).swift","segments":[]}"# }
         let text = #"{"data":[{"files":[\#(files.joined(separator: ","))],"#
             + #""functions":[\#(functions.joined(separator: ","))]}],"#

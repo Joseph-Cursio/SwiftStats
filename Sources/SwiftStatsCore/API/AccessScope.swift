@@ -8,8 +8,11 @@
 //  or its scope's default, capped by the scope. A type's members are
 //  capped by the type (a `private` type at file scope by `fileprivate`,
 //  since its members are visible in the whole file); an extension's
-//  modifier becomes its members' default and cap, `private` reading as
-//  `fileprivate`.
+//  modifier becomes its members' default, `private` reading as
+//  `fileprivate`, and what caps them is the type it extends, when the
+//  module declares it (`TypeAccessIndex`), as Swift caps them: an explicit
+//  `public` member of a `private` extension of a public type is exported,
+//  one of a plain extension of an internal type is not.
 //
 
 import SwiftSyntax
@@ -45,13 +48,24 @@ struct AccessScope {
         return Self(defaultLevel: .internal, defaultIsWritten: false, cap: typeCap)
     }
 
-    /// The scope of the members of an extension declared here with `modifiers`.
-    func members(ofExtensionWith modifiers: DeclModifierListSyntax) -> Self {
-        guard let written = AccessLevel.written(in: modifiers) else {
-            return Self(defaultLevel: .internal, defaultIsWritten: false, cap: cap)
+    /// The scope of the members of an extension declared here with
+    /// `modifiers`, of a type whose members `typeCap` caps; nil when the
+    /// module declares no such type.
+    func members(ofExtensionWith modifiers: DeclModifierListSyntax, typeCap: AccessLevel?) -> Self {
+        members(ofExtensionWritten: AccessLevel.written(in: modifiers), typeCap: typeCap)
+    }
+
+    /// The scope of the members of an extension declared here that writes
+    /// `written`, of a type whose members `typeCap` caps; nil when the
+    /// module declares no such type.
+    func members(ofExtensionWritten written: AccessLevel?, typeCap: AccessLevel?) -> Self {
+        // The extension's modifier sets only the default: its members are
+        // capped by the type, not by it.
+        let capped = min(cap, typeCap ?? .open)
+        guard let written else {
+            return Self(defaultLevel: .internal, defaultIsWritten: false, cap: capped)
         }
         // Members of a `private` extension are `fileprivate`.
-        let level = max(written, .fileprivate)
-        return Self(defaultLevel: level, defaultIsWritten: true, cap: min(cap, level))
+        return Self(defaultLevel: max(written, .fileprivate), defaultIsWritten: true, cap: capped)
     }
 }

@@ -6,7 +6,10 @@
 //  (PRD §7.8), noting every callee's base name and every operator used,
 //  which link a property test to the suggestions it may check (§7.11),
 //  and every name the body refers to and every type it calls, which link
-//  any test to the public functions it may test (M5).
+//  any test to the public functions it may test (M5). Names are kept
+//  without backticks (`` `default` `` is `default`), as records' names are
+//  compared, and an implicit `.init(…)` that initialises an annotated
+//  binding (`let gauge: Gauge = .init()`) calls the annotation's type.
 //
 
 import SwiftSyntax
@@ -31,8 +34,9 @@ final class TestBodyScan: SyntaxVisitor {
     /// operators are not names.
     var names: Set<String> = []
     /// The names called: `f(…)`, `x.f(…)` and `T<U>(…)` give their base
-    /// name, `T.init(…)` and `T<U>.init(…)` give `T`; operators are not
-    /// calls.
+    /// name, `T.init(…)` and `T<U>.init(…)` give `T`, and `.init(…)` the
+    /// type of the binding it initialises, when that is annotated;
+    /// operators are not calls.
     var calls: Set<String> = []
 
     /// The called function's base name, for `f(…)` and `x.f(…)`.
@@ -47,25 +51,61 @@ final class TestBodyScan: SyntaxVisitor {
     }
 
     /// The name `call` calls a type by, or that it calls: its callee's base
-    /// name, a specialised callee's (`T<U>(…)`), or for `T.init(…)` and
-    /// `T<U>.init(…)` the base's last name; empty when it has none.
+    /// name, a specialised callee's (`T<U>(…)`), for `T.init(…)` and
+    /// `T<U>.init(…)` the base's last name, and for an implicit `.init(…)`
+    /// the annotated type of the binding it initialises; empty when it has
+    /// none. Names are without backticks.
     static func calledName(_ call: FunctionCallExprSyntax) -> String {
         let callee = unspecialized(call.calledExpression)
         if let member = callee.as(MemberAccessExprSyntax.self),
            member.declName.baseName.tokenKind == .keyword(.`init`) {
-            let base = member.base.map(unspecialized)
-            if let reference = base?.as(DeclReferenceExprSyntax.self) {
-                return reference.baseName.text
+            guard let base = member.base.map(unspecialized) else {
+                return annotatedType(of: call)
             }
-            return base?.as(MemberAccessExprSyntax.self)?.declName.baseName.text ?? ""
+            if let reference = base.as(DeclReferenceExprSyntax.self) {
+                return name(of: reference.baseName)
+            }
+            return base.as(MemberAccessExprSyntax.self).map { name(of: $0.declName.baseName) } ?? ""
         }
         if let reference = callee.as(DeclReferenceExprSyntax.self), case .identifier = reference.baseName.tokenKind {
-            return reference.baseName.text
+            return name(of: reference.baseName)
         }
         if let member = callee.as(MemberAccessExprSyntax.self), case .identifier = member.declName.baseName.tokenKind {
-            return member.declName.baseName.text
+            return name(of: member.declName.baseName)
         }
         return ""
+    }
+
+    /// `token`'s name, without the backticks an escaped identifier is
+    /// written with.
+    private static func name(of token: TokenSyntax) -> String {
+        token.identifier?.name ?? token.text
+    }
+
+    /// The type an implicit `.init(…)` builds when it initialises a binding
+    /// annotated with it (`let gauge: Gauge = .init()`, an optional of it
+    /// included); empty otherwise.
+    private static func annotatedType(of call: FunctionCallExprSyntax) -> String {
+        guard let clause = call.parent?.as(InitializerClauseSyntax.self),
+              let type = clause.parent?.as(PatternBindingSyntax.self)?.typeAnnotation?.type else {
+            return ""
+        }
+        return typeName(of: type)
+    }
+
+    /// The last name of `type`, an optional's wrapped type's for an
+    /// optional; empty for any other shape.
+    private static func typeName(of type: TypeSyntax) -> String {
+        if let optional = type.as(OptionalTypeSyntax.self) {
+            return typeName(of: optional.wrappedType)
+        }
+        if let unwrapped = type.as(ImplicitlyUnwrappedOptionalTypeSyntax.self) {
+            return typeName(of: unwrapped.wrappedType)
+        }
+        if let identifier = type.as(IdentifierTypeSyntax.self) {
+            return name(of: identifier.name)
+        }
+        return type.as(MemberTypeSyntax.self).map { name(of: $0.name) } ?? ""
     }
 
     /// `expression` without its generic arguments: `T` for `T<U>`.
@@ -126,18 +166,18 @@ final class TestBodyScan: SyntaxVisitor {
 
     override func visit(_ node: DeclReferenceExprSyntax) -> SyntaxVisitorContinueKind {
         if case .identifier = node.baseName.tokenKind {
-            names.insert(node.baseName.text)
+            names.insert(Self.name(of: node.baseName))
         }
         return .visitChildren
     }
 
     override func visit(_ node: IdentifierTypeSyntax) -> SyntaxVisitorContinueKind {
-        names.insert(node.name.text)
+        names.insert(Self.name(of: node.name))
         return .visitChildren
     }
 
     override func visit(_ node: MemberTypeSyntax) -> SyntaxVisitorContinueKind {
-        names.insert(node.name.text)
+        names.insert(Self.name(of: node.name))
         return .visitChildren
     }
 

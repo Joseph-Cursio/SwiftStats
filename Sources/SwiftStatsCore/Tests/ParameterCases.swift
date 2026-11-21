@@ -19,11 +19,10 @@ enum ParameterCases {
     /// collection's size can't be read from the source, or the count
     /// overflows `Int`.
     static func count(in attribute: AttributeSyntax) -> Int? {
-        guard case .argumentList(let list) = attribute.arguments,
-              let start = list.firstIndex(where: { $0.label?.text == "arguments" }) else {
+        let collections = collections(in: attribute)
+        guard collections.isEmpty == false else {
             return nil
         }
-        let collections = list[start...].map(\.expression)
         var total = 1
         for collection in collections {
             guard let size = size(of: collection) else {
@@ -36,6 +35,17 @@ enum ParameterCases {
             total = product
         }
         return total
+    }
+
+    /// The collections `attribute` passes: its `arguments:` argument and
+    /// any that follow it, without the display name or the traits before
+    /// it; empty when it passes none.
+    static func collections(in attribute: AttributeSyntax) -> [ExprSyntax] {
+        guard case .argumentList(let list) = attribute.arguments,
+              let start = list.firstIndex(where: { $0.label?.text == "arguments" }) else {
+            return []
+        }
+        return list[start...].map(\.expression)
     }
 
     /// Whether `attribute` passes `arguments:`.

@@ -56,7 +56,7 @@ enum UnevenHarness {
             records: [],
             attachments: [],
             unmapped: [],
-            dropped: CoverageDropped(build: 0, outsideRoot: 0, testFiles: 0, otherPackage: 0),
+            dropped: CoverageDropped(build: 0, outsideRoot: 0, testFiles: 0, otherPackage: 0, otherLanguage: 0),
             bundles: ["LibTests"],
             tests: "passed",
             saturated: [],

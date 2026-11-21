@@ -57,7 +57,9 @@ extension StoreMigrations {
             table.column("collectedAt", .text).notNull()
             table.column("bundles", .text).notNull()
             table.column("tests", .text).notNull()
-            for name in ["droppedBuild", "droppedOutsideRoot", "droppedTestFiles", "droppedOtherPackage"] {
+            for name in [
+                "droppedBuild", "droppedOutsideRoot", "droppedTestFiles", "droppedOtherPackage", "droppedOtherLanguage"
+            ] {
                 table.column(name, .integer).notNull()
             }
             table.column("saturated", .text).notNull()

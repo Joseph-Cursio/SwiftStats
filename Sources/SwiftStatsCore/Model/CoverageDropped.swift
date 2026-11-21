@@ -15,15 +15,20 @@ public struct CoverageDropped: Codable, Hashable, Sendable {
     public let outsideRoot: Int
     /// In a test target's directory.
     public let testFiles: Int
-    /// Under the root but in no target's directory: a nested package or a
-    /// path dependency.
+    /// Swift files under the root but in no target's directory: a nested
+    /// package or a path dependency.
     public let otherPackage: Int
+    /// Files that aren't Swift, outside test targets: the sources and
+    /// headers of C, C++ and assembly targets, which SwiftPM instruments
+    /// and no record can hold.
+    public let otherLanguage: Int
 
     /// Creates the counts. Fields are documented on their properties.
-    public init(build: Int, outsideRoot: Int, testFiles: Int, otherPackage: Int) {
+    public init(build: Int, outsideRoot: Int, testFiles: Int, otherPackage: Int, otherLanguage: Int) {
         self.build = build
         self.outsideRoot = outsideRoot
         self.testFiles = testFiles
         self.otherPackage = otherPackage
+        self.otherLanguage = otherLanguage
     }
 }

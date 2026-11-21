@@ -32,8 +32,10 @@ struct CoverageRunRow: Codable, FetchableRecord, PersistableRecord {
     var droppedOutsideRoot: Int
     /// Export files dropped in test targets.
     var droppedTestFiles: Int
-    /// Export files dropped in no target of the package.
+    /// Swift export files dropped in no target of the package.
     var droppedOtherPackage: Int
+    /// Export files dropped for not being Swift.
+    var droppedOtherLanguage: Int
     /// Where kept files hold saturated counts.
     var saturated: [CoverageSaturation]
 
@@ -48,7 +50,8 @@ struct CoverageRunRow: Codable, FetchableRecord, PersistableRecord {
             build: droppedBuild,
             outsideRoot: droppedOutsideRoot,
             testFiles: droppedTestFiles,
-            otherPackage: droppedOtherPackage
+            otherPackage: droppedOtherPackage,
+            otherLanguage: droppedOtherLanguage
         )
     }
 
@@ -63,6 +66,7 @@ struct CoverageRunRow: Codable, FetchableRecord, PersistableRecord {
         droppedOutsideRoot = report.dropped.outsideRoot
         droppedTestFiles = report.dropped.testFiles
         droppedOtherPackage = report.dropped.otherPackage
+        droppedOtherLanguage = report.dropped.otherLanguage
         saturated = report.saturated
     }
 

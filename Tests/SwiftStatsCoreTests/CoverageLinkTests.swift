@@ -77,6 +77,34 @@ struct CoverageLinkTests {
     }
 
     @Test("""
+        a member declared with backticks counts a test naming it without them; an implicit `.init(…)` \
+        initialising a binding annotated with the type calls it; a parameterized test names what its parameters \
+        and `@Test` arguments name
+        """)
+    func namesAsTestsWriteThem() throws {
+        let linked = Self.linked(try LinkPackage.report())
+
+        #expect(linked["Lib::Cfg::func `default`() -> Int"] == Linked(link: .member, tests: 1))
+        #expect(linked["Lib::Cfg::static var `default`: Cfg { get }"] == Linked(link: .member, tests: 1))
+        #expect(linked["Lib::Meter::init(level: Int)"] == Linked(link: .member, tests: 1))
+        #expect(linked["Lib::Gauge::func read() -> Int"] == Linked(link: .member, tests: 1))
+        #expect(linked["Lib::Gauge::init(scale: Int)"] == Linked(link: .member, tests: 1))
+    }
+
+    @Test("""
+        a member witnessing a requirement of a protocol its type's conformance refines, or of one its superclass \
+        in the module conforms to, is a witness
+        """)
+    func inheritedWitnesses() throws {
+        let linked = Self.linked(try LinkPackage.report())
+        let witness = Linked(link: .witness, tests: nil)
+
+        #expect(linked["Lib::Wrapper::var description: String { get }"] == witness)
+        #expect(linked["Lib::Base::func makeIterator() -> IndexingIterator<[Int]>"] == witness)
+        #expect(linked["Lib::Derived::func makeIterator() -> IndexingIterator<[Int]>"] == witness)
+    }
+
+    @Test("""
         a free function and a protocol extension member count a test of a target that ran them whose body names \
         them, a protocol extension's initialiser or subscript one that names the protocol; a container, a \
         non-public or generated function has no link, and one without data no tests

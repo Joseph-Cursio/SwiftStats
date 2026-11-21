@@ -34,6 +34,12 @@ extension FunctionCollector {
         return .file
     }
 
+    /// What caps the members of `extended`, the type an extension in this
+    /// file extends; nil when the module declares no such type.
+    func typeCap(of extended: String) -> AccessLevel? {
+        typeAccess.memberCap(ofExtended: extended, in: context.file)
+    }
+
     /// Opens a key context for a binding's initialiser.
     func pushInitializerContext(for binding: PatternBindingSyntax, owner: SyntaxIdentifier) {
         let variable = Self.variable(of: binding)

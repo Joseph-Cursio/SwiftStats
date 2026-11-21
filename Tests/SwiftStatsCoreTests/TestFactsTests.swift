@@ -111,4 +111,46 @@ struct TestFactsTests {
         #expect(facts.references.calls == ["Shelf", "Bin", "Crate", "Tray", "grow", "map"])
         #expect(facts.callees.isEmpty)
     }
+
+    @Test("""
+        names are kept without backticks; an implicit `.init(…)` calls the annotated type of the binding it \
+        initialises, and nothing otherwise
+        """)
+    func escapedAndImplicitNames() throws {
+        let facts = try Self.facts("""
+        @Test func gauges() {
+            let gauge: Gauge = .init(scale: 1)
+            let spare: Kit.Meter? = .init()
+            let `default` = Config.`default`
+            take(.init(x: 1))
+        }
+        """)
+
+        // `default` is `Config`'s member, written with backticks.
+        #expect(facts.references.names == ["Gauge", "Kit", "Meter", "default", "Config", "take"])
+        #expect(facts.references.calls == ["Gauge", "Meter", "take"])
+        #expect(TestReferences.unescaped("`default`") == "default")
+        #expect(TestReferences.unescaped("plain") == "plain")
+    }
+
+    @Test("""
+        a test's references include what its parameter clause and its `@Test` `arguments:` collections name and \
+        call, which add no assertions, but not its display name or traits
+        """)
+    func declarationReferences() throws {
+        let facts = try Self.facts("""
+        @Test(\"reads\", .tags(.slow), .timeLimit(.minutes(1)), arguments: [Gauge(scale: 1)], [Dial.low])
+        func reads(gauge: Gauge, dial: Dial, limit: Limit = .standard) {
+            #expect(gauge.read() == 1)
+        }
+        """)
+
+        #expect(facts.kind == .parameterized)
+        #expect(facts.cases == 1)
+        #expect(facts.assertions == 1)
+        // The traits name no subject, so `tags`, `slow`, `timeLimit` and
+        // `minutes` are not references.
+        #expect(facts.references.names == ["Gauge", "Dial", "low", "Limit", "standard", "gauge", "read"])
+        #expect(facts.references.calls == ["Gauge", "read"])
+    }
 }

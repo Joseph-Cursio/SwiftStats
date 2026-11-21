@@ -106,7 +106,7 @@ enum CoverageSamples {
            {"file": "Sources/Lib/A.swift", "startLine": 1, "startColumn": 1, "endLine": 2, "endColumn": 2, "count": 0,
             "name": "$s3Lib1ayyF", "demangled": "Lib.a() -> ()", "reason": "excluded"}
          ],
-         "dropped": {"build": 10, "outsideRoot": 1, "testFiles": 28, "otherPackage": 2},
+         "dropped": {"build": 10, "outsideRoot": 1, "testFiles": 28, "otherPackage": 2, "otherLanguage": 3},
          "bundles": ["ATests", "BTests"],
          "tests": "failing",
          "saturated": [{"file": "Sources/Lib/Lib.swift", "line": 5}],
@@ -155,7 +155,7 @@ enum CoverageSamples {
            {"file": "Sources/Lib/Lib.swift", "startLine": 2, "startColumn": 5, "endLine": 2, "endColumn": 9,
             "count": 1, "name": "$s3Lib1xvpfi", "reason": "macro or expansion region"}
          ],
-         "dropped": {"build": 0, "outsideRoot": 0, "testFiles": 1, "otherPackage": 0},
+         "dropped": {"build": 0, "outsideRoot": 0, "testFiles": 1, "otherPackage": 0, "otherLanguage": 0},
          "bundles": ["LibTests"],
          "tests": "passed",
          "saturated": [{"file": "Sources/Lib/Lib.swift", "line": 5}],
