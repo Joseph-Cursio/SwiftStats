@@ -44,7 +44,7 @@ struct SnapshotReportTests {
         ])
     }
 
-    @Test("the Markdown report leads with the signals, then the collectors, the project and the modules")
+    @Test("the Markdown report leads with the signals, then the collectors, coverage, the project and the modules")
     func markdownOrder() throws {
         let directory = try SnapshotHarness.temporaryDirectory("Report")
         defer { try? FileManager.default.removeItem(at: directory) }
@@ -71,7 +71,7 @@ struct SnapshotReportTests {
             "# Probe", "## Signals", "### Hotspots", "### Bug-prone", "### Unstable fixes",
             "### Tests not keeping up", "### Safe to leave", "### Untested properties", "### Tool disagreements",
             "### Missing templates", "### Unchecked laws", "### Divergent clones", "### Clone hotspots",
-            "## Collectors", "## Project",
+            "### Risky + untested", "### Uneven clone testing", "## Collectors", "## Coverage", "## Project",
             "### Findings by rule", "### Findings by kind", "## Side effects", "## Property candidates",
             "## Law checks", "## Clones", "## Modules"
         ]
@@ -88,6 +88,9 @@ struct SnapshotReportTests {
         #expect(text.contains(
             "Not collected: skipped, `swift-clone-detector` not found on PATH; set collectors.swiftclonedetector.path."
         ))
+        #expect(text.contains("## Coverage\n\nNot collected: skipped, not requested; scan --coverage runs it.\n"))
+        #expect(text.contains("### Risky + untested\n\nLeft out: needs coverage: skipped, not requested; "
+            + "scan --coverage runs it."))
         // The package declares no conformance the kit covers.
         #expect(text.contains("| notRun | 0 |"))
     }

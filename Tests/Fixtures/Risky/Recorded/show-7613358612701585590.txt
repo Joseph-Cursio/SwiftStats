@@ -1,0 +1,118 @@
+Counters:
+  $s5Risky5CrashO8inactiveyS2iSgFZ:
+    Hash: 0x0000000000000000
+    Counters: 1
+    Function count: 1
+    Block counts: []
+  $s5Risky5CrashO12ranSignatureyS2iSgFZ:
+    Hash: 0x0000000000000000
+    Counters: 1
+    Function count: 1
+    Block counts: []
+  @ROOT@/Sources/Risky/Crash.swift:$s5Risky5CrashO5outeryS2iSgFZSiyKXEfu_:
+    Hash: 0x0000000000000000
+    Counters: 1
+    Function count: 1
+    Block counts: []
+  $s5Risky5CrashO4pairyS2iSg_AEtFZ:
+    Hash: 0x0000000000000000
+    Counters: 1
+    Function count: 1
+    Block counts: []
+  $s10RiskyTests7crashesyyF:
+    Hash: 0x0000000000000000
+    Counters: 1
+    Function count: 1
+    Block counts: []
+  $s5Risky6WorkedC4workyyF:
+    Hash: 0x0000000000000000
+    Counters: 1
+    Function count: 1
+    Block counts: []
+  @ROOT@/Sources/Risky/Race.swift:$s5Risky8SettingsV6parsedSivpfi:
+    Hash: 0x0000000000000000
+    Counters: 2
+    Function count: 1
+    Block counts: [0]
+  $s5Risky5CrashO8fallbackyS2iSg_AEtFZ:
+    Hash: 0x0000000000000000
+    Counters: 2
+    Function count: 1
+    Block counts: [0]
+  $s5Risky9OnlyBuiltCACycfc:
+    Hash: 0x0000000000000000
+    Counters: 1
+    Function count: 1
+    Block counts: []
+  @BUILD@/out/Intermediates.noindex/RiskyProbe.build/Debug/RiskyTests-p.build/DerivedSources/test_entry_point.swift:$s10RiskyTests28__SwiftPMGeneratedTestRunnerV14testingLibrary33_1F2EB4456274DF146BCD7DC1714EF4B0LLSSyFZ:
+    Hash: 0x0000000000000000
+    Counters: 3
+    Function count: 1
+    Block counts: [9, 1]
+  $s5Risky5CrashO9unwrappedyS2iSgFZ:
+    Hash: 0x0000000000000000
+    Counters: 1
+    Function count: 1
+    Block counts: []
+  @ROOT@/Sources/Risky/Race.swift:$s5Risky5BoxedC5valueSivpfi:
+    Hash: 0x0000000000000000
+    Counters: 1
+    Function count: 1
+    Block counts: []
+  @ROOT@/Sources/Risky/Race.swift:$s5Risky6WorkedC5countSivpfi:
+    Hash: 0x0000000000000000
+    Counters: 1
+    Function count: 1
+    Block counts: []
+  $s5Risky5CrashO6branchyS2iSg_SbtFZ:
+    Hash: 0x0000000000000000
+    Counters: 2
+    Function count: 1
+    Block counts: [0]
+  $s5Risky5CrashO5outeryS2iSgFZ:
+    Hash: 0x0000000000000000
+    Counters: 1
+    Function count: 1
+    Block counts: []
+  $s10RiskyTests28__SwiftPMGeneratedTestRunnerV4mainyyYaFZ:
+    Hash: 0x0000000000000000
+    Counters: 2
+    Function count: 1
+    Block counts: [1]
+  @ROOT@/Sources/Risky/Race.swift:$s5Risky9OnlyBuiltC5countSivpfi:
+    Hash: 0x0000000000000000
+    Counters: 1
+    Function count: 1
+    Block counts: []
+  $s5Risky8SettingsVACycfC:
+    Hash: 0x0000000000000000
+    Counters: 1
+    Function count: 1
+    Block counts: []
+  $s5Risky8SettingsV5parseySiSSKFZ:
+    Hash: 0x0000000000000000
+    Counters: 2
+    Function count: 1
+    Block counts: [0]
+  $s5Risky6WorkedCACycfc:
+    Hash: 0x0000000000000000
+    Counters: 1
+    Function count: 1
+    Block counts: []
+  $s5Risky5TallyO4bumpyyFZ:
+    Hash: 0x0000000000000000
+    Counters: 1
+    Function count: 1
+    Block counts: []
+  $s10RiskyTests5racesyyF:
+    Hash: 0x0000000000000000
+    Counters: 1
+    Function count: 1
+    Block counts: []
+Instrumentation level: Front-end
+Functions shown: 22
+Total functions: 22
+Maximum function count: 1
+Maximum internal block count: 9
+Total number of blocks: 29
+Total count: 33

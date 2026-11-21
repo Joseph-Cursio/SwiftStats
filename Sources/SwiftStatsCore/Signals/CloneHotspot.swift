@@ -97,7 +97,8 @@ enum CloneHotspot {
                 lines: cloneClass.instances.reduce(0) { $0 + $1.strippedLines },
                 copies: cloneClass.instances.count,
                 churn: churn,
-                divergence: nil
+                divergence: nil,
+                coverage: nil
             )
         )
         let score = Double(churn)

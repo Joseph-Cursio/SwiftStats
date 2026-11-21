@@ -190,13 +190,15 @@ public enum MarkdownSignals {
                 traced
             ]
 
-        case .cloneHotspot, .divergentClones, .missingTemplate, .toolDisagreement, .uncheckedLaws, .untestedProperty:
+        case .cloneHotspot, .divergentClones, .missingTemplate, .riskyUntested, .toolDisagreement, .uncheckedLaws,
+            .unevenCloneTesting, .untestedProperty:
             m4Columns(for: signal)
         }
     }
 
     /// What the subject column of `signal`'s table heads: a type for
-    /// unchecked laws, a copy or class for the clone signals, else a function.
+    /// unchecked laws, a copy or class for the clone signals, a function,
+    /// type or file for risky + untested, else a function.
     private static func subjectHeading(for signal: SignalName) -> String {
         switch signal {
         case .cloneHotspot:
@@ -204,6 +206,12 @@ public enum MarkdownSignals {
 
         case .divergentClones:
             "Unchanged copy"
+
+        case .riskyUntested:
+            "Function, type or file"
+
+        case .unevenCloneTesting:
+            "Least covered copy"
 
         case .uncheckedLaws:
             "Type"

@@ -3,14 +3,16 @@
 #  record-coverage-fixture.sh
 #  SwiftStats
 #
-#  Regenerates Tests/Fixtures/Coverage/Recorded: what the real tools print
-#  for the coverage fixture, run the way the coverage collector runs them
-#  (M5). The fixture is copied to a work directory outside the repository
-#  and built there, never in Tests/Fixtures. In the recorded text the copy's
+#  Regenerates Tests/Fixtures/<fixture>/Recorded: what the real tools
+#  print for a coverage fixture, `Coverage` (the mapping's) or `Risky`
+#  (risky + untested's), run the way the coverage collector runs them (M5).
+#  The fixture is copied to a work directory outside the repository and
+#  built there, never in Tests/Fixtures. In the recorded text the copy's
 #  build directory becomes @BUILD@ and its root @ROOT@; the tests' fake
 #  toolchain puts its own paths back.
 #
-#  Usage: Scripts/record-coverage-fixture.sh <work directory outside the repository>
+#  Usage: Scripts/record-coverage-fixture.sh <work directory outside the repository> [<fixture>]
+#  The fixture defaults to `Coverage`.
 #
 #  Recorded files:
 #    profiles.txt     the profile names `swift test` wrote, sorted
@@ -26,11 +28,16 @@
 set -eu
 
 repository="$(cd "$(dirname "$0")/.." && pwd -P)"
-fixture="$repository/Tests/Fixtures/Coverage"
-recorded="$fixture/Recorded"
 
-if [ $# -ne 1 ]; then
-    echo "usage: $0 <work directory outside the repository>" >&2
+if [ $# -lt 1 ] || [ $# -gt 2 ]; then
+    echo "usage: $0 <work directory outside the repository> [<fixture>]" >&2
+    exit 64
+fi
+name="${2:-Coverage}"
+fixture="$repository/Tests/Fixtures/$name"
+recorded="$fixture/Recorded"
+if [ ! -f "$fixture/Package.swift" ]; then
+    echo "error: $fixture holds no package" >&2
     exit 64
 fi
 mkdir -p "$1"
@@ -42,14 +49,16 @@ case "$work/" in
         ;;
 esac
 
-package="$work/Coverage"
+package="$work/$name"
 rm -rf "$package"
 mkdir -p "$package"
-# Everything but what an earlier recording left.
-(cd "$fixture" && find . -path ./Recorded -prune -o -type f -print) | while read -r file; do
-    mkdir -p "$package/$(dirname "$file")"
-    cp "$fixture/$file" "$package/$file"
-done
+# Everything but what an earlier recording left, and build or index
+# directories an editor may have made.
+(cd "$fixture" && find . \( -path ./Recorded -o -name .build -o -name .swiftstats \) -prune -o -type f -print) |
+    while read -r file; do
+        mkdir -p "$package/$(dirname "$file")"
+        cp "$fixture/$file" "$package/$file"
+    done
 cd "$package"
 
 # The toolchain, found as the collector finds it.

@@ -18,4 +18,14 @@ enum TypeOwner {
         }
         return owner + " @ " + type.file
     }
+
+    /// The owner of the type a function row's `typePath` names in
+    /// `module`, with `typeFile` when the type is file-scoped; nil for a
+    /// row outside every type.
+    static func of(module: String, typePath: String?, typeFile: String?) -> String? {
+        guard let typePath else {
+            return nil
+        }
+        return "\(module)::\(typePath)" + (typeFile.map { " @ \($0)" } ?? "")
+    }
 }

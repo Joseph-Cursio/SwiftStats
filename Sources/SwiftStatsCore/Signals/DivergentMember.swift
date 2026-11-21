@@ -41,11 +41,8 @@ struct DivergentMember {
     }
 
     /// Whether this member's changed and unchanged families hold all of
-    /// `other`'s, and more.
-    func strictlyHolds(_ other: Self) -> Bool {
-        let (changedOwn, unchangedOwn) = (changedFamilies, unchangedFamilies)
-        let (changedOther, unchangedOther) = (other.changedFamilies, other.unchangedFamilies)
-        return changedOther.isSubset(of: changedOwn) && unchangedOther.isSubset(of: unchangedOwn)
-            && (changedOther != changedOwn || unchangedOther != unchangedOwn)
+    /// `other`'s: members holding each other have equal sets.
+    func holds(_ other: Self) -> Bool {
+        other.changedFamilies.isSubset(of: changedFamilies) && other.unchangedFamilies.isSubset(of: unchangedFamilies)
     }
 }

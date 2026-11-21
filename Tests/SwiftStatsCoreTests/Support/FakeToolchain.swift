@@ -9,10 +9,11 @@
 //  toolchain's own `usr/bin/swift`, which runs everything else; and
 //  `llvm-profdata` and `llvm-cov` beside it, or out of the toolchain behind
 //  a fake `xcrun`.
-//  A scenario says what each command does; the recorded one serves what
-//  the real tools printed for the Coverage fixture (`Recorded/`, made by
-//  `Scripts/record-coverage-fixture.sh`), with `@ROOT@` and `@BUILD@` put
-//  back as the package root and the build directory of the run.
+//  A scenario says what each command does; a recorded one serves what the
+//  real tools printed for a coverage fixture, Coverage or Risky
+//  (`Recorded/`, made by `Scripts/record-coverage-fixture.sh`), with
+//  `@ROOT@` and `@BUILD@` put back as the package root and the build
+//  directory of the run.
 //
 
 import Foundation
@@ -96,13 +97,20 @@ struct FakeToolchain {
         return ToolLocator { name in name == "xcrun" ? found : nil }
     }
 
-    /// The scenario of the fixture's recorded run: its bundles, profiles,
-    /// `show` texts, runner names and export, every test passing.
+    /// The scenario of the Coverage fixture's recorded run: its bundles,
+    /// profiles, `show` texts, runner names and export, every test passing.
     static func recorded() throws -> Scenario {
+        try recorded(in: recordedDirectory)
+    }
+
+    /// The scenario of the run recorded in `directory`, a fixture's
+    /// `Recorded/`: its bundles, profiles, `show` texts, runner names and
+    /// export, every test passing.
+    static func recorded(in directory: URL) throws -> Scenario {
         let read = { (name: String) in
-            try String(contentsOf: recordedDirectory.appendingPathComponent(name), encoding: .utf8)
+            try String(contentsOf: directory.appendingPathComponent(name), encoding: .utf8)
         }
-        let files = try FileManager.default.contentsOfDirectory(atPath: recordedDirectory.path)
+        let files = try FileManager.default.contentsOfDirectory(atPath: directory.path)
         var shows: [String: String] = [:]
         for file in files where file.hasPrefix("show-") && file.hasSuffix(".txt") {
             shows[String(file.dropFirst("show-".count).dropLast(".txt".count))] = try read(file)

@@ -3,7 +3,8 @@
 //  SwiftStatsCore
 //
 //  The input columns of M4's signal tables (PRD §8): what each reads from
-//  an item's payloads. A cell whose payload is absent shows a dash.
+//  an item's payloads. A cell whose payload is absent shows a dash. M5's
+//  are in `MarkdownSignals+Coverage.swift`.
 //
 
 extension MarkdownSignals {
@@ -76,7 +77,7 @@ extension MarkdownSignals {
         ]
     }
 
-    /// The input columns of M4's signal `signal`; none for M3's.
+    /// The input columns of M4's and M5's signal `signal`; none for M3's.
     static func m4Columns(for signal: SignalName) -> [Column] {
         switch signal {
         case .bugProne, .hotspot, .safeToLeave, .testsNotKeepingUp, .unstableFixes:
@@ -91,11 +92,17 @@ extension MarkdownSignals {
         case .missingTemplate:
             missingTemplateColumns
 
+        case .riskyUntested:
+            riskyUntestedColumns
+
         case .toolDisagreement:
             toolDisagreementColumns
 
         case .uncheckedLaws:
             uncheckedLawsColumns
+
+        case .unevenCloneTesting:
+            unevenCloneTestingColumns
 
         case .untestedProperty:
             untestedPropertyColumns
@@ -103,7 +110,7 @@ extension MarkdownSignals {
     }
 
     /// A clone class's kind: exact, renamed, sequence or near-miss.
-    private static func kind(_ clone: SignalItem.Clone) -> String {
+    static func kind(_ clone: SignalItem.Clone) -> String {
         CloneKind(pass: clone.pass, exact: clone.exact).rawValue
     }
 
@@ -141,7 +148,7 @@ extension MarkdownSignals {
     }
 
     /// A cell reading an item's clone class with `cell`.
-    private static func clone(_ cell: @escaping (SignalItem.Clone) -> String) -> (SignalItem) -> String {
+    static func clone(_ cell: @escaping (SignalItem.Clone) -> String) -> (SignalItem) -> String {
         { item in item.clone.map(cell) ?? "—" }
     }
 

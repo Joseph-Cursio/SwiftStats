@@ -32,8 +32,8 @@ struct CloneRepository {
         try report([])
     }
 
-    /// The JSON the detector writes for `clones`.
-    private static func json(_ clones: [FakeClone], run: String) throws -> String {
+    /// The JSON the detector writes for `clones` on the run `run`.
+    static func json(_ clones: [FakeClone], run: String) throws -> String {
         let classes = clones.enumerated().map { index, clone -> [String: Any] in
             var entry: [String: Any] = [
                 "fingerprint": "fake\(index)",
