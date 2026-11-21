@@ -12,7 +12,8 @@ import Foundation
 struct CoverageRun: Sendable {
     /// How the run went.
     let status: CollectorStatus
-    /// The toolchain's `swift` that ran the build and the tests; nil when
+    /// The toolchain's `swift` that ran the build and the tests (the
+    /// resolved `swift` when the run failed before finding it); nil when
     /// the collector was skipped.
     let executable: URL?
     /// `swift:<first --version line of that swift>`, the build identity
@@ -20,6 +21,8 @@ struct CoverageRun: Sendable {
     let identity: String?
     /// Wall-clock milliseconds, from the build to the last export.
     let milliseconds: Int
+    /// The run's data, to map to records; nil unless it ran.
+    let profiles: CoverageProfiles?
 
     /// The run as the other external collectors' runs are recorded.
     var timed: TimedAdapterResult {
@@ -37,7 +40,8 @@ struct CoverageRun: Sendable {
             status: AdapterResult.skipped(CoverageAdapter.name, reason: reason).status,
             executable: nil,
             identity: nil,
-            milliseconds: 0
+            milliseconds: 0,
+            profiles: nil
         )
     }
 }

@@ -54,7 +54,7 @@ enum ProcessRunner {
             executable: executable,
             arguments: arguments,
             in: directory,
-            accepting: [0],
+            accepting: { $0 == 0 },
             environment: [:],
             input: input
         ).output
@@ -73,22 +73,51 @@ enum ProcessRunner {
             executable: executable,
             arguments: arguments,
             in: directory,
-            accepting: accepted,
+            accepting: accepted.contains,
             environment: environment,
             input: nil
         )
     }
 
+    /// Runs `executable` with `arguments` in `directory` to its end and
+    /// returns what it left, whatever its exit status, for a caller that
+    /// judges the status itself (the coverage run, M5). Throws
+    /// `ScanError.commandFailed` only when it can't start.
+    static func runToEnd(executable: String, arguments: [String], in directory: URL) throws -> ProcessOutput {
+        try run(executable: executable, arguments: arguments, in: directory, accepting: { _ in true }, environment: [:])
+    }
+
+    /// Runs `executable` as `runToEnd(executable:arguments:in:)` does, with
+    /// standard output written to the file at `output` (created or
+    /// replaced) rather than kept in memory: the returned output is empty.
+    static func runToEnd(
+        executable: String,
+        arguments: [String],
+        in directory: URL,
+        writingOutputTo output: URL
+    ) throws -> ProcessOutput {
+        try run(
+            executable: executable,
+            arguments: arguments,
+            in: directory,
+            accepting: { _ in true },
+            environment: [:],
+            output: output
+        )
+    }
+
     /// Runs `executable` as `run(executable:arguments:in:accepting:)` does,
-    /// with `environment` added to this process's and standard input read
-    /// from `input` when given.
+    /// with `environment` added to this process's, standard input read
+    /// from `input` and standard output written to the file at `output`
+    /// when given; `accepts` says which exit statuses succeed.
     private static func run(
         executable: String,
         arguments: [String],
         in directory: URL,
-        accepting accepted: Set<Int32>,
+        accepting accepts: (Int32) -> Bool,
         environment: [String: String],
-        input: URL? = nil
+        input: URL? = nil,
+        output outputFile: URL? = nil
     ) throws -> ProcessOutput {
         let process = Process()
         if let input {
@@ -120,7 +149,9 @@ enum ProcessRunner {
             ScratchRegistry.shared.remove(errorFile)
         }
         let outputPipe = Pipe()
-        process.standardOutput = outputPipe
+        let outputHandle = try outputFile.map { try handle(writingTo: $0, command: command) }
+        defer { try? outputHandle?.close() }
+        process.standardOutput = outputHandle ?? outputPipe
         process.standardError = errorHandle
 
         // Registered while it runs, so an interruption terminates it.
@@ -129,12 +160,12 @@ enum ProcessRunner {
         } catch {
             throw ScanError.commandFailed(command, -1, error.localizedDescription)
         }
-        let output = outputPipe.fileHandleForReading.readDataToEndOfFile()
+        let output = outputHandle == nil ? outputPipe.fileHandleForReading.readDataToEndOfFile() : Data()
         process.waitUntilExit()
         ScratchRegistry.shared.finished(process)
 
         let errorText = (try? String(contentsOf: errorFile, encoding: .utf8)) ?? ""
-        guard accepted.contains(process.terminationStatus) else {
+        guard accepts(process.terminationStatus) else {
             // Some tools (swiftly, for one) explain failures on standard
             // output, so fall back to it when standard error is empty.
             let outputText = String(bytes: output, encoding: .utf8) ?? ""
@@ -142,6 +173,16 @@ enum ProcessRunner {
             throw ScanError.commandFailed(command, process.terminationStatus, lastLines(of: reason))
         }
         return ProcessOutput(status: process.terminationStatus, output: output, errorText: errorText)
+    }
+
+    /// A handle writing to `file`, created or emptied, for `command`'s
+    /// standard output.
+    private static func handle(writingTo file: URL, command: String) throws -> FileHandle {
+        guard FileManager.default.createFile(atPath: file.path, contents: nil),
+              let handle = try? FileHandle(forWritingTo: file) else {
+            throw ScanError.commandFailed(command, -1, "could not create \(file.path)")
+        }
+        return handle
     }
 
     /// The last `maximumReasonLines` non-empty lines of `text`, joined.

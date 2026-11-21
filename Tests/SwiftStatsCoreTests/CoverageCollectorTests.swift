@@ -105,21 +105,24 @@ struct CoverageCollectorTests {
         #expect([disabled, missing, badPath, toolsSkipped].allSatisfy { $0?.state == .skipped })
     }
 
-    @Test("asked for with a swift found, coverage stands as not built yet, and that swift is never run")
+    @Test("asked for with a swift found, the scan runs coverage with that swift's toolchain and reports its run")
     func requestedFound() throws {
-        let swift = try FakeTool.make(outputs: [""], errorText: "", statuses: [1])
-        defer { try? FileManager.default.removeItem(at: swift.deletingLastPathComponent()) }
+        let toolchain = try FakeToolchain.make(try FakeToolchain.recorded())
+        defer { toolchain.remove() }
 
         let status = try Self.status(
-            [".swiftstats.yml": "collectors:\n  coverage:\n    path: \(swift.path)\n"],
+            [".swiftstats.yml": "collectors:\n  coverage:\n    path: \(toolchain.proxy.path)\n"],
             tools: SnapshotHarness.noTools,
             toolSkipReason: nil,
             coverage: true
         )
 
-        #expect(status?.state == .skipped)
-        #expect(status?.reason == "the coverage run is not built yet")
-        #expect(FakeTool.arguments(of: swift).isEmpty)
+        #expect(status?.state == .ran)
+        #expect(status?.reason == nil)
+        #expect(status?.version == "Apple LLVM version 21.0.0 (fake)")
+        #expect(status?.options.last == "tests: passed")
+        #expect(toolchain.calls(of: "swift").contains { $0.hasPrefix("test\t--skip-build") })
+        #expect(toolchain.calls(of: "proxy") == ["-print-target-info"])
     }
 
     @Test("scanWorkingTree passes --coverage to the scan, and a skipped coverage run has no build identity")

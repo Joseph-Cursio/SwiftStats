@@ -113,10 +113,11 @@ enum CollectorRun {
             locator: locator,
             root: root
         )
+        let arguments = configuration.collectors[CoverageAdapter.name]?.arguments ?? []
         return BackgroundJob {
             switch resolution {
-            case .found:
-                return CoverageRun.skipped(CoverageAdapter.notBuiltReason)
+            case .found(let swift):
+                return CoverageAdapter.run(swift: swift, root: root, arguments: arguments, locator: locator)
 
             case .skip(let reason):
                 return CoverageRun.skipped(reason)

@@ -152,7 +152,10 @@ struct InterruptCleanupTests {
         return directory
     }
 
-    @Test("cleaning up terminates registered processes, killing one that ignores SIGTERM, and removes registered paths")
+    @Test("""
+        cleaning up interrupts registered processes, killing one that ignores SIGINT and SIGTERM, and removes \
+        registered paths
+        """)
     func registryCleanUp() throws {
         let registry = ScratchRegistry()
         let directory = FileManager.default.temporaryDirectory.appendingPathComponent("Scratch-\(UUID().uuidString)")
@@ -166,7 +169,7 @@ struct InterruptCleanupTests {
         let stubborn = Process()
         stubborn.executableURL = URL(fileURLWithPath: "/bin/sh")
         let ready = directory.appendingPathComponent("ready")
-        stubborn.arguments = ["-c", "trap '' TERM; : > '\(ready.path)'; exec /bin/sleep 60"]
+        stubborn.arguments = ["-c", "trap '' INT TERM; : > '\(ready.path)'; exec /bin/sleep 60"]
         try registry.start(sleeper)
         try registry.start(stubborn)
         defer {
@@ -183,6 +186,56 @@ struct InterruptCleanupTests {
         #expect(stubborn.terminationReason == .uncaughtSignal && stubborn.terminationStatus == SIGKILL)
         #expect(FileManager.default.fileExists(atPath: directory.path) == false)
         #expect(registry.registeredPaths.isEmpty)
+    }
+
+    @Test("""
+        cleaning up interrupts first, so a child that, like swift test, stops its own grandchild in another \
+        process group on SIGINT and ignores SIGTERM leaves no grandchild running
+        """)
+    func grandchildInterrupt() throws {
+        let registry = ScratchRegistry()
+        let directory = try Self.temporaryDirectory()
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let pidFile = directory.appendingPathComponent("grandchild")
+        // `set -m` starts the background job in a process group of its own,
+        // where signals to the child's group never reach it.
+        let child = Process()
+        child.executableURL = URL(fileURLWithPath: "/bin/sh")
+        child.arguments = [
+            "-c",
+            """
+            set -m
+            /bin/sleep 60 &
+            grandchild=$!
+            trap 'kill $grandchild; exit 130' INT
+            trap '' TERM
+            echo $grandchild > '\(pidFile.path)'
+            wait
+            """
+        ]
+        try registry.start(child)
+        var grandchild: pid_t?
+        defer {
+            if child.isRunning {
+                kill(child.processIdentifier, SIGKILL)
+            }
+            if let grandchild {
+                kill(grandchild, SIGKILL)
+            }
+        }
+        try #require(Self.wait(Self.endTimeout) {
+            let text = (try? String(contentsOf: pidFile, encoding: .utf8)) ?? ""
+            grandchild = pid_t(text.trimmingCharacters(in: .whitespacesAndNewlines))
+            return grandchild != nil
+        })
+        let pid = try #require(grandchild)
+        #expect(Self.exists(pid))
+
+        registry.cleanUp()
+
+        #expect(Self.wait(Self.endTimeout) { child.isRunning == false })
+        #expect(child.terminationReason == .exit && child.terminationStatus == 130)
+        #expect(Self.wait(Self.endTimeout) { Self.exists(pid) == false })
     }
 
     @Test("""

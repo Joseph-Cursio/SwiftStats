@@ -1,0 +1,28 @@
+Counters:
+  $s17SwiftTestKitTests04onlyC4RunsyyF:
+    Hash: 0x0000000000000000
+    Counters: 1
+    Function count: 1
+    Block counts: []
+  @BUILD@/out/Intermediates.noindex/CoverageProbe.build/Debug/SwiftTestKitTests-p.build/DerivedSources/test_entry_point.swift:$s17SwiftTestKitTests02__a11PMGeneratedB6RunnerV14testingLibrary010_1C9B4ADD3J21F5AD947637C8BAF0F1B3ALLSSyFZ:
+    Hash: 0x0000000000000000
+    Counters: 3
+    Function count: 1
+    Block counts: [9, 1]
+  $s5Probe7onlyKitSiyF:
+    Hash: 0x0000000000000000
+    Counters: 1
+    Function count: 1
+    Block counts: []
+  $s17SwiftTestKitTests02__a11PMGeneratedB6RunnerV4mainyyYaFZ:
+    Hash: 0x0000000000000000
+    Counters: 2
+    Function count: 1
+    Block counts: [1]
+Instrumentation level: Front-end
+Functions shown: 4
+Total functions: 4
+Maximum function count: 1
+Maximum internal block count: 9
+Total number of blocks: 7
+Total count: 15

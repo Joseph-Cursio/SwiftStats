@@ -16,8 +16,11 @@ final class ScratchRegistry: @unchecked Sendable {
     /// The registry SwiftStats' own temporary files and processes join.
     static let shared = ScratchRegistry()
 
-    /// How long a terminated process gets to exit before it is killed.
+    /// How long an interrupted process gets to exit before it is
+    /// terminated.
     private static let terminationGrace: TimeInterval = 2
+    /// How long a terminated process gets to exit before it is killed.
+    private static let killGrace: TimeInterval = 0.5
     /// How often to look whether terminated processes have exited, in
     /// microseconds.
     private static let pollInterval: useconds_t = 10_000
@@ -44,6 +47,14 @@ final class ScratchRegistry: @unchecked Sendable {
         lock.lock()
         defer { lock.unlock() }
         return Array(processes.values)
+    }
+
+    /// Waits until none of `processes` runs or `grace` passes.
+    private static func wait(for processes: [Process], grace: TimeInterval) {
+        let deadline = Date().addingTimeInterval(grace)
+        while processes.contains(where: \.isRunning), Date() < deadline {
+            usleep(pollInterval)
+        }
     }
 
     /// Registers `url`, a temporary file or directory about to be made.
@@ -85,8 +96,9 @@ final class ScratchRegistry: @unchecked Sendable {
         lock.unlock()
     }
 
-    /// Terminates every registered process, killing any still running
-    /// after a grace period, then removes every registered path.
+    /// Interrupts every registered process, terminates any still running
+    /// after a grace period and kills any still running after a shorter
+    /// one, then removes every registered path.
     func cleanUp() {
         lock.lock()
         defer { lock.unlock() }
@@ -107,15 +119,18 @@ final class ScratchRegistry: @unchecked Sendable {
         _exit(EXIT_FAILURE)
     }
 
-    /// `cleanUp()`'s work; the caller holds the lock.
+    /// `cleanUp()`'s work; the caller holds the lock. SIGINT goes first:
+    /// SwiftPM's `swift test` forwards it to the test processes it started
+    /// in process groups of their own, which neither SIGTERM nor SIGKILL
+    /// of `swift` reaches (M5), and every other tool ends on it as well.
     private func cleanUpHoldingLock() {
         let running = processes.values.filter(\.isRunning)
-        running.forEach { $0.terminate() }
-        let deadline = Date().addingTimeInterval(Self.terminationGrace)
-        while running.contains(where: \.isRunning), Date() < deadline {
-            usleep(Self.pollInterval)
-        }
-        for process in running where process.isRunning {
+        running.forEach { $0.interrupt() }
+        Self.wait(for: running, grace: Self.terminationGrace)
+        let stubborn = running.filter(\.isRunning)
+        stubborn.forEach { $0.terminate() }
+        Self.wait(for: stubborn, grace: Self.killGrace)
+        for process in stubborn where process.isRunning {
             kill(process.processIdentifier, SIGKILL)
         }
         for path in paths {
