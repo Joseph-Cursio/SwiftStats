@@ -29,6 +29,12 @@ final class BackgroundJob<Value: Sendable>: @unchecked Sendable {
         }
     }
 
+    /// A job already finished with `value`, for work that was decided
+    /// without running anything (a collector's skip).
+    init(finished value: Value) {
+        self.value = value
+    }
+
     /// The value, waiting for it when it isn't ready.
     func wait() -> Value {
         group.wait()

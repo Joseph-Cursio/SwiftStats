@@ -147,7 +147,8 @@ enum StoreRowSamples {
                 seiRevision: "ba3624d"
             ),
             clones: try clones(),
-            laws: try laws()
+            laws: try laws(),
+            coverage: nil
         )
     }
 }

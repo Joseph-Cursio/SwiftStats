@@ -51,6 +51,17 @@ enum AccessLevel: Int, Comparable, CaseIterable {
         return nil
     }
 
+    /// The level a modifier list writes for setters alone, as in
+    /// `private(set)`; nil when it writes none.
+    static func writtenForSetter(in modifiers: DeclModifierListSyntax) -> Self? {
+        for modifier in modifiers where modifier.detail?.detail.text == "set" {
+            if let level = written(in: DeclModifierListSyntax([modifier.with(\.detail, nil)])) {
+                return level
+            }
+        }
+        return nil
+    }
+
     static func < (lhs: Self, rhs: Self) -> Bool {
         lhs.rawValue < rhs.rawValue
     }

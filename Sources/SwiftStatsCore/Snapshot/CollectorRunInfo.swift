@@ -7,7 +7,7 @@
 
 /// One collector's run in a snapshot.
 public struct CollectorRunInfo: Codable, Hashable, Sendable {
-    /// The collector: `swiftstats`, `swiftprojectlint`, `swiftlint` or `dependencies`.
+    /// The collector: `swiftstats`, or one a scan reports (`CollectorStatus.name`).
     public let name: String
     /// How the run went.
     public let state: CollectorState

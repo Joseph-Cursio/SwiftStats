@@ -122,6 +122,7 @@ public struct PackageScanner {
             let testCaseClasses = target.isTest
                 ? TestCaseClassIndex.testCaseClasses(in: parsed.map(\.tree)).union(packageTestCases)
                 : []
+            let typeAccess = TypeAccessIndex(files: parsed.map { ($0.path, $0.tree) })
             for file in parsed {
                 let context = FileContext(
                     module: target.name,
@@ -129,11 +130,15 @@ public struct PackageScanner {
                     isTestTarget: target.isTest,
                     testCaseClasses: testCaseClasses,
                     converter: SourceLocationConverter(fileName: file.path, tree: file.tree),
-                    firstLineColumnOffset: file.hasByteOrderMark ? byteOrderMark.count : 0
+                    firstLineColumnOffset: file.hasByteOrderMark ? byteOrderMark.count : 0,
+                    typeAccess: typeAccess
                 )
-                collected.records += FunctionCollector.collect(file.tree, context: context)
+                let functions = FunctionCollector.walked(file.tree, context: context)
+                collected.records += functions.records
+                collected.selectors[file.path] = functions.selectors
+                collected.signatures[file.path] = functions.signatures
                 collected.types += TypeCollector.collect(file.tree, context: context)
-                collected.declarations += DeclarationCollector.collect(file.tree, module: target.name)
+                collected.declarations += DeclarationCollector.collect(file.tree, context: context)
                 collected.markers += MarkerCollector.collect(file.tree, context: context)
                 collected.checkProperties.merge(CheckPropertyKind.collect(file, context: context)) { first, _ in first }
                 collected.laws.append(LawSyntaxCollector.collect(
@@ -144,6 +149,7 @@ public struct PackageScanner {
                 for identity in target.isTest ? PropertyTestLinks.stubIdentities(in: file.tree) : [] {
                     collected.stubs[identity, default: []].insert(file.path)
                 }
+                collected.fileScopedTypes[file.path] = FileScopedTypes.paths(in: file.tree)
                 collected.topLevelLines[file.path] = FunctionCollector.topLevelLines(
                     in: file.tree,
                     converter: context.converter
@@ -243,8 +249,16 @@ public struct PackageScanner {
             declarations: collected.declarations,
             markers: collected.markers,
             topLevelLines: collected.topLevelLines,
+            fileScopedTypes: collected.fileScopedTypes,
             tests: inventory.tests,
             propertyCallees: inventory.callees,
+            testReferences: inventory.references,
+            helperReferences: inventory.helperReferences,
+            testIdentities: inventory.identities,
+            testSuites: inventory.suites,
+            testAliases: inventory.aliases,
+            selectors: collected.selectors,
+            signatures: collected.signatures,
             stubs: collected.stubs,
             checkProperties: collected.checkProperties,
             laws: LawCheckCollector.detect(collected.laws, generatedFiles: generatedFiles),
@@ -257,28 +271,26 @@ public struct PackageScanner {
 
     /// `raw` findings attached to the measured records, types and files.
     static func attach(_ raw: [RawFinding], to measured: ScanMeasurements) -> [Finding] {
-        let mapper = FindingMapper(
-            records: measured.records,
-            types: measured.types,
-            files: measured.files,
-            topLevelLines: measured.topLevelLines
-        )
+        let mapper = FindingMapper(measured: measured)
         return raw.map(mapper.finding(for:))
     }
 
     /// Scans the package rooted at `packageRoot`, with the `.swiftstats.yml`
-    /// in its root when there is one.
-    public func scan(packageAt packageRoot: URL) throws -> ScanReport {
+    /// in its root when there is one; the coverage collector runs only when
+    /// `coverage` asks for it (`scan --coverage`).
+    public func scan(packageAt packageRoot: URL, coverage: Bool = false) throws -> ScanReport {
         let file = packageRoot.standardizedFileURL.appendingPathComponent(SwiftStatsConfiguration.fileName)
         return try scan(
             packageAt: packageRoot,
-            configurationFile: FileManager.default.fileExists(atPath: file.path) ? file : nil
+            configurationFile: FileManager.default.fileExists(atPath: file.path) ? file : nil,
+            coverage: coverage
         )
     }
 
     /// Scans the package rooted at `packageRoot` with the configuration in
-    /// `configurationFile`, or the default configuration when it is nil.
-    public func scan(packageAt packageRoot: URL, configurationFile: URL?) throws -> ScanReport {
-        try run(packageAt: packageRoot, configurationFile: configurationFile).report
+    /// `configurationFile`, or the default configuration when it is nil;
+    /// the coverage collector runs only when `coverage` asks for it.
+    public func scan(packageAt packageRoot: URL, configurationFile: URL?, coverage: Bool = false) throws -> ScanReport {
+        try run(packageAt: packageRoot, configurationFile: configurationFile, coverage: coverage).report
     }
 }

@@ -1,6 +1,14 @@
 {
   "collectors" : [
     {
+      "name" : "coverage",
+      "options" : [
+
+      ],
+      "reason" : "not requested; scan --coverage runs it",
+      "state" : "skipped"
+    },
+    {
       "name" : "dependencies",
       "options" : [
 
@@ -147,6 +155,7 @@
   "package" : "AllKinds",
   "records" : [
     {
+      "access" : "public",
       "bodyHash" : "d302450fc4435c11",
       "bodyLines" : 1,
       "complexity" : {
@@ -176,9 +185,11 @@
         }
       },
       "role" : "production",
-      "strippedLines" : 3
+      "strippedLines" : 3,
+      "typePath" : "Resource"
     },
     {
+      "access" : "internal",
       "bodyHash" : "76e73a0efe72fb6f",
       "bodyLines" : 1,
       "complexity" : {
@@ -207,9 +218,11 @@
         }
       },
       "role" : "production",
-      "strippedLines" : 3
+      "strippedLines" : 3,
+      "typePath" : "Resource"
     },
     {
+      "access" : "public",
       "bodyHash" : "01050d5baa8152d6",
       "bodyLines" : 1,
       "complexity" : {
@@ -253,9 +266,11 @@
         }
       },
       "role" : "production",
-      "strippedLines" : 1
+      "strippedLines" : 1,
+      "typePath" : "Resource"
     },
     {
+      "access" : "public",
       "bodyHash" : "f93d215aaebf61e1",
       "bodyLines" : 1,
       "complexity" : {
@@ -299,9 +314,11 @@
         }
       },
       "role" : "production",
-      "strippedLines" : 1
+      "strippedLines" : 1,
+      "typePath" : "Resource"
     },
     {
+      "access" : "public",
       "bodyHash" : "00eccaff1575bd06",
       "bodyLines" : 1,
       "complexity" : {
@@ -348,9 +365,11 @@
         }
       },
       "role" : "production",
-      "strippedLines" : 1
+      "strippedLines" : 1,
+      "typePath" : "Resource"
     },
     {
+      "access" : "public",
       "bodyHash" : "00eccaff1575bd06",
       "bodyLines" : 1,
       "complexity" : {
@@ -393,9 +412,11 @@
         }
       },
       "role" : "production",
-      "strippedLines" : 1
+      "strippedLines" : 1,
+      "typePath" : "Resource"
     },
     {
+      "access" : "public",
       "bodyHash" : "6689c84557597491",
       "bodyLines" : 2,
       "complexity" : {
@@ -438,9 +459,11 @@
         }
       },
       "role" : "production",
-      "strippedLines" : 4
+      "strippedLines" : 4,
+      "typePath" : "Counter"
     },
     {
+      "access" : "private",
       "bodyHash" : "28acf588cce0bbf3",
       "bodyLines" : 1,
       "complexity" : {
@@ -486,6 +509,7 @@
       "strippedLines" : 1
     },
     {
+      "access" : "fileprivate",
       "bodyHash" : "ea9cee6726fed6ca",
       "bodyLines" : 1,
       "complexity" : {
@@ -528,9 +552,11 @@
         }
       },
       "role" : "production",
-      "strippedLines" : 1
+      "strippedLines" : 1,
+      "typePath" : "String"
     },
     {
+      "access" : "public",
       "bodyHash" : "5fdcc8f30e1643a0",
       "bodyLines" : 1,
       "complexity" : {
@@ -576,6 +602,7 @@
       "strippedLines" : 3
     },
     {
+      "access" : "public",
       "bodyHash" : "3f8b898d82805994",
       "bodyLines" : 1,
       "complexity" : {
@@ -605,9 +632,11 @@
         }
       },
       "role" : "production",
-      "strippedLines" : 3
+      "strippedLines" : 3,
+      "typePath" : "Square"
     },
     {
+      "access" : "public",
       "bodyHash" : "52444d006a85cad9",
       "bodyLines" : 2,
       "complexity" : {
@@ -637,9 +666,11 @@
         }
       },
       "role" : "production",
-      "strippedLines" : 4
+      "strippedLines" : 4,
+      "typePath" : "Square"
     },
     {
+      "access" : "public",
       "accessorKind" : "get",
       "bodyHash" : "09725b45265f8a1c",
       "bodyLines" : 1,
@@ -678,9 +709,11 @@
         }
       },
       "role" : "production",
-      "strippedLines" : 3
+      "strippedLines" : 3,
+      "typePath" : "Square"
     },
     {
+      "access" : "public",
       "accessorKind" : "get",
       "bodyHash" : "8a99a5d863fda516",
       "bodyLines" : 1,
@@ -723,9 +756,11 @@
         }
       },
       "role" : "production",
-      "strippedLines" : 1
+      "strippedLines" : 1,
+      "typePath" : "Square"
     },
     {
+      "access" : "public",
       "accessorKind" : "set",
       "bodyHash" : "5368c61801c21901",
       "bodyLines" : 1,
@@ -755,9 +790,11 @@
         }
       },
       "role" : "production",
-      "strippedLines" : 1
+      "strippedLines" : 1,
+      "typePath" : "Square"
     },
     {
+      "access" : "public",
       "accessorKind" : "willSet",
       "bodyHash" : "c189433aeaffa6d4",
       "bodyLines" : 1,
@@ -787,9 +824,11 @@
         }
       },
       "role" : "production",
-      "strippedLines" : 1
+      "strippedLines" : 1,
+      "typePath" : "Square"
     },
     {
+      "access" : "public",
       "accessorKind" : "didSet",
       "bodyHash" : "7fcbf629310ed9fe",
       "bodyLines" : 1,
@@ -819,9 +858,11 @@
         }
       },
       "role" : "production",
-      "strippedLines" : 1
+      "strippedLines" : 1,
+      "typePath" : "Square"
     },
     {
+      "access" : "public",
       "bodyHash" : "35fa00fd868a1146",
       "bodyLines" : 4,
       "complexity" : {
@@ -865,9 +906,11 @@
         }
       },
       "role" : "production",
-      "strippedLines" : 6
+      "strippedLines" : 6,
+      "typePath" : "Square"
     },
     {
+      "access" : "local",
       "bodyHash" : "09a0815c161093d1",
       "bodyLines" : 1,
       "complexity" : {
@@ -915,6 +958,7 @@
       "strippedLines" : 3
     },
     {
+      "access" : "public",
       "bodyHash" : "1271d829fcb30ae7",
       "bodyLines" : 1,
       "complexity" : {
@@ -949,9 +993,11 @@
         }
       },
       "role" : "production",
-      "strippedLines" : 3
+      "strippedLines" : 3,
+      "typePath" : "Square"
     },
     {
+      "access" : "public",
       "bodyHash" : "9288593763a41083",
       "bodyLines" : 2,
       "effect" : {
@@ -982,9 +1028,11 @@
         }
       },
       "role" : "production",
-      "strippedLines" : 4
+      "strippedLines" : 4,
+      "typePath" : "Square"
     },
     {
+      "access" : "public",
       "accessorKind" : "get",
       "bodyHash" : "7c827398f29d478a",
       "bodyLines" : 1,
@@ -1015,9 +1063,11 @@
         }
       },
       "role" : "production",
-      "strippedLines" : 1
+      "strippedLines" : 1,
+      "typePath" : "Square"
     },
     {
+      "access" : "public",
       "accessorKind" : "set",
       "bodyHash" : "dfefe169ea596b24",
       "bodyLines" : 1,
@@ -1048,9 +1098,11 @@
         }
       },
       "role" : "production",
-      "strippedLines" : 1
+      "strippedLines" : 1,
+      "typePath" : "Square"
     },
     {
+      "access" : "public",
       "bodyHash" : "1c668c24725fa618",
       "bodyLines" : 1,
       "complexity" : {
@@ -1094,9 +1146,11 @@
         }
       },
       "role" : "production",
-      "strippedLines" : 3
+      "strippedLines" : 3,
+      "typePath" : "Square"
     },
     {
+      "access" : "public",
       "bodyHash" : "95a772b146cd45e4",
       "bodyLines" : 1,
       "complexity" : {
@@ -1140,9 +1194,11 @@
         }
       },
       "role" : "production",
-      "strippedLines" : 3
+      "strippedLines" : 3,
+      "typePath" : "Square"
     },
     {
+      "access" : "public",
       "bodyHash" : "0c104affe8d872ca",
       "bodyLines" : 1,
       "complexity" : {
@@ -1186,9 +1242,11 @@
         }
       },
       "role" : "production",
-      "strippedLines" : 3
+      "strippedLines" : 3,
+      "typePath" : "Shape"
     },
     {
+      "access" : "internal",
       "bodyHash" : "69885c1f90bb7575",
       "bodyLines" : 2,
       "complexity" : {
@@ -1220,6 +1278,7 @@
       "strippedLines" : 2
     },
     {
+      "access" : "internal",
       "bodyHash" : "195a029cd0d6aa32",
       "bodyLines" : 1,
       "complexity" : {
@@ -1269,6 +1328,7 @@
       "strippedLines" : 3
     },
     {
+      "access" : "internal",
       "bodyHash" : "955bc4c18b8575e8",
       "bodyLines" : 1,
       "complexity" : {
@@ -1301,6 +1361,7 @@
       "strippedLines" : 3
     },
     {
+      "access" : "internal",
       "bodyHash" : "1ed093fb4c5263a3",
       "bodyLines" : 1,
       "complexity" : {
@@ -1330,9 +1391,11 @@
         }
       },
       "role" : "test",
-      "strippedLines" : 3
+      "strippedLines" : 3,
+      "typePath" : "SquareSuite"
     },
     {
+      "access" : "internal",
       "bodyHash" : "ad81e916dbc88acb",
       "bodyLines" : 1,
       "complexity" : {
@@ -1362,9 +1425,11 @@
         }
       },
       "role" : "helper",
-      "strippedLines" : 1
+      "strippedLines" : 1,
+      "typePath" : "SquareSuite"
     },
     {
+      "access" : "internal",
       "bodyHash" : "25eca6c5d0fe726a",
       "bodyLines" : 1,
       "complexity" : {
@@ -1394,9 +1459,11 @@
         }
       },
       "role" : "helper",
-      "strippedLines" : 1
+      "strippedLines" : 1,
+      "typePath" : "BaseTestCase"
     },
     {
+      "access" : "internal",
       "bodyHash" : "5fca41c2d4d2c7fb",
       "bodyLines" : 1,
       "complexity" : {
@@ -1426,9 +1493,11 @@
         }
       },
       "role" : "test",
-      "strippedLines" : 3
+      "strippedLines" : 3,
+      "typePath" : "ResourceTests"
     },
     {
+      "access" : "internal",
       "bodyHash" : "257c1be96ae69f4b",
       "bodyLines" : 0,
       "complexity" : {
@@ -1458,9 +1527,11 @@
         }
       },
       "role" : "helper",
-      "strippedLines" : 1
+      "strippedLines" : 1,
+      "typePath" : "ResourceTests"
     },
     {
+      "access" : "internal",
       "bodyHash" : "8d5a9ce96bb9fddd",
       "bodyLines" : 1,
       "complexity" : {
@@ -1490,7 +1561,8 @@
         }
       },
       "role" : "test",
-      "strippedLines" : 3
+      "strippedLines" : 3,
+      "typePath" : "ResourceTests"
     }
   ],
   "rollups" : [
@@ -2208,7 +2280,7 @@
       }
     }
   ],
-  "schemaVersion" : 6,
+  "schemaVersion" : 7,
   "sitrep" : {
     "imports" : [
       {

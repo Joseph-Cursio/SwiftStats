@@ -13,16 +13,6 @@ import SwiftSyntax
 
 /// Collects one file's API declarations.
 final class DeclarationCollector: SyntaxVisitor {
-    /// What encloses the declarations being visited.
-    private struct Scope {
-        /// The level an unmodified member gets (`internal`, or an extension's).
-        let defaultLevel: AccessLevel
-        /// Whether that default came from an extension's modifier.
-        let defaultIsWritten: Bool
-        /// The most visible level a member can have here.
-        let cap: AccessLevel
-    }
-
     /// Whether a declaration is a class, and a `final` one.
     enum ClassFinality {
         case final
@@ -35,18 +25,36 @@ final class DeclarationCollector: SyntaxVisitor {
 
     /// The module being walked.
     private let module: String
+    /// The file being walked.
+    private let file: String
+    /// The member caps of the types extensions extend.
+    private let typeAccess: TypeAccessIndex
     /// Enclosing scopes, outermost first.
-    private var scopes = [Scope(defaultLevel: .internal, defaultIsWritten: false, cap: .open)]
+    private var scopes = [AccessScope.file]
 
-    /// Creates a collector for a file of `module`.
-    init(module: String) {
+    /// Creates a collector for `file` of `module`, whose types' member caps
+    /// are `typeAccess`.
+    init(module: String, file: String, typeAccess: TypeAccessIndex) {
         self.module = module
+        self.file = file
+        self.typeAccess = typeAccess
         super.init(viewMode: .sourceAccurate)
     }
 
-    /// Walks `tree` and returns its API declarations.
+    /// Walks `tree`, the file `context` describes, and returns its API
+    /// declarations; the context's types cap extensions' members, or the
+    /// file's own when it has none.
+    static func collect(_ tree: SourceFileSyntax, context: FileContext) -> [APIDeclaration] {
+        let index = context.typeAccess ?? TypeAccessIndex(files: [(context.file, tree)])
+        let collector = Self(module: context.module, file: context.file, typeAccess: index)
+        collector.walk(tree)
+        return collector.declarations
+    }
+
+    /// Walks `tree`, a file of `module`, and returns its API declarations;
+    /// only the file's own types cap extensions' members.
     static func collect(_ tree: SourceFileSyntax, module: String) -> [APIDeclaration] {
-        let collector = Self(module: module)
+        let collector = Self(module: module, file: "", typeAccess: TypeAccessIndex(files: [("", tree)]))
         collector.walk(tree)
         return collector.declarations
     }
@@ -102,14 +110,8 @@ final class DeclarationCollector: SyntaxVisitor {
     }
 
     override func visit(_ node: ExtensionDeclSyntax) -> SyntaxVisitorContinueKind {
-        let current = scopes[scopes.count - 1]
-        if let written = AccessLevel.written(in: node.modifiers) {
-            // Members of a `private` extension are `fileprivate`.
-            let level = max(written, .fileprivate)
-            scopes.append(Scope(defaultLevel: level, defaultIsWritten: true, cap: min(current.cap, level)))
-        } else {
-            scopes.append(Scope(defaultLevel: .internal, defaultIsWritten: false, cap: current.cap))
-        }
+        let typeCap = typeAccess.memberCap(ofExtended: CanonicalText.render(node.extendedType), in: file)
+        scopes.append(scopes[scopes.count - 1].members(ofExtensionWith: node.modifiers, typeCap: typeCap))
         return .visitChildren
     }
 
@@ -174,10 +176,7 @@ final class DeclarationCollector: SyntaxVisitor {
         finality: ClassFinality
     ) -> SyntaxVisitorContinueKind {
         let access = add(modifiers, node: node, finality: finality)
-        // A `private` type's members are visible in its enclosing scope:
-        // the whole file when it is at file scope.
-        let cap = access == .private && scopes.count == 1 ? AccessLevel.fileprivate : access
-        scopes.append(Scope(defaultLevel: .internal, defaultIsWritten: false, cap: cap))
+        scopes.append(scopes[scopes.count - 1].members(ofTypeAt: access, isAtFileScope: scopes.count == 1))
         return .visitChildren
     }
 
@@ -186,7 +185,7 @@ final class DeclarationCollector: SyntaxVisitor {
     private func add(_ modifiers: DeclModifierListSyntax, node: Syntax, finality: ClassFinality) -> AccessLevel {
         let scope = scopes[scopes.count - 1]
         let written = AccessLevel.written(in: modifiers)
-        let access = min(written ?? scope.defaultLevel, scope.cap)
+        let access = scope.level(written: written)
         declarations.append(APIDeclaration(
             module: module,
             access: access,

@@ -3,7 +3,8 @@
 //  SwiftStatsCore
 //
 //  A scan's report and what a snapshot records beyond it (PRD §6.2): each
-//  collector's run time and the binary it ran.
+//  collector's run time, the binary it ran, and the build identity a run
+//  established itself.
 //
 
 import Foundation
@@ -16,6 +17,9 @@ struct ScanOutcome {
     let milliseconds: [String: Int]
     /// The binary each external collector ran, by name.
     let executables: [String: URL]
+    /// The build identity each external collector that established one
+    /// itself reported, by name (the coverage collector's `swift:<version>`).
+    let identities: [String: String]
     /// The configuration the scan used.
     let configuration: SwiftStatsConfiguration
 
@@ -36,14 +40,17 @@ struct ScanOutcome {
             DependencyGraphAdapter.name: dependencies.milliseconds
         ]
         var binaries: [String: URL] = [:]
+        var reported: [String: String] = [:]
         for run in adapters {
             times[run.result.status.name] = run.milliseconds
             binaries[run.result.status.name] = run.executable
+            reported[run.result.status.name] = run.identity
         }
         binaries[DependencyGraphAdapter.name] = dependencies.executable
         self.report = report
         milliseconds = times
         executables = binaries
+        identities = reported
         self.configuration = configuration
     }
 }

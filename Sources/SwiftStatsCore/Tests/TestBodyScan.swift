@@ -4,7 +4,12 @@
 //
 //  Walks a test body for assertions and property or idempotency checks
 //  (PRD §7.8), noting every callee's base name and every operator used,
-//  which link a property test to the suggestions it may check (§7.11).
+//  which link a property test to the suggestions it may check (§7.11),
+//  and, to link any test to the public functions it may test (M5), the
+//  paths of the names it writes, the members it reads and the calls it
+//  makes with their labels (`TestReferences`, `CallReferenceBuilder`).
+//  Names are kept without backticks (`` `default` `` is `default`), as
+//  records' names are compared.
 //
 
 import SwiftSyntax
@@ -24,6 +29,18 @@ final class TestBodyScan: SyntaxVisitor {
     /// The base names of the functions called, for `f(…)` and `x.f(…)`,
     /// and the operators used, infix, prefix or postfix.
     var callees: Set<String> = []
+    /// The paths of the names written (`TestReferences.paths`).
+    var paths: Set<String> = []
+    /// The names read as members (`TestReferences.members`).
+    var members: Set<String> = []
+    /// The calls, and the unapplied references written with labels
+    /// (`CallReference`).
+    var calls: Set<CallReference> = []
+
+    /// What the scan found to link tests to public functions.
+    var references: TestReferences {
+        TestReferences(paths: paths, members: members, calls: calls)
+    }
 
     /// The called function's base name, for `f(…)` and `x.f(…)`.
     static func calleeName(_ call: FunctionCallExprSyntax) -> String {
@@ -70,6 +87,9 @@ final class TestBodyScan: SyntaxVisitor {
         if name.isEmpty == false {
             callees.insert(name)
         }
+        if let call = CallReferenceBuilder.call(node) {
+            calls.insert(call)
+        }
         if name.hasPrefix("XCTAssert") {
             assertions += 1
         } else if name == "assertIdempotentEffects" {
@@ -79,6 +99,64 @@ final class TestBodyScan: SyntaxVisitor {
             if name == "propertyCheck" {
                 addTrials(node)
             }
+        }
+        return .visitChildren
+    }
+
+    override func visit(_ node: DeclReferenceExprSyntax) -> SyntaxVisitorContinueKind {
+        guard CallReferenceBuilder.isMemberName(node) == false else {
+            return .visitChildren
+        }
+        if case .identifier = node.baseName.tokenKind {
+            paths.insert(CallSignature.name(of: node.baseName))
+        }
+        if CallReferenceBuilder.isCalled(node) == false, let reference = CallReferenceBuilder.reference(node) {
+            calls.insert(reference)
+        }
+        return .visitChildren
+    }
+
+    override func visit(_ node: MemberAccessExprSyntax) -> SyntaxVisitorContinueKind {
+        let path = CallReferenceBuilder.path(of: ExprSyntax(node))
+        if path.isEmpty == false {
+            paths.insert(path.joined(separator: "."))
+        }
+        guard CallReferenceBuilder.isInitialized(node) == false else {
+            return .visitChildren
+        }
+        guard CallReferenceBuilder.isCalled(node) == false else {
+            // `box.maker()` may read a property holding a closure and call it.
+            if CallReferenceBuilder.isCalledWithoutLabels(node), case .identifier = node.declName.baseName.tokenKind {
+                members.insert(CallSignature.name(of: node.declName.baseName))
+            }
+            return .visitChildren
+        }
+        if let reference = CallReferenceBuilder.reference(node) {
+            calls.insert(reference)
+        } else if case .identifier = node.declName.baseName.tokenKind {
+            members.insert(CallSignature.name(of: node.declName.baseName))
+        }
+        return .visitChildren
+    }
+
+    override func visit(_ node: KeyPathPropertyComponentSyntax) -> SyntaxVisitorContinueKind {
+        if case .identifier = node.declName.baseName.tokenKind {
+            members.insert(CallSignature.name(of: node.declName.baseName))
+        }
+        return .visitChildren
+    }
+
+    override func visit(_ node: IdentifierTypeSyntax) -> SyntaxVisitorContinueKind {
+        if case .identifier = node.name.tokenKind {
+            paths.insert(CallSignature.name(of: node.name))
+        }
+        return .visitChildren
+    }
+
+    override func visit(_ node: MemberTypeSyntax) -> SyntaxVisitorContinueKind {
+        let path = CallReferenceBuilder.path(of: TypeSyntax(node))
+        if path.isEmpty == false {
+            paths.insert(path.joined(separator: "."))
         }
         return .visitChildren
     }

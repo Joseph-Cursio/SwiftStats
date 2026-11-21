@@ -7,7 +7,9 @@
 //  from, so a reader can see why it is there. The inputs come as payloads,
 //  one per kind of input; an item carries the payloads its signal fills
 //  and omits the rest. Report schema 3 and top schema 2 (M4) name the
-//  subject `subject` (it was `family`) and move M3's inputs into `history`.
+//  subject `subject` (it was `family`) and move M3's inputs into `history`;
+//  report schema 4 and top schema 3 (M5) add `markers`, `coverage` and a
+//  clone class's `coverage` (M5's payloads are in `SignalItem+Coverage.swift`).
 //
 
 /// An item's place in a signal.
@@ -102,7 +104,8 @@ public struct SignalItem: Codable, Hashable, Sendable {
         public let mass: Int
         /// Its stripped lines: for divergent clones, those of the units
         /// in its diverging slots, which the score counts; for a hotspot,
-        /// those its copies cover.
+        /// those its copies cover; for uneven clone testing, those of its
+        /// copies at most 20% covered.
         public let lines: Int
         /// Its copies: for divergent clones, those with a production family
         /// outside generated files now.
@@ -114,6 +117,9 @@ public struct SignalItem: Codable, Hashable, Sendable {
         /// signal doesn't compare one. Nested, not flat, so that a signal
         /// comparing none writes no empty copy lists.
         public let divergence: Divergence?
+        /// How well the tests cover its copies; nil when the signal doesn't
+        /// read coverage.
+        public let coverage: CloneCoverage?
     }
 
     /// How a clone class's copies changed since an earlier snapshot.
@@ -164,6 +170,10 @@ public struct SignalItem: Codable, Hashable, Sendable {
         var laws: Laws?
         /// The clone class.
         var clone: Clone?
+        /// The markers.
+        var markers: Markers?
+        /// The subject's coverage.
+        var coverage: Coverage?
     }
 
     /// Its position, from 1.
@@ -190,6 +200,10 @@ public struct SignalItem: Codable, Hashable, Sendable {
     public let laws: Laws?
     /// The clone class, for a clone signal.
     public let clone: Clone?
+    /// The markers, for a signal about them.
+    public let markers: Markers?
+    /// The subject's coverage, for a signal reading it.
+    public let coverage: Coverage?
 
     /// `draft` ranked at `rank` with `score`, a member or not.
     init(_ draft: Draft, rank: Int, score: Double, member: Bool) {
@@ -205,5 +219,7 @@ public struct SignalItem: Codable, Hashable, Sendable {
         function = draft.function
         laws = draft.laws
         clone = draft.clone
+        markers = draft.markers
+        coverage = draft.coverage
     }
 }

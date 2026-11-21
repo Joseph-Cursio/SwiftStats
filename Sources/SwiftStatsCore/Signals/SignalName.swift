@@ -19,6 +19,9 @@ public enum SignalName: String, CaseIterable, Codable, Hashable, Sendable {
     /// Pure, value-shaped functions with an algebraic shape and no
     /// suggestion of any tier: a template SwiftInferProperties may lack.
     case missingTemplate = "missing-template"
+    /// Crash and data-race markers on code no test ran: crash or race
+    /// candidates.
+    case riskyUntested = "risky-untested"
     /// Old, unchanged, never-fixed complex code: lower priority elsewhere.
     case safeToLeave = "safe-to-leave"
     /// Code that changes often while its tests rarely do.
@@ -29,6 +32,9 @@ public enum SignalName: String, CaseIterable, Codable, Hashable, Sendable {
     /// Types with a hand-written witness for a conformance the kit checks,
     /// which no test checks.
     case uncheckedLaws = "unchecked-laws"
+    /// Clone classes with a copy the tests cover well and a copy they
+    /// barely cover: copy the tests, or merge the code.
+    case unevenCloneTesting = "uneven-clone-testing"
     /// Code touched by reverts or by fixes in quick succession.
     case unstableFixes = "unstable-fixes"
     /// Strong or Verified suggestions no property test checks.
@@ -37,7 +43,8 @@ public enum SignalName: String, CaseIterable, Codable, Hashable, Sendable {
     /// The order reports list signals in.
     public static let reportOrder: [Self] = [
         .hotspot, .bugProne, .unstableFixes, .testsNotKeepingUp, .safeToLeave,
-        .untestedProperty, .toolDisagreement, .missingTemplate, .uncheckedLaws, .divergentClones, .cloneHotspot
+        .untestedProperty, .toolDisagreement, .missingTemplate, .uncheckedLaws, .divergentClones, .cloneHotspot,
+        .riskyUntested, .unevenCloneTesting
     ]
 
     /// The name a report heads the signal with.
@@ -58,6 +65,9 @@ public enum SignalName: String, CaseIterable, Codable, Hashable, Sendable {
         case .missingTemplate:
             "Missing templates"
 
+        case .riskyUntested:
+            "Risky + untested"
+
         case .safeToLeave:
             "Safe to leave"
 
@@ -69,6 +79,9 @@ public enum SignalName: String, CaseIterable, Codable, Hashable, Sendable {
 
         case .uncheckedLaws:
             "Unchecked laws"
+
+        case .unevenCloneTesting:
+            "Uneven clone testing"
 
         case .unstableFixes:
             "Unstable fixes"
@@ -88,15 +101,19 @@ public enum SignalName: String, CaseIterable, Codable, Hashable, Sendable {
     /// needing several collectors names the first that didn't run.
     /// Divergent clones also needs an earlier snapshot with clone data,
     /// which the workspace looks for, and git's account of what changed.
+    /// M5's signals list the M5 snapshot first, so a snapshot stored
+    /// before M5 says so rather than naming a collector it never had.
     var requirements: [SignalRequirement] {
         let effects = SignalRequirement.collector(EffectCollector.name)
         let properties = SignalRequirement.collector(SwiftInferPropertiesAdapter.name)
+        let coverage = SignalRequirement.collector(CoverageAdapter.name)
+        let clones = SignalRequirement.collector(SwiftCloneDetectorAdapter.name)
         return switch self {
         case .bugProne, .hotspot, .safeToLeave, .testsNotKeepingUp, .unstableFixes:
             [.history]
 
         case .cloneHotspot:
-            [.collector(SwiftCloneDetectorAdapter.name), .history]
+            [clones, .history]
 
         case .divergentClones:
             [.history, .m4Snapshot]
@@ -104,11 +121,17 @@ public enum SignalName: String, CaseIterable, Codable, Hashable, Sendable {
         case .missingTemplate:
             [effects, properties]
 
+        case .riskyUntested:
+            [.m5Snapshot, coverage, .collector(SwiftProjectLintAdapter.name)]
+
         case .toolDisagreement:
             [properties, effects]
 
         case .uncheckedLaws:
             [.m4Snapshot]
+
+        case .unevenCloneTesting:
+            [.m5Snapshot, clones, coverage]
 
         case .untestedProperty:
             [properties]

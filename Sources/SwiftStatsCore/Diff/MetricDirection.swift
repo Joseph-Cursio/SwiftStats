@@ -3,8 +3,10 @@
 //  SwiftStatsCore
 //
 //  Which way is better for each metric (PRD §6.6): lower for sizes,
-//  complexity, nesting, parameters, findings, unchecked law pairs and clones;
-//  higher for tests, assertions, documentation and the test line ratio;
+//  complexity, nesting, parameters, findings, unchecked law pairs, clones,
+//  unmapped coverage entries and unlinked public functions; higher for
+//  tests, assertions, documentation, the test line ratio, coverage
+//  percentages (a roll-up's or a record's) and linked public functions;
 //  neutral for counts.
 //
 
@@ -31,13 +33,14 @@ public enum MetricDirection: String, Codable, Hashable, Sendable {
         "findings.", "findingKinds.", "api.overExposed", "tests.xctestWithoutAssertions",
         "tests.swiftTestingWithoutAssertions", "tests.parameterizedUnknownCases",
         "strippedLines", "parameterCount", "cognitive", "decisionCount", "swiftLintCompatible", "maxNesting",
-        "laws.state.notRun", "clones."
+        "laws.state.notRun", "clones.", "coverage.unmapped", "coverage.publicFunctions.unlinked"
     ]
     /// Paths, or path prefixes ending in a dot, that are better higher.
     private static let higherPaths = [
         "tests.tests.", "tests.parameterizedCases", "tests.lineRatio.testLines", "tests.lineRatio.testLinesByKind.",
         "documentedFunctions",
-        "api.documentedPublicDeclarations"
+        "api.documentedPublicDeclarations",
+        "coverage.lines.percent", "coverage.regions.percent", "coverage.publicFunctions.linked"
     ]
 
     /// The direction of the metric at `path`, a roll-up path or a function metric.

@@ -24,58 +24,74 @@ public enum SignalEngine {
         var results: [SignalResult] = []
         for name in SignalName.reportOrder {
             let reason = leftOut(name.requirements, in: snapshot) ?? leftOut(name, comparing: inputs)
-            var computation: SignalComputation?
-            if reason == nil {
-                switch name {
-                case .bugProne, .hotspot, .safeToLeave, .testsNotKeepingUp, .unstableFixes:
-                    computation = HistorySignals.compute(
-                        name,
-                        pool: families,
-                        snapshot: snapshot,
-                        thresholds: thresholds
-                    )
-
-                case .cloneHotspot:
-                    computation = CloneHotspot.compute(snapshot, thresholds: thresholds)
-
-                case .divergentClones:
-                    computation = DivergentClones.compute(inputs)
-
-                case .missingTemplate:
-                    computation = MissingTemplate.compute(snapshot)
-
-                case .toolDisagreement:
-                    computation = ToolDisagreement.compute(snapshot)
-
-                case .uncheckedLaws:
-                    computation = UncheckedLaws.compute(snapshot)
-
-                case .untestedProperty:
-                    computation = UntestedProperty.compute(snapshot)
-                }
-            }
-            guard let computation else {
+            let computed = reason == nil
+                ? computation(name, inputs: inputs, thresholds: thresholds) { families }
+                : nil
+            guard let computed else {
                 // A computation finds no input only where its requirements
-                // say one is missing: history, or an earlier snapshot.
+                // say one is missing: history, an earlier snapshot, or the
+                // coverage rows of a coverage run that ran.
                 results.append(SignalResult(
                     name: name,
-                    leftOut: reason ?? historyAbsence(snapshot.info),
+                    leftOut: reason ?? missingInput(name, snapshot.info),
                     rule: rule(for: name, thresholds: thresholds),
                     candidates: 0,
                     items: []
                 ))
                 continue
             }
-            results.append(result(name, computation, thresholds: thresholds))
+            results.append(result(name, computed, thresholds: thresholds))
         }
         return results
     }
 
+    /// `signal` computed from `inputs`, whose requirements hold; nil when
+    /// an input its requirements don't check is missing. `families` gives
+    /// the history signals' pool, worked out once for them all.
+    private static func computation(
+        _ signal: SignalName,
+        inputs: SignalInputs,
+        thresholds: SignalThresholds,
+        families: () -> [HistorySignals.Candidate]
+    ) -> SignalComputation? {
+        let snapshot = inputs.snapshot
+        switch signal {
+        case .bugProne, .hotspot, .safeToLeave, .testsNotKeepingUp, .unstableFixes:
+            return HistorySignals.compute(signal, pool: families(), snapshot: snapshot, thresholds: thresholds)
+
+        case .cloneHotspot:
+            return CloneHotspot.compute(snapshot, thresholds: thresholds)
+
+        case .divergentClones:
+            return DivergentClones.compute(inputs)
+
+        case .missingTemplate:
+            return MissingTemplate.compute(snapshot)
+
+        case .riskyUntested:
+            return RiskyUntested.compute(snapshot)
+
+        case .toolDisagreement:
+            return ToolDisagreement.compute(snapshot)
+
+        case .uncheckedLaws:
+            return UncheckedLaws.compute(snapshot)
+
+        case .unevenCloneTesting:
+            return UnevenCloneTesting.compute(snapshot)
+
+        case .untestedProperty:
+            return UntestedProperty.compute(snapshot)
+        }
+    }
+
     /// Why a signal needing `requirements` can't be computed from
     /// `snapshot`; nil when it can. A missing history says so as M3 did;
-    /// else a snapshot stored before M4, or without a row for a collector
-    /// or its scan facts, predates M4; else the first required collector
-    /// that didn't run is named with its state and reason.
+    /// else, in the requirements' order, a snapshot stored before M5, or
+    /// without a coverage run, predates M5; one stored before M4, or
+    /// without a row for a collector or its scan facts, predates M4; and
+    /// the first required collector that didn't run is named with its
+    /// state and reason.
     static func leftOut(_ requirements: [SignalRequirement], in snapshot: StoredSnapshot) -> String? {
         if requirements.contains(.history), snapshot.history == nil {
             return historyAbsence(snapshot.info)
@@ -98,6 +114,12 @@ public enum SignalEngine {
             case .m4Snapshot:
                 guard snapshot.reportSchemaVersion >= SignalRequirement.firstM4Schema, snapshot.scanFacts != nil else {
                     return predates
+                }
+
+            case .m5Snapshot:
+                guard snapshot.reportSchemaVersion >= SignalRequirement.firstM5Schema,
+                      snapshot.info.collectors.contains(where: { $0.name == CoverageAdapter.name }) else {
+                    return "the snapshot predates M5"
                 }
             }
         }
@@ -146,6 +168,16 @@ public enum SignalEngine {
         )
     }
 
+    /// Why `signal`'s computation found no input its requirements check:
+    /// for a coverage signal, the coverage rows a run that ran leaves; for
+    /// the others, history.
+    private static func missingInput(_ signal: SignalName, _ info: SnapshotInfo) -> String {
+        guard signal.requirements.contains(.m5Snapshot) else {
+            return historyAbsence(info)
+        }
+        return "the snapshot holds no coverage rows"
+    }
+
     /// Why a snapshot has no history, from its history collector's run.
     private static func historyAbsence(_ info: SnapshotInfo) -> String {
         guard let run = info.collectors.first(where: { $0.name == HistoryCollector.name }) else {
@@ -170,11 +202,17 @@ public enum SignalEngine {
         case .missingTemplate:
             MissingTemplate.rule
 
+        case .riskyUntested:
+            RiskyUntested.rule
+
         case .toolDisagreement:
             ToolDisagreement.rule
 
         case .uncheckedLaws:
             UncheckedLaws.rule
+
+        case .unevenCloneTesting:
+            UnevenCloneTesting.rule
 
         case .untestedProperty:
             UntestedProperty.rule

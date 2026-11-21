@@ -3,7 +3,8 @@
 //  SwiftStatsCore
 //
 //  The output of `swiftstats scan` (PRD M0, M1a): the package's function,
-//  type and file records, their roll-ups, and the Sitrep-compatible counts.
+//  type and file records, their roll-ups, the Sitrep-compatible counts and
+//  what each collector found.
 //  It holds no timestamps or absolute paths, so scanning the same tree twice
 //  gives byte-identical JSON.
 //
@@ -15,8 +16,10 @@ public struct ScanReport: Codable, Hashable, Sendable {
     /// generated files, findings, risk markers, API surface, the test
     /// inventory and dependencies (M1b); 4 adds each function's body lines
     /// (M2); 5 adds history (M3); 6 adds side effects, conformances, law
-    /// checks, property-test suggestions and clones (M4).
-    public static let currentSchemaVersion = 6
+    /// checks, property-test suggestions and clones (M4); 7 adds the
+    /// coverage collector, its coverage mapped to records and rolled up,
+    /// and each record's access level and owning type (M5).
+    public static let currentSchemaVersion = 7
 
     /// The output format version (`currentSchemaVersion` when written).
     public let schemaVersion: Int
@@ -61,13 +64,45 @@ public struct ScanReport: Codable, Hashable, Sendable {
     public let clones: CloneReport?
     /// Law checks per production conformance; always present (PRD §7.11).
     public let laws: LawReport
+    /// The coverage collector's results, mapped to records; absent when it
+    /// didn't run (M5, PRD §7.8).
+    public let coverage: CoverageReport?
     /// What the history collector found; absent when it didn't run (PRD §7.13).
     public internal(set) var history: HistoryReport?
 
     /// The report with `history` attached and the history collector's
     /// status replaced by `status`.
     func with(history: HistoryReport?, status: CollectorStatus) -> Self {
-        var report = Self(
+        var report = replacing(status, rollups: rollups, coverage: coverage, warnings: warnings)
+        report.history = history
+        return report
+    }
+
+    /// The report with `coverage` attached, the coverage collector's status
+    /// replaced by `status`, the roll-ups' coverage rebuilt from it and
+    /// `added` among its warnings, once each (M5): how a scan that didn't
+    /// run the coverage collector carries coverage an earlier scan of the
+    /// same tree collected, with the warnings mapping it gave.
+    func with(coverage: CoverageReport, status: CollectorStatus, warnings added: [ScanWarning]) -> Self {
+        let plain = rollups.map { $0.with(coverage: nil) }
+        let built = CoverageRollupBuilder(targets: targets, records: records, coverage: coverage).rollups(plain)
+        let merged = (warnings + added.filter { warnings.contains($0) == false })
+            .sorted(by: PackageScanner.warningOrder)
+        var report = replacing(status, rollups: built, coverage: coverage, warnings: merged)
+        report.history = history
+        return report
+    }
+
+    /// The report with `status` replacing its collector's status, and
+    /// `rollups`, `coverage` and `warnings` replacing its own, and no
+    /// history.
+    private func replacing(
+        _ status: CollectorStatus,
+        rollups: [Rollup],
+        coverage: CoverageReport?,
+        warnings: [ScanWarning]
+    ) -> Self {
+        Self(
             schemaVersion: schemaVersion,
             tool: tool,
             metrics: metrics,
@@ -87,9 +122,8 @@ public struct ScanReport: Codable, Hashable, Sendable {
             effects: effects,
             properties: properties,
             clones: clones,
-            laws: laws
+            laws: laws,
+            coverage: coverage
         )
-        report.history = history
-        return report
     }
 }

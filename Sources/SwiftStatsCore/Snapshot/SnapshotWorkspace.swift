@@ -71,16 +71,23 @@ public struct SnapshotWorkspace {
         SignalEngine.signals(of: try signalInputs(for: try store.load(id: id)), thresholds: configuration.signals)
     }
 
-    /// Scans the working tree, reading history from `history`, stores the
-    /// snapshot and returns it with its id.
-    public func scanWorkingTree(history: HistorySource = .automatic) throws -> (snapshot: ScannedSnapshot, id: Int64) {
+    /// Scans the working tree, reading history from `history` and running
+    /// the coverage collector when `coverage` asks for it, stores the
+    /// snapshot as `save(_:dropCoverage:)` does and returns what it stored
+    /// with its id.
+    public func scanWorkingTree(
+        history: HistorySource = .automatic,
+        coverage: Bool = false,
+        dropCoverage: Bool = false
+    ) throws -> (snapshot: ScannedSnapshot, id: Int64) {
         let snapshot = try scanner.scan(
             packageAt: root,
             configurationFile: configurationFile ?? StoreLocation.localConfiguration(packageRoot: root),
             ignoring: storeInPackage,
-            history: history
+            history: history,
+            coverage: coverage
         )
-        return (snapshot, try store.save(snapshot))
+        return try save(snapshot, dropCoverage: dropCoverage)
     }
 
     /// The snapshot `report` shows: `revision`'s clean one when given; else
@@ -114,43 +121,60 @@ public struct SnapshotWorkspace {
     /// The ids of the snapshots `diff` compares: `older`'s and `newer`'s
     /// (HEAD when nil) clean snapshots, scanning any that is missing, or
     /// both when `rescan` is set. With `includeDirty`, a nil `newer` on a
-    /// dirty tree means the working tree itself.
+    /// dirty tree means the working tree itself. Each scan is stored as
+    /// `save(_:dropCoverage:)` does.
     public func diffSnapshotIDs(
         older: String,
         newer: String?,
         includeDirty: Bool,
-        rescan: Bool
+        rescan: Bool,
+        dropCoverage: Bool = false
     ) throws -> (older: Int64, newer: Int64) {
         let name = try describer.describePackage(at: root).name
         let git = GitReader.read(packageRoot: root, ignoring: storeInPackage)
         let olderCommit = try Self.commit(of: older, in: root)
-        let olderID = try cleanSnapshotID(olderCommit, name: name, git: git, rescan: rescan)
+        let olderID = try cleanSnapshotID(
+            olderCommit,
+            name: name,
+            git: git,
+            rescan: rescan,
+            dropCoverage: dropCoverage
+        )
         if newer == nil, includeDirty, git.isDirty, let commit = git.commit {
             if rescan == false, let current = try currentDirtySnapshot(name, git, commit: commit) {
                 return (olderID, current)
             }
-            return (olderID, try scanWorkingTree().id)
+            return (olderID, try scanWorkingTree(dropCoverage: dropCoverage).id)
         }
         let newerCommit = try Self.commit(of: newer ?? "HEAD", in: root)
         guard newerCommit != olderCommit else {
             // Rescanning the same commit again would replace the first scan.
             return (olderID, olderID)
         }
-        return (olderID, try cleanSnapshotID(newerCommit, name: name, git: git, rescan: rescan))
+        return (
+            olderID,
+            try cleanSnapshotID(newerCommit, name: name, git: git, rescan: rescan, dropCoverage: dropCoverage)
+        )
     }
 
     /// `commit`'s clean snapshot, scanned first when missing or when
     /// `rescan` is set: in place when it is HEAD and the tree is clean,
-    /// otherwise from an export.
-    private func cleanSnapshotID(_ commit: String, name: String, git: GitState, rescan: Bool) throws -> Int64 {
+    /// otherwise from an export; stored as `save(_:dropCoverage:)` does.
+    private func cleanSnapshotID(
+        _ commit: String,
+        name: String,
+        git: GitState,
+        rescan: Bool,
+        dropCoverage: Bool
+    ) throws -> Int64 {
         if rescan == false, let existing = try snapshot(name, git, commit: commit, isDirty: false) {
             return existing
         }
         if commit == git.commit, git.isDirty == false {
-            return try scanWorkingTree().id
+            return try scanWorkingTree(dropCoverage: dropCoverage).id
         }
         let scanned = try scanExport(commit, git: git, scanner: scanner, history: .skipped("exported revision"))
-        return try store.save(scanned.snapshot)
+        return try save(scanned.snapshot, dropCoverage: dropCoverage).id
     }
 
     /// HEAD's stored dirty snapshot when its hash of the changes is the

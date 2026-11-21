@@ -23,6 +23,23 @@ extension FunctionCollector {
         return false
     }
 
+    /// The access rules of the innermost type or extension body, or the
+    /// file's when there is none.
+    var enclosingAccess: AccessScope {
+        for scope in scopes.reversed() {
+            if case .type(let type) = scope {
+                return type.members
+            }
+        }
+        return .file
+    }
+
+    /// What caps the members of `extended`, the type an extension in this
+    /// file extends; nil when the module declares no such type.
+    func typeCap(of extended: String) -> AccessLevel? {
+        typeAccess.memberCap(ofExtended: extended, in: context.file)
+    }
+
     /// Opens a key context for a binding's initialiser.
     func pushInitializerContext(for binding: PatternBindingSyntax, owner: SyntaxIdentifier) {
         let variable = Self.variable(of: binding)
@@ -34,11 +51,15 @@ extension FunctionCollector {
 
     /// Opens a type scope.
     func pushType(name: String, modifiers: DeclModifierListSyntax, owner: SyntaxIdentifier) {
+        let enclosing = enclosingAccess
+        let access = enclosing.level(of: modifiers)
         scopes.append(.type(TypeScope(
             owner: owner,
             pathComponent: name,
+            typeName: name,
             simpleName: name,
-            isFileScoped: Self.isFileScoped(modifiers)
+            isFileScoped: Self.isFileScoped(modifiers),
+            members: enclosing.members(ofTypeAt: access, isAtFileScope: scopes.isEmpty)
         )))
     }
 
@@ -75,7 +96,7 @@ extension FunctionCollector {
             }
         }
         let lines = context.lineSet(of: draft.node, from: draft.countFrom)
-        records.append(FunctionRecord(
+        var record = FunctionRecord(
             key: key,
             module: context.module,
             kind: draft.kind,
@@ -94,14 +115,36 @@ extension FunctionCollector {
             bodyHash: BodyHash.of(text: draft.bodyTokens),
             parentKey: parentKey,
             ifConfig: conditions.isEmpty ? nil : Self.conjunction(conditions),
-            role: draft.role
-        ))
+            role: draft.role,
+            access: access(of: draft.node, isNested: assembled.isNested, parentKey: parentKey)
+        )
+        if Self.isSubscriptAccessor(draft.node), let parent = records.last(where: { $0.key == parentKey }) {
+            // A subscript's accessors are its type's members, as it is.
+            record.typePath = parent.typePath
+            record.typeFile = parent.typeFile
+        } else {
+            record.typePath = assembled.typePath
+            record.typeFile = assembled.isTypeFileScoped ? context.file : nil
+        }
+        noteShape(of: draft.node, record: record)
+        records.append(record)
         scopes.append(.record(RecordScope(
             owner: draft.node.id,
             key: key,
             conditionDepth: conditions.count,
             isRecord: true
         )))
+    }
+
+    /// Notes what `node`, which opens `record`, matches requirements by
+    /// (`MemberSelector`) and calls fit (`CallSignature`).
+    private func noteShape(of node: Syntax, record: FunctionRecord) {
+        if record.typePath != nil, let selector = MemberSelector.selector(of: node) {
+            selectors[record.range.start] = selector
+        }
+        if let signature = CallSignature(of: node) {
+            signatures[record.range.start] = signature
+        }
     }
 
     /// Adds the file's synthetic top-level-code record when the file has
@@ -140,8 +183,24 @@ extension FunctionCollector {
             bodyHash: BodyHash.of(text: statements.map(CanonicalText.tokenStream).joined(separator: " ")),
             parentKey: nil,
             ifConfig: nil,
-            role: nonTestRole
+            role: nonTestRole,
+            access: .internal
         ))
+    }
+
+    /// The access of the record `node` opens: `local` when `isNested`,
+    /// except that a subscript's accessors take its level unless it is
+    /// local itself; otherwise by the innermost type's rules.
+    private func access(of node: Syntax, isNested: Bool, parentKey: String?) -> FunctionAccess {
+        if Self.isSubscriptAccessor(node) {
+            let parent = records.last { $0.key == parentKey }
+            if parent?.access == .local {
+                return .local
+            }
+        } else if isNested {
+            return .local
+        }
+        return FunctionAccess(Self.accessLevel(of: node, in: enclosingAccess))
     }
 
     /// Assembles a key from the open scopes (PRD §6.1). Inside a record or
@@ -173,7 +232,16 @@ extension FunctionCollector {
         if parent == nil, isFileScoped || typeScopes.contains(where: \.isFileScoped) {
             key += " @ " + context.file
         }
-        return AssembledKey(key: key, parentKey: parent?.isRecord == true ? parent?.key : nil, isNested: parent != nil)
+        let typePath = parent == nil && typeScopes.isEmpty == false
+            ? typeScopes.map(\.typeName).joined(separator: ".")
+            : nil
+        return AssembledKey(
+            key: key,
+            parentKey: parent?.isRecord == true ? parent?.key : nil,
+            isNested: parent != nil,
+            typePath: typePath,
+            isTypeFileScoped: typePath.map { FileScopedTypes.isFileScoped($0, in: fileScopedTypes) } ?? false
+        )
     }
 
     /// Whether `node` is an XCTest test method: an instance `func` named

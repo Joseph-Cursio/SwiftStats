@@ -36,7 +36,8 @@ struct KeyCollisionsTests {
             bodyHash: "0",
             parentKey: parent,
             ifConfig: nil,
-            role: .production
+            role: .production,
+            access: .internal
         )
     }
 

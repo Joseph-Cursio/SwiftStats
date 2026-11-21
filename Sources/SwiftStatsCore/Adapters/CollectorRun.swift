@@ -3,8 +3,8 @@
 //  SwiftStatsCore
 //
 //  Runs the external tools' collectors in a fixed order (PRD §7.16), and
-//  starts SwiftInferProperties' slower run (§7.11) and SwiftCloneDetector's
-//  runs (§7.12) in the background.
+//  starts SwiftInferProperties' slower run (§7.11), SwiftCloneDetector's
+//  runs (§7.12) and the coverage run (M5) in the background.
 //
 
 import Foundation
@@ -97,13 +97,41 @@ enum CollectorRun {
         }
     }
 
+    /// Starts the coverage collector on the package at `root` on a
+    /// background thread: it needs only the package's files to run, so it
+    /// runs while the scan measures them. `collectors.coverage.path` names
+    /// the `swift` whose toolchain it uses.
+    static func startCoverage(
+        root: URL,
+        configuration: SwiftStatsConfiguration,
+        locator: ToolLocator
+    ) -> BackgroundJob<CoverageRun> {
+        let resolution = ToolResolution.resolve(
+            CoverageAdapter.name,
+            executable: "swift",
+            configuration: configuration,
+            locator: locator,
+            root: root
+        )
+        let arguments = configuration.collectors[CoverageAdapter.name]?.arguments ?? []
+        return BackgroundJob {
+            switch resolution {
+            case .found(let swift):
+                return CoverageAdapter.run(swift: swift, root: root, arguments: arguments, locator: locator)
+
+            case .skip(let reason):
+                return CoverageRun.skipped(reason)
+            }
+        }
+    }
+
     /// Every external collector skipped for `reason`.
     static func skipped(_ reason: String) -> [TimedAdapterResult] {
         [
             SwiftProjectLintAdapter.name, SwiftLintAdapter.name, SwiftInferPropertiesAdapter.name,
             SwiftCloneDetectorAdapter.name
         ].map { name in
-            TimedAdapterResult(result: .skipped(name, reason: reason), executable: nil, milliseconds: 0)
+            TimedAdapterResult(result: .skipped(name, reason: reason), executable: nil, identity: nil, milliseconds: 0)
         }
     }
 
@@ -116,10 +144,20 @@ enum CollectorRun {
         switch resolution {
         case .found(let executable):
             let (result, milliseconds) = Stopwatch.time { run(executable) }
-            return TimedAdapterResult(result: result, executable: executable, milliseconds: milliseconds)
+            return TimedAdapterResult(
+                result: result,
+                executable: executable,
+                identity: nil,
+                milliseconds: milliseconds
+            )
 
         case .skip(let reason):
-            return TimedAdapterResult(result: .skipped(name, reason: reason), executable: nil, milliseconds: 0)
+            return TimedAdapterResult(
+                result: .skipped(name, reason: reason),
+                executable: nil,
+                identity: nil,
+                milliseconds: 0
+            )
         }
     }
 }

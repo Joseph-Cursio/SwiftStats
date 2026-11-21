@@ -1,0 +1,273 @@
+Counters:
+  $s5Probe4modeSSyF:
+    Hash: 0x0000000000000000
+    Counters: 1
+    Function count: 1
+    Block counts: []
+  $s10ProbeTests14addsAndDoublesyyF:
+    Hash: 0x0000000000000000
+    Counters: 1
+    Function count: 1
+    Block counts: []
+  $s5Probe8bomFirstSiyF:
+    Hash: 0x0000000000000000
+    Counters: 1
+    Function count: 1
+    Block counts: []
+  @ROOT@/Sources/Probe/Wrappers.swift:$s5Probe8SettingsV6_level33_996CC1F6B6EBC982C49E18C2F42138D9LLAA7ClampedVvpfi:
+    Hash: 0x0000000000000000
+    Counters: 1
+    Function count: 1
+    Block counts: []
+  $s10ProbeTests7nestingyyF:
+    Hash: 0x0000000000000000
+    Counters: 1
+    Function count: 1
+    Block counts: []
+  $s10ProbeTests28__SwiftPMGeneratedTestRunnerV4mainyyYaFZ:
+    Hash: 0x0000000000000000
+    Counters: 2
+    Function count: 1
+    Block counts: [1]
+  $s5Probe3BoxV7doubledSivg:
+    Hash: 0x0000000000000000
+    Counters: 1
+    Function count: 1
+    Block counts: []
+  @ROOT@/Sources/Probe/Attached.swift:$s5Probe6Secret33_C9A21A0ABC5E018B530615DF83895AE7LLV4seedSivpfi:
+    Hash: 0x0000000000000000
+    Counters: 1
+    Function count: 1
+    Block counts: []
+  @ROOT@/Sources/Probe/Counter.swift:$s5Probe7CounterV5totalSivpfi:
+    Hash: 0x0000000000000000
+    Counters: 1
+    Function count: 2
+    Block counts: []
+  $s5Probe7CounterV3addyySaySiGF:
+    Hash: 0x0000000000000000
+    Counters: 1
+    Function count: 1
+    Block counts: []
+  $s5Probe11withDefaultyS3iXEF:
+    Hash: 0x0000000000000000
+    Counters: 1
+    Function count: 1
+    Block counts: []
+  @ROOT@/Sources/Probe/Accessors.swift:$s5Probe3BoxV7watchedSivw:
+    Hash: 0x0000000000000000
+    Counters: 1
+    Function count: 1
+    Block counts: []
+  $s10ProbeTests17overloadsAndModesyyF:
+    Hash: 0x0000000000000000
+    Counters: 1
+    Function count: 1
+    Block counts: []
+  @ROOT@/Sources/Probe/Wrappers.swift:$s5Probe5leftsySayAA4SideOGSaySiGFADSiYbcADmYbcfu_ADSiYbcfu0_:
+    Hash: 0x0000000000000000
+    Counters: 1
+    Function count: 2
+    Block counts: []
+  $s5Probe8describeySSSiF:
+    Hash: 0x0000000000000000
+    Counters: 1
+    Function count: 1
+    Block counts: []
+  $s5Probe7CounterVACycfC:
+    Hash: 0x0000000000000000
+    Counters: 1
+    Function count: 2
+    Block counts: []
+  @ROOT@/Tests/ProbeTests/CounterXCTests.swift:$s10ProbeTests14CounterXCTestsC09testEmptyC0yyFSiyKXEfu_:
+    Hash: 0x0000000000000000
+    Counters: 1
+    Function count: 1
+    Block counts: []
+  $s10ProbeTests9accessorsyyF:
+    Hash: 0x0000000000000000
+    Counters: 1
+    Function count: 1
+    Block counts: []
+  @ROOT@/Sources/Probe/Attached.swift:$s5Probe11globalValueSivpfiSiyXEfU_:
+    Hash: 0x0000000000000000
+    Counters: 1
+    Function count: 1
+    Block counts: []
+  $s5Probe5leftsySayAA4SideOGSaySiGF:
+    Hash: 0x0000000000000000
+    Counters: 1
+    Function count: 1
+    Block counts: []
+  @ROOT@/Sources/Probe/Wrappers.swift:$s5Probe5leftsySayAA4SideOGSaySiGFADSiYbcADmYbcfu_:
+    Hash: 0x0000000000000000
+    Counters: 1
+    Function count: 1
+    Block counts: []
+  $s5Probe10fromHelperSiyF:
+    Hash: 0x0000000000000000
+    Counters: 1
+    Function count: 1
+    Block counts: []
+  $s5Probe7CounterV7doubledSiyF:
+    Hash: 0x0000000000000000
+    Counters: 1
+    Function count: 2
+    Block counts: []
+  @ROOT@/Sources/Probe/Counter.swift:$s5Probe7CounterV3addyySaySiGFS2iXEfU_:
+    Hash: 0x0000000000000000
+    Counters: 1
+    Function count: 2
+    Block counts: []
+  $s10ProbeTests16attachedAndFilesyyF:
+    Hash: 0x0000000000000000
+    Counters: 1
+    Function count: 1
+    Block counts: []
+  $s5Probe14excludedHelperSiyF:
+    Hash: 0x0000000000000000
+    Counters: 1
+    Function count: 1
+    Block counts: []
+  $s5Probe3BoxVACycfC:
+    Hash: 0x0000000000000000
+    Counters: 1
+    Function count: 1
+    Block counts: []
+  $s5Probe11firstSecretSiyF:
+    Hash: 0x0000000000000000
+    Counters: 1
+    Function count: 1
+    Block counts: []
+  $s5Probe15generatedHelperSiyF:
+    Hash: 0x0000000000000000
+    Counters: 1
+    Function count: 1
+    Block counts: []
+  $s3Exe9exeHelperyS2iF:
+    Hash: 0x0000000000000000
+    Counters: 1
+    Function count: 1
+    Block counts: []
+  $s5Probe7ClampedV12wrappedValueACSi_tcfC:
+    Hash: 0x0000000000000000
+    Counters: 1
+    Function count: 1
+    Block counts: []
+  $s5Probe8anyLargeySbSaySiGF:
+    Hash: 0x0000000000000000
+    Counters: 1
+    Function count: 1
+    Block counts: []
+  @ROOT@/Sources/Probe/Counter.swift:$s5Probe5twice33_45327D15D096802744EACB638966501CLLyS2iF:
+    Hash: 0x0000000000000000
+    Counters: 1
+    Function count: 2
+    Block counts: []
+  @ROOT@/Sources/Probe/Accessors.swift:$s5Probe3BoxV6cachedSivgSiyXEfU_:
+    Hash: 0x0000000000000000
+    Counters: 1
+    Function count: 1
+    Block counts: []
+  @ROOT@/Sources/Probe/Accessors.swift:$s5Probe3BoxV7watchedSivW:
+    Hash: 0x0000000000000000
+    Counters: 1
+    Function count: 1
+    Block counts: []
+  $s5Probe3BoxV6cachedSivg:
+    Hash: 0x0000000000000000
+    Counters: 3
+    Function count: 1
+    Block counts: [0, 1]
+  $s5Probe3BoxVyS2icig:
+    Hash: 0x0000000000000000
+    Counters: 1
+    Function count: 1
+    Block counts: []
+  $s5Probe3BoxV4bothSivg:
+    Hash: 0x0000000000000000
+    Counters: 1
+    Function count: 1
+    Block counts: []
+  @ROOT@/Sources/Probe/Accessors.swift:$s5Probe3BoxV7watchedSivpfi:
+    Hash: 0x0000000000000000
+    Counters: 1
+    Function count: 1
+    Block counts: []
+  @ROOT@/Tests/ProbeTests/CounterXCTests.swift:$s10ProbeTests14CounterXCTestsC09testEmptyC0yyFSiyKXEfu0_:
+    Hash: 0x0000000000000000
+    Counters: 1
+    Function count: 1
+    Block counts: []
+  @ROOT@/Sources/Probe/Attached.swift:$s5Probe11withDefaultyS3iXEFfA_S2icfU_:
+    Hash: 0x0000000000000000
+    Counters: 1
+    Function count: 1
+    Block counts: []
+  $s5Probe8sameLineSiyF:
+    Hash: 0x0000000000000000
+    Counters: 1
+    Function count: 1
+    Block counts: []
+  $s5Probe9bomSecondSiyF:
+    Hash: 0x0000000000000000
+    Counters: 1
+    Function count: 1
+    Block counts: []
+  $s5Probe5outerySiSbF:
+    Hash: 0x0000000000000000
+    Counters: 2
+    Function count: 1
+    Block counts: [0]
+  @ROOT@/Sources/Probe/Counter.swift:$s5Probe7CounterV3addyySaySiGFS2i_SitYbcfu_:
+    Hash: 0x0000000000000000
+    Counters: 1
+    Function count: 2
+    Block counts: []
+  @ROOT@/Sources/Probe/Accessors.swift:$s5Probe3BoxV7storageSivpfi:
+    Hash: 0x0000000000000000
+    Counters: 1
+    Function count: 1
+    Block counts: []
+  $s5Probe8SettingsVACycfC:
+    Hash: 0x0000000000000000
+    Counters: 1
+    Function count: 1
+    Block counts: []
+  @BUILD@/out/Intermediates.noindex/CoverageProbe.build/Debug/ProbeTests-p.build/DerivedSources/test_entry_point.swift:$s10ProbeTests28__SwiftPMGeneratedTestRunnerV14testingLibrary031_F434223BB10D5AD3E3A2485FFA90F1K0LLSSyFZ:
+    Hash: 0x0000000000000000
+    Counters: 3
+    Function count: 1
+    Block counts: [9, 1]
+  $s6Helper11helperValueSiyF:
+    Hash: 0x0000000000000000
+    Counters: 1
+    Function count: 1
+    Block counts: []
+  $s10ProbeTests16wrappersAndCasesyyF:
+    Hash: 0x0000000000000000
+    Counters: 1
+    Function count: 1
+    Block counts: []
+  $s5Probe8platformSSyF:
+    Hash: 0x0000000000000000
+    Counters: 1
+    Function count: 1
+    Block counts: []
+  $s10ProbeTests14CounterXCTestsC09testEmptyC0yyF:
+    Hash: 0x0000000000000000
+    Counters: 1
+    Function count: 1
+    Block counts: []
+  $s5Probe7ClampedV12wrappedValueSivg:
+    Hash: 0x0000000000000000
+    Counters: 1
+    Function count: 1
+    Block counts: []
+Instrumentation level: Front-end
+Functions shown: 53
+Total functions: 53
+Maximum function count: 2
+Maximum internal block count: 9
+Total number of blocks: 59
+Total count: 72

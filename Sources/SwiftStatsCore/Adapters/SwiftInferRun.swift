@@ -27,6 +27,7 @@ struct SwiftInferRun: Sendable {
         TimedAdapterResult(
             result: AdapterResult(status: status, findings: [], warnings: []),
             executable: executable,
+            identity: nil,
             milliseconds: milliseconds
         )
     }

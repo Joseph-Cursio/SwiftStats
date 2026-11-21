@@ -4,8 +4,9 @@
 //
 //  Where a package's snapshot store is (PRD D9): `--store`, else `store:` in
 //  `.swiftstats.yml`, else `.swiftstats/stats.sqlite` in the package. The
-//  default directory ignores itself with a `.gitignore` of `*`, so SwiftStats
-//  never edits the package's own `.gitignore`.
+//  `.swiftstats` directory, which also holds the coverage build, ignores
+//  itself with a `.gitignore` of `*`, so SwiftStats never edits the
+//  package's own `.gitignore`.
 //
 
 import Foundation
@@ -46,11 +47,22 @@ public enum StoreLocation {
         guard store.deletingLastPathComponent().standardizedFileURL.path == directory.path else {
             return
         }
+        try ignoreDirectory(packageRoot: root)
+    }
+
+    /// Creates `.swiftstats/` in the package at `root`, and its `.gitignore`
+    /// of `*` when that file is missing, and returns the directory. The
+    /// coverage build lives there whether or not the store does (an outside
+    /// `store:`, or `--no-store`), so it never shows as untracked.
+    @discardableResult
+    public static func ignoreDirectory(packageRoot root: URL) throws -> URL {
+        let directory = root.standardizedFileURL.appendingPathComponent(directoryName)
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
         let ignore = directory.appendingPathComponent(".gitignore")
         if FileManager.default.fileExists(atPath: ignore.path) == false {
             try "*\n".write(to: ignore, atomically: true, encoding: .utf8)
         }
+        return directory
     }
 
     /// `store`'s path from the package root when it lies inside the package

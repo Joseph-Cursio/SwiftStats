@@ -22,6 +22,12 @@ struct ProductionFunctions {
         byKey = Dictionary(rows.map { ($0.key, $0) }) { first, _ in first }
     }
 
+    /// The row whose key is `key`; nil when no production row outside
+    /// generated files has it.
+    func row(key: String) -> FunctionRow? {
+        byKey[key]
+    }
+
     /// The row `candidate` attaches to; nil when it attaches to no
     /// function, or to one that isn't production code outside generated files.
     func row(of candidate: PropertyCandidate) -> FunctionRow? {

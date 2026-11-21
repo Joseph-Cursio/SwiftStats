@@ -132,13 +132,13 @@ struct StoreRowTests {
         #expect(try Self.query(url, "SELECT ordinal, ifnull(similarity, '-') FROM cloneClass") == "1|-\n2|0.9012\n")
     }
 
-    @Test("a v2 store migrates to v3: old rows get nulls and no v3 rows, and new scans get all of them")
+    @Test("a v2 store migrates to v4: old rows get nulls and no v3 rows, and new scans get all of them")
     func migration() throws {
         let directory = try SnapshotHarness.temporaryDirectory("StoreRows")
         defer { try? FileManager.default.removeItem(at: directory) }
         let url = directory.appendingPathComponent("stats.sqlite")
         let old = try SnapshotHarness.stored(Self.files, commit: "c1", in: try SnapshotStore(at: url))
-        let downgrade = Self.tables.map { "DROP TABLE \($0)" }
+        let downgrade = StoreDowngrade.undoingVersion4 + Self.tables.map { "DROP TABLE \($0)" }
             + Self.functionColumns.map { "ALTER TABLE function DROP COLUMN \($0)" }
             + ["DELETE FROM grdb_migrations WHERE identifier = 'v3'", "PRAGMA user_version = 2"]
         try SnapshotHarness.sqlite(url, downgrade.joined(separator: "; "))
@@ -147,7 +147,7 @@ struct StoreRowTests {
         let store = try SnapshotStore(at: url)
         let migrated = try store.load(id: old.id)
 
-        #expect(try Self.query(url, "PRAGMA user_version") == "3\n")
+        #expect(try Self.query(url, "PRAGMA user_version") == "4\n")
         #expect(migrated.functions.map(\.key) == old.functions.map(\.key))
         #expect(migrated.functions.allSatisfy { $0.facts == nil })
         #expect(migrated.scanFacts == nil)

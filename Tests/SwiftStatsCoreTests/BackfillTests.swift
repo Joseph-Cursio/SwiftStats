@@ -105,6 +105,8 @@ struct BackfillTests {
         #expect(runs["swiftlint"]?.reason == "backfill runs SwiftStats only; --with-tools adds the tools")
         #expect(runs["swiftinferproperties"]?.reason == "backfill runs SwiftStats only; --with-tools adds the tools")
         #expect(runs["swiftclonedetector"]?.reason == "backfill runs SwiftStats only; --with-tools adds the tools")
+        #expect(runs["coverage"]?.state == .skipped)
+        #expect(runs["coverage"]?.reason == "not requested; scan --coverage runs it")
         #expect(runs["swiftstats"]?.state == .ran)
         #expect(runs["swifteffectinference"]?.state == .ran)
         #expect(runs["swifteffectinference"]?.identity == EffectInferenceRevision.identity)

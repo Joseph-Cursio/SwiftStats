@@ -68,7 +68,8 @@ struct SignalOrderTests {
             lines: 6,
             copies: 2,
             churn: nil,
-            divergence: divergence
+            divergence: divergence,
+            coverage: nil
         )
     }
 
@@ -173,13 +174,15 @@ struct SignalOrderTests {
         let signals = SignalEngine.signals(of: SignalInputs(snapshot: old), thresholds: SignalThresholds())
         #expect(signals.map(\.name) == SignalName.reportOrder)
         #expect(signals.allSatisfy { $0.items.isEmpty && $0.candidates == 0 })
-        // M3's signals keep history's reason; M4's say the snapshot predates M4.
+        // M3's signals keep history's reason; M4's and M5's say the
+        // snapshot predates their milestone.
         #expect(signals.map(\.leftOut) == signals.map { signal in
-            signal.name.requirements.contains(.history) ? history : "the snapshot predates M4"
+            let milestone = signal.name.requirements.contains(.m5Snapshot) ? "M5" : "M4"
+            return signal.name.requirements.contains(.history) ? history : "the snapshot predates \(milestone)"
         })
     }
 
-    @Test("report 3 and top 2 name each item's subject and carry M3's inputs in history, and no other payload")
+    @Test("report 4 and top 3 name each item's subject and carry M3's inputs in history, and no other payload")
     func itemShape() throws {
         let repository = try Self.repository()
         defer { repository.remove() }
@@ -200,10 +203,10 @@ struct SignalOrderTests {
         let reportHotspot = reportSignals.first { $0["name"] as? String == "hotspot" }
         let reportItems = reportHotspot?["items"] as? [[String: Any]] ?? []
 
-        #expect(TopReport.currentSchemaVersion == 2)
-        #expect(SnapshotReport.currentSchemaVersion == 3)
-        #expect(top?["schemaVersion"] as? Int == 2)
-        #expect(report?["schemaVersion"] as? Int == 3)
+        #expect(TopReport.currentSchemaVersion == 3)
+        #expect(SnapshotReport.currentSchemaVersion == 4)
+        #expect(top?["schemaVersion"] as? Int == 3)
+        #expect(report?["schemaVersion"] as? Int == 4)
         let item = try #require(topItems.first)
         #expect(topItems.count == 1)
         #expect(Self.keys(item) == ["rank", "subject", "file", "line", "score", "member", "history"])

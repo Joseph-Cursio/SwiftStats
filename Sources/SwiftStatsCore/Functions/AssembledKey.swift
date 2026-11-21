@@ -14,4 +14,10 @@ struct AssembledKey {
     /// Whether the key has a record or context prefix, which is when local
     /// declarations of one name need numbering.
     let isNested: Bool
+    /// The enclosing types' names joined by dots; nil at the top level and
+    /// inside a record or context.
+    let typePath: String?
+    /// Whether an enclosing type is `private` or `fileprivate` (not merely
+    /// a `private extension` of a type others see).
+    let isTypeFileScoped: Bool
 }

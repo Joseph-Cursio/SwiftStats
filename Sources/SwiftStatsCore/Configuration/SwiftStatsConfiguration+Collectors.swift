@@ -3,9 +3,10 @@
 //  SwiftStatsCore
 //
 //  The `collectors` key (PRD §10.1, §7.16): per collector, `enabled` and
-//  `path`, though a collector SwiftStats runs in process takes no `path`.
-//  `options`, and collectors no milestone has built yet, are accepted with
-//  a warning; any other key is an error.
+//  `path`, though a collector SwiftStats runs in process takes no `path`;
+//  the coverage collector alone also takes `arguments` (M5). `options`, and
+//  collectors no milestone has built yet, are accepted with a warning; any
+//  other key is an error.
 //
 
 import Yams
@@ -13,11 +14,13 @@ import Yams
 extension SwiftStatsConfiguration {
     /// Collectors SwiftStats runs.
     static let builtCollectors: Set<String> = [
-        "dependencies", "swiftclonedetector", "swifteffectinference", "swiftinferproperties", "swiftlint",
-        "swiftprojectlint"
+        "coverage", "dependencies", "swiftclonedetector", "swifteffectinference", "swiftinferproperties",
+        "swiftlint", "swiftprojectlint"
     ]
     /// Keys a collector's entry may hold.
-    private static let collectorKeys: Set<String> = ["enabled", "options", "path"]
+    private static let collectorKeys: Set<String> = ["arguments", "enabled", "options", "path"]
+    /// Collectors whose entry may hold `arguments`.
+    private static let argumentCollectors: Set<String> = [CoverageAdapter.name]
     /// Collectors SwiftStats runs in process, which take no `path`.
     private static let inProcessCollectors: Set<String> = ["swifteffectinference"]
 
@@ -49,7 +52,8 @@ extension SwiftStatsConfiguration {
             }
             settings[name] = CollectorSettings(
                 enabled: try flag(entryMapping["enabled"], key: "collectors.\(name).enabled", path: path),
-                path: try text(entryMapping["path"], key: "collectors.\(name).path", path: path)
+                path: try text(entryMapping["path"], key: "collectors.\(name).path", path: path),
+                arguments: try CoverageArguments.parse(entryMapping["arguments"], name: name, path: path)
             )
         }
         return (settings, unused)
@@ -67,6 +71,12 @@ extension SwiftStatsConfiguration {
         guard unknown.isEmpty else {
             let names = unknown.map { "collectors.\(name).\($0)" }.joined(separator: ", ")
             throw ScanError.configurationInvalid(path, "unknown key(s): \(names)")
+        }
+        if argumentCollectors.contains(name) == false, mapping["arguments"] != nil {
+            throw ScanError.configurationInvalid(
+                path,
+                "`collectors.\(name).arguments`: only the coverage collector takes arguments"
+            )
         }
         if inProcessCollectors.contains(name), mapping["path"] != nil {
             throw ScanError.configurationInvalid(

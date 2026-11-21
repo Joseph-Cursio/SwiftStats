@@ -16,7 +16,12 @@ enum SignalRequirement: Hashable, Sendable {
     /// A snapshot holding M4's rows: stored from a scan of schema 6 or
     /// later, with its scan facts.
     case m4Snapshot
+    /// A snapshot holding M5's rows: stored from a scan of schema 7 or
+    /// later, with a run of the coverage collector, whatever its state.
+    case m5Snapshot
 
     /// The first scan schema whose snapshots hold M4's rows.
     static let firstM4Schema = 6
+    /// The first scan schema whose snapshots hold M5's rows.
+    static let firstM5Schema = 7
 }

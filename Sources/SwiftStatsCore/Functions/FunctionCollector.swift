@@ -29,6 +29,15 @@ final class FunctionCollector: SyntaxVisitor {
     var topLevelKey: String?
     /// The top-level statements that record covers.
     var topLevelItems: Set<SyntaxIdentifier> = []
+    /// What each member record of a type is, by its start, for telling
+    /// protocol requirements' witnesses (`MemberSelector`).
+    var selectors: [SourcePosition: String] = [:]
+    /// The parameters of each function and initialiser record, by its
+    /// start, for fitting tests' calls (`CallSignature`).
+    var signatures: [SourcePosition: CallSignature] = [:]
+    /// The member caps of the types extensions extend: the context's, or
+    /// the file's own types'.
+    var typeAccess = TypeAccessIndex()
 
     /// Creates a collector for the file described by `context`.
     init(context: FileContext) {
@@ -36,17 +45,11 @@ final class FunctionCollector: SyntaxVisitor {
         super.init(viewMode: .sourceAccurate)
     }
 
-    /// Walks `tree` and returns its records.
-    static func collect(_ tree: SourceFileSyntax, context: FileContext) -> [FunctionRecord] {
-        let collector = Self(context: context)
-        collector.walk(tree)
-        return collector.records
-    }
-
     // MARK: - Files and types
 
     override func visit(_ node: SourceFileSyntax) -> SyntaxVisitorContinueKind {
         fileScopedTypes = FileScopedTypes.paths(in: node)
+        typeAccess = context.typeAccess ?? TypeAccessIndex(files: [(context.file, node)])
         addTopLevelCode(node)
         return .visitChildren
     }
@@ -105,8 +108,10 @@ final class FunctionCollector: SyntaxVisitor {
         scopes.append(.type(TypeScope(
             owner: node.id,
             pathComponent: extended + whereClause,
+            typeName: extended,
             simpleName: simpleName,
-            isFileScoped: isFileScoped
+            isFileScoped: isFileScoped,
+            members: enclosingAccess.members(ofExtensionWith: node.modifiers, typeCap: typeCap(of: extended))
         )))
         return .visitChildren
     }

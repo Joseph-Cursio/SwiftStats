@@ -61,4 +61,15 @@ public struct Rollup: Codable, Hashable, Sendable {
     /// lines copies cover (PRD §7.12); nil when SwiftCloneDetector didn't
     /// run, and on test modules and the `tests` part, which it doesn't read.
     public let clones: CloneRollup?
+    /// Lines, regions, records and public functions by coverage (M5, PRD
+    /// §7.8); nil when the coverage collector didn't run, and on test
+    /// modules and the `tests` part, whose files it leaves out.
+    public internal(set) var coverage: CoverageRollup?
+
+    /// The roll-up with `coverage` as its coverage.
+    func with(coverage: CoverageRollup?) -> Self {
+        var rollup = self
+        rollup.coverage = coverage
+        return rollup
+    }
 }

@@ -2,25 +2,25 @@
 //  PackageScanner+Run.swift
 //  SwiftStatsCore
 //
-//  The scan itself (PRD M0–M2, M4): describe the package, start
-//  SwiftInferProperties, measure its files, infer side effects, run the
-//  other external collectors, SwiftCloneDetector among them, attach the
-//  suggestions and clones and assemble the report, timing each collector
-//  for the snapshot (PRD §6.2).
+//  The scan itself (PRD M0–M2, M4, M5): describe the package, start
+//  SwiftInferProperties and, when asked for, the coverage run, measure its
+//  files, infer side effects, run the other external collectors,
+//  SwiftCloneDetector among them, attach the suggestions and clones and
+//  assemble the report, timing each collector for the snapshot (PRD §6.2).
 //
 
 import Foundation
 
 extension PackageScanner {
     /// The roll-ups of `measured` over `targets`, with `external`'s findings,
-    /// SwiftInferProperties' suggestions and SwiftCloneDetector's classes
-    /// counted.
+    /// SwiftInferProperties' suggestions, SwiftCloneDetector's classes and
+    /// the coverage counted.
     private static func rollups(
         _ targets: [TargetSummary],
         measured: ScanMeasurements,
         external: ExternalScan
     ) -> [Rollup] {
-        RollupBuilder.rollups(
+        let rollups = RollupBuilder.rollups(
             targets: targets,
             input: RollupInput(
                 records: measured.records,
@@ -35,6 +35,10 @@ extension PackageScanner {
                 clones: external.clones
             )
         )
+        guard let coverage = external.coverage else {
+            return rollups
+        }
+        return CoverageRollupBuilder(targets: targets, records: measured.records, coverage: coverage).rollups(rollups)
     }
 
     /// Every collector's status but history's real one, sorted by name.
@@ -53,16 +57,22 @@ extension PackageScanner {
         UnbuiltTests.warnings(root: root, compiled: Set(TargetResolver.resolve(package).flatMap(\.files)))
     }
 
-    /// The scan of `packageRoot`, with each collector's run time and binary.
-    func run(packageAt packageRoot: URL, configurationFile: URL?) throws -> ScanOutcome {
-        let root = packageRoot.standardizedFileURL
+    /// Throws `ScanError.notAPackage` unless `root` holds a `Package.swift`.
+    private static func requirePackage(at root: URL) throws {
         guard FileManager.default.fileExists(atPath: root.appendingPathComponent("Package.swift").path) else {
             throw ScanError.notAPackage(root.path)
         }
+    }
+
+    /// The scan of `packageRoot`, with each collector's run time and binary;
+    /// the coverage collector runs only when `coverage` asks for it.
+    func run(packageAt packageRoot: URL, configurationFile: URL?, coverage: Bool) throws -> ScanOutcome {
+        let root = packageRoot.standardizedFileURL
+        try Self.requirePackage(at: root)
         let configuration = try SwiftStatsConfiguration.load(configurationFile, root: root)
         let package = try describer.describePackage(at: root)
         let (targets, excludedFiles) = Self.excluding(TargetResolver.resolve(package), by: configuration)
-        let pending = startProperties(root: root, targets: targets, configuration: configuration)
+        let pending = startBackground(root: root, targets: targets, configuration: configuration, coverage: coverage)
         let scan = Self.measured(targets, root: root, configuration: configuration)
         let (measured, effects) = (scan.measurements, scan.effects)
         let external = externalRuns(
@@ -95,7 +105,8 @@ extension PackageScanner {
             effects: effects.summary,
             properties: external.properties,
             clones: external.clones?.report,
-            laws: measured.laws.with(kitDependency: KitProtocols.isDependency(in: dependencies.report))
+            laws: measured.laws.with(kitDependency: KitProtocols.isDependency(in: dependencies.report)),
+            coverage: external.coverage
         )
         return ScanOutcome(
             report: report,

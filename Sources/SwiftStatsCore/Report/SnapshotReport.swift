@@ -11,8 +11,10 @@
 public struct SnapshotReport: Codable, Hashable, Sendable {
     /// The version of this document's format: 2 adds the signals (M3); 3
     /// names each item's `subject` (it was `family`) and moves its inputs
-    /// into payloads, M3's into `history` (M4).
-    public static let currentSchemaVersion = 3
+    /// into payloads, M3's into `history` (M4); 4 adds the coverage
+    /// signals and their payloads, `markers`, `coverage` and a clone
+    /// class's `coverage` (M5).
+    public static let currentSchemaVersion = 4
 
     /// The document's format version.
     public let schemaVersion: Int

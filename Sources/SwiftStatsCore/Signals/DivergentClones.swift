@@ -74,7 +74,7 @@ enum DivergentClones {
                 members.append(member)
             }
         }
-        let kept = folded(members)
+        let kept = CloneFolding.folded(members, cloneClass: \.cloneClass) { $0.holds($1) }
         let foldedCount = kept.reduce(0) { $0 + $1.folded.count }
         var since = inputs.earlierNote ?? String(sinceCommit.prefix(MarkdownSignals.shortLength))
         if inputs.snapshot.info.git.isDirty {
@@ -191,7 +191,8 @@ enum DivergentClones {
                     folded: folded,
                     changed: member.changed.map(\.copy),
                     unchanged: member.unchanged.map(\.copy)
-                )
+                ),
+                coverage: nil
             )
         )
         let order = SignalSortKey([
