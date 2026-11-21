@@ -37,6 +37,7 @@ extension FunctionCollector {
         scopes.append(.type(TypeScope(
             owner: owner,
             pathComponent: name,
+            typeName: name,
             simpleName: name,
             isFileScoped: Self.isFileScoped(modifiers)
         )))
@@ -75,7 +76,7 @@ extension FunctionCollector {
             }
         }
         let lines = context.lineSet(of: draft.node, from: draft.countFrom)
-        records.append(FunctionRecord(
+        var record = FunctionRecord(
             key: key,
             module: context.module,
             kind: draft.kind,
@@ -95,7 +96,16 @@ extension FunctionCollector {
             parentKey: parentKey,
             ifConfig: conditions.isEmpty ? nil : Self.conjunction(conditions),
             role: draft.role
-        ))
+        )
+        if Self.isSubscriptAccessor(draft.node), let parent = records.last(where: { $0.key == parentKey }) {
+            // A subscript's accessors are its type's members, as it is.
+            record.typePath = parent.typePath
+            record.typeFile = parent.typeFile
+        } else {
+            record.typePath = assembled.typePath
+            record.typeFile = assembled.isTypeFileScoped ? context.file : nil
+        }
+        records.append(record)
         scopes.append(.record(RecordScope(
             owner: draft.node.id,
             key: key,
@@ -173,7 +183,16 @@ extension FunctionCollector {
         if parent == nil, isFileScoped || typeScopes.contains(where: \.isFileScoped) {
             key += " @ " + context.file
         }
-        return AssembledKey(key: key, parentKey: parent?.isRecord == true ? parent?.key : nil, isNested: parent != nil)
+        let typePath = parent == nil && typeScopes.isEmpty == false
+            ? typeScopes.map(\.typeName).joined(separator: ".")
+            : nil
+        return AssembledKey(
+            key: key,
+            parentKey: parent?.isRecord == true ? parent?.key : nil,
+            isNested: parent != nil,
+            typePath: typePath,
+            isTypeFileScoped: typePath.map { FileScopedTypes.isFileScoped($0, in: fileScopedTypes) } ?? false
+        )
     }
 
     /// Whether `node` is an XCTest test method: an instance `func` named

@@ -184,7 +184,8 @@
         }
       },
       "role" : "production",
-      "strippedLines" : 3
+      "strippedLines" : 3,
+      "typePath" : "Resource"
     },
     {
       "bodyHash" : "76e73a0efe72fb6f",
@@ -215,7 +216,8 @@
         }
       },
       "role" : "production",
-      "strippedLines" : 3
+      "strippedLines" : 3,
+      "typePath" : "Resource"
     },
     {
       "bodyHash" : "01050d5baa8152d6",
@@ -261,7 +263,8 @@
         }
       },
       "role" : "production",
-      "strippedLines" : 1
+      "strippedLines" : 1,
+      "typePath" : "Resource"
     },
     {
       "bodyHash" : "f93d215aaebf61e1",
@@ -307,7 +310,8 @@
         }
       },
       "role" : "production",
-      "strippedLines" : 1
+      "strippedLines" : 1,
+      "typePath" : "Resource"
     },
     {
       "bodyHash" : "00eccaff1575bd06",
@@ -356,7 +360,8 @@
         }
       },
       "role" : "production",
-      "strippedLines" : 1
+      "strippedLines" : 1,
+      "typePath" : "Resource"
     },
     {
       "bodyHash" : "00eccaff1575bd06",
@@ -401,7 +406,8 @@
         }
       },
       "role" : "production",
-      "strippedLines" : 1
+      "strippedLines" : 1,
+      "typePath" : "Resource"
     },
     {
       "bodyHash" : "6689c84557597491",
@@ -446,7 +452,8 @@
         }
       },
       "role" : "production",
-      "strippedLines" : 4
+      "strippedLines" : 4,
+      "typePath" : "Counter"
     },
     {
       "bodyHash" : "28acf588cce0bbf3",
@@ -536,7 +543,8 @@
         }
       },
       "role" : "production",
-      "strippedLines" : 1
+      "strippedLines" : 1,
+      "typePath" : "String"
     },
     {
       "bodyHash" : "5fdcc8f30e1643a0",
@@ -613,7 +621,8 @@
         }
       },
       "role" : "production",
-      "strippedLines" : 3
+      "strippedLines" : 3,
+      "typePath" : "Square"
     },
     {
       "bodyHash" : "52444d006a85cad9",
@@ -645,7 +654,8 @@
         }
       },
       "role" : "production",
-      "strippedLines" : 4
+      "strippedLines" : 4,
+      "typePath" : "Square"
     },
     {
       "accessorKind" : "get",
@@ -686,7 +696,8 @@
         }
       },
       "role" : "production",
-      "strippedLines" : 3
+      "strippedLines" : 3,
+      "typePath" : "Square"
     },
     {
       "accessorKind" : "get",
@@ -731,7 +742,8 @@
         }
       },
       "role" : "production",
-      "strippedLines" : 1
+      "strippedLines" : 1,
+      "typePath" : "Square"
     },
     {
       "accessorKind" : "set",
@@ -763,7 +775,8 @@
         }
       },
       "role" : "production",
-      "strippedLines" : 1
+      "strippedLines" : 1,
+      "typePath" : "Square"
     },
     {
       "accessorKind" : "willSet",
@@ -795,7 +808,8 @@
         }
       },
       "role" : "production",
-      "strippedLines" : 1
+      "strippedLines" : 1,
+      "typePath" : "Square"
     },
     {
       "accessorKind" : "didSet",
@@ -827,7 +841,8 @@
         }
       },
       "role" : "production",
-      "strippedLines" : 1
+      "strippedLines" : 1,
+      "typePath" : "Square"
     },
     {
       "bodyHash" : "35fa00fd868a1146",
@@ -873,7 +888,8 @@
         }
       },
       "role" : "production",
-      "strippedLines" : 6
+      "strippedLines" : 6,
+      "typePath" : "Square"
     },
     {
       "bodyHash" : "09a0815c161093d1",
@@ -957,7 +973,8 @@
         }
       },
       "role" : "production",
-      "strippedLines" : 3
+      "strippedLines" : 3,
+      "typePath" : "Square"
     },
     {
       "bodyHash" : "9288593763a41083",
@@ -990,7 +1007,8 @@
         }
       },
       "role" : "production",
-      "strippedLines" : 4
+      "strippedLines" : 4,
+      "typePath" : "Square"
     },
     {
       "accessorKind" : "get",
@@ -1023,7 +1041,8 @@
         }
       },
       "role" : "production",
-      "strippedLines" : 1
+      "strippedLines" : 1,
+      "typePath" : "Square"
     },
     {
       "accessorKind" : "set",
@@ -1056,7 +1075,8 @@
         }
       },
       "role" : "production",
-      "strippedLines" : 1
+      "strippedLines" : 1,
+      "typePath" : "Square"
     },
     {
       "bodyHash" : "1c668c24725fa618",
@@ -1102,7 +1122,8 @@
         }
       },
       "role" : "production",
-      "strippedLines" : 3
+      "strippedLines" : 3,
+      "typePath" : "Square"
     },
     {
       "bodyHash" : "95a772b146cd45e4",
@@ -1148,7 +1169,8 @@
         }
       },
       "role" : "production",
-      "strippedLines" : 3
+      "strippedLines" : 3,
+      "typePath" : "Square"
     },
     {
       "bodyHash" : "0c104affe8d872ca",
@@ -1194,7 +1216,8 @@
         }
       },
       "role" : "production",
-      "strippedLines" : 3
+      "strippedLines" : 3,
+      "typePath" : "Shape"
     },
     {
       "bodyHash" : "69885c1f90bb7575",
@@ -1338,7 +1361,8 @@
         }
       },
       "role" : "test",
-      "strippedLines" : 3
+      "strippedLines" : 3,
+      "typePath" : "SquareSuite"
     },
     {
       "bodyHash" : "ad81e916dbc88acb",
@@ -1370,7 +1394,8 @@
         }
       },
       "role" : "helper",
-      "strippedLines" : 1
+      "strippedLines" : 1,
+      "typePath" : "SquareSuite"
     },
     {
       "bodyHash" : "25eca6c5d0fe726a",
@@ -1402,7 +1427,8 @@
         }
       },
       "role" : "helper",
-      "strippedLines" : 1
+      "strippedLines" : 1,
+      "typePath" : "BaseTestCase"
     },
     {
       "bodyHash" : "5fca41c2d4d2c7fb",
@@ -1434,7 +1460,8 @@
         }
       },
       "role" : "test",
-      "strippedLines" : 3
+      "strippedLines" : 3,
+      "typePath" : "ResourceTests"
     },
     {
       "bodyHash" : "257c1be96ae69f4b",
@@ -1466,7 +1493,8 @@
         }
       },
       "role" : "helper",
-      "strippedLines" : 1
+      "strippedLines" : 1,
+      "typePath" : "ResourceTests"
     },
     {
       "bodyHash" : "8d5a9ce96bb9fddd",
@@ -1498,7 +1526,8 @@
         }
       },
       "role" : "test",
-      "strippedLines" : 3
+      "strippedLines" : 3,
+      "typePath" : "ResourceTests"
     }
   ],
   "rollups" : [

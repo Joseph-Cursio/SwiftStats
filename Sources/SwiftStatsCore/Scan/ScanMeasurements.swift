@@ -21,6 +21,8 @@ struct ScanMeasurements {
     let markers: [RawFinding]
     /// Each file's top-level statement lines, by path.
     let topLevelLines: [String: Set<Int>]
+    /// Each file's `private` and `fileprivate` types, as dotted paths, by path.
+    let fileScopedTypes: [String: Set<String>]
     /// The test inventory.
     let tests: [TestRecord]
     /// The base names each property test calls, by test key.

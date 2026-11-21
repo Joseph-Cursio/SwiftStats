@@ -53,13 +53,18 @@ extension PackageScanner {
         UnbuiltTests.warnings(root: root, compiled: Set(TargetResolver.resolve(package).flatMap(\.files)))
     }
 
+    /// Throws `ScanError.notAPackage` unless `root` holds a `Package.swift`.
+    private static func requirePackage(at root: URL) throws {
+        guard FileManager.default.fileExists(atPath: root.appendingPathComponent("Package.swift").path) else {
+            throw ScanError.notAPackage(root.path)
+        }
+    }
+
     /// The scan of `packageRoot`, with each collector's run time and binary;
     /// the coverage collector runs only when `coverage` asks for it.
     func run(packageAt packageRoot: URL, configurationFile: URL?, coverage: Bool) throws -> ScanOutcome {
         let root = packageRoot.standardizedFileURL
-        guard FileManager.default.fileExists(atPath: root.appendingPathComponent("Package.swift").path) else {
-            throw ScanError.notAPackage(root.path)
-        }
+        try Self.requirePackage(at: root)
         let configuration = try SwiftStatsConfiguration.load(configurationFile, root: root)
         let package = try describer.describePackage(at: root)
         let (targets, excludedFiles) = Self.excluding(TargetResolver.resolve(package), by: configuration)
@@ -96,7 +101,8 @@ extension PackageScanner {
             effects: effects.summary,
             properties: external.properties,
             clones: external.clones?.report,
-            laws: measured.laws.with(kitDependency: KitProtocols.isDependency(in: dependencies.report))
+            laws: measured.laws.with(kitDependency: KitProtocols.isDependency(in: dependencies.report)),
+            coverage: external.coverage
         )
         return ScanOutcome(
             report: report,

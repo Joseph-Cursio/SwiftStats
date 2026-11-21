@@ -42,12 +42,7 @@ struct CandidateMapper {
     /// A mapper over the scan's records, types and files, with each file's
     /// top-level statement lines and the test targets' names.
     init(measured: ScanMeasurements, testModules: Set<String>) {
-        findings = FindingMapper(
-            records: measured.records,
-            types: measured.types,
-            files: measured.files,
-            topLevelLines: measured.topLevelLines
-        )
+        findings = FindingMapper(measured: measured)
         recordsByFile = Dictionary(grouping: measured.records, by: \.file)
         typesByFile = Dictionary(grouping: measured.types, by: \.file)
         filesByPath = Dictionary(measured.files.map { ($0.path, $0) }) { first, _ in first }

@@ -10,8 +10,9 @@
 //  persists between runs, and `collectors.coverage.arguments` may add
 //  `--skip <regex>` pairs to `swift test`. Failing tests don't fail it: it
 //  merges the test processes' profiles itself. It fails when the build
-//  fails, when there is no test bundle, or when a bundle's XCTest or Swift
-//  Testing process wrote no profile (it crashed or was killed).
+//  fails, when there is no test bundle, when a bundle's XCTest or Swift
+//  Testing process wrote no profile (it crashed or was killed), or when the
+//  export isn't one SwiftStats reads; the scan maps the export it decodes.
 //
 
 import Foundation
@@ -63,26 +64,28 @@ enum CoverageAdapter {
                 )
                 toolchain = found
                 let command = CoverageCommand(root: root, build: build, toolchain: found.directory)
-                return try CoverageSession(toolchain: found, arguments: arguments, command: command).collect()
+                let profiles = try CoverageSession(toolchain: found, arguments: arguments, command: command).collect()
+                return (profiles, try CoverageExport.read(profiles.export))
             }
         }
         let known = initial + (toolchain?.options ?? [])
         switch outcome {
-        case .success(let profiles):
+        case let .success((profiles, export)):
             let passed = profiles.testStatus == 0
             let status = CollectorStatus(
                 name: name,
                 state: .ran,
                 version: toolchain?.covVersion,
                 reason: passed ? nil : failingReason(profiles),
-                options: known + ["tests: " + (passed ? "passed" : "failing")]
+                options: known + ["tests: " + (passed ? "passed" : "failing"), "map: " + CoverageMapper.rule]
             )
             return CoverageRun(
                 status: status,
                 executable: toolchain?.swift,
                 identity: toolchain.map { identity(versionLine: $0.swiftVersion) },
                 milliseconds: milliseconds,
-                profiles: profiles
+                profiles: profiles,
+                export: export
             )
 
         case .failure(let error):
@@ -93,7 +96,8 @@ enum CoverageAdapter {
                 executable: toolchain?.swift ?? swift,
                 identity: toolchain.map { identity(versionLine: $0.swiftVersion) },
                 milliseconds: milliseconds,
-                profiles: nil
+                profiles: nil,
+                export: nil
             )
         }
     }

@@ -144,6 +144,7 @@ public struct PackageScanner {
                 for identity in target.isTest ? PropertyTestLinks.stubIdentities(in: file.tree) : [] {
                     collected.stubs[identity, default: []].insert(file.path)
                 }
+                collected.fileScopedTypes[file.path] = FileScopedTypes.paths(in: file.tree)
                 collected.topLevelLines[file.path] = FunctionCollector.topLevelLines(
                     in: file.tree,
                     converter: context.converter
@@ -243,6 +244,7 @@ public struct PackageScanner {
             declarations: collected.declarations,
             markers: collected.markers,
             topLevelLines: collected.topLevelLines,
+            fileScopedTypes: collected.fileScopedTypes,
             tests: inventory.tests,
             propertyCallees: inventory.callees,
             stubs: collected.stubs,
@@ -257,12 +259,7 @@ public struct PackageScanner {
 
     /// `raw` findings attached to the measured records, types and files.
     static func attach(_ raw: [RawFinding], to measured: ScanMeasurements) -> [Finding] {
-        let mapper = FindingMapper(
-            records: measured.records,
-            types: measured.types,
-            files: measured.files,
-            topLevelLines: measured.topLevelLines
-        )
+        let mapper = FindingMapper(measured: measured)
         return raw.map(mapper.finding(for:))
     }
 

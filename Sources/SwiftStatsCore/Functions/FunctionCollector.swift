@@ -105,6 +105,7 @@ final class FunctionCollector: SyntaxVisitor {
         scopes.append(.type(TypeScope(
             owner: node.id,
             pathComponent: extended + whereClause,
+            typeName: extended,
             simpleName: simpleName,
             isFileScoped: isFileScoped
         )))

@@ -23,6 +23,8 @@ struct CoverageRun: Sendable {
     let milliseconds: Int
     /// The run's data, to map to records; nil unless it ran.
     let profiles: CoverageProfiles?
+    /// The run's export, decoded; nil unless it ran.
+    let export: CoverageExport?
 
     /// The run as the other external collectors' runs are recorded.
     var timed: TimedAdapterResult {
@@ -41,7 +43,8 @@ struct CoverageRun: Sendable {
             executable: nil,
             identity: nil,
             milliseconds: 0,
-            profiles: nil
+            profiles: nil,
+            export: nil
         )
     }
 }

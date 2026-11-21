@@ -17,8 +17,9 @@
 #    bundles.txt      the test bundles the build made, sorted
 #    show-<sig>.txt   `llvm-profdata show --all-functions --counts` of the
 #                     profiles with signature <sig>, merged with -sparse
-#    demangled.txt    `<mangled>\t<demangled>` for the runner names, from
-#                     one `swift demangle --compact` call
+#    demangled.txt    `<mangled>\t<demangled>` for the runner names and every
+#                     function of the export, from one
+#                     `swift demangle --compact` call
 #    export.json      `llvm-cov export` of every bundle over all profiles
 #
 
@@ -88,19 +89,6 @@ for signature in $signatures; do
     "$profdata" show --all-functions --counts "$build/$signature.profdata" | redact > "$recorded/show-$signature.txt"
 done
 
-# The runner names, path prefixes stripped, demangled in one call.
-names="$(cat "$recorded"/show-*.txt \
-    | sed -n -E 's/^  (.*):$/\1/p' \
-    | sed -E 's/^.*[:;](_?\$[sS])/\1/' \
-    | grep -E '__[aA][0-9]+PMGenerated|__SwiftPMGeneratedTestRunner' \
-    | LC_ALL=C sort -u)"
-set --
-for name in $names; do
-    set -- "$@" "$name"
-done
-"$toolchain/swift" demangle --compact "$@" > "$work/demangled-lines.txt"
-printf '%s\n' "$@" | paste - "$work/demangled-lines.txt" > "$recorded/demangled.txt"
-
 set --
 for bundle in $(cat "$recorded/bundles.txt"); do
     if [ $# -eq 0 ]; then
@@ -111,5 +99,20 @@ for bundle in $(cat "$recorded/bundles.txt"); do
 done
 "$profdata" merge -sparse "$bin"/codecov/*.profraw -o "$build/swiftstats.profdata"
 "$cov" export -instr-profile "$build/swiftstats.profdata" "$@" | redact > "$recorded/export.json"
+
+# The runner names, path prefixes stripped, and every function name of the
+# export, demangled in one call.
+names="$( (cat "$recorded"/show-*.txt \
+        | sed -n -E 's/^  (.*):$/\1/p' \
+        | sed -E 's/^.*[:;](_?\$[sS])/\1/' \
+        | grep -E '__[aA][0-9]+PMGenerated|__SwiftPMGeneratedTestRunner'
+    grep -o '"name":"[^"]*"' "$recorded/export.json" | sed 's/^"name":"//; s/"$//') \
+    | LC_ALL=C sort -u)"
+set --
+for name in $names; do
+    set -- "$@" "$name"
+done
+"$toolchain/swift" demangle --compact "$@" > "$work/demangled-lines.txt"
+printf '%s\n' "$@" | paste - "$work/demangled-lines.txt" > "$recorded/demangled.txt"
 
 echo "recorded $(ls "$recorded" | wc -l | tr -d ' ') files in $recorded"

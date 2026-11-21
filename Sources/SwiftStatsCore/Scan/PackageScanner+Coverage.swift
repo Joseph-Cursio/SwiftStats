@@ -6,11 +6,50 @@
 //  scan asks for it (`scan --coverage`), and starts once the targets are
 //  resolved, since it needs only the package's files, so it runs while the
 //  package is measured. The tools' skip reason covers a requested run.
+//  Once the package is measured, a run that ran is mapped onto its
+//  records, the unmapped entries' names demangled by the run's toolchain.
 //
 
 import Foundation
 
 extension PackageScanner {
+    /// `run`'s export mapped onto `measured`, the package at `root` with
+    /// `targets` and `configuration`; nil unless it ran. The warning says
+    /// when the unmapped entries' names couldn't be demangled.
+    static func coverage(
+        of run: CoverageRun,
+        measured: ScanMeasurements,
+        targets: [TargetSummary],
+        configuration: SwiftStatsConfiguration,
+        root: URL
+    ) -> (report: CoverageReport?, warnings: [ScanWarning]) {
+        guard run.status.state == .ran, let export = run.export, let profiles = run.profiles else {
+            return (nil, [])
+        }
+        let mapper = CoverageMapper(
+            measured: measured,
+            targets: targets,
+            root: root,
+            excluded: configuration.excluded.map(GlobPattern.init)
+        )
+        var warnings: [ScanWarning] = []
+        let report = mapper.report(of: export, profiles: profiles) { names in
+            guard names.isEmpty == false, let swift = run.executable else {
+                return [:]
+            }
+            do {
+                return try CoverageDemangler.demangled(names, swift: swift, root: root)
+            } catch {
+                warnings.append(ScanWarning(
+                    file: nil,
+                    message: "coverage: `swift demangle` failed, so unmapped entries are listed without demangled names"
+                ))
+                return [:]
+            }
+        }
+        return (report, warnings)
+    }
+
     /// The coverage collector's run on the package at `root`, started in
     /// the background; a skip, already finished, when it wasn't
     /// `requested` or the tools are skipped.

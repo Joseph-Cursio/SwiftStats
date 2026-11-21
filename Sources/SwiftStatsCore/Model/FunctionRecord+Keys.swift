@@ -28,6 +28,8 @@ extension FunctionRecord {
         )
         copy.complexity = complexity
         copy.effect = effect
+        copy.typePath = typePath
+        copy.typeFile = typeFile
         return copy
     }
 }

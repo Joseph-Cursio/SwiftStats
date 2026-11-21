@@ -41,6 +41,10 @@ extension PackageScanner {
         let joinWarnings: [ScanWarning]
         /// SwiftCloneDetector's classes, attached; nil unless it ran.
         let clones: CloneMapping?
+        /// The coverage run's export, mapped to records; nil unless it ran.
+        let coverage: CoverageReport?
+        /// Problems mapping the coverage.
+        let coverageWarnings: [ScanWarning]
 
         /// Each external collector's result.
         var adapters: [AdapterResult] {
@@ -49,7 +53,7 @@ extension PackageScanner {
 
         /// The problems the external collectors reported.
         var warnings: [ScanWarning] {
-            adapters.flatMap(\.warnings) + joinWarnings
+            adapters.flatMap(\.warnings) + joinWarnings + coverageWarnings
         }
     }
 
@@ -118,8 +122,8 @@ extension PackageScanner {
     /// Starts SwiftCloneDetector and runs the other external collectors on
     /// `targets` of the package at `root`, waits for it and for `pending`,
     /// SwiftInferProperties' and the coverage collector's runs, and
-    /// attaches the classes, the suggestions and every finding to
-    /// `measured`'s records.
+    /// attaches the classes, the suggestions, the coverage and every
+    /// finding to `measured`'s records.
     func externalRuns(
         root: URL,
         targets: [TargetSummary],
@@ -140,13 +144,22 @@ extension PackageScanner {
         let properties = run.map { completed in
             Self.properties(of: completed, measured: measured, targets: targets, root: root, findings: findings)
         }
+        let mapped = Self.coverage(
+            of: coverage,
+            measured: measured,
+            targets: targets,
+            configuration: configuration,
+            root: root
+        )
         return ExternalScan(
             timed: adapters + [run?.timed, cloneRun?.timed, coverage.timed].compactMap(\.self),
             findings: findings,
             tally: FindingTally(findings: findings, tools: Set(ran).union([MarkerCollector.tool])),
             properties: properties?.report,
             joinWarnings: properties?.warnings ?? [],
-            clones: cloneRun.flatMap { Self.clones(of: $0, measured: measured) }
+            clones: cloneRun.flatMap { Self.clones(of: $0, measured: measured) },
+            coverage: mapped.report,
+            coverageWarnings: mapped.warnings
         )
     }
 }

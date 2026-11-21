@@ -53,6 +53,17 @@ public struct FunctionRecord: Codable, Hashable, Sendable {
     public let ifConfig: String?
     /// Production code, a test, or a test-target helper.
     public let role: CodeRole
+    /// The enclosing types' path, as the type records name them: each
+    /// type's name, or an extension's extended type as written, without
+    /// its `where` clause, joined by dots (`Chain2Sequence.Index`); nil at
+    /// the top level and inside another record or a property's
+    /// initialiser, except that a subscript's accessors take the
+    /// subscript's (M5).
+    public internal(set) var typePath: String?
+    /// The record's file when an enclosing type is `private` or
+    /// `fileprivate`, so same-named types of two files stay apart; nil
+    /// otherwise, and whenever `typePath` is nil (M5).
+    public internal(set) var typeFile: String?
     /// What SwiftEffectInference says about the record (PRD §7.10): set on
     /// production `func`s, computed-property getters and `subscript`s when
     /// the collector ran; nil for every other record, and when it didn't.

@@ -29,12 +29,13 @@ struct CoverageRunTests {
         """)
     func passingRun() throws {
         let scenario = try FakeToolchain.recorded()
+        let options = Self.invocation + Self.llvmOptions + ["tests: passed", "map: " + CoverageMapper.rule]
         try CoverageHarness.run(scenario) { outcome in
             let status = outcome.run.status
             #expect(status.state == .ran)
             #expect(status.reason == nil)
             #expect(status.version == "Apple LLVM version 21.0.0 (fake)")
-            #expect(status.options == Self.invocation + Self.llvmOptions + ["tests: passed"])
+            #expect(status.options == options)
             #expect(outcome.run.identity == "swift:Apple Swift version 9.9 (fake)")
             #expect(outcome.run.executable == outcome.toolchain.swift)
 
@@ -219,7 +220,7 @@ struct CoverageRunTests {
             #expect(outcome.run.status.state == .ran)
             #expect(outcome.run.status.reason
                 == "tests failing (swift test exited 1); coverage merged from the test processes' profiles")
-            #expect(outcome.run.status.options.last == "tests: failing")
+            #expect(outcome.run.status.options.suffix(2) == ["tests: failing", "map: " + CoverageMapper.rule])
             #expect(outcome.run.profiles?.testStatus == 1)
         }
     }

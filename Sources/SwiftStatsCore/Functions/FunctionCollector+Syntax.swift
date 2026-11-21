@@ -29,6 +29,11 @@ extension FunctionCollector {
         }
     }
 
+    /// Whether `node` is an explicit accessor of a subscript.
+    static func isSubscriptAccessor(_ node: Syntax) -> Bool {
+        node.as(AccessorDeclSyntax.self)?.parent?.parent?.parent?.is(SubscriptDeclSyntax.self) == true
+    }
+
     /// The `var`/`let` declaration a binding belongs to.
     static func variable(of binding: PatternBindingSyntax) -> VariableDeclSyntax? {
         binding.parent?.parent?.as(VariableDeclSyntax.self)
