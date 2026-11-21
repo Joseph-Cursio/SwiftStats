@@ -71,14 +71,19 @@ public struct SnapshotWorkspace {
         SignalEngine.signals(of: try signalInputs(for: try store.load(id: id)), thresholds: configuration.signals)
     }
 
-    /// Scans the working tree, reading history from `history`, stores the
+    /// Scans the working tree, reading history from `history` and running
+    /// the coverage collector when `coverage` asks for it, stores the
     /// snapshot and returns it with its id.
-    public func scanWorkingTree(history: HistorySource = .automatic) throws -> (snapshot: ScannedSnapshot, id: Int64) {
+    public func scanWorkingTree(
+        history: HistorySource = .automatic,
+        coverage: Bool = false
+    ) throws -> (snapshot: ScannedSnapshot, id: Int64) {
         let snapshot = try scanner.scan(
             packageAt: root,
             configurationFile: configurationFile ?? StoreLocation.localConfiguration(packageRoot: root),
             ignoring: storeInPackage,
-            history: history
+            history: history,
+            coverage: coverage
         )
         return (snapshot, try store.save(snapshot))
     }

@@ -30,64 +30,20 @@ public struct SnapshotScanner {
         dateFormat.format(date)
     }
 
-    /// Scans the package at `root` with the configuration in
-    /// `configurationFile` (or the default). `git` and `toolchain` are read
-    /// when not given; a scan of an exported revision supplies its git state.
-    /// Changes to the files at `ignoring` (relative to `root`, such as a
-    /// store kept in the package) don't make the tree dirty. `history` says
-    /// whether and where to read the history (PRD §7.13).
-    public func scan(
-        packageAt root: URL,
-        configurationFile: URL?,
-        git: GitState? = nil,
-        ignoring: [String] = [],
-        toolchain: Toolchain? = nil,
-        date: Date = Date(),
-        history: HistorySource = .automatic
-    ) throws -> ScannedSnapshot {
-        let packageRoot = root.standardizedFileURL
-        let gitState = git ?? GitReader.read(packageRoot: packageRoot, ignoring: ignoring)
-        let scanned = try scanner.run(packageAt: packageRoot, configurationFile: configurationFile)
-        let (outcome, historyRun) = Self.addHistory(
-            to: scanned,
-            source: history.resolved(packageRoot: packageRoot, git: gitState)
-        )
-        let tools = toolchain ?? ToolchainReader.read(packageRoot: packageRoot, tools: scanner.tools)
-        let own = CollectorRunInfo(
-            name: SwiftStatsCollector.name,
-            state: .ran,
-            reason: nil,
-            version: SwiftStatsVersion.current,
-            identity: build.identity,
-            identityLabel: build.label,
-            options: SwiftStatsCollector.options(
-                configuration: outcome.configuration,
-                metrics: outcome.report.metrics
-            ),
-            durationMilliseconds: outcome.milliseconds[SwiftStatsCollector.name] ?? 0
-        )
-        let external = outcome.report.collectors.map { status in
-            status.name == HistoryCollector.name
-                ? historyRun.info(status)
-                : info(for: status, outcome: outcome, toolchain: tools)
-        }
-        return ScannedSnapshot(
-            info: SnapshotInfo(
-                package: outcome.report.package,
-                git: gitState,
-                date: Self.format(date),
-                toolchain: tools,
-                collectors: (external + [own]).sorted { $0.name < $1.name }
-            ),
-            report: outcome.report
-        )
-    }
-
     /// The snapshot's record of a collector's run other than SwiftStats' own
     /// and the history's.
-    private func info(for status: CollectorStatus, outcome: ScanOutcome, toolchain: Toolchain) -> CollectorRunInfo {
+    static func info(for status: CollectorStatus, outcome: ScanOutcome, toolchain: Toolchain) -> CollectorRunInfo {
         var identity: (identity: String, label: String?)?
-        if status.name == DependencyGraphAdapter.name {
+        if status.name == CoverageAdapter.name {
+            // The toolchain that ran the tests is the tool, named by its
+            // own `swift --version` (the swift on PATH may be swiftly's
+            // proxy, whose hash names no compiler); diff also requires
+            // `swiftstats` to match, since SwiftStats' own code maps the
+            // profiles.
+            if status.state != .skipped, let reported = outcome.identities[status.name] {
+                identity = (reported, nil)
+            }
+        } else if status.name == DependencyGraphAdapter.name {
             // The toolchain is the tool; diff also requires `swiftstats`
             // to match, since SwiftStats' own code reads the graph.
             if outcome.executables[status.name] != nil, let version = toolchain.swiftVersion {
@@ -112,6 +68,61 @@ public struct SnapshotScanner {
             identityLabel: identity?.label,
             options: status.options,
             durationMilliseconds: outcome.milliseconds[status.name] ?? 0
+        )
+    }
+
+    /// Scans the package at `root` with the configuration in
+    /// `configurationFile` (or the default). `git` and `toolchain` are read
+    /// when not given; a scan of an exported revision supplies its git state.
+    /// Changes to the files at `ignoring` (relative to `root`, such as a
+    /// store kept in the package) don't make the tree dirty. `history` says
+    /// whether and where to read the history (PRD §7.13); the coverage
+    /// collector runs only when `coverage` asks for it (M5).
+    public func scan(
+        packageAt root: URL,
+        configurationFile: URL?,
+        git: GitState? = nil,
+        ignoring: [String] = [],
+        toolchain: Toolchain? = nil,
+        date: Date = Date(),
+        history: HistorySource = .automatic,
+        coverage: Bool = false
+    ) throws -> ScannedSnapshot {
+        let packageRoot = root.standardizedFileURL
+        let gitState = git ?? GitReader.read(packageRoot: packageRoot, ignoring: ignoring)
+        let scanned = try scanner.run(packageAt: packageRoot, configurationFile: configurationFile, coverage: coverage)
+        let (outcome, historyRun) = Self.addHistory(
+            to: scanned,
+            source: history.resolved(packageRoot: packageRoot, git: gitState)
+        )
+        let tools = toolchain ?? ToolchainReader.read(packageRoot: packageRoot, tools: scanner.tools)
+        let own = CollectorRunInfo(
+            name: SwiftStatsCollector.name,
+            state: .ran,
+            reason: nil,
+            version: SwiftStatsVersion.current,
+            identity: build.identity,
+            identityLabel: build.label,
+            options: SwiftStatsCollector.options(
+                configuration: outcome.configuration,
+                metrics: outcome.report.metrics
+            ),
+            durationMilliseconds: outcome.milliseconds[SwiftStatsCollector.name] ?? 0
+        )
+        let external = outcome.report.collectors.map { status in
+            status.name == HistoryCollector.name
+                ? historyRun.info(status)
+                : Self.info(for: status, outcome: outcome, toolchain: tools)
+        }
+        return ScannedSnapshot(
+            info: SnapshotInfo(
+                package: outcome.report.package,
+                git: gitState,
+                date: Self.format(date),
+                toolchain: tools,
+                collectors: (external + [own]).sorted { $0.name < $1.name }
+            ),
+            report: outcome.report
         )
     }
 }

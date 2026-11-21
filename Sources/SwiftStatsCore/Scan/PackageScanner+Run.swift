@@ -2,11 +2,11 @@
 //  PackageScanner+Run.swift
 //  SwiftStatsCore
 //
-//  The scan itself (PRD M0–M2, M4): describe the package, start
-//  SwiftInferProperties, measure its files, infer side effects, run the
-//  other external collectors, SwiftCloneDetector among them, attach the
-//  suggestions and clones and assemble the report, timing each collector
-//  for the snapshot (PRD §6.2).
+//  The scan itself (PRD M0–M2, M4, M5): describe the package, start
+//  SwiftInferProperties and, when asked for, the coverage run, measure its
+//  files, infer side effects, run the other external collectors,
+//  SwiftCloneDetector among them, attach the suggestions and clones and
+//  assemble the report, timing each collector for the snapshot (PRD §6.2).
 //
 
 import Foundation
@@ -53,8 +53,9 @@ extension PackageScanner {
         UnbuiltTests.warnings(root: root, compiled: Set(TargetResolver.resolve(package).flatMap(\.files)))
     }
 
-    /// The scan of `packageRoot`, with each collector's run time and binary.
-    func run(packageAt packageRoot: URL, configurationFile: URL?) throws -> ScanOutcome {
+    /// The scan of `packageRoot`, with each collector's run time and binary;
+    /// the coverage collector runs only when `coverage` asks for it.
+    func run(packageAt packageRoot: URL, configurationFile: URL?, coverage: Bool) throws -> ScanOutcome {
         let root = packageRoot.standardizedFileURL
         guard FileManager.default.fileExists(atPath: root.appendingPathComponent("Package.swift").path) else {
             throw ScanError.notAPackage(root.path)
@@ -62,7 +63,7 @@ extension PackageScanner {
         let configuration = try SwiftStatsConfiguration.load(configurationFile, root: root)
         let package = try describer.describePackage(at: root)
         let (targets, excludedFiles) = Self.excluding(TargetResolver.resolve(package), by: configuration)
-        let pending = startProperties(root: root, targets: targets, configuration: configuration)
+        let pending = startBackground(root: root, targets: targets, configuration: configuration, coverage: coverage)
         let scan = Self.measured(targets, root: root, configuration: configuration)
         let (measured, effects) = (scan.measurements, scan.effects)
         let external = externalRuns(

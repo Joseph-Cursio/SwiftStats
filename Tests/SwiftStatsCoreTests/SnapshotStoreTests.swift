@@ -48,7 +48,7 @@ struct SnapshotStoreTests {
         #expect(production.first { $0.metric == "findings.swiftstats.precondition" }?.collector == "swiftstats")
         #expect(production.first { $0.metric == "effects.purity.pure" }?.collector == "swifteffectinference")
         let collectorNames = [
-            "dependencies", "history", "swiftclonedetector", "swifteffectinference", "swiftinferproperties",
+            "coverage", "dependencies", "history", "swiftclonedetector", "swifteffectinference", "swiftinferproperties",
             "swiftlint", "swiftprojectlint", "swiftstats"
         ]
         #expect(snapshot.info.collectors.map(\.name) == collectorNames)

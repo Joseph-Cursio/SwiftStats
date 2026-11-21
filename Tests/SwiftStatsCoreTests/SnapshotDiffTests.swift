@@ -45,9 +45,10 @@ struct SnapshotDiffTests {
         #expect(diff.families.isEmpty && diff.functions.isEmpty && diff.rollups.isEmpty)
         let outcomes = Dictionary(uniqueKeysWithValues: diff.collectors.map { ($0.name, $0.outcome) })
         #expect(outcomes == [
-            "dependencies": .notCollected, "history": .notCollected, "swiftclonedetector": .notCollected,
-            "swifteffectinference": .compared, "swiftinferproperties": .notCollected,
-            "swiftlint": .notCollected, "swiftprojectlint": .notCollected, "swiftstats": .compared
+            "coverage": .notCollected, "dependencies": .notCollected, "history": .notCollected,
+            "swiftclonedetector": .notCollected, "swifteffectinference": .compared,
+            "swiftinferproperties": .notCollected, "swiftlint": .notCollected, "swiftprojectlint": .notCollected,
+            "swiftstats": .compared
         ])
         #expect(MarkdownDiff.render(diff).contains("No changes."))
     }

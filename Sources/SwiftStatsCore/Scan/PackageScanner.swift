@@ -267,18 +267,21 @@ public struct PackageScanner {
     }
 
     /// Scans the package rooted at `packageRoot`, with the `.swiftstats.yml`
-    /// in its root when there is one.
-    public func scan(packageAt packageRoot: URL) throws -> ScanReport {
+    /// in its root when there is one; the coverage collector runs only when
+    /// `coverage` asks for it (`scan --coverage`).
+    public func scan(packageAt packageRoot: URL, coverage: Bool = false) throws -> ScanReport {
         let file = packageRoot.standardizedFileURL.appendingPathComponent(SwiftStatsConfiguration.fileName)
         return try scan(
             packageAt: packageRoot,
-            configurationFile: FileManager.default.fileExists(atPath: file.path) ? file : nil
+            configurationFile: FileManager.default.fileExists(atPath: file.path) ? file : nil,
+            coverage: coverage
         )
     }
 
     /// Scans the package rooted at `packageRoot` with the configuration in
-    /// `configurationFile`, or the default configuration when it is nil.
-    public func scan(packageAt packageRoot: URL, configurationFile: URL?) throws -> ScanReport {
-        try run(packageAt: packageRoot, configurationFile: configurationFile).report
+    /// `configurationFile`, or the default configuration when it is nil;
+    /// the coverage collector runs only when `coverage` asks for it.
+    public func scan(packageAt packageRoot: URL, configurationFile: URL?, coverage: Bool = false) throws -> ScanReport {
+        try run(packageAt: packageRoot, configurationFile: configurationFile, coverage: coverage).report
     }
 }

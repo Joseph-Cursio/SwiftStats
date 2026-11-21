@@ -10,6 +10,7 @@ enum Comparability {
     /// Collectors whose results SwiftStats' own code reads or maps, so they
     /// compare only when `swiftstats` does, with the reason they don't.
     private static let needingOwnBuild = [
+        CoverageAdapter.name: "SwiftStats' build differs, and its own code maps the coverage",
         DependencyGraphAdapter.name: "SwiftStats' build differs, and its own code reads the graph",
         HistoryCollector.name: "SwiftStats' build differs, and its own code reads the history",
         EffectCollector.name: "SwiftStats' build differs, and its own code maps the side effects"

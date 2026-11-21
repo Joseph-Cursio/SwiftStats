@@ -1,6 +1,14 @@
 {
   "collectors" : [
     {
+      "name" : "coverage",
+      "options" : [
+
+      ],
+      "reason" : "not requested; scan --coverage runs it",
+      "state" : "skipped"
+    },
+    {
       "name" : "dependencies",
       "options" : [
 
@@ -2208,7 +2216,7 @@
       }
     }
   ],
-  "schemaVersion" : 6,
+  "schemaVersion" : 7,
   "sitrep" : {
     "imports" : [
       {
