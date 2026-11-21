@@ -10,13 +10,18 @@
 //  fixed: every Nth commit counts from the first commit holding the
 //  package, and a week's pick is its latest commit by committer time in
 //  UTC, so a later run only adds new points. A snapshot that holds results
-//  a backfill doesn't collect (history, tools, the dependency graph) is
-//  never replaced.
+//  a backfill doesn't collect (history, coverage, tools, the dependency
+//  graph) is never replaced; one holding history or coverage, which a
+//  backfill never collects, isn't even rescanned. Snapshots are stored as
+//  every scan is (`save(_:dropCoverage:)`).
 //
 
 import Foundation
 
 extension SnapshotWorkspace {
+    /// Collectors whose results a backfill never collects: it reads no
+    /// history and never runs the tests.
+    private static let neverCollected: Set<String> = [HistoryCollector.name, CoverageAdapter.name]
     /// Collectors whose results a backfill without tools doesn't collect.
     private static let toolCollectors: Set<String> = [
         SwiftLintAdapter.name, SwiftProjectLintAdapter.name, SwiftInferPropertiesAdapter.name,
@@ -139,7 +144,8 @@ extension SnapshotWorkspace {
                 }
                 existingRan = Set(info.collectors.filter { $0.state == .ran }.map(\.name))
                 let held = existingRan.filter { name in
-                    name == HistoryCollector.name || (plan.withTools == false && Self.toolCollectors.contains(name))
+                    Self.neverCollected.contains(name)
+                        || (plan.withTools == false && Self.toolCollectors.contains(name))
                 }
                 if held.isEmpty == false {
                     return Self.kept(commit, holding: held)
@@ -156,7 +162,7 @@ extension SnapshotWorkspace {
             guard lost.isEmpty else {
                 return Self.kept(commit, holding: lost)
             }
-            try store.save(snapshot)
+            try save(snapshot, dropCoverage: false)
             return BackfillStep(commit: commit, action: .scanned, note: note)
         } catch {
             return BackfillStep(commit: commit, action: .failed, note: String(describing: error))

@@ -2,13 +2,18 @@
 //  StoreError.swift
 //  SwiftStatsCore
 //
-//  Why the snapshot store couldn't do what was asked (PRD §9).
+//  Why the snapshot store couldn't do what was asked (PRD §9), or wouldn't:
+//  a scan may not replace coverage it can't carry (M5).
 //
 
 /// A snapshot store failure.
 public enum StoreError: Error, CustomStringConvertible, Equatable {
     /// A stored report didn't decompress to its recorded length.
     case corruptReport(String)
+    /// The snapshot a scan would replace holds coverage, collected at
+    /// `collectedAt`, that the scan didn't collect and can't carry, for
+    /// `reason` (M5); `snapshot` names the snapshot.
+    case coverageNotKept(snapshot: String, collectedAt: String, reason: String)
     /// The store holds migrations this build doesn't know.
     case newerStore(String)
     /// No snapshot matched.
@@ -30,6 +35,10 @@ public enum StoreError: Error, CustomStringConvertible, Equatable {
 
         case .corruptReport(let reason):
             "a stored report is damaged: \(reason)"
+
+        case let .coverageNotKept(snapshot, collectedAt, reason):
+            "the snapshot of \(snapshot) holds coverage from \(collectedAt) that this scan can't keep (\(reason)); "
+                + "run scan --coverage to collect it again, or --drop-coverage to replace it"
 
         case .noSnapshot(let what):
             "no snapshot of \(what); run `swiftstats scan` first"

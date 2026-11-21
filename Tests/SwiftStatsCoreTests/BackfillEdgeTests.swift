@@ -181,6 +181,40 @@ struct BackfillEdgeTests {
             == id)
     }
 
+    @Test("--rerun, even with tools, keeps a snapshot holding coverage without rescanning it, history or not")
+    func rerunKeepsHeldCoverage() throws {
+        let repository = try HistoryRepository()
+        defer { repository.remove() }
+        try repository.write(["Sources/Lib/One.swift": Self.one(1)])
+        try repository.commit("One", day: 0)
+        let workspace = try repository.workspace()
+        let plain = try workspace.scanWorkingTree(history: .skipped("test")).snapshot
+        let covered = CoverageSnapshots.replacing(
+            plain,
+            git: plain.info.git,
+            coverage: try CoverageSamples.stored(),
+            run: CoverageSnapshots.ran(options: ["map: " + CoverageMapper.rule])
+        )
+        let id = try workspace.save(covered, dropCoverage: false).id
+        // Fails any export scan, which would make the step fail, not keep it.
+        let other = try SnapshotWorkspace(
+            packageRoot: repository.root,
+            configurationFile: nil,
+            storeOverride: nil,
+            build: SwiftStatsBuild(identity: "inputs:other", label: nil),
+            describer: RootOnlyDescriber(root: repository.root),
+            tools: SnapshotHarness.noTools
+        )
+
+        let steps = try Self.backfill(other, Self.every(1, rerun: true, withTools: true))
+
+        #expect(steps.map(\.action) == [.kept])
+        #expect(steps.first?.note == "its snapshot holds coverage; rescan it with `swiftstats scan`")
+        #expect(try other.store.snapshotID(package: "Probe", packagePath: "", commit: steps[0].commit, isDirty: false)
+            == id)
+        #expect(try other.store.load(id: id).coverage?.report == covered.report.coverage)
+    }
+
     @Test("a tool metric doesn't break between snapshots where the tool ran on neither side")
     func toolMetricWithoutTool() throws {
         let repository = try HistoryRepository()

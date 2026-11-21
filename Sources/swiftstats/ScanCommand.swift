@@ -22,7 +22,10 @@ struct ScanCommand: ParsableCommand {
         `swift package show-dependencies`, run only when the package's dependencies are already resolved. \
         --coverage also builds and runs the package's tests with code coverage, in .swiftstats/coverage-build, \
         with the toolchain of the swift on PATH or at collectors.coverage.path; collectors.coverage.arguments \
-        may add --skip <regex> pairs to swift test.
+        may add --skip <regex> pairs to swift test. A scan without --coverage, or whose coverage run fails, keeps \
+        the coverage of the snapshot it replaces when the tree, the records and the mapping rule are the same, \
+        and otherwise stops without storing anything; --drop-coverage replaces the snapshot without its coverage \
+        instead.
         """
     )
 
@@ -44,6 +47,9 @@ struct ScanCommand: ParsableCommand {
     @Flag(help: "Also build and run the package's tests with code coverage (minutes on a real package).")
     var coverage = false
 
+    @Flag(help: "Replace a snapshot holding coverage this scan can't keep, dropping the coverage.")
+    var dropCoverage = false
+
     @OptionGroup var options: PackageOptions
 
     func run() throws {
@@ -61,7 +67,11 @@ struct ScanCommand: ParsableCommand {
             } else {
                 let workspace = try options.workspace(path: path)
                 let history: HistorySource = noHistory ? .skipped("--no-history") : .automatic
-                let (snapshot, _) = try workspace.scanWorkingTree(history: history, coverage: coverage)
+                let (snapshot, _) = try workspace.scanWorkingTree(
+                    history: history,
+                    coverage: coverage,
+                    dropCoverage: dropCoverage
+                )
                 report = snapshot.report
                 FileHandle.standardError.write(Data((summary(snapshot.info, store: workspace.store.url) + "\n").utf8))
             }

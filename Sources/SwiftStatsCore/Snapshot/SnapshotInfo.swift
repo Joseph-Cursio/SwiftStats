@@ -27,4 +27,15 @@ public struct SnapshotInfo: Codable, Hashable, Sendable {
         self.toolchain = toolchain
         self.collectors = collectors
     }
+
+    /// The metadata with `run` replacing the run of its collector.
+    func with(run: CollectorRunInfo) -> Self {
+        Self(
+            package: package,
+            git: git,
+            date: date,
+            toolchain: toolchain,
+            collectors: (collectors.filter { $0.name != run.name } + [run]).sorted { $0.name < $1.name }
+        )
+    }
 }

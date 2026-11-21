@@ -15,6 +15,16 @@
 import Foundation
 
 extension PackageScanner {
+    /// The warning when the unmapped entries' names couldn't be demangled.
+    static let undemangledWarning = ScanWarning(
+        file: nil,
+        message: "coverage: `swift demangle` failed, so unmapped entries are listed without demangled names"
+    )
+
+    /// The warnings mapping coverage can give, which describe the coverage
+    /// and so go with it when a rescan carries it (`CoverageCarry`).
+    static let coverageMappingWarnings: Set<ScanWarning> = [undemangledWarning]
+
     /// `run`'s export mapped onto `measured`, the package at `root` with
     /// `targets` and `configuration`, as the store's rows hold it; nil
     /// unless it ran. The warning says when the unmapped entries' names
@@ -43,10 +53,7 @@ extension PackageScanner {
             do {
                 return try CoverageDemangler.demangled(names, swift: swift, root: root)
             } catch {
-                warnings.append(ScanWarning(
-                    file: nil,
-                    message: "coverage: `swift demangle` failed, so unmapped entries are listed without demangled names"
-                ))
+                warnings.append(Self.undemangledWarning)
                 return [:]
             }
         }

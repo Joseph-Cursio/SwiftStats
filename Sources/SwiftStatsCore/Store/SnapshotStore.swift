@@ -243,6 +243,12 @@ public struct SnapshotStore: Sendable {
         try queue.read { database in try Self.snapshot(id: id, in: database) }
     }
 
+    /// The coverage snapshot `id` holds, for a rescan that may carry it
+    /// (`SnapshotStore+Coverage`); nil when it holds none.
+    func heldCoverage(id: Int64) throws -> HeldCoverage? {
+        try queue.read { database in try Self.heldCoverage(id: id, in: database) }
+    }
+
     /// Snapshot `id`'s scan report. One written with another report schema
     /// can't be read by this build, and the error says to rescan.
     public func report(id: Int64) throws -> ScanReport {

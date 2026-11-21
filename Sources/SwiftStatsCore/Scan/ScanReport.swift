@@ -73,7 +73,36 @@ public struct ScanReport: Codable, Hashable, Sendable {
     /// The report with `history` attached and the history collector's
     /// status replaced by `status`.
     func with(history: HistoryReport?, status: CollectorStatus) -> Self {
-        var report = Self(
+        var report = replacing(status, rollups: rollups, coverage: coverage, warnings: warnings)
+        report.history = history
+        return report
+    }
+
+    /// The report with `coverage` attached, the coverage collector's status
+    /// replaced by `status`, the roll-ups' coverage rebuilt from it and
+    /// `added` among its warnings, once each (M5): how a scan that didn't
+    /// run the coverage collector carries coverage an earlier scan of the
+    /// same tree collected, with the warnings mapping it gave.
+    func with(coverage: CoverageReport, status: CollectorStatus, warnings added: [ScanWarning]) -> Self {
+        let plain = rollups.map { $0.with(coverage: nil) }
+        let built = CoverageRollupBuilder(targets: targets, records: records, coverage: coverage).rollups(plain)
+        let merged = (warnings + added.filter { warnings.contains($0) == false })
+            .sorted(by: PackageScanner.warningOrder)
+        var report = replacing(status, rollups: built, coverage: coverage, warnings: merged)
+        report.history = history
+        return report
+    }
+
+    /// The report with `status` replacing its collector's status, and
+    /// `rollups`, `coverage` and `warnings` replacing its own, and no
+    /// history.
+    private func replacing(
+        _ status: CollectorStatus,
+        rollups: [Rollup],
+        coverage: CoverageReport?,
+        warnings: [ScanWarning]
+    ) -> Self {
+        Self(
             schemaVersion: schemaVersion,
             tool: tool,
             metrics: metrics,
@@ -96,7 +125,5 @@ public struct ScanReport: Codable, Hashable, Sendable {
             laws: laws,
             coverage: coverage
         )
-        report.history = history
-        return report
     }
 }

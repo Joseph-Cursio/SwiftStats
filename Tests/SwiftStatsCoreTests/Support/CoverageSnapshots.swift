@@ -46,6 +46,19 @@ enum CoverageSnapshots {
         coverage: CoverageReport?,
         run: CollectorRunInfo
     ) -> ScannedSnapshot {
+        replacing(snapshot, git: git, coverage: coverage, run: run, warnings: [])
+    }
+
+    /// `snapshot` at `git`, with `coverage` as its coverage, `run` as its
+    /// coverage run and `warnings` added to its own, and its roll-ups'
+    /// coverage rebuilt from them.
+    static func replacing(
+        _ snapshot: ScannedSnapshot,
+        git: GitState,
+        coverage: CoverageReport?,
+        run: CollectorRunInfo,
+        warnings: [ScanWarning]
+    ) -> ScannedSnapshot {
         let old = snapshot.report
         let plain = old.rollups.map { $0.with(coverage: nil) }
         let rollups = coverage.map { report in
@@ -74,7 +87,7 @@ enum CoverageSnapshots {
             findings: old.findings,
             tests: old.tests,
             dependencies: old.dependencies,
-            warnings: old.warnings,
+            warnings: (old.warnings + warnings).sorted(by: PackageScanner.warningOrder),
             effects: old.effects,
             properties: old.properties,
             clones: old.clones,

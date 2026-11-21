@@ -103,6 +103,25 @@ enum CoverageFixture {
     }
 
     /// A temporary copy of the fixture whose configuration points the
+    /// coverage collector at `toolchain`, committed as the first commit of
+    /// a new git repository, with `.build/` ignored; removed again if it
+    /// can't be made.
+    static func repository(toolchain: FakeToolchain) throws -> TemporaryPackage {
+        let package = try copy(toolchain: toolchain)
+        do {
+            let ignore = package.root.appendingPathComponent(".gitignore")
+            try ".build/\n".write(to: ignore, atomically: true, encoding: .utf8)
+            try SnapshotHarness.runGit(["init", "--quiet", "--initial-branch=main"], in: package.root)
+            try SnapshotHarness.runGit(["add", "--all"], in: package.root)
+            try SnapshotHarness.runGit(["commit", "--quiet", "--message", "Fixture"], in: package.root)
+        } catch {
+            package.remove()
+            throw error
+        }
+        return package
+    }
+
+    /// A temporary copy of the fixture whose configuration points the
     /// coverage collector at `toolchain`; removed again if it can't be made.
     private static func copy(toolchain: FakeToolchain) throws -> TemporaryPackage {
         let package = try TemporaryPackage([:], targets: targets)
