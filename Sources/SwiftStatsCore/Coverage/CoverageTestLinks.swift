@@ -4,7 +4,8 @@
 //
 //  Tests per public function (M5, PRD §7.8), a heuristic labelled as one:
 //  a test counts for a public function when its target's own test process
-//  ran the function and its body names it. A public function is a
+//  ran the function and the test names it (in its body, its parameters
+//  or its `@Test` arguments). A public function is a
 //  production, non-generated `public` or `open` function, initialiser or
 //  accessor, or a subscript with no accessor records (one with them counts
 //  through its accessors). What naming means depends on the function
@@ -46,7 +47,7 @@ struct CoverageTestLinks {
     }
 
     /// The rule the report labels the counts with.
-    static let rule = "heuristic: the test's target ran it and its body names it"
+    static let rule = "heuristic: the test's target ran it and the test names it"
     /// The kinds of record that can be public functions.
     private static let kinds: Set<FunctionKind> = [.function, .initializer, .accessor, .subscriptDeclaration]
 

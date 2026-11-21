@@ -36,7 +36,7 @@ public struct CoverageRecord: Codable, Hashable, Sendable {
     /// other record.
     public let link: CoverageLink?
     /// The tests linked to a public function: those whose target ran it
-    /// (`testTargets`) and whose body names it by its `link` rule; nil
+    /// (`testTargets`) and that name it by its `link` rule; nil
     /// without data, for a witness, and for any other record.
     public let linkedTests: Int?
 

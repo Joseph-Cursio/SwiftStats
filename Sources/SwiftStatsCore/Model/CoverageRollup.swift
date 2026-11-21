@@ -59,7 +59,7 @@ public struct CoverageRollup: Codable, Hashable, Sendable {
     }
 
     /// The scope's public functions by how their tests are linked (a
-    /// heuristic: the test's target ran it and its body names it).
+    /// heuristic: the test's target ran it and the test names it).
     public struct PublicFunctions: Codable, Hashable, Sendable {
         /// Public functions: production, non-generated `public` or `open`
         /// functions, initialisers and accessors, and subscripts that are

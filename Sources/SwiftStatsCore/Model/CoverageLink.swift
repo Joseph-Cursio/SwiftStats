@@ -4,8 +4,9 @@
 //
 //  How the tests of a public function are found (M5, PRD §7.8 tests per
 //  public function), a heuristic labelled as one: a test counts when its
-//  target's own test process ran the function and its body names it, by
-//  the rule of the function's kind. Operators are never names.
+//  target's own test process ran the function and the test names it (in
+//  its body, its parameters or its `@Test` arguments), by the rule of the
+//  function's kind. Operators are never names.
 //
 
 /// The link rule a public function's tests are counted by.
@@ -14,12 +15,12 @@ public enum CoverageLink: String, Codable, CaseIterable, Sendable {
     /// the body names the type, or the test's file is named for the
     /// subscript's file or type.
     case `subscript`
-    /// A member of a protocol extension: the body names it, the weaker rule,
+    /// A member of a protocol extension: the test names it, the weaker rule,
     /// so these are counted apart; for an initialiser or a subscript, whose
     /// names no body writes, the body names the protocol, or the test's
     /// file is named for the member's file or protocol.
     case extensionMember = "extension"
-    /// A free function: the body names it.
+    /// A free function: the test names it.
     case function
     /// A member of a concrete type (a function, an accessor, an
     /// initialiser): the body names the member (its property's name for an

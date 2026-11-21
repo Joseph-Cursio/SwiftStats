@@ -3,7 +3,7 @@ import Foundation
 import Testing
 
 /// Tests per public function (M5), a heuristic: a test counts when its
-/// target's own test process ran the function and its body names it, by
+/// target's own test process ran the function and the test names it, by
 /// the rule of the function's kind. Checked on a small package with two
 /// libraries, two test targets and a hand-written export, and on the Coverage fixture's
 /// recorded real export.
