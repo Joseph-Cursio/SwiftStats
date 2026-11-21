@@ -73,9 +73,11 @@ else
 fi
 
 build="$package/.swiftstats/coverage-build"
-bin="$("$toolchain/swift" build --show-bin-path --scratch-path "$build" --enable-code-coverage)"
-"$toolchain/swift" build --build-tests --enable-code-coverage --scratch-path "$build"
-"$toolchain/swift" test --skip-build --enable-code-coverage --scratch-path "$build" || true
+# Swift Build's layout, one bundle per test target, as the collector asks
+# for it whatever the toolchain's default.
+bin="$("$toolchain/swift" build --show-bin-path --build-system swiftbuild --enable-code-coverage --scratch-path "$build")"
+"$toolchain/swift" build --build-tests --build-system swiftbuild --enable-code-coverage --scratch-path "$build"
+"$toolchain/swift" test --skip-build --build-system swiftbuild --enable-code-coverage --scratch-path "$build" || true
 
 redact() {
     sed "s|$build|@BUILD@|g; s|$package|@ROOT@|g"

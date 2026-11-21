@@ -6,9 +6,22 @@
 //  build directory, clear what an earlier run left there (its profiles,
 //  whose stale copies a failed build would otherwise leave to be read, and
 //  its test bundles, of which a removed test target's would stay), build
-//  the tests with coverage, run them on that build, accepting every exit
-//  status, then merge each bundle's profiles, tie them to their bundle and
-//  export every bundle over all of them.
+//  the tests with coverage, check that each bundle is a test target, as
+//  the toolchain's own `swift package describe` gives them (the manifest
+//  the build read, which may not be the one the scan's `swift` read: a
+//  `Package@swift-<version>.swift` or `#if compiler(…)` can add a test
+//  target), run them on that build, accepting every exit status, then
+//  merge each bundle's profiles, tie them to their bundle and export every
+//  bundle over all of them.
+//  Every SwiftPM command passes `--build-system swiftbuild`, so the layout
+//  is Swift Build's, one bundle per test target, whatever the toolchain's
+//  default (native up to Swift 6.3, which makes one merged bundle); a
+//  toolchain that doesn't accept it fails the run, saying so. SwiftPM
+//  resolves dependencies in the package root whatever the scratch path,
+//  writing `Package.resolved`, so the run keeps that file's bytes (or its
+//  absence) before the first command and puts them back when it ends,
+//  whether it succeeds or fails, and `ScratchRegistry` does on an
+//  interruption.
 //
 
 import Foundation
@@ -24,6 +37,10 @@ struct CoverageSession {
     private static let profdataExtension = "profdata"
     /// The extension of a test bundle.
     private static let bundleExtension = "xctest"
+    /// The build system every `swift` command of the run asks for.
+    static let buildSystemFlags = ["--build-system", "swiftbuild"]
+    /// The lockfile SwiftPM writes in the package root.
+    static let lockfileName = "Package.resolved"
 
     /// The toolchain's tools.
     let toolchain: CoverageToolchain
@@ -34,7 +51,7 @@ struct CoverageSession {
 
     /// The flags every `swift` command of the run passes for its build.
     private var buildFlags: [String] {
-        ["--enable-code-coverage", "--scratch-path", command.build.path]
+        Self.buildSystemFlags + ["--enable-code-coverage", "--scratch-path", command.build.path]
     }
 
     /// The test bundles in `bin`, each with its executable, sorted by
@@ -69,13 +86,39 @@ struct CoverageSession {
         }
     }
 
-    /// Runs the tests with coverage and returns their profiles' data.
+    /// Runs the tests with coverage and returns their profiles' data,
+    /// leaving the package's `Package.resolved` as it found it.
     func collect() throws -> CoverageProfiles {
+        let lockfile: PreservedFile
+        do {
+            lockfile = try PreservedFile(url: command.root.appendingPathComponent(Self.lockfileName))
+        } catch {
+            let reason = SwiftInferTargetRun.reason(for: error, replacing: command.replacements)
+            throw CoverageFailure(
+                description: "could not read \(Self.lockfileName) to put it back afterwards: \(reason)"
+            )
+        }
+        ScratchRegistry.shared.preserve(lockfile)
+        let collected = Result { try collectProfiles() }
+        do {
+            try ScratchRegistry.shared.putBack(lockfile)
+        } catch {
+            let reason = SwiftInferTargetRun.reason(for: error, replacing: command.replacements)
+            throw CoverageFailure(description: "could not put \(Self.lockfileName) back as it was: \(reason)")
+        }
+        return try collected.get()
+    }
+
+    /// Runs the tests with coverage and returns their profiles' data.
+    private func collectProfiles() throws -> CoverageProfiles {
         let bin = try binPath()
         try clearStale(bin: bin)
         let build = ["build", "--build-tests"] + buildFlags
         _ = try command.run(toolchain.swift, build, display: command.display(toolchain.swift, build))
         let bundles = try Self.bundles(in: bin)
+        if let unknown = CoverageBundles.unknownBundles(bundles.map(\.name), testTargets: try testTargets()) {
+            throw CoverageFailure(description: unknown)
+        }
         let test = ["test", "--skip-build"] + buildFlags + arguments
         let testDisplay = command.display(toolchain.swift, test)
         let tested = try command.runToEnd(toolchain.swift, test, display: testDisplay)
@@ -109,11 +152,23 @@ struct CoverageSession {
     }
 
     /// The bin path of the build directory, as `swift build --show-bin-path`
-    /// prints it.
+    /// prints it; a failure that says so when the toolchain's `swift`
+    /// doesn't accept `--build-system swiftbuild`.
     private func binPath() throws -> URL {
         let invocation = ["build", "--show-bin-path"] + buildFlags
         let display = command.display(toolchain.swift, invocation)
-        let output = try command.run(toolchain.swift, invocation, display: display)
+        let output = try command.runToEnd(toolchain.swift, invocation, display: display)
+        guard output.status == 0 else {
+            let failure = command.failure(display, output: output)
+            guard output.errorText.contains(Self.buildSystemFlags[0]) else {
+                throw failure
+            }
+            throw CoverageFailure(
+                description: "this toolchain's swift doesn't accept `\(Self.buildSystemFlags.joined(separator: " "))`, "
+                    + "and coverage needs Swift Build's test bundles, one per test target (Swift 6.2 or later): "
+                    + failure.description
+            )
+        }
         let line = (String(bytes: output.output, encoding: .utf8) ?? "")
             .split(whereSeparator: \.isNewline)
             .map { $0.trimmingCharacters(in: .whitespaces) }
@@ -122,6 +177,25 @@ struct CoverageSession {
             throw CoverageFailure(description: "`\(display)` printed no path")
         }
         return URL(fileURLWithPath: line)
+    }
+
+    /// The package's test targets, by name, as the toolchain's own
+    /// `swift package describe` gives them, its caches in the build
+    /// directory.
+    private func testTargets() throws -> [String] {
+        let invocation = ["package", "--scratch-path", command.build.path, "describe", "--type", "json"]
+        let display = command.display(toolchain.swift, invocation)
+        let output = try command.run(toolchain.swift, invocation, display: display)
+        do {
+            return try JSONDecoder().decode(DescribedPackage.self, from: output.output).targets
+                .filter { $0.type == "test" }
+                .map(\.name)
+        } catch {
+            let reason = SwiftInferTargetRun.reason(for: error, replacing: command.replacements)
+            throw CoverageFailure(
+                description: "`\(display)` printed no package description SwiftStats reads: \(reason)"
+            )
+        }
     }
 
     /// Removes the profiles and test bundles an earlier run left in `bin`,

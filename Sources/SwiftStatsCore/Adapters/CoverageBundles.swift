@@ -11,7 +11,12 @@
 //  (the runner runs only in the Swift Testing process, so a group whose
 //  Swift Testing process crashed has none); else elimination, one group
 //  and one bundle left. A bundle is named by its test target, its module
-//  by the target's c99 name, so both rules compare the module name.
+//  by the target's c99 name, so both rules compare the module name. That
+//  holds only for Swift Build's layout, one bundle per test target, which
+//  the run asks for (`--build-system swiftbuild`); SwiftPM's native build
+//  system makes one `<Package>PackageTests` bundle for every test target,
+//  whose counts no test target's tests could be linked to, so a bundle
+//  that is no test target of the package fails the run.
 //
 
 /// Ties profile groups to test bundles and checks them.
@@ -58,6 +63,21 @@ enum CoverageBundles {
         let before = demangled[..<range.lowerBound]
         let module = before.reversed().prefix { $0.isLetter || $0.isNumber || $0 == "_" }
         return module.isEmpty ? nil : String(module.reversed())
+    }
+
+    /// Why `bundles` can't be tied to the package's tests, or nil when each
+    /// is one of `testTargets`, by module name.
+    static func unknownBundles(_ bundles: [String], testTargets: [String]) -> String? {
+        let modules = Set(testTargets.map(moduleName))
+        let unknown = bundles.filter { modules.contains(moduleName(of: $0)) == false }.sorted()
+        guard let last = unknown.last else {
+            return nil
+        }
+        let named = unknown.count == 1
+            ? "\(last).xctest, which is no test target of the package"
+            : unknown.dropLast().map { "\($0).xctest" }.joined(separator: ", ")
+                + " and \(last).xctest, which are no test targets of the package"
+        return "coverage needs Swift Build's test bundles, one per test target, but the build made " + named
     }
 
     /// The bundle each group belongs to, by signature, among `bundles`;

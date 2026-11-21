@@ -102,7 +102,7 @@ struct CoverageFailureTests {
             == "the Swift Testing test process for ProbeTests wrote no profile (it crashed or was killed)")
     }
 
-    @Test("a crashed XCTest process is named by its bundle, found by the runner its Swift Testing process ran")
+    @Test("a crashed XCTest process is named by its bundle, found from what its Swift Testing process ran")
     func xcTestCrash() throws {
         let scenario = try Self.without("XCTest", of: "ProbeTests")
         #expect(try CoverageHarness.failure(scenario)
@@ -160,7 +160,11 @@ struct CoverageFailureTests {
             ("export", "`llvm-cov export -instr-profile <build>/swiftstats.profdata (2 bundles)` exited with status 1"),
             ("demangle", "`swift demangle --compact (4 names)` exited with status 1: error: unable to demangle"),
             ("print-target-info", "`swift -print-target-info` exited with status 1: error: unable to load the target"),
-            ("show-bin-path", "`swift build --show-bin-path --enable-code-coverage --scratch-path <build>` exited")
+            (
+                "show-bin-path",
+                "`swift build --show-bin-path --build-system swiftbuild --enable-code-coverage --scratch-path <build>` "
+                    + "exited"
+            )
         ]
     )
     func toolFailure(step: String, expected: String) throws {
@@ -182,7 +186,8 @@ struct CoverageFailureTests {
             ("silent xcrun", "`xcrun --find llvm-profdata` printed no path"),
             (
                 "silent bin path",
-                "`swift build --show-bin-path --enable-code-coverage --scratch-path <build>` printed no path"
+                "`swift build --show-bin-path --build-system swiftbuild --enable-code-coverage --scratch-path <build>` "
+                    + "printed no path"
             ),
             ("version", "`swift --version` exited with status 1: error: unable to print the version")
         ]
@@ -228,7 +233,12 @@ struct CoverageFailureTests {
         let missing = FileManager.default.temporaryDirectory
             .appendingPathComponent("NoToolchain-\(UUID().uuidString)/bin/swift")
 
-        let run = CoverageAdapter.run(swift: missing, root: package.root, arguments: [], locator: .nowhere)
+        let run = CoverageAdapter.run(
+            swift: missing,
+            root: package.root,
+            arguments: [],
+            locator: .nowhere
+        )
 
         #expect(run.status.state == .failed)
         let reason = try #require(run.status.reason)

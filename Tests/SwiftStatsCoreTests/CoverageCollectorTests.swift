@@ -125,6 +125,37 @@ struct CoverageCollectorTests {
         #expect(toolchain.calls(of: "proxy") == ["-print-target-info"])
     }
 
+    @Test("""
+        the coverage run checks its bundles against the test targets its own toolchain's swift package describe \
+        lists, not those of the scan's description, which another toolchain may have read differently
+        """)
+    func ownDescription() throws {
+        // The scan's description lists only LibTests; the coverage
+        // toolchain's lists the recorded bundles' test targets, as a
+        // `Package@swift-<version>.swift` only it reads could.
+        let toolchain = try FakeToolchain.make(try FakeToolchain.recorded())
+        defer { toolchain.remove() }
+
+        let status = try Self.status(
+            [
+                ".swiftstats.yml": "collectors:\n  coverage:\n    path: \(toolchain.proxy.path)\n",
+                "Tests/LibTests/LibTests.swift": "import Testing\n"
+            ],
+            tools: SnapshotHarness.noTools,
+            toolSkipReason: nil,
+            coverage: true
+        )
+
+        #expect(status?.state == .ran)
+        #expect(status?.reason == nil)
+        let describe = toolchain.calls(of: "swift").filter { $0.hasPrefix("package\t") }
+        #expect(describe.count == 1)
+        #expect(describe.allSatisfy { call in
+            call.hasPrefix("package\t--scratch-path\t")
+                && call.hasSuffix("/.swiftstats/coverage-build\tdescribe\t--type\tjson")
+        })
+    }
+
     @Test("scanWorkingTree passes --coverage to the scan, and a skipped coverage run has no build identity")
     func workspaceThreading() throws {
         let package = try TemporaryPackage(

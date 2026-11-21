@@ -6,13 +6,17 @@
 //  `scan --coverage`, never in `backfill` or in `diff`'s exports, since it
 //  builds and runs the package's tests: minutes on a real package. It uses
 //  the toolchain of the `swift` it resolves (`collectors.coverage.path`,
-//  else PATH), building in `<package>/.swiftstats/coverage-build`, which
-//  persists between runs, and `collectors.coverage.arguments` may add
-//  `--skip <regex>` pairs to `swift test`. Failing tests don't fail it: it
-//  merges the test processes' profiles itself. It fails when the build
-//  fails, when there is no test bundle, when a bundle's XCTest or Swift
-//  Testing process wrote no profile (it crashed or was killed), or when the
-//  export isn't one SwiftStats reads; the scan maps the export it decodes.
+//  else PATH), building with Swift Build (`--build-system swiftbuild`) in
+//  `<package>/.swiftstats/coverage-build`, which persists between runs,
+//  and `collectors.coverage.arguments` may add `--skip <regex>` pairs to
+//  `swift test`. It leaves `Package.resolved` as it found it. Failing tests
+//  don't fail it: it merges the test processes' profiles itself. It fails
+//  when the toolchain doesn't accept `--build-system swiftbuild`, when the
+//  build fails, when there is no test bundle or one that is no test target
+//  of the package as the toolchain's own `swift package describe` gives
+//  it, when a bundle's XCTest or Swift Testing process wrote no profile
+//  (it crashed or was killed), or when the export isn't one SwiftStats
+//  reads; the scan maps the export it decodes.
 //
 
 import Foundation
@@ -25,9 +29,10 @@ enum CoverageAdapter {
     static let notRequestedReason = "not requested; scan --coverage runs it"
     /// The build directory's name, in the package's `.swiftstats`.
     static let buildDirectory = "coverage-build"
-    /// The first option: how the tests run, with the build directory as
-    /// the package sees it.
-    static let invocation = "swift test --enable-code-coverage --scratch-path .swiftstats/coverage-build"
+    /// The first option: how the tests run, with the build system and the
+    /// build directory as the package sees it.
+    static let invocation =
+        "swift test --build-system swiftbuild --enable-code-coverage --scratch-path .swiftstats/coverage-build"
 
     /// The build identity of a run whose `swift` prints `versionLine`
     /// first for `--version`: the toolchain is the tool, as for the
@@ -51,19 +56,18 @@ enum CoverageAdapter {
     /// toolchain `swift` resolves to there, with `arguments` added to
     /// `swift test`; `locator` finds `xcrun` when the toolchain lacks the
     /// LLVM tools.
-    static func run(swift: URL, root: URL, arguments: [String], locator: ToolLocator) -> CoverageRun {
+    static func run(
+        swift: URL,
+        root: URL,
+        arguments: [String],
+        locator: ToolLocator
+    ) -> CoverageRun {
         let initial = options(arguments: arguments, root: root)
         var toolchain: CoverageToolchain?
         let (outcome, milliseconds) = Stopwatch.time {
             Result {
-                let build = try StoreLocation.ignoreDirectory(packageRoot: root).appendingPathComponent(buildDirectory)
-                let found = try CoverageToolchain.discover(
-                    swift: swift,
-                    command: CoverageCommand(root: root, build: build, toolchain: nil),
-                    locator: locator
-                )
+                let (found, command) = try discover(swift: swift, root: root, locator: locator)
                 toolchain = found
-                let command = CoverageCommand(root: root, build: build, toolchain: found.directory)
                 let profiles = try CoverageSession(toolchain: found, arguments: arguments, command: command).collect()
                 return (profiles, try CoverageExport.read(profiles.export))
             }
@@ -100,6 +104,23 @@ enum CoverageAdapter {
                 export: nil
             )
         }
+    }
+
+    /// The toolchain `swift` resolves to for the package at `root`, and
+    /// the command runner of a run there, which redacts it; `locator`
+    /// finds `xcrun` when the toolchain lacks the LLVM tools.
+    private static func discover(
+        swift: URL,
+        root: URL,
+        locator: ToolLocator
+    ) throws -> (CoverageToolchain, CoverageCommand) {
+        let build = try StoreLocation.ignoreDirectory(packageRoot: root).appendingPathComponent(buildDirectory)
+        let found = try CoverageToolchain.discover(
+            swift: swift,
+            command: CoverageCommand(root: root, build: build, toolchain: nil),
+            locator: locator
+        )
+        return (found, CoverageCommand(root: root, build: build, toolchain: found.directory))
     }
 
     /// Why a run whose tests failed still ran: its coverage comes from the

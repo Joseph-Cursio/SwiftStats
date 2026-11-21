@@ -5,7 +5,9 @@
 //  The temporary files and directories SwiftStats makes, and the processes
 //  it starts, while they exist, so an interrupted command can stop the one
 //  and remove the other (`InterruptCleanup`): a `defer` never runs when a
-//  signal ends the process, and a child outlives its parent.
+//  signal ends the process, and a child outlives its parent. It also holds
+//  the files of the user's package a running command may change
+//  (`PreservedFile`), so an interruption puts them back.
 //
 
 import Foundation
@@ -32,6 +34,8 @@ final class ScratchRegistry: @unchecked Sendable {
     private var paths: Set<URL> = []
     /// The running processes, by identity.
     private var processes: [ObjectIdentifier: Process] = [:]
+    /// The package files to put back, by path.
+    private var preserved: [URL: PreservedFile] = [:]
     /// The signal sources an installed handler keeps alive.
     private var sources: [any DispatchSourceSignal] = []
 
@@ -40,6 +44,13 @@ final class ScratchRegistry: @unchecked Sendable {
         lock.lock()
         defer { lock.unlock() }
         return paths
+    }
+
+    /// The paths of the package files registered to be put back, for tests.
+    var preservedPaths: Set<URL> {
+        lock.lock()
+        defer { lock.unlock() }
+        return Set(preserved.keys)
     }
 
     /// The running processes registered, for tests.
@@ -74,6 +85,23 @@ final class ScratchRegistry: @unchecked Sendable {
         lock.unlock()
     }
 
+    /// Registers `file`, to be put back if the command is interrupted
+    /// before `putBack(_:)`.
+    func preserve(_ file: PreservedFile) {
+        lock.lock()
+        preserved[file.url] = file
+        lock.unlock()
+    }
+
+    /// Puts `file` back as it was and forgets it. The lock is held
+    /// meanwhile, so an interruption doesn't put it back at the same time.
+    func putBack(_ file: PreservedFile) throws {
+        lock.lock()
+        defer { lock.unlock() }
+        preserved[file.url] = nil
+        try file.restore()
+    }
+
     /// Starts `process` and registers it until `finished(_:)`.
     func start(_ process: Process) throws {
         lock.lock()
@@ -98,7 +126,8 @@ final class ScratchRegistry: @unchecked Sendable {
 
     /// Interrupts every registered process, terminates any still running
     /// after a grace period and kills any still running after a shorter
-    /// one, then removes every registered path.
+    /// one, then puts every preserved file back and removes every
+    /// registered path.
     func cleanUp() {
         lock.lock()
         defer { lock.unlock() }
@@ -133,6 +162,10 @@ final class ScratchRegistry: @unchecked Sendable {
         for process in stubborn where process.isRunning {
             kill(process.processIdentifier, SIGKILL)
         }
+        for file in preserved.values {
+            try? file.restore()
+        }
+        preserved.removeAll()
         for path in paths {
             try? FileManager.default.removeItem(at: path)
         }

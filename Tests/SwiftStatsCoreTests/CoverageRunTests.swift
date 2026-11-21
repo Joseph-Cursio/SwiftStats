@@ -10,7 +10,7 @@ struct CoverageRunTests {
     /// The options every run on a package without a `.swift-version`
     /// records before its tools are known.
     private static let invocation = [
-        "swift test --enable-code-coverage --scratch-path .swiftstats/coverage-build",
+        "swift test --build-system swiftbuild --enable-code-coverage --scratch-path .swiftstats/coverage-build",
         "arguments: none",
         ".swift-version: absent"
     ]
@@ -25,7 +25,7 @@ struct CoverageRunTests {
 
     @Test("""
         a passing run finds the toolchain, builds and tests in .swiftstats/coverage-build, ties each bundle's \
-        profiles to it by its runner, and exports every bundle
+        profiles to it, and exports every bundle
         """)
     func passingRun() throws {
         let scenario = try FakeToolchain.recorded()
@@ -44,12 +44,12 @@ struct CoverageRunTests {
             #expect(outcome.toolchain.calls(of: "proxy") == ["-print-target-info"])
             let swift = outcome.toolchain.calls(of: "swift")
             let build = outcome.build.path
-            let flags = "--enable-code-coverage\t--scratch-path\t\(build)"
-            #expect(Array(swift.prefix(4)) == [
-                "--version", "build\t--show-bin-path\t\(flags)",
-                "build\t--build-tests\t\(flags)", "test\t--skip-build\t\(flags)"
+            let flags = "--build-system\tswiftbuild\t--enable-code-coverage\t--scratch-path\t\(build)"
+            #expect(Array(swift.prefix(5)) == [
+                "--version", "build\t--show-bin-path\t\(flags)", "build\t--build-tests\t\(flags)",
+                "package\t--scratch-path\t\(build)\tdescribe\t--type\tjson", "test\t--skip-build\t\(flags)"
             ])
-            #expect(swift.count == 5 && swift[4].hasPrefix("demangle\t--compact\t"))
+            #expect(swift.count == 6 && swift[5].hasPrefix("demangle\t--compact\t"))
             let ignore = outcome.root.appendingPathComponent(".swiftstats/.gitignore")
             #expect((try? String(contentsOf: ignore, encoding: .utf8)) == "*\n")
 
@@ -97,7 +97,7 @@ struct CoverageRunTests {
             let test = outcome.toolchain.calls(of: "swift").first { $0.hasPrefix("test\t") }
             #expect(test?.hasSuffix("\t--skip\tSlowTests\t--skip\tPerf.*") == true)
             #expect(outcome.run.status.options.prefix(3) == [
-                "swift test --enable-code-coverage --scratch-path .swiftstats/coverage-build",
+                Self.invocation[0],
                 "arguments: --skip SlowTests --skip Perf.*",
                 ".swift-version: 6.4.1"
             ])
@@ -129,7 +129,12 @@ struct CoverageRunTests {
         let package = try TemporaryPackage(["Sources/Lib/Lib.swift": "public func one() -> Int { 1 }\n"])
         defer { package.remove() }
 
-        let run = CoverageAdapter.run(swift: toolchain.proxy, root: package.root, arguments: [], locator: .nowhere)
+        let run = CoverageAdapter.run(
+            swift: toolchain.proxy,
+            root: package.root,
+            arguments: [],
+            locator: .nowhere
+        )
 
         #expect(run.status.state == .failed)
         #expect(run.status.reason
@@ -187,7 +192,8 @@ struct CoverageRunTests {
         try CoverageHarness.run(scenario, arguments: [], prepare: plant) { outcome in
             #expect(outcome.run.status.state == .failed)
             #expect(outcome.run.status.reason == """
-                `swift build --build-tests --enable-code-coverage --scratch-path <build>` exited with status 1: \
+                `swift build --build-tests --build-system swiftbuild --enable-code-coverage --scratch-path <build>` \
+                exited with status 1: \
                 error: <package>/Sources/Lib/Lib.swift:1:21 expected parameter name followed by ':'
                 error: SwiftDriver Lib normal arm64 com.apple.xcode.tools.swift.compiler failed with a nonzero exit \
                 code. Command line:
@@ -256,7 +262,8 @@ struct CoverageRunTests {
         scenario.testStatus = 1
         scenario.testError = "error: no tests found at @BUILD@/out/Products/Debug\n"
         #expect(try CoverageHarness.failure(scenario) == """
-            `swift test --skip-build --enable-code-coverage --scratch-path <build>` exited with status 1: \
+            `swift test --skip-build --build-system swiftbuild --enable-code-coverage --scratch-path <build>` \
+            exited with status 1: \
             error: no tests found at <build>/out/Products/Debug
             """)
     }

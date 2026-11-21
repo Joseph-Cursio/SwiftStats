@@ -25,10 +25,13 @@ enum FakeToolchainScripts {
         """
 
     /// The toolchain's `swift`: `--version`, `demangle --compact`,
-    /// `build --show-bin-path`, `build --build-tests` (which makes the
-    /// scenario's bundles when it succeeds) and `test --skip-build` (which
-    /// runs the scenario's test script, then writes its profiles); not
-    /// `-print-target-info`, which only the proxy is asked.
+    /// `package … describe` (the scenario's test targets, as JSON),
+    /// `build --show-bin-path`, `build --build-tests` (which runs the
+    /// scenario's build script, then makes its bundles when it succeeds)
+    /// and `test --skip-build` (which runs the scenario's test script, then
+    /// writes its profiles); not `-print-target-info`, which only the proxy
+    /// is asked. A scenario that rejects `--build-system` fails every
+    /// command passing it as Swift 6.1 does.
     static let swift = """
         case "$1" in
             --version)
@@ -43,11 +46,27 @@ enum FakeToolchainScripts {
                     if [ -n "$line" ]; then echo "$line"; else echo "$name"; fi
                 done
                 exit 0 ;;
+            package)
+                if fails describe; then echo "error: unable to describe" >&2; exit 1; fi
+                separator=""
+                printf '{"name":"Fake","targets":['
+                while read -r target; do
+                    printf '%s{"name":"%s","type":"test"}' "$separator" "$target"
+                    separator=","
+                done < "$s/test-targets"
+                printf ']}\\n'
+                exit 0 ;;
         esac
         scratch=""
         previous=""
         for argument in "$@"; do
             if [ "$previous" = "--scratch-path" ]; then scratch="$argument"; fi
+            if [ "$argument" = "--build-system" ] && [ -f "$s/rejects-build-system" ]; then
+                echo "error: The value 'swiftbuild' is invalid for '--build-system <build-system>'. \
+        Please provide one of 'native' and 'xcode'." >&2
+                echo "Usage: swift build <options>" >&2
+                exit 64
+            fi
             previous="$argument"
         done
         bin="$scratch/out/Products/Debug"
@@ -58,6 +77,7 @@ enum FakeToolchainScripts {
                 echo "$bin"
                 exit 0 ;;
             "build --build-tests")
+                . "$s/build-script"
                 substituted "$s/build-error" "$scratch" >&2
                 status="$(cat "$s/build-status")"
                 if [ "$status" -ne 0 ]; then exit "$status"; fi

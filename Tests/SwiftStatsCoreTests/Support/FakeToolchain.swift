@@ -25,6 +25,9 @@ struct FakeToolchain {
     struct Scenario {
         /// The test bundles a successful `swift build --build-tests` makes.
         var bundles: [String]
+        /// The test targets `swift package describe` lists; when empty, one
+        /// for each of `bundles`.
+        var testTargets: [String] = []
         /// The profiles `swift test` writes into the bin path's `codecov`,
         /// each with its size in bytes.
         var profiles: [(name: String, size: Int)]
@@ -37,6 +40,9 @@ struct FakeToolchain {
         var export: String
         /// `swift build --build-tests`'s exit status.
         var buildStatus: Int32 = 0
+        /// Shell commands `swift build --build-tests` runs first, in the
+        /// package root, with `$scratch` the build directory.
+        var buildScript = ""
         /// What `swift build --build-tests` writes to standard error.
         var buildError = ""
         /// `swift test`'s exit status.
@@ -44,8 +50,8 @@ struct FakeToolchain {
         /// What `swift test` writes to standard error.
         var testError = ""
         /// The steps that fail with status 1: `print-target-info`,
-        /// `version` (the toolchain `swift`'s), `show-bin-path`, `merge`,
-        /// `show`, `export`, `demangle`, `xcrun`.
+        /// `version` (the toolchain `swift`'s), `show-bin-path`, `describe`,
+        /// `merge`, `show`, `export`, `demangle`, `xcrun`.
         var failing: Set<String> = []
         /// The steps that print nothing and succeed: `show-bin-path`,
         /// `xcrun`.
@@ -59,6 +65,9 @@ struct FakeToolchain {
         /// Whether `llvm-profdata` and `llvm-cov` sit beside `swift`; when
         /// not, only `xcrun --find` names them.
         var llvmInToolchain = true
+        /// Whether the toolchain's `swift` rejects `--build-system swiftbuild`
+        /// as Swift 6.1's does, exiting 64.
+        var rejectsBuildSystem = false
         /// Shell commands `swift test` runs before it writes its profiles,
         /// with `$top` the toolchain directory.
         var testScript = ""
@@ -163,10 +172,14 @@ struct FakeToolchain {
         )
         var files = [
             "bundles": scenario.bundles.map { $0 + "\n" }.joined(),
+            "test-targets": (scenario.testTargets.isEmpty ? scenario.bundles : scenario.testTargets)
+                .map { $0 + "\n" }
+                .joined(),
             "profiles": scenario.profiles.map { "\($0.name)\t\($0.size)\n" }.joined(),
             "demangled": scenario.demangled,
             "export": scenario.export,
             "build-status": "\(scenario.buildStatus)",
+            "build-script": scenario.buildScript,
             "build-error": scenario.buildError,
             "test-status": "\(scenario.testStatus)",
             "test-error": scenario.testError,
@@ -183,6 +196,9 @@ struct FakeToolchain {
         }
         if let info = scenario.targetInfo {
             files["target-info"] = info
+        }
+        if scenario.rejectsBuildSystem {
+            files["rejects-build-system"] = ""
         }
         for (name, contents) in files {
             try contents.write(to: scenarioDirectory.appendingPathComponent(name), atomically: true, encoding: .utf8)
