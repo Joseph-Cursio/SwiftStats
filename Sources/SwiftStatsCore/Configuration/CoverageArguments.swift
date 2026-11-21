@@ -40,6 +40,14 @@ enum CoverageArguments {
         return tokens
     }
 
+    /// The regexes of the `--skip <regex>` pairs `arguments` holds, which
+    /// `parse` has checked.
+    static func skipPatterns(in arguments: [String]) -> [String] {
+        zip(arguments, arguments.dropFirst()).compactMap { flag, pattern in
+            flag == skipFlag ? pattern : nil
+        }
+    }
+
     /// Throws unless `tokens` are `--skip <regex>` pairs; `key` and `path`
     /// name the setting in the error.
     private static func check(_ tokens: [String], key: String, path: String) throws {

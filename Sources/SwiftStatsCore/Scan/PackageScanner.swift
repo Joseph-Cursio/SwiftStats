@@ -136,6 +136,7 @@ public struct PackageScanner {
                 let functions = FunctionCollector.walked(file.tree, context: context)
                 collected.records += functions.records
                 collected.selectors[file.path] = functions.selectors
+                collected.signatures[file.path] = functions.signatures
                 collected.types += TypeCollector.collect(file.tree, context: context)
                 collected.declarations += DeclarationCollector.collect(file.tree, context: context)
                 collected.markers += MarkerCollector.collect(file.tree, context: context)
@@ -252,7 +253,12 @@ public struct PackageScanner {
             tests: inventory.tests,
             propertyCallees: inventory.callees,
             testReferences: inventory.references,
+            helperReferences: inventory.helperReferences,
+            testIdentities: inventory.identities,
+            testSuites: inventory.suites,
+            testAliases: inventory.aliases,
             selectors: collected.selectors,
+            signatures: collected.signatures,
             stubs: collected.stubs,
             checkProperties: collected.checkProperties,
             laws: LawCheckCollector.detect(collected.laws, generatedFiles: generatedFiles),

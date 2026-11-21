@@ -120,7 +120,9 @@ struct CoverageCollectorTests {
         #expect(status?.state == .ran)
         #expect(status?.reason == nil)
         #expect(status?.version == "Apple LLVM version 21.0.0 (fake)")
-        #expect(status?.options.suffix(2) == ["tests: passed", "map: " + CoverageMapper.rule])
+        #expect(status?.options.suffix(3) == [
+            "tests: passed", "map: " + CoverageMapper.rule, "links: " + CoverageTestLinks.rule
+        ])
         #expect(toolchain.calls(of: "swift").contains { $0.hasPrefix("test\t--skip-build") })
         #expect(toolchain.calls(of: "proxy") == ["-print-target-info"])
     }

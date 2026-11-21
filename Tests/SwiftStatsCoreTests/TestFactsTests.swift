@@ -87,8 +87,8 @@ struct TestFactsTests {
     }
 
     @Test("""
-        every test keeps the names its body refers to (identifiers, members, key paths, types) and the names it \
-        calls, a type's for T(…), T<U>(…), T.init(…) and T<U>.init(…); operators are neither
+        every test keeps the paths of the names it writes, the members it reads and the calls it makes, an \
+        initialiser's by its type for T(…), T<U>(…), T.init(…) and T<U>.init(…); operators are none of them
         """)
     func references() throws {
         let facts = try Self.facts("""
@@ -104,17 +104,22 @@ struct TestFactsTests {
         """)
 
         #expect(facts.kind == .example)
-        #expect(facts.references.names == [
-            "Shelf", "shelf", "other", "Bin", "Int", "made", "Kit", "Crate", "tray", "Tray", "grow", "count", "total",
-            "size", "label", "map", "isEmpty"
+        #expect(facts.references.paths == [
+            "Shelf", "shelf", "other", "Bin", "Int", "made", "Kit", "Kit.Crate", "tray", "Tray", "shelf.grow",
+            "shelf.count", "other.total", "tray.size"
         ])
-        #expect(facts.references.calls == ["Shelf", "Bin", "Crate", "Tray", "grow", "map"])
+        // `grow()` and `map(_)` are called without labels, so may call
+        // closures properties hold.
+        #expect(facts.references.members == ["count", "total", "size", "label", "isEmpty", "grow", "map"])
+        #expect(facts.references.renderedCalls == [
+            "Shelf(size:)", "Bin(items:)", "Kit.Crate.init(count:)", "Tray.init(size:)", "shelf.grow()", "(expr).map(_)"
+        ])
         #expect(facts.callees.isEmpty)
     }
 
     @Test("""
         names are kept without backticks; an implicit `.init(…)` calls the annotated type of the binding it \
-        initialises, and nothing otherwise
+        initialises, by its qualified name, and nothing otherwise
         """)
     func escapedAndImplicitNames() throws {
         let facts = try Self.facts("""
@@ -127,8 +132,9 @@ struct TestFactsTests {
         """)
 
         // `default` is `Config`'s member, written with backticks.
-        #expect(facts.references.names == ["Gauge", "Kit", "Meter", "default", "Config", "take"])
-        #expect(facts.references.calls == ["Gauge", "Meter", "take"])
+        #expect(facts.references.paths == ["Gauge", "Kit", "Kit.Meter", "Config", "Config.default", "take"])
+        #expect(facts.references.members == ["default"])
+        #expect(facts.references.renderedCalls == ["Gauge.init(scale:)", "Kit.Meter.init()", "take(_)"])
         #expect(TestReferences.unescaped("`default`") == "default")
         #expect(TestReferences.unescaped("plain") == "plain")
     }
@@ -150,7 +156,8 @@ struct TestFactsTests {
         #expect(facts.assertions == 1)
         // The traits name no subject, so `tags`, `slow`, `timeLimit` and
         // `minutes` are not references.
-        #expect(facts.references.names == ["Gauge", "Dial", "low", "Limit", "standard", "gauge", "read"])
-        #expect(facts.references.calls == ["Gauge", "read"])
+        #expect(facts.references.paths == ["Gauge", "Dial", "Dial.low", "Limit", "gauge", "gauge.read"])
+        #expect(facts.references.members == ["low", "standard", "read"])
+        #expect(facts.references.renderedCalls == ["Gauge(scale:)", "gauge.read()"])
     }
 }

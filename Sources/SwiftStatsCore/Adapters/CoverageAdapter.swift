@@ -81,7 +81,11 @@ enum CoverageAdapter {
                 state: .ran,
                 version: toolchain?.covVersion,
                 reason: passed ? nil : failingReason(profiles),
-                options: known + ["tests: " + (passed ? "passed" : "failing"), "map: " + CoverageMapper.rule]
+                options: known + [
+                    "tests: " + (passed ? "passed" : "failing"),
+                    "map: " + CoverageMapper.rule,
+                    "links: " + CoverageTestLinks.rule
+                ]
             )
             return CoverageRun(
                 status: status,

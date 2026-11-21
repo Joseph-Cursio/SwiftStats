@@ -126,9 +126,7 @@ extension FunctionCollector {
             record.typePath = assembled.typePath
             record.typeFile = assembled.isTypeFileScoped ? context.file : nil
         }
-        if record.typePath != nil, let selector = MemberSelector.selector(of: draft.node) {
-            selectors[record.range.start] = selector
-        }
+        noteShape(of: draft.node, record: record)
         records.append(record)
         scopes.append(.record(RecordScope(
             owner: draft.node.id,
@@ -136,6 +134,17 @@ extension FunctionCollector {
             conditionDepth: conditions.count,
             isRecord: true
         )))
+    }
+
+    /// Notes what `node`, which opens `record`, matches requirements by
+    /// (`MemberSelector`) and calls fit (`CallSignature`).
+    private func noteShape(of node: Syntax, record: FunctionRecord) {
+        if record.typePath != nil, let selector = MemberSelector.selector(of: node) {
+            selectors[record.range.start] = selector
+        }
+        if let signature = CallSignature(of: node) {
+            signatures[record.range.start] = signature
+        }
     }
 
     /// Adds the file's synthetic top-level-code record when the file has

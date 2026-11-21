@@ -288,7 +288,13 @@ enum LinkPackage {
         defer { package.remove() }
         let targets = TargetResolver.resolve(try package.describer.describePackage(at: package.root))
         let measured = PackageScanner.measure(targets, root: package.root, configuration: SwiftStatsConfiguration())
-        let mapper = CoverageMapper(measured: measured, targets: targets, root: package.root, excluded: [])
+        let mapper = CoverageMapper(
+            measured: measured,
+            targets: targets,
+            root: package.root,
+            excluded: [],
+            skipPatterns: []
+        )
         return mapper.report(of: try export(root: realPath(package.root)), profiles: profiles()) { _ in [:] }
     }
 }

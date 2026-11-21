@@ -74,8 +74,15 @@ struct CoverageMapper {
     private let links: CoverageTestLinks
 
     /// A mapper onto `measured`, the package at `root` with `targets`,
-    /// whose configuration excludes `excluded`.
-    init(measured: ScanMeasurements, targets: [TargetSummary], root: URL, excluded: [GlobPattern]) {
+    /// whose configuration excludes `excluded`; the coverage run skipped
+    /// the tests `skipPatterns` (its `--skip` regexes) match.
+    init(
+        measured: ScanMeasurements,
+        targets: [TargetSummary],
+        root: URL,
+        excluded: [GlobPattern],
+        skipPatterns: [String]
+    ) {
         records = measured.records.filter { $0.role == .production }.sorted { $0.key < $1.key }
         let parents = Set(records.filter { $0.kind == .accessor }.compactMap(\.parentKey))
         containers = Set(records.filter { $0.kind == .subscriptDeclaration && parents.contains($0.key) }.map(\.key))
@@ -87,7 +94,7 @@ struct CoverageMapper {
             excluded: excluded
         )
         placement = CoveragePlacement(measured: measured)
-        links = CoverageTestLinks(measured: measured, containers: containers)
+        links = CoverageTestLinks(measured: measured, containers: containers, skipPatterns: skipPatterns)
     }
 
     /// The places in `file` where `counts` (by line) are saturated.

@@ -32,6 +32,9 @@ final class FunctionCollector: SyntaxVisitor {
     /// What each member record of a type is, by its start, for telling
     /// protocol requirements' witnesses (`MemberSelector`).
     var selectors: [SourcePosition: String] = [:]
+    /// The parameters of each function and initialiser record, by its
+    /// start, for fitting tests' calls (`CallSignature`).
+    var signatures: [SourcePosition: CallSignature] = [:]
     /// The member caps of the types extensions extend: the context's, or
     /// the file's own types'.
     var typeAccess = TypeAccessIndex()

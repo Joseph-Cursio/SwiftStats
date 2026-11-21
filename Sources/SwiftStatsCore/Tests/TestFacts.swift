@@ -4,10 +4,10 @@
 //
 //  What a test function's syntax says about it (PRD §7.8): its framework,
 //  kind, cases, assertions and trials, for a property test the base
-//  names of the functions it calls (§7.11), and for every test the names
-//  it refers to (M5): its body's, its parameters' types and its `@Test`
-//  `arguments:` collections', where a parameterized test often names its
-//  subject; the display name and traits are not read.
+//  names of the functions it calls (§7.11), and for every test what it
+//  writes (M5, `TestReferences`): its body, its parameter clause and its
+//  `@Test` `arguments:` collections, where a parameterized test often
+//  names its subject; the display name and traits are not read.
 //
 
 import SwiftSyntax
@@ -29,8 +29,8 @@ struct TestFacts: Equatable {
     /// The base names of the functions a property test calls; empty for
     /// any other kind.
     let callees: Set<String>
-    /// The names the body, the parameter clause and the `@Test`
-    /// `arguments:` collections refer to and call, for every kind.
+    /// What the body, the parameter clause and the `@Test` `arguments:`
+    /// collections write, for every kind (`TestReferences`).
     let references: TestReferences
 
     /// The facts of `function`.
@@ -64,9 +64,6 @@ struct TestFacts: Equatable {
         for collection in test.map(ParameterCases.collections(in:)) ?? [] {
             declaration.walk(collection)
         }
-        references = TestReferences(
-            names: body.names.union(declaration.names),
-            calls: body.calls.union(declaration.calls)
-        )
+        references = body.references.union(declaration.references)
     }
 }

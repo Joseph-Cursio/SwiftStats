@@ -3,10 +3,11 @@ import Foundation
 import Testing
 
 /// Tests per public function (M5), a heuristic: a test counts when its
-/// target's own test process ran the function and the test names it, by
+/// target's own test process ran the function and the test writes it, by
 /// the rule of the function's kind. Checked on a small package with two
-/// libraries, two test targets and a hand-written export, and on the Coverage fixture's
-/// recorded real export.
+/// libraries, two test targets and a hand-written export, and on the
+/// Coverage fixture's recorded real export. `LinkRuleTests` checks each
+/// part of the rule on its own.
 @Suite("Coverage test links")
 struct CoverageLinkTests {
     /// What the mapping says about a record's tests.
@@ -27,9 +28,9 @@ struct CoverageLinkTests {
     }
 
     @Test("""
-        a concrete type's member counts a test of a target that ran it whose body names the member (a call of the \
-        type for an initialiser) and the type, or whose file is named for the type, even when another module \
-        declares a protocol of the type's name; a subscript counts the type alone; an operator is never named
+        a concrete type's member counts a test of a target that ran it whose body calls or reads the member (calls \
+        the type for an initialiser) and names the type, or whose file is named for the type, even when another \
+        module declares a protocol of the type's name; a subscript counts the type alone; an operator is never named
         """)
     func members() throws {
         let linked = Self.linked(try LinkPackage.report())
@@ -105,7 +106,7 @@ struct CoverageLinkTests {
     }
 
     @Test("""
-        a free function and a protocol extension member count a test of a target that ran them whose body names \
+        a free function and a protocol extension member count a test of a target that ran them whose body calls \
         them, a protocol extension's initialiser or subscript one that names the protocol; a container, a \
         non-public or generated function has no link, and one without data no tests
         """)

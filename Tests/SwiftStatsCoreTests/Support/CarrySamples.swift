@@ -24,7 +24,7 @@ enum CarrySamples {
         version: "LLVM version 21.0.0",
         identity: "swift:test swift",
         identityLabel: nil,
-        options: ["tests: failing", "map: " + CoverageMapper.rule],
+        options: ["tests: failing", "map: " + CoverageMapper.rule, "links: " + CoverageTestLinks.rule],
         durationMilliseconds: runMilliseconds
     )
     /// A clean git state at `c1`.

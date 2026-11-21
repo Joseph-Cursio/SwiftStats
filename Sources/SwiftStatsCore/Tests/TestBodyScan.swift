@@ -5,11 +5,11 @@
 //  Walks a test body for assertions and property or idempotency checks
 //  (PRD §7.8), noting every callee's base name and every operator used,
 //  which link a property test to the suggestions it may check (§7.11),
-//  and every name the body refers to and every type it calls, which link
-//  any test to the public functions it may test (M5). Names are kept
-//  without backticks (`` `default` `` is `default`), as records' names are
-//  compared, and an implicit `.init(…)` that initialises an annotated
-//  binding (`let gauge: Gauge = .init()`) calls the annotation's type.
+//  and, to link any test to the public functions it may test (M5), the
+//  paths of the names it writes, the members it reads and the calls it
+//  makes with their labels (`TestReferences`, `CallReferenceBuilder`).
+//  Names are kept without backticks (`` `default` `` is `default`), as
+//  records' names are compared.
 //
 
 import SwiftSyntax
@@ -29,15 +29,18 @@ final class TestBodyScan: SyntaxVisitor {
     /// The base names of the functions called, for `f(…)` and `x.f(…)`,
     /// and the operators used, infix, prefix or postfix.
     var callees: Set<String> = []
-    /// The names referred to: each identifier read, called or reached as a
-    /// member (`x`, `f(…)`, `x.count`, `\.count`) and each type named;
-    /// operators are not names.
-    var names: Set<String> = []
-    /// The names called: `f(…)`, `x.f(…)` and `T<U>(…)` give their base
-    /// name, `T.init(…)` and `T<U>.init(…)` give `T`, and `.init(…)` the
-    /// type of the binding it initialises, when that is annotated;
-    /// operators are not calls.
-    var calls: Set<String> = []
+    /// The paths of the names written (`TestReferences.paths`).
+    var paths: Set<String> = []
+    /// The names read as members (`TestReferences.members`).
+    var members: Set<String> = []
+    /// The calls, and the unapplied references written with labels
+    /// (`CallReference`).
+    var calls: Set<CallReference> = []
+
+    /// What the scan found to link tests to public functions.
+    var references: TestReferences {
+        TestReferences(paths: paths, members: members, calls: calls)
+    }
 
     /// The called function's base name, for `f(…)` and `x.f(…)`.
     static func calleeName(_ call: FunctionCallExprSyntax) -> String {
@@ -48,69 +51,6 @@ final class TestBodyScan: SyntaxVisitor {
             return member.declName.baseName.text
         }
         return ""
-    }
-
-    /// The name `call` calls a type by, or that it calls: its callee's base
-    /// name, a specialised callee's (`T<U>(…)`), for `T.init(…)` and
-    /// `T<U>.init(…)` the base's last name, and for an implicit `.init(…)`
-    /// the annotated type of the binding it initialises; empty when it has
-    /// none. Names are without backticks.
-    static func calledName(_ call: FunctionCallExprSyntax) -> String {
-        let callee = unspecialized(call.calledExpression)
-        if let member = callee.as(MemberAccessExprSyntax.self),
-           member.declName.baseName.tokenKind == .keyword(.`init`) {
-            guard let base = member.base.map(unspecialized) else {
-                return annotatedType(of: call)
-            }
-            if let reference = base.as(DeclReferenceExprSyntax.self) {
-                return name(of: reference.baseName)
-            }
-            return base.as(MemberAccessExprSyntax.self).map { name(of: $0.declName.baseName) } ?? ""
-        }
-        if let reference = callee.as(DeclReferenceExprSyntax.self), case .identifier = reference.baseName.tokenKind {
-            return name(of: reference.baseName)
-        }
-        if let member = callee.as(MemberAccessExprSyntax.self), case .identifier = member.declName.baseName.tokenKind {
-            return name(of: member.declName.baseName)
-        }
-        return ""
-    }
-
-    /// `token`'s name, without the backticks an escaped identifier is
-    /// written with.
-    private static func name(of token: TokenSyntax) -> String {
-        token.identifier?.name ?? token.text
-    }
-
-    /// The type an implicit `.init(…)` builds when it initialises a binding
-    /// annotated with it (`let gauge: Gauge = .init()`, an optional of it
-    /// included); empty otherwise.
-    private static func annotatedType(of call: FunctionCallExprSyntax) -> String {
-        guard let clause = call.parent?.as(InitializerClauseSyntax.self),
-              let type = clause.parent?.as(PatternBindingSyntax.self)?.typeAnnotation?.type else {
-            return ""
-        }
-        return typeName(of: type)
-    }
-
-    /// The last name of `type`, an optional's wrapped type's for an
-    /// optional; empty for any other shape.
-    private static func typeName(of type: TypeSyntax) -> String {
-        if let optional = type.as(OptionalTypeSyntax.self) {
-            return typeName(of: optional.wrappedType)
-        }
-        if let unwrapped = type.as(ImplicitlyUnwrappedOptionalTypeSyntax.self) {
-            return typeName(of: unwrapped.wrappedType)
-        }
-        if let identifier = type.as(IdentifierTypeSyntax.self) {
-            return name(of: identifier.name)
-        }
-        return type.as(MemberTypeSyntax.self).map { name(of: $0.name) } ?? ""
-    }
-
-    /// `expression` without its generic arguments: `T` for `T<U>`.
-    private static func unspecialized(_ expression: ExprSyntax) -> ExprSyntax {
-        expression.as(GenericSpecializationExprSyntax.self)?.expression ?? expression
     }
 
     /// Whether `name` is a SwiftPropertyLaws `check…PropertyLaws` function.
@@ -147,9 +87,8 @@ final class TestBodyScan: SyntaxVisitor {
         if name.isEmpty == false {
             callees.insert(name)
         }
-        let called = Self.calledName(node)
-        if called.isEmpty == false {
-            calls.insert(called)
+        if let call = CallReferenceBuilder.call(node) {
+            calls.insert(call)
         }
         if name.hasPrefix("XCTAssert") {
             assertions += 1
@@ -165,19 +104,60 @@ final class TestBodyScan: SyntaxVisitor {
     }
 
     override func visit(_ node: DeclReferenceExprSyntax) -> SyntaxVisitorContinueKind {
+        guard CallReferenceBuilder.isMemberName(node) == false else {
+            return .visitChildren
+        }
         if case .identifier = node.baseName.tokenKind {
-            names.insert(Self.name(of: node.baseName))
+            paths.insert(CallSignature.name(of: node.baseName))
+        }
+        if CallReferenceBuilder.isCalled(node) == false, let reference = CallReferenceBuilder.reference(node) {
+            calls.insert(reference)
+        }
+        return .visitChildren
+    }
+
+    override func visit(_ node: MemberAccessExprSyntax) -> SyntaxVisitorContinueKind {
+        let path = CallReferenceBuilder.path(of: ExprSyntax(node))
+        if path.isEmpty == false {
+            paths.insert(path.joined(separator: "."))
+        }
+        guard CallReferenceBuilder.isInitialized(node) == false else {
+            return .visitChildren
+        }
+        guard CallReferenceBuilder.isCalled(node) == false else {
+            // `box.maker()` may read a property holding a closure and call it.
+            if CallReferenceBuilder.isCalledWithoutLabels(node), case .identifier = node.declName.baseName.tokenKind {
+                members.insert(CallSignature.name(of: node.declName.baseName))
+            }
+            return .visitChildren
+        }
+        if let reference = CallReferenceBuilder.reference(node) {
+            calls.insert(reference)
+        } else if case .identifier = node.declName.baseName.tokenKind {
+            members.insert(CallSignature.name(of: node.declName.baseName))
+        }
+        return .visitChildren
+    }
+
+    override func visit(_ node: KeyPathPropertyComponentSyntax) -> SyntaxVisitorContinueKind {
+        if case .identifier = node.declName.baseName.tokenKind {
+            members.insert(CallSignature.name(of: node.declName.baseName))
         }
         return .visitChildren
     }
 
     override func visit(_ node: IdentifierTypeSyntax) -> SyntaxVisitorContinueKind {
-        names.insert(Self.name(of: node.name))
+        if case .identifier = node.name.tokenKind {
+            paths.insert(CallSignature.name(of: node.name))
+        }
         return .visitChildren
     }
 
     override func visit(_ node: MemberTypeSyntax) -> SyntaxVisitorContinueKind {
-        names.insert(Self.name(of: node.name))
+        let path = CallReferenceBuilder.path(of: TypeSyntax(node))
+        if path.isEmpty == false {
+            paths.insert(path.joined(separator: "."))
+        }
         return .visitChildren
     }
 

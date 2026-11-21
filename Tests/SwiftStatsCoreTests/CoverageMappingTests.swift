@@ -237,14 +237,14 @@ struct CoverageMappingTests {
         ])
     }
 
-    @Test("the run's options end with the map rule, and a scan without coverage has no coverage report")
+    @Test("the run's options end with the map and link rules, and a scan without coverage has no coverage report")
     func optionsAndAbsence() throws {
         let report = try CoverageFixture.report()
         let package = try TemporaryPackage(["Sources/Lib/Lib.swift": "public func one() -> Int { 1 }\n"])
         defer { package.remove() }
 
         let status = report.collectors.first { $0.name == CoverageAdapter.name }
-        #expect(status?.options.last == "map: " + CoverageMapper.rule)
+        #expect(status?.options.suffix(2) == ["map: " + CoverageMapper.rule, "links: " + CoverageTestLinks.rule])
         #expect(try package.scan(tools: SnapshotHarness.noTools).coverage == nil)
     }
 }

@@ -7,8 +7,9 @@
 //  of a snapshot holding it carries it when the coverage still describes
 //  the scan: both scans saw a commit (never outside git or before the first
 //  commit) and the same tree (both clean, or both dirty with the same hash
-//  of the changes), the coverage was mapped by the rule this build maps by,
-//  and its records are exactly the new scan's production records, each
+//  of the changes), the coverage was mapped by the rule this build maps by
+//  and its public functions linked to tests by the rule this build links
+//  by, and its records are exactly the new scan's production records, each
 //  over the same lines. A carried run keeps the original's identity,
 //  version, options and duration, and says when its coverage was collected;
 //  the roll-ups are rebuilt from it as a scan builds them, and the warnings
@@ -43,6 +44,10 @@ enum CoverageCarry {
         }
         guard held.run.options.contains("map: " + CoverageMapper.rule) else {
             return "it was mapped by another rule"
+        }
+        // The stored links to tests come with the coverage.
+        guard held.run.options.contains("links: " + CoverageTestLinks.rule) else {
+            return "its functions were linked to tests by another rule"
         }
         return recordsRefusal(of: held, onto: snapshot.report.records)
     }

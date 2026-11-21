@@ -27,11 +27,25 @@ struct ScanMeasurements {
     let tests: [TestRecord]
     /// The base names each property test calls, by test key.
     let propertyCallees: [String: Set<String>]
-    /// The names each test's body refers to and calls, by test key.
+    /// What each test writes, by test key.
     let testReferences: [String: TestReferences]
+    /// What each test helper writes, by helper key (`TestInventory`).
+    let helperReferences: [String: TestReferences]
+    /// Each Swift Testing test's identity, which `--skip` regexes match,
+    /// by test key (`SwiftTestingIdentity`).
+    let testIdentities: [String: SwiftTestingIdentity]
+    /// The tags of each type a test target declares `@Suite`, by its
+    /// path's components, by target (`SwiftTestingIdentity`).
+    let testSuites: [String: [[String]: Set<String>]]
+    /// The simple names of the types each typealias of a test target
+    /// names, by alias, by target (`TestInventory`).
+    let testAliases: [String: [String: Set<String>]]
     /// Each file's member records' selectors (`MemberSelector`), by the
     /// record's start, by path.
     let selectors: [String: [SourcePosition: String]]
+    /// Each file's function and initialiser records' parameters
+    /// (`CallSignature`), by the record's start, by path.
+    let signatures: [String: [SourcePosition: CallSignature]]
     /// The test-target files whose leading comments carry a
     /// SwiftInferProperties suggestion identity, by identity.
     let stubs: [String: Set<String>]

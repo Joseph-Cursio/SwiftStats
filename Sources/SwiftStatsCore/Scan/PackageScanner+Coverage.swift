@@ -43,7 +43,10 @@ extension PackageScanner {
             measured: measured,
             targets: targets,
             root: root,
-            excluded: configuration.excluded.map(GlobPattern.init)
+            excluded: configuration.excluded.map(GlobPattern.init),
+            skipPatterns: CoverageArguments.skipPatterns(
+                in: configuration.collectors[CoverageAdapter.name]?.arguments ?? []
+            )
         )
         var warnings: [ScanWarning] = []
         let report = mapper.report(of: export, profiles: profiles) { names in

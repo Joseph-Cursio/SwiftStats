@@ -35,7 +35,8 @@ struct MarkdownCoverageTests {
             "",
             "Functions with no coverage data: 2 (1 no coverage data; 1 not linked into any test bundle).",
             "",
-            "Public functions (heuristic: the test's target ran it and the test names it):",
+            "Public functions (heuristic: the test's target ran it and the test, or a test helper it calls, "
+                + "calls it with fitting labels or reads it (a subscript: names its type)):",
             "",
             "|  | Public | With coverage | Linked | Unlinked | Reached generically | Extension members | "
                 + "Linked tests (median / p90 / max) |",

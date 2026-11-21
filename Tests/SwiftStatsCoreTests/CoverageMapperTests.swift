@@ -101,7 +101,8 @@ struct CoverageMapperTests {
             measured: small.measured,
             targets: small.targets,
             root: small.package.root,
-            excluded: []
+            excluded: [],
+            skipPatterns: []
         )
         return mapper.report(
             of: try export(files: files, functions: functions, root: small.realRoot),

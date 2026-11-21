@@ -11,6 +11,20 @@ import Testing
 /// covers `--drop-coverage`, failed runs and runs that replace it).
 @Suite("Coverage carry")
 struct CoverageCarryTests {
+    /// A run of the sample's version and identity that recorded `options`.
+    private static func ran(options: [String]) -> CollectorRunInfo {
+        CollectorRunInfo(
+            name: CoverageAdapter.name,
+            state: .ran,
+            reason: nil,
+            version: CarrySamples.run.version,
+            identity: CarrySamples.run.identity,
+            identityLabel: nil,
+            options: options,
+            durationMilliseconds: 0
+        )
+    }
+
     @Test("""
         carried twice, coverage keeps the run that collected it, names that scan's date and its failing tests once, \
         and gives the roll-ups the first scan gave; a later refusal names that date too
@@ -175,23 +189,15 @@ struct CoverageCarryTests {
     }
 
     @Test("""
-        a rescan of the same tree is refused, writing nothing, when the coverage was mapped by another rule or a \
-        record is gone, moved or new
+        a rescan of the same tree is refused, writing nothing, when the coverage was mapped or its functions linked \
+        to tests by another rule, or a record is gone, moved or new
         """)
     func otherRecords() throws {
         let (package, workspace) = try CarrySamples.store()
         defer { package.remove() }
         let plain = try CarrySamples.scan(git: CarrySamples.clean)
-        let otherRule = CollectorRunInfo(
-            name: CoverageAdapter.name,
-            state: .ran,
-            reason: nil,
-            version: CarrySamples.run.version,
-            identity: CarrySamples.run.identity,
-            identityLabel: nil,
-            options: ["map: an older rule"],
-            durationMilliseconds: 0
-        )
+        let otherRule = Self.ran(options: ["map: an older rule"])
+        let otherLinks = Self.ran(options: ["map: " + CoverageMapper.rule, "links: an older rule"])
         let added = try CarrySamples.scan(
             git: CarrySamples.clean,
             files: ["Sources/Kit/Kit.swift": CarrySamples.kit + "\nfunc extra() -> Int {\n    3\n}\n"]
@@ -208,6 +214,11 @@ struct CoverageCarryTests {
                 held: try CarrySamples.covered(plain, run: otherRule),
                 rescan: plain
             ),
+            try CarryHarness.refusal(
+                in: workspace,
+                held: try CarrySamples.covered(plain, run: otherLinks),
+                rescan: plain
+            ),
             try CarryHarness.refusal(in: workspace, held: try CarrySamples.covered(plain), rescan: gone),
             try CarryHarness.refusal(in: workspace, held: try CarrySamples.covered(plain), rescan: moved),
             try CarryHarness.refusal(in: workspace, held: try CarrySamples.covered(plain), rescan: added)
@@ -215,6 +226,7 @@ struct CoverageCarryTests {
 
         let expected: [StoreError?] = [
             CarrySamples.refused("it was mapped by another rule"),
+            CarrySamples.refused("its functions were linked to tests by another rule"),
             CarrySamples.refused("`\(try CarrySamples.key("helper", in: plain))` names no record now"),
             CarrySamples.refused("`\(try CarrySamples.key("kit", in: plain))` spans other lines now"),
             CarrySamples.refused("`\(try CarrySamples.key("extra", in: added))` has no coverage")

@@ -270,7 +270,7 @@ struct CoverageCarryReplacementTests {
         defer { package.remove() }
         let rerun = try CarrySamples.covered(
             try CarrySamples.scan(git: CarrySamples.clean, date: SnapshotHarness.date + CarrySamples.day),
-            run: CoverageSnapshots.ran(options: ["map: " + CoverageMapper.rule])
+            run: CoverageSnapshots.ran(options: ["map: " + CoverageMapper.rule, "links: " + CoverageTestLinks.rule])
         )
 
         let held = try CarrySamples.covered(try CarrySamples.scan(git: CarrySamples.clean))
