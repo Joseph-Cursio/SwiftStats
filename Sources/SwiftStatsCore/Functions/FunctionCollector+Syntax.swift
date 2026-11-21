@@ -8,6 +8,24 @@
 import SwiftSyntax
 
 extension FunctionCollector {
+    /// Accessors that set a property or subscript, or observe its
+    /// setting, and so take a `private(set)`-style level.
+    static let settingAccessors: Set<String> = [
+        "set", "_modify", "modify", "willSet", "didSet", "unsafeMutableAddress", "init"
+    ]
+
+    /// Walks `tree` and returns its records.
+    static func collect(_ tree: SourceFileSyntax, context: FileContext) -> [FunctionRecord] {
+        walked(tree, context: context).records
+    }
+
+    /// A collector that has walked `tree`, for its records and selectors.
+    static func walked(_ tree: SourceFileSyntax, context: FileContext) -> FunctionCollector {
+        let collector = Self(context: context)
+        collector.walk(tree)
+        return collector
+    }
+
     /// Whether the modifiers make a declaration `private` or `fileprivate`.
     /// `private(set)` restricts only the setter, so it doesn't count.
     static func isFileScoped(_ modifiers: DeclModifierListSyntax) -> Bool {
@@ -15,6 +33,40 @@ extension FunctionCollector {
             modifier.detail == nil
                 && (modifier.name.tokenKind == .keyword(.private) || modifier.name.tokenKind == .keyword(.fileprivate))
         }
+    }
+
+    /// The effective level, under `scope`'s rules, of the declaration of
+    /// the record `node` opens: a function, initialiser or subscript by its
+    /// own modifiers, an accessor by its property's or subscript's (a
+    /// setting one capped by a `private(set)`-style modifier), a
+    /// deinitialiser by the scope's default.
+    static func accessLevel(of node: Syntax, in scope: AccessScope) -> AccessLevel {
+        if let function = node.as(FunctionDeclSyntax.self) {
+            return scope.level(of: function.modifiers)
+        }
+        if let initializer = node.as(InitializerDeclSyntax.self) {
+            return scope.level(of: initializer.modifiers)
+        }
+        if let subscriptDecl = node.as(SubscriptDeclSyntax.self) {
+            return scope.level(of: subscriptDecl.modifiers)
+        }
+        if let block = node.as(AccessorBlockSyntax.self) {
+            let binding = block.parent?.as(PatternBindingSyntax.self)
+            return scope.level(of: binding.flatMap(variable(of:))?.modifiers ?? DeclModifierListSyntax([]))
+        }
+        guard let accessor = node.as(AccessorDeclSyntax.self) else {
+            return scope.level(written: nil)
+        }
+        let owner = accessor.parent?.parent?.parent
+        let modifiers = owner?.as(SubscriptDeclSyntax.self)?.modifiers
+            ?? owner?.as(PatternBindingSyntax.self).flatMap(variable(of:))?.modifiers
+            ?? DeclModifierListSyntax([])
+        let level = scope.level(of: modifiers)
+        guard settingAccessors.contains(accessor.accessorSpecifier.text),
+              let setter = AccessLevel.writtenForSetter(in: modifiers) else {
+            return level
+        }
+        return min(level, setter)
     }
 
     /// Whether an accessor block has code, as opposed to a protocol

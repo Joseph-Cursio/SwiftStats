@@ -22,6 +22,9 @@ struct CollectedRecords {
     var topLevelLines: [String: Set<Int>] = [:]
     /// Each file's `private` and `fileprivate` types, as dotted paths, by path.
     var fileScopedTypes: [String: Set<String>] = [:]
+    /// Each file's member records' selectors (`MemberSelector`), by the
+    /// record's start, by path.
+    var selectors: [String: [SourcePosition: String]] = [:]
     /// Each file's law-detection facts.
     var laws: [LawFileFacts] = []
     /// The test-target files whose leading comments carry a

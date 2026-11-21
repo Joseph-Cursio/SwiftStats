@@ -4,7 +4,9 @@
 //
 //  Walks a test body for assertions and property or idempotency checks
 //  (PRD §7.8), noting every callee's base name and every operator used,
-//  which link a property test to the suggestions it may check (§7.11).
+//  which link a property test to the suggestions it may check (§7.11),
+//  and every name the body refers to and every type it calls, which link
+//  any test to the public functions it may test (M5).
 //
 
 import SwiftSyntax
@@ -24,6 +26,14 @@ final class TestBodyScan: SyntaxVisitor {
     /// The base names of the functions called, for `f(…)` and `x.f(…)`,
     /// and the operators used, infix, prefix or postfix.
     var callees: Set<String> = []
+    /// The names referred to: each identifier read, called or reached as a
+    /// member (`x`, `f(…)`, `x.count`, `\.count`) and each type named;
+    /// operators are not names.
+    var names: Set<String> = []
+    /// The names called: `f(…)`, `x.f(…)` and `T<U>(…)` give their base
+    /// name, `T.init(…)` and `T<U>.init(…)` give `T`; operators are not
+    /// calls.
+    var calls: Set<String> = []
 
     /// The called function's base name, for `f(…)` and `x.f(…)`.
     static func calleeName(_ call: FunctionCallExprSyntax) -> String {
@@ -34,6 +44,33 @@ final class TestBodyScan: SyntaxVisitor {
             return member.declName.baseName.text
         }
         return ""
+    }
+
+    /// The name `call` calls a type by, or that it calls: its callee's base
+    /// name, a specialised callee's (`T<U>(…)`), or for `T.init(…)` and
+    /// `T<U>.init(…)` the base's last name; empty when it has none.
+    static func calledName(_ call: FunctionCallExprSyntax) -> String {
+        let callee = unspecialized(call.calledExpression)
+        if let member = callee.as(MemberAccessExprSyntax.self),
+           member.declName.baseName.tokenKind == .keyword(.`init`) {
+            let base = member.base.map(unspecialized)
+            if let reference = base?.as(DeclReferenceExprSyntax.self) {
+                return reference.baseName.text
+            }
+            return base?.as(MemberAccessExprSyntax.self)?.declName.baseName.text ?? ""
+        }
+        if let reference = callee.as(DeclReferenceExprSyntax.self), case .identifier = reference.baseName.tokenKind {
+            return reference.baseName.text
+        }
+        if let member = callee.as(MemberAccessExprSyntax.self), case .identifier = member.declName.baseName.tokenKind {
+            return member.declName.baseName.text
+        }
+        return ""
+    }
+
+    /// `expression` without its generic arguments: `T` for `T<U>`.
+    private static func unspecialized(_ expression: ExprSyntax) -> ExprSyntax {
+        expression.as(GenericSpecializationExprSyntax.self)?.expression ?? expression
     }
 
     /// Whether `name` is a SwiftPropertyLaws `check…PropertyLaws` function.
@@ -70,6 +107,10 @@ final class TestBodyScan: SyntaxVisitor {
         if name.isEmpty == false {
             callees.insert(name)
         }
+        let called = Self.calledName(node)
+        if called.isEmpty == false {
+            calls.insert(called)
+        }
         if name.hasPrefix("XCTAssert") {
             assertions += 1
         } else if name == "assertIdempotentEffects" {
@@ -80,6 +121,23 @@ final class TestBodyScan: SyntaxVisitor {
                 addTrials(node)
             }
         }
+        return .visitChildren
+    }
+
+    override func visit(_ node: DeclReferenceExprSyntax) -> SyntaxVisitorContinueKind {
+        if case .identifier = node.baseName.tokenKind {
+            names.insert(node.baseName.text)
+        }
+        return .visitChildren
+    }
+
+    override func visit(_ node: IdentifierTypeSyntax) -> SyntaxVisitorContinueKind {
+        names.insert(node.name.text)
+        return .visitChildren
+    }
+
+    override func visit(_ node: MemberTypeSyntax) -> SyntaxVisitorContinueKind {
+        names.insert(node.name.text)
         return .visitChildren
     }
 

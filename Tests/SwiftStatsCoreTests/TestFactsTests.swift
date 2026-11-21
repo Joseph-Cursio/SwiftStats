@@ -85,4 +85,30 @@ struct TestFactsTests {
         #expect(swiftTesting.framework == .swiftTesting)
         #expect(xctest.assertions == 2)
     }
+
+    @Test("""
+        every test keeps the names its body refers to (identifiers, members, key paths, types) and the names it \
+        calls, a type's for T(…), T<U>(…), T.init(…) and T<U>.init(…); operators are neither
+        """)
+    func references() throws {
+        let facts = try Self.facts("""
+        @Test func shelf() {
+            var shelf = Shelf(size: 2)
+            let other: Bin<Int> = Bin<Int>(items: [])
+            let made = Kit.Crate.init(count: 1)
+            let tray = Tray<Int>.init(size: 3)
+            shelf.grow()
+            #expect(shelf.count + other.total + tray.size == made[0])
+            #expect([shelf].map(\\.label).isEmpty == false)
+        }
+        """)
+
+        #expect(facts.kind == .example)
+        #expect(facts.references.names == [
+            "Shelf", "shelf", "other", "Bin", "Int", "made", "Kit", "Crate", "tray", "Tray", "grow", "count", "total",
+            "size", "label", "map", "isEmpty"
+        ])
+        #expect(facts.references.calls == ["Shelf", "Bin", "Crate", "Tray", "grow", "map"])
+        #expect(facts.callees.isEmpty)
+    }
 }

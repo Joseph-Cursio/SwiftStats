@@ -22,4 +22,6 @@ struct TypeScope {
     /// Whether the type or extension is `private` or `fileprivate`, which
     /// scopes its members to the file.
     let isFileScoped: Bool
+    /// What the body does to its members' access levels.
+    let members: AccessScope
 }

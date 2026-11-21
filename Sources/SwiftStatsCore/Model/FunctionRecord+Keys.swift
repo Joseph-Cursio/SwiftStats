@@ -24,7 +24,8 @@ extension FunctionRecord {
             bodyHash: bodyHash,
             parentKey: parentKey,
             ifConfig: ifConfig,
-            role: role
+            role: role,
+            access: access
         )
         copy.complexity = complexity
         copy.effect = effect

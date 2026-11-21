@@ -27,6 +27,11 @@ struct ScanMeasurements {
     let tests: [TestRecord]
     /// The base names each property test calls, by test key.
     let propertyCallees: [String: Set<String>]
+    /// The names each test's body refers to and calls, by test key.
+    let testReferences: [String: TestReferences]
+    /// Each file's member records' selectors (`MemberSelector`), by the
+    /// record's start, by path.
+    let selectors: [String: [SourcePosition: String]]
     /// The test-target files whose leading comments carry a
     /// SwiftInferProperties suggestion identity, by identity.
     let stubs: [String: Set<String>]

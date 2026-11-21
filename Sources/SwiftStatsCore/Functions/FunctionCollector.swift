@@ -29,18 +29,14 @@ final class FunctionCollector: SyntaxVisitor {
     var topLevelKey: String?
     /// The top-level statements that record covers.
     var topLevelItems: Set<SyntaxIdentifier> = []
+    /// What each member record of a type is, by its start, for telling
+    /// protocol requirements' witnesses (`MemberSelector`).
+    var selectors: [SourcePosition: String] = [:]
 
     /// Creates a collector for the file described by `context`.
     init(context: FileContext) {
         self.context = context
         super.init(viewMode: .sourceAccurate)
-    }
-
-    /// Walks `tree` and returns its records.
-    static func collect(_ tree: SourceFileSyntax, context: FileContext) -> [FunctionRecord] {
-        let collector = Self(context: context)
-        collector.walk(tree)
-        return collector.records
     }
 
     // MARK: - Files and types
@@ -107,7 +103,8 @@ final class FunctionCollector: SyntaxVisitor {
             pathComponent: extended + whereClause,
             typeName: extended,
             simpleName: simpleName,
-            isFileScoped: isFileScoped
+            isFileScoped: isFileScoped,
+            members: enclosingAccess.members(ofExtensionWith: node.modifiers)
         )))
         return .visitChildren
     }

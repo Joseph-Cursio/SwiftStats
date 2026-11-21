@@ -53,6 +53,13 @@ public struct FunctionRecord: Codable, Hashable, Sendable {
     public let ifConfig: String?
     /// Production code, a test, or a test-target helper.
     public let role: CodeRole
+    /// The effective access level, by the API surface's rules (PRD §7.5):
+    /// what the declaration writes, or its extension's default, capped by
+    /// the enclosing types. An accessor takes its property's or
+    /// subscript's level, a setter its `private(set)`-style one when it
+    /// writes one; whatever is declared inside another record or a
+    /// property's initialiser is `local`; top-level code is `internal` (M5).
+    public let access: FunctionAccess
     /// The enclosing types' path, as the type records name them: each
     /// type's name, or an extension's extended type as written, without
     /// its `where` clause, joined by dots (`Chain2Sequence.Index`); nil at
@@ -86,7 +93,8 @@ public struct FunctionRecord: Codable, Hashable, Sendable {
         bodyHash: String,
         parentKey: String?,
         ifConfig: String?,
-        role: CodeRole
+        role: CodeRole,
+        access: FunctionAccess
     ) {
         self.key = key
         self.module = module
@@ -104,5 +112,6 @@ public struct FunctionRecord: Codable, Hashable, Sendable {
         self.parentKey = parentKey
         self.ifConfig = ifConfig
         self.role = role
+        self.access = access
     }
 }

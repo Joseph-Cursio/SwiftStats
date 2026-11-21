@@ -3,8 +3,9 @@
 //  SwiftStatsCore
 //
 //  What a test function's syntax says about it (PRD §7.8): its framework,
-//  kind, cases, assertions and trials, and for a property test the base
-//  names of the functions it calls (§7.11).
+//  kind, cases, assertions and trials, for a property test the base
+//  names of the functions it calls (§7.11), and for every test the names
+//  its body refers to (M5).
 //
 
 import SwiftSyntax
@@ -26,6 +27,8 @@ struct TestFacts: Equatable {
     /// The base names of the functions a property test calls; empty for
     /// any other kind.
     let callees: Set<String>
+    /// The names the body refers to and calls, for every kind.
+    let references: TestReferences
 
     /// The facts of `function`.
     init(_ function: FunctionDeclSyntax) {
@@ -49,5 +52,6 @@ struct TestFacts: Equatable {
         assertions = body.assertions
         trials = kind == .property && body.hasUnreadableTrials == false ? body.trials : nil
         callees = kind == .property ? body.callees : []
+        references = TestReferences(names: body.names, calls: body.calls)
     }
 }

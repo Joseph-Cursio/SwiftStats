@@ -131,7 +131,9 @@ public struct PackageScanner {
                     converter: SourceLocationConverter(fileName: file.path, tree: file.tree),
                     firstLineColumnOffset: file.hasByteOrderMark ? byteOrderMark.count : 0
                 )
-                collected.records += FunctionCollector.collect(file.tree, context: context)
+                let functions = FunctionCollector.walked(file.tree, context: context)
+                collected.records += functions.records
+                collected.selectors[file.path] = functions.selectors
                 collected.types += TypeCollector.collect(file.tree, context: context)
                 collected.declarations += DeclarationCollector.collect(file.tree, module: target.name)
                 collected.markers += MarkerCollector.collect(file.tree, context: context)
@@ -247,6 +249,8 @@ public struct PackageScanner {
             fileScopedTypes: collected.fileScopedTypes,
             tests: inventory.tests,
             propertyCallees: inventory.callees,
+            testReferences: inventory.references,
+            selectors: collected.selectors,
             stubs: collected.stubs,
             checkProperties: collected.checkProperties,
             laws: LawCheckCollector.detect(collected.laws, generatedFiles: generatedFiles),

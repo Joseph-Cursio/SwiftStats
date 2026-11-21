@@ -11,8 +11,9 @@
 //  record without the anchor rule: its regions starting on statement lines
 //  to the record, the rest (eager globals) to the file. Every production
 //  record then gets its figures (`CoverageRecordLines`) and the test
-//  targets that ran it, or a reason for having none; attachments get the
-//  lines no record spans; each kept file gets its line data.
+//  targets that ran it, or a reason for having none, and a public function
+//  its link rule and linked tests (`CoverageTestLinks`); attachments get
+//  the lines no record spans; each kept file gets its line data.
 //
 
 import Foundation
@@ -66,6 +67,8 @@ struct CoverageMapper {
     private let classifier: CoverageFileClassifier
     /// Places entries.
     private let placement: CoveragePlacement
+    /// Links public functions to their tests.
+    private let links: CoverageTestLinks
 
     /// A mapper onto `measured`, the package at `root` with `targets`,
     /// whose configuration excludes `excluded`.
@@ -81,6 +84,7 @@ struct CoverageMapper {
             excluded: excluded
         )
         placement = CoveragePlacement(measured: measured)
+        links = CoverageTestLinks(measured: measured, containers: containers)
     }
 
     /// The places in `file` where `counts` (by line) are saturated.
@@ -248,19 +252,29 @@ struct CoverageMapper {
     }
 
     /// `record`'s coverage from `entries`, the test targets ran by
-    /// `profiles`' counts; with none, a container's empty figures or the
-    /// reason, `linked` naming the modules with files in the export.
+    /// `profiles`' counts, and for a public function its link rule and
+    /// linked tests; with none, a container's empty figures or the reason,
+    /// `linked` naming the modules with files in the export.
     private func coverage(
         of record: FunctionRecord,
         entries: [MappedEntry],
         profiles: CoverageProfiles,
         linked: Set<String>
     ) -> CoverageRecord {
+        let link = links.link(of: record)
         guard entries.isEmpty == false else {
             let reason: String? = containers.contains(record.key)
                 ? nil
                 : (linked.contains(record.module) ? Self.noData : Self.notLinked)
-            return CoverageRecord(key: record.key, lines: nil, regions: nil, testTargets: [], reason: reason)
+            return CoverageRecord(
+                key: record.key,
+                lines: nil,
+                regions: nil,
+                testTargets: [],
+                reason: reason,
+                link: link,
+                linkedTests: nil
+            )
         }
         let regions = CoverageRecordLines.deduplicated(entries.flatMap(\.regions))
         let nested = placement.records(in: record.file)
@@ -283,7 +297,9 @@ struct CoverageMapper {
             lines: CoverageRecordLines.tally(of: lines),
             regions: CoverageRecordLines.tally(of: regions),
             testTargets: targets,
-            reason: nil
+            reason: nil,
+            link: link,
+            linkedTests: link.flatMap { links.linkedTests(of: record, link: $0, targets: targets) }
         )
     }
 }
