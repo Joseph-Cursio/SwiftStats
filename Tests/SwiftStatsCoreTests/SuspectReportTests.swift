@@ -87,6 +87,28 @@ struct SuspectReportTests {
         #expect(checked.unreadableKeys == 0 && noSummary.suspectsChecked == false)
     }
 
+    @Test("""
+        a run's suspectsJudged is false for a report read without a summary, which judged no reach, as for one whose \
+        summary says so; null only when no report was read; its absent flags are null either way
+        """)
+    func suspectsJudgedWithoutSummary() throws {
+        let results = try ResultsLines.results([
+            ResultsLines.header(.init(discovered: 1)),
+            ResultsLines.mutant(.init(path: "Sources/Lib.swift", line: 3, column: 9, operatorID: "SwapTernary")),
+            ResultsLines.end(.init())
+        ])
+        let run = { (suspects: SuspectReport) in
+            MutationMapper.run(results, ordinal: 0, resultsFile: "results.jsonl", git: nil, suspects: suspects)
+        }
+        let noSummary = try Self.twoKeys(summary: nil)
+        let unchecked = try Self.twoKeys(summary: Self.summary(checked: false))
+        let checked = try Self.twoKeys(summary: Self.summary(checked: true))
+
+        #expect([noSummary, unchecked, checked, .unjudged].map { run($0).suspectsJudged }
+            == [JSONFlag(false), JSONFlag(false), JSONFlag(true), nil])
+        #expect(results.mutants.map(noSummary.judgement(of:)) == [.unjudged])
+    }
+
     @Test("only a kill by a failed test is judged: a crash kill, a survivor and a not-covered mutant aren't")
     func onlyFailedKills() throws {
         let report = try Self.twoKeys(summary: Self.summary(checked: true))
@@ -100,14 +122,35 @@ struct SuspectReportTests {
         #expect(SuspectReport.unjudged.judgement(of: plain) == .unjudged)
     }
 
-    @Test("a key that doesn't read is counted, not joined")
+    @Test("a key that doesn't read is counted, not joined, and the kill it was for isn't judged")
     func unreadableKey() throws {
         let report = try SuspectReport.decode(Self.report(
-            applied: [Self.applied("no position here", flagged: true)],
+            applied: [Self.applied("Sources/Lib.swift:3:x SwapTernary", flagged: true)],
             summary: Self.summary(checked: true)
         ))
+        let plain = Self.mutant(Self.plainKey, verdict: .killed, outcome: "failed")
 
-        #expect(report.flagged.isEmpty && report.unreadableKeys == 1)
+        #expect(report.flagged.isEmpty && report.reported.isEmpty && report.unreadableKeys == 1)
+        #expect(report.judgement(of: plain) == .unjudged)
+        #expect(report.unreported(among: [plain]) == 1)
+    }
+
+    @Test("""
+        the join is one to one: with suspects checked, a kill no entry has is unjudged, not judged not suspect-only, \
+        and counted; a survivor without one isn't counted, nor is anything when no report was read
+        """)
+    func missingEntry() throws {
+        let report = try SuspectReport.decode(Self.report(
+            applied: [Self.applied("Sources/Lib.swift:3:9 SwapTernary")],
+            summary: Self.summary(checked: true)
+        ))
+        let listed = Self.mutant(Self.plainKey, verdict: .killed, outcome: "failed")
+        let missing = Self.mutant(Self.flaggedKey, verdict: .killed, outcome: "failed")
+        let survivor = Self.mutant(Self.flaggedKey, verdict: .survived, outcome: "passed")
+
+        #expect([listed, missing].map(report.judgement(of:)) == [.notSuspectOnly, .unjudged])
+        #expect(report.unreported(among: [listed, missing, survivor]) == 1)
+        #expect(SuspectReport.unjudged.unreported(among: [listed, missing]) == 0)
     }
 
     @Test("each suspect test says why: a failed control run, flakiness alone, or reach over files with kills")

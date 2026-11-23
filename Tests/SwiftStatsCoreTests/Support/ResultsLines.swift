@@ -48,6 +48,14 @@ enum ResultsLines {
         var timeoutSeconds: Int? = ResultsLines.timeoutSeconds
         /// Whether coverage was off.
         var skipCoverage = false
+        /// Whether a mutant's run stopped at its first failed test.
+        var stopsAtFirstFailure = true
+        /// `mutantsDropped`, written when not nil.
+        var dropped: Int?
+        /// The operators.
+        var operators = ["RelationalBoundary", "SwapTernary"]
+        /// The SwiftMutator build's hash.
+        var executableSHA256 = "5138cbf1"
     }
 
     /// A session's `end` line, for `end(_:)`.
@@ -119,21 +127,24 @@ enum ResultsLines {
                 "arguments": ["run"],
                 "host": "host",
                 "processIdentifier": 1,
-                "swiftMutator": ["executableSHA256": "5138cbf1", "version": "0.1.0"],
+                "swiftMutator": ["executableSHA256": header.executableSHA256, "version": "0.1.0"],
                 "toolchain": [
                     "environment": ["DEVELOPER_DIR": "/Applications/Xcode.app"],
                     "testCommandVersion": "Swift"
                 ]
             ],
-            "operators": ["RelationalBoundary", "SwapTernary"],
+            "operators": header.operators,
             "skipCoverage": header.skipCoverage,
             "workers": header.workers,
-            "stopsAtFirstFailure": true,
+            "stopsAtFirstFailure": header.stopsAtFirstFailure,
             "mutantsDiscovered": header.discovered,
             "mutantsToTest": header.discovered
         ]
         if let timeout = header.timeoutSeconds {
             record["timeoutSeconds"] = timeout
+        }
+        if let dropped = header.dropped {
+            record["mutantsDropped"] = dropped
         }
         if let delta = header.delta {
             record["projectDelta"] = projectDelta(delta)

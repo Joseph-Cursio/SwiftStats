@@ -3,7 +3,8 @@
 //  SwiftStatsCore
 //
 //  What a `--since` merge looks up by path (M6, design §6.1), every path
-//  in its NFC spelling, as SwiftMutator's own report looks paths up: the
+//  in its NFC spelling (`NFCPath`), as SwiftMutator's own report looks
+//  paths up: the
 //  base's tree (its deleted paths left out) and rows, the new tree's Swift
 //  paths (the run's last header's, or the copy's own hashes when the run
 //  wrote no results file), the paths the run has a mutant in, the ones it
@@ -19,29 +20,29 @@ extension MutationMerge {
         private static let swiftSuffix = ".swift"
 
         /// The base's tree, deleted paths left out.
-        let baseTree: [String: MutationFile]
+        let baseTree: [NFCPath: MutationFile]
         /// The base's rows, by path.
-        let baseRows: [String: [Mutant]]
+        let baseRows: [NFCPath: [Mutant]]
         /// The new tree's Swift paths: each one's spelling there, and its
         /// hash.
-        let newTree: [String: (path: String, sha256: String)]
+        let newTree: [NFCPath: (path: String, sha256: String)]
         /// The paths the run has a mutant in, tested or not covered.
-        let freshPaths: Set<String>
+        let freshPaths: Set<NFCPath>
         /// The paths the run chose (`since.files`), test files among them.
-        let chosen: Set<String>
+        let chosen: Set<NFCPath>
         /// The paths SwiftMutator's selection holds, as SwiftStats worked
         /// it out in the copy.
-        let selection: Set<String>
+        let selection: Set<NFCPath>
 
         /// Every path to decide on, sorted.
-        var all: [String] {
+        var all: [NFCPath] {
             Set(baseTree.keys).union(baseRows.keys).union(newTree.keys).union(freshPaths).sorted()
         }
 
         /// The paths of `base`, of `results` (nil when the run wrote no
         /// results file) and of `changes`.
         init(base: MutationBase, results: MutationResults?, changes: MutationChanges) {
-            let normalized = MutationMapper.normalized
+            let normalized = NFCPath.init
             let earlier = base.report.files.filter { $0.disposition != .deleted && $0.sha256 != nil }
             baseTree = Dictionary(earlier.map { (normalized($0.path), $0) }) { first, _ in first }
             baseRows = Dictionary(grouping: base.report.mutants) { normalized($0.path) }
@@ -56,7 +57,7 @@ extension MutationMerge {
         /// Whether the base's rows at `path` belong to no tree: a path
         /// neither tree lists nor the run tested (a mutant SwiftMutator
         /// dropped by design outside the listing), whose rows are kept.
-        func isRowsOnly(_ path: String) -> Bool {
+        func isRowsOnly(_ path: NFCPath) -> Bool {
             baseTree[path] == nil && newTree[path] == nil && freshPaths.contains(path) == false
         }
     }

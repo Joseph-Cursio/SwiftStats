@@ -17,6 +17,7 @@ struct MutationSuspectMappingTests {
         let (results, _) = try MappingHarness.coverageRun()
         let suspects = SuspectReport(
             flagged: [],
+            reported: Set(results.mutants.map(\.key)),
             suspectsChecked: true,
             suspectTests: [
                 SuspectReport.SuspectTest(

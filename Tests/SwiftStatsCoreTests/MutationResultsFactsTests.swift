@@ -58,6 +58,46 @@ struct MutationResultsFactsTests {
         #expect(laterTested.facts.workers == 2 && laterTested.facts.timeoutSeconds == 30)
     }
 
+    @Test("""
+        a resumed file takes the facts a resume can change, discovered and dropped mutants and whether runs stop at \
+        the first failure, from the last header, as SwiftMutator's own reader does, and completeness with them; the \
+        build and operators from the first
+        """)
+    func lastHeaderFacts() throws {
+        let tree = [Self.path: Self.firstHash]
+        let lines = [
+            ResultsLines.header(.init(
+                discovered: 3,
+                tree: tree,
+                stopsAtFirstFailure: true,
+                dropped: 1,
+                operators: ["RelationalBoundary", "SwapTernary"],
+                executableSHA256: "first"
+            )),
+            ResultsLines.mutant(.init(line: 3)),
+            ResultsLines.header(.init(
+                session: 2,
+                discovered: 2,
+                delta: .init(base: tree, files: [:]),
+                stopsAtFirstFailure: false,
+                dropped: 2,
+                operators: ["RelationalBoundary"],
+                executableSHA256: "last"
+            )),
+            ResultsLines.mutant(.init(line: 5, session: 2)),
+            ResultsLines.end(.init(session: 2))
+        ]
+
+        let results = try ResultsLines.results(lines)
+
+        #expect(results.sessions == 2 && results.tested == 2)
+        #expect(results.facts.mutantsDiscovered == 2 && results.facts.mutantsDropped == 2)
+        #expect(results.facts.stopsAtFirstFailure == false)
+        #expect(results.complete && results.incompleteReason == nil)
+        #expect(results.facts.operators == ["RelationalBoundary", "SwapTernary"])
+        #expect(results.facts.executableSHA256 == "first")
+    }
+
     @Test("a list's completeness is null where nothing was collected: a not-covered entry, or a line with no killedBy")
     func completenessNotCollected() throws {
         let results = try ResultsLines.results([

@@ -105,6 +105,42 @@ struct MutationRunFailureTests {
     }
 
     @Test("""
+        kills by a failed test the report has no entry for that reads, its key unreadable or the entry missing, are \
+        counted in a warning the scan keeps, and the scan stores them unjudged
+        """)
+    func unreportedKills() throws {
+        var scenario = try FakeMutator.recorded("full")
+        let entry = { (key: String) in #""key": "Sources/Core/Bounds.swift:\#(key)""# }
+        scenario.report = try #require(scenario.report)
+            .replacing(entry("18:5 RelationalOperatorReplacement"), with: entry("18:x RelationalOperatorReplacement"))
+            .replacing(entry("18:5 ReplaceBooleanValue"), with: entry("99:5 ReplaceBooleanValue"))
+            .replacing(#""suspectsChecked": false"#, with: #""suspectsChecked": true"#)
+        #expect(scenario.report?.contains(#""suspectsChecked": true"#) == true)
+        let harness = try MutationRunHarness(scenario)
+        defer { harness.remove() }
+
+        let run = harness.run()
+        let scan = try PackageScanner(describer: harness.package.describer, tools: SnapshotHarness.noTools)
+            .scan(packageAt: harness.package.root, tiers: RequestedTiers(mutation: .full))
+
+        let message = "swiftmutator: swift-mutator report's JSON has no entry that reads for 2 kills by a failed "
+            + "test, so they aren't judged"
+        #expect(run.status.state == .ran && run.suspects.read && run.suspects.unreadableKeys == 1)
+        #expect(run.warnings.map(\.message) == [message])
+        #expect(scan.warnings.map(\.message).contains(message))
+        #expect(MutationSession.describesResults(ScanWarning(file: nil, message: message)))
+        let unjudged = try #require(scan.mutation).mutants.filter { mutant in
+            mutant.path == "Sources/Core/Bounds.swift" && mutant.line == 18 && mutant.column == 5
+        }
+        #expect(unjudged.count == 2 && unjudged.allSatisfy { $0.suspectOnly == nil })
+        #expect(try #require(scan.mutation).mutants.contains { $0.suspectOnly == JSONFlag(false) })
+        #expect(MutationSession.unreportedWarning(1)?.message
+            == "swiftmutator: swift-mutator report's JSON has no entry that reads for 1 kill by a failed test, so it "
+                + "isn't judged")
+        #expect(MutationSession.unreportedWarning(0) == nil)
+    }
+
+    @Test("""
         lines of the results file that don't read are warned about when the run ran and its results were kept, \
         never when it failed and nothing of them was kept
         """)

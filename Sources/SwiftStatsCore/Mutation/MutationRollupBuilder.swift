@@ -90,13 +90,13 @@ struct MutationRollupBuilder {
     ) -> [String: [String: MutationFunctionState]] {
         let counts = Dictionary(report.records.map { ($0.key, $0.counts) }) { first, _ in first }
         let dispositions = Dictionary(
-            report.files.map { ($0.path.precomposedStringWithCanonicalMapping, $0.disposition) }
+            report.files.map { (NFCPath($0.path), $0.disposition) }
         ) { first, _ in first }
         var states: [String: [String: MutationFunctionState]] = [:]
         for record in records where generated.contains(record.file) == false {
             states[record.module, default: [:]][record.key] = MutationFunctionState(
                 counts: counts[record.key],
-                disposition: dispositions[record.file.precomposedStringWithCanonicalMapping]
+                disposition: dispositions[NFCPath(record.file)]
             )
         }
         return states

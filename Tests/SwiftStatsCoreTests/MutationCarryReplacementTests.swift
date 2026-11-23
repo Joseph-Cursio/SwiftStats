@@ -49,12 +49,12 @@ struct MutationCarryReplacementTests {
         let held = try MutationCarrySamples.held(plain)
         let describing = [
             MutationSession.warning(
-                "Sources/Probe/Case.swift, Sources/Probe/case.swift differ only in case, which a case-insensitive "
-                    + "volume can't tell apart, so their mutants may be mapped to the wrong one"
+                "Sources/Probe/Case.swift, Sources/Probe/case.swift differ only in case or Unicode normalisation, "
+                    + "which some volumes can't tell apart, so their mutants may be mapped to the wrong one"
             ),
             MutationSession.warning("skipped 2 lines of the results file that didn't read (4, 9)"),
             MutationSession.warning("swift-mutator report exited 1; kills only suspect tests made aren't judged"),
-            MutationSession.warning("3 keys of swift-mutator report's JSON don't read, so their kills aren't judged")
+            try #require(MutationSession.unreportedWarning(3))
         ]
         let unrelated = MutationSession.warning("discarding the interrupted run of 2026-11-20T09:00:00Z")
         let first = ScannedSnapshot(

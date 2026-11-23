@@ -252,8 +252,8 @@ struct MutationSession {
             suspects = report.suspects
             warnings += [results.skippedLinesWarning.map { ScanWarning(file: nil, message: $0) }, report.warning]
                 .compactMap(\.self)
-            if suspects.unreadableKeys > 0 {
-                warnings.append(Self.warning("\(suspects.unreadableKeys)" + Self.unreadableKeysText))
+            if let unreported = Self.unreportedWarning(suspects.unreported(among: results.mutants)) {
+                warnings.append(unreported)
             }
             kept = try keep(data, report: report.data, sha256: results.sha256)
         }

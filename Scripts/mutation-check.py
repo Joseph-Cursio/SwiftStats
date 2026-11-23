@@ -27,7 +27,8 @@ SwiftMutator's own JSON report, which this script makes itself with
      tri-state: present is true; absent is false when the report's
      `killingTestSummary.suspectsChecked` is true and null (not judged)
      otherwise; only a kill by a failed test (outcome `failed`) can have one.
-     The run's `suspectsJudged` is `suspectsChecked`.
+     The run's `suspectsJudged` is `suspectsChecked`, false when the report
+     has no summary.
   d  its own placement equals the scan's `anchor`, `place`, `owner` and
      `reason` for every mutant: the file class (first match: a `.build`
      folder at any depth, outside the root, a test target's directory, not
@@ -938,7 +939,11 @@ class Report:
             if keyed:
                 self.file_scores[report.get("path")] = report.get("mutationScore")
         self.summary = self.document.get("killingTestSummary")
-        self.suspects_checked = None if self.summary is None else self.summary.get("suspectsChecked") is True
+        # A report without a summary (no kill by a failed test has its tests
+        # recorded) didn't judge reach: the scan's `suspectsJudged` is false
+        # for it, null only when no report was read; each absent flag is
+        # null either way.
+        self.suspects_checked = self.summary is not None and self.summary.get("suspectsChecked") is True
 
     def checked(self, key):
         """Whether the run that tested `key` judged reach (`suspectsChecked`)."""

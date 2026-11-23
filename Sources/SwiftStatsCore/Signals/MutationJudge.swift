@@ -40,13 +40,13 @@ struct MutationJudge {
     /// Each record's mutants, by key, in the report's order.
     private let mutants: [String: [Mutant]]
     /// Each file's disposition, by NFC path.
-    private let dispositions: [String: MutationFileDisposition]
+    private let dispositions: [NFCPath: MutationFileDisposition]
     /// Each record's coverage, by key.
     private let coverage: [String: CoverageRecord]
     /// The suspect tests, by run, then name.
     private let suspects: [Int: [String: [MutationSuspectTest]]]
     /// Each file's mapped mutants, by NFC path, sorted by anchor, then key.
-    private let anchored: [String: [Mutant]]
+    private let anchored: [NFCPath: [Mutant]]
 
     /// A judge of `snapshot`'s `mutation` results with its `coverage` (none
     /// when nil).
@@ -56,7 +56,7 @@ struct MutationJudge {
         killingTests = Dictionary(mutation.records.map { ($0.key, $0.killingTests) }) { first, _ in first }
         mutants = Dictionary(grouping: mutation.mutants.filter { $0.place == .record }) { $0.owner ?? "" }
         dispositions = Dictionary(
-            mutation.files.map { ($0.path.precomposedStringWithCanonicalMapping, $0.disposition) }
+            mutation.files.map { (NFCPath($0.path), $0.disposition) }
         ) { first, _ in first }
         self.coverage = Dictionary((coverage?.records ?? []).map { ($0.key, $0) }) { first, _ in first }
         suspects = Dictionary(grouping: mutation.suspectTests, by: \.run).mapValues { tests in
@@ -67,11 +67,11 @@ struct MutationJudge {
 
     /// `mutants` placed on a record, a type or a file with an anchor, by
     /// NFC path, each file's sorted by anchor, then key.
-    private static func anchorIndex(_ mutants: [Mutant]) -> [String: [Mutant]] {
+    private static func anchorIndex(_ mutants: [Mutant]) -> [NFCPath: [Mutant]] {
         let mapped = mutants.filter { mutant in
             mutant.anchor != nil && (mutant.place == .record || mutant.place == .type || mutant.place == .file)
         }
-        return Dictionary(grouping: mapped) { $0.path.precomposedStringWithCanonicalMapping }.mapValues { held in
+        return Dictionary(grouping: mapped) { NFCPath($0.path) }.mapValues { held in
             held.sorted { left, right in
                 let (leftAnchor, rightAnchor) = (left.anchor ?? Self.origin, right.anchor ?? Self.origin)
                 return leftAnchor == rightAnchor ? left.key < right.key : leftAnchor < rightAnchor
@@ -83,7 +83,7 @@ struct MutationJudge {
     /// `file` whose anchor lies in `range`, ends included, by anchor, then
     /// key; paths compared in NFC.
     func mutants(in file: String, range: SourceSpan) -> [Mutant] {
-        let held = anchored[file.precomposedStringWithCanonicalMapping] ?? []
+        let held = anchored[NFCPath(file)] ?? []
         var low = 0
         var high = held.count
         while low < high {
@@ -100,7 +100,7 @@ struct MutationJudge {
     /// The disposition of `file`'s results; nil when the results don't name
     /// it. Paths compared in NFC.
     func disposition(of file: String) -> MutationFileDisposition? {
-        dispositions[file.precomposedStringWithCanonicalMapping]
+        dispositions[NFCPath(file)]
     }
 
     /// `row`'s mutants counted; nil when it has none.
@@ -124,7 +124,7 @@ struct MutationJudge {
     func state(of row: FunctionRow) -> MutationFunctionState {
         MutationFunctionState(
             counts: counts[row.key],
-            disposition: dispositions[row.file.precomposedStringWithCanonicalMapping]
+            disposition: dispositions[NFCPath(row.file)]
         )
     }
 

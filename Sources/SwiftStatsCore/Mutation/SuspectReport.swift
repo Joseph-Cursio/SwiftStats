@@ -6,7 +6,10 @@
 //  json`: results.jsonl doesn't record them. Each applied operator's `key`
 //  is read into the full five-part key (`MutantKey(spelled:)`); entries
 //  with no key, the placeholders of files without coverage, are skipped.
-//  SwiftMutator writes `killedOnlyBySuspectTests` only as true, so a flag
+//  The join is one to one: a kill whose key no readable entry has (its
+//  entry's key doesn't read, or SwiftMutator's stricter reader skipped its
+//  results line) is unjudged, whatever the summary says, and counted in a
+//  warning. SwiftMutator writes `killedOnlyBySuspectTests` only as true, so a flag
 //  present is true; an absent one is false when the summary says suspects
 //  were checked, and unjudged (nil) when it says they weren't or there is
 //  no summary, since the reach rule then didn't run. Only a kill by a
@@ -97,10 +100,20 @@ struct SuspectReport: Equatable, Sendable {
     static let failuresAlonePerExemption = 4
 
     /// A report that judged nothing: every flag unjudged.
-    static let unjudged = Self(flagged: [], suspectsChecked: false, suspectTests: [], unreadableKeys: 0, read: false)
+    static let unjudged = Self(
+        flagged: [],
+        reported: [],
+        suspectsChecked: false,
+        suspectTests: [],
+        unreadableKeys: 0,
+        read: false
+    )
 
     /// The keys flagged suspect-only.
     let flagged: Set<MutantKey>
+    /// Every key an entry has that reads, flagged or not: the mutants the
+    /// report can judge.
+    let reported: Set<MutantKey>
     /// Whether suspects were checked; false when the report has no
     /// summary.
     let suspectsChecked: Bool
@@ -121,6 +134,7 @@ struct SuspectReport: Equatable, Sendable {
             throw MutationFailure(description: "`swift-mutator report`'s JSON doesn't read")
         }
         var flaggedKeys = Set<MutantKey>()
+        var reportedKeys = Set<MutantKey>()
         var unreadable = 0
         for applied in document.fileReports.flatMap(\.appliedOperators) {
             guard let spelled = applied.key else {
@@ -130,6 +144,7 @@ struct SuspectReport: Equatable, Sendable {
                 unreadable += 1
                 continue
             }
+            reportedKeys.insert(key)
             if applied.killedOnlyBySuspectTests?.value == true {
                 flaggedKeys.insert(key)
             }
@@ -147,6 +162,7 @@ struct SuspectReport: Equatable, Sendable {
         }
         return Self(
             flagged: flaggedKeys,
+            reported: reportedKeys,
             suspectsChecked: summary?.suspectsChecked == true,
             suspectTests: suspects.sorted { ($0.name, $0.file ?? "") < ($1.name, $1.file ?? "") },
             unreadableKeys: unreadable,
@@ -168,17 +184,33 @@ struct SuspectReport: Equatable, Sendable {
         return .reach
     }
 
+    /// Whether `mutant` is a kill by a failed test, the only kind a report
+    /// judges.
+    private static func isJudgeable(_ mutant: RecordedMutant) -> Bool {
+        mutant.verdict == .killed && mutant.outcome == "failed"
+    }
+
     /// Whether `mutant` is a kill only suspect tests made: suspect-only
     /// when flagged; not when unflagged and suspects were checked;
-    /// unjudged when they weren't, and for anything but a kill by a failed
-    /// test.
+    /// unjudged when they weren't, when no entry that reads has its key,
+    /// and for anything but a kill by a failed test.
     func judgement(of mutant: RecordedMutant) -> SuspectJudgement {
-        guard mutant.verdict == .killed, mutant.outcome == "failed" else {
+        guard Self.isJudgeable(mutant) else {
             return .unjudged
         }
         if flagged.contains(mutant.key) {
             return .suspectOnly
         }
-        return suspectsChecked ? .notSuspectOnly : .unjudged
+        return suspectsChecked && reported.contains(mutant.key) ? .notSuspectOnly : .unjudged
+    }
+
+    /// How many of `mutants`' kills by a failed test no entry that reads
+    /// has the key of, so they aren't judged; 0 for a report that wasn't
+    /// read, which judges nothing anyway.
+    func unreported(among mutants: [RecordedMutant]) -> Int {
+        guard read else {
+            return 0
+        }
+        return mutants.count { Self.isJudgeable($0) && reported.contains($0.key) == false }
     }
 }

@@ -8,8 +8,9 @@ import Testing
 /// the scan didn't parse are unmapped (`excluded`, `not parsed`); in a
 /// kept file the hash gate unmaps a mutant that tested other bytes
 /// (`file changed`), a symbolic link (`symlink`) or a mutant with no hash.
-/// Paths compare in NFC, a leading `./` doesn't count, and kept files whose
-/// paths differ only in case are warned about.
+/// Paths compare in NFC, byte for byte after it, a leading `./` doesn't
+/// count, and kept files whose paths differ only in case or Unicode
+/// normalisation are warned about.
 @Suite("Mutation file classes")
 struct MutationFileClassTests {
     /// The library's one function.
@@ -131,7 +132,10 @@ struct MutationFileClassTests {
         let dotted = Self.place("./Sources/Lib/Lib.swift", hash: try harness.hash("Sources/Lib/Lib.swift"), in: harness)
         let composed = Self.place(Self.precomposed, hash: try harness.hash(Self.decomposed), in: harness)
 
-        #expect(MutationMapper.normalized(Self.decomposed) == Self.precomposed)
+        // `String` equality is canonical, so only the bytes show the NFC.
+        #expect(Array(NFCPath(Self.decomposed).spelling.utf8) == Array(Self.precomposed.utf8))
+        #expect(NFCPath(Self.decomposed) == NFCPath(Self.precomposed))
+        #expect(NFCPath(Self.decomposed).hashValue == NFCPath(Self.precomposed).hashValue)
         #expect(dotted.place == .record && dotted.owner == "Lib::func one() -> Int")
         #expect(composed.place == .record && composed.owner == "Lib::func cafe() -> Int")
     }
@@ -152,11 +156,72 @@ struct MutationFileClassTests {
         #expect(harness.mapper.warnings == [
             ScanWarning(
                 file: nil,
-                message: "swiftmutator: Sources/Lib/Name.swift, Sources/Lib/name.swift differ only in case, which a "
-                    + "case-insensitive volume can't tell apart, so their mutants may be mapped to the wrong one"
+                message: "swiftmutator: Sources/Lib/Name.swift, Sources/Lib/name.swift differ only in case or Unicode "
+                    + "normalisation, which some volumes can't tell apart, so their mutants may be mapped to the "
+                    + "wrong one"
             )
         ])
         #expect(plain.mapper.warnings.isEmpty)
+    }
+
+    @Test("""
+        kept files whose paths are one name spelled in NFD and in NFC, which a String set would fold into one, are \
+        warned about, the decomposed spelling first by its bytes
+        """)
+    func normalisationFolded() throws {
+        let package = try TemporaryPackage(
+            [Self.precomposed: Self.source],
+            targets: [
+                DescribedTarget(
+                    name: "Lib",
+                    type: "library",
+                    moduleType: "SwiftTarget",
+                    path: "Sources/Lib",
+                    sources: ["Cafe\u{301}.swift", "Caf\u{E9}.swift"]
+                )
+            ]
+        )
+        let harness = try MappingHarness(package)
+        defer { harness.remove() }
+
+        let expected = "swiftmutator: \(Self.decomposed), \(Self.precomposed) differ only in case or Unicode "
+            + "normalisation, which some volumes can't tell apart, so their mutants may be mapped to the wrong one"
+        let parsed = harness.measured.parsed.map { Array($0.file.path.utf8) }
+        #expect(Set(parsed) == [Array(Self.decomposed.utf8), Array(Self.precomposed.utf8)])
+        #expect(harness.mapper.warnings.map { Array($0.message.utf8) } == [Array(expected.utf8)])
+    }
+
+    @Test("""
+        a held mutant's file is found among the rescan's files in another Unicode normalisation, and a refusal names \
+        it in NFC
+        """)
+    func carriedSpellings() throws {
+        let template = try #require(try MutationCarrySamples.results().mutants.first { $0.place == .record })
+        let spelled = { (place: MutationPlace, reason: String?) in
+            var row = MutantRow(template, ordinal: 0, snapshotId: 0)
+            row.path = Self.decomposed
+            row.place = place
+            row.reason = reason
+            row.fileSHA256 = "h"
+            return try row.mutant
+        }
+        let mapped = try spelled(.record, nil)
+        let excluded = try spelled(.unmapped, PackageFileClassifier.excludedReason)
+        let file = FileRecord(
+            path: Self.precomposed,
+            module: "Lib",
+            lines: 3,
+            strippedLines: 3,
+            generated: false,
+            sha256: "h"
+        )
+
+        #expect(MutationCarry.filesRefusal(of: [mapped], onto: [file]) == nil)
+        let gone = try #require(MutationCarry.filesRefusal(of: [mapped], onto: []))
+        #expect(Array(gone.utf8) == Array("`\(Self.precomposed)` isn't scanned now".utf8))
+        let unparsed = try #require(MutationCarry.unparsedRefusal(of: [excluded], onto: [file]))
+        let named = "`\(Self.precomposed)` is scanned now, but its mutants weren't mapped"
+        #expect(Array(unparsed.utf8) == Array(named.utf8))
     }
 
     @Test("""

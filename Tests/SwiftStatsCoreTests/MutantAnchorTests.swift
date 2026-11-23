@@ -32,13 +32,16 @@ struct MutantAnchorTests {
     private static let marked = "\u{FEFF}public func marked() -> Int { 1 }\npublic func plain() -> Int {\n    2\n}\n"
     /// A file whose last line has no line break.
     private static let tail = "public func tail() -> Int { 1 }"
+    /// A file whose statement ends in a two-byte character (`é`, U+00E9).
+    private static let accent = "public func tally(_ total: inout Int, _ caf\u{E9}: Int) {\n    total += caf\u{E9}\n}\n"
 
-    /// The package holding the three files, measured.
+    /// The package holding the four files, measured.
     private static func harness() throws -> MappingHarness {
         let package = try TemporaryPackage([
             "Sources/Lib/Effects.swift": effects,
             "Sources/Lib/Marked.swift": marked,
-            "Sources/Lib/Tail.swift": tail
+            "Sources/Lib/Tail.swift": tail,
+            "Sources/Lib/Accent.swift": accent
         ])
         do {
             return try MappingHarness(package)
@@ -83,6 +86,27 @@ struct MutantAnchorTests {
 
         #expect(commented == Self.placed("Lib::func work(_: inout[Int])", 2, 17))
         #expect(atEnd == Self.placed("Lib::func tail() -> Int", 1, 31))
+    }
+
+    @Test("""
+        a statement ending in a multi-byte character, pointed one past it, is anchored where that character starts, \
+        not on its continuation byte
+        """)
+    func endAnchoredMultiByte() throws {
+        let harness = try Self.harness()
+        defer { harness.remove() }
+
+        // `    total += café`: `é` is bytes 17 and 18, so the point past it
+        // is column 19.
+        let accented = try harness.place(
+            "Sources/Lib/Accent.swift",
+            line: 2,
+            column: 19,
+            operatorID: "RemoveSideEffects",
+            after: ""
+        )
+
+        #expect(accented == Self.placed("Lib::func tally(_: inout Int, _: Int)", 2, 17))
     }
 
     @Test("""

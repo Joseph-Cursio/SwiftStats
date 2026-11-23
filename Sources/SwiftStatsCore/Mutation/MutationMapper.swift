@@ -9,7 +9,8 @@
 //  in no target's directory are dropped by design (each kept with its class
 //  as its reason); a production file the scan didn't parse is unmapped
 //  (`excluded` or `not parsed`); a parsed one is kept. Paths compare in
-//  NFC, and kept files whose paths are equal case-folded get a warning. In
+//  NFC (`NFCPath`), and kept files whose paths are spelled apart but equal
+//  case-folded or in NFC get a warning. In
 //  a kept file, a mutant whose file hash (a not-covered one's tree hash)
 //  isn't the scanned bytes' hash is unmapped `file changed`, `symlink` for
 //  a symbolic link's `link:` hash (SwiftMutator hashes the path a link
@@ -61,9 +62,9 @@ struct MutationMapper {
     /// What a Swift file's name ends with.
     static let swiftExtension = ".swift"
     /// What the warning about kept files whose paths differ only in case
-    /// says after the paths.
-    private static let caseFoldedText = " differ only in case, which a case-insensitive volume can't tell "
-        + "apart, so their mutants may be mapped to the wrong one"
+    /// or Unicode normalisation says after the paths.
+    private static let caseFoldedText = " differ only in case or Unicode normalisation, which some volumes "
+        + "can't tell apart, so their mutants may be mapped to the wrong one"
 
     /// Sorts the mutants' files.
     private let classifier: PackageFileClassifier
@@ -72,12 +73,13 @@ struct MutationMapper {
     /// The parsed files, by path.
     private let parsed: [String: ParsedFile]
     /// The parsed files' paths, by their NFC spelling.
-    private let spellings: [String: String]
-    /// Kept files whose paths are equal case-folded, each group sorted.
+    private let spellings: [NFCPath: String]
+    /// Kept files whose paths are spelled apart (other bytes) but are equal
+    /// case-folded or in NFC, each group sorted by bytes.
     private let caseFolded: [[String]]
 
     /// The problems the mapping found in the scan's files: kept files whose
-    /// paths differ only in case.
+    /// paths differ only in case or Unicode normalisation.
     var warnings: [ScanWarning] {
         caseFolded.map { paths in
             MutationSession.warning(paths.joined(separator: ", ") + Self.caseFoldedText)
@@ -92,19 +94,22 @@ struct MutationMapper {
         placement = PositionPlacement(measured: measured)
         let files = measured.parsed.map(\.file)
         parsed = Dictionary(files.map { ($0.path, $0) }) { first, _ in first }
-        spellings = Dictionary(files.map { (Self.normalized($0.path), $0.path) }) { first, _ in first }
+        spellings = Dictionary(files.map { (NFCPath($0.path), $0.path) }) { first, _ in first }
         let testModules = Set(targets.filter(\.isTest).map(\.name))
         let production = measured.parsed.filter { testModules.contains($0.module) == false }.map(\.file.path)
-        caseFolded = Dictionary(grouping: Set(production)) { Self.normalized($0).lowercased() }.values
+        // Told apart by their bytes: a `String` set would fold an NFC and an
+        // NFD spelling of one name into one.
+        let spelledApart = Dictionary(production.map { (Array($0.utf8), $0) }) { first, _ in first }.values
+        caseFolded = Dictionary(grouping: spelledApart) { NFCPath($0.lowercased()) }.values
             .filter { $0.count > 1 }
-            .map { $0.sorted() }
-            .sorted { $0.joined() < $1.joined() }
+            .map { $0.sorted(by: Self.byteOrder) }
+            .sorted { Self.byteOrder($0.joined(), $1.joined()) }
     }
 
-    /// `path` in Unicode's canonical composition (NFC), as SwiftMutator's
-    /// own report also looks paths up.
-    static func normalized(_ path: String) -> String {
-        path.precomposedStringWithCanonicalMapping
+    /// Whether `lhs`'s UTF-8 bytes sort before `rhs`'s, which tells apart
+    /// spellings `String` order holds equal.
+    private static func byteOrder(_ lhs: String, _ rhs: String) -> Bool {
+        lhs.utf8.lexicographicallyPrecedes(rhs.utf8)
     }
 
     /// Whether `warning` is one the mapping gives (`warnings`), one of
@@ -304,10 +309,10 @@ struct MutationMapper {
         while relative.hasPrefix(Self.currentDirectory) {
             relative.removeFirst(Self.currentDirectory.count)
         }
-        let normal = Self.normalized(relative)
-        if normal.split(separator: "/").contains(Substring(Self.buildFolder)) {
+        let normal = NFCPath(relative)
+        if normal.spelling.split(separator: "/").contains(Substring(Self.buildFolder)) {
             return .build
         }
-        return classifier.classify(spellings[normal] ?? normal)
+        return classifier.classify(spellings[normal] ?? normal.spelling)
     }
 }

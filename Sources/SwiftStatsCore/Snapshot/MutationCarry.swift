@@ -93,10 +93,10 @@ enum MutationCarry {
     /// the scan now parses, so a fresh mapping would place it, naming the
     /// first such path; nil when none does. Paths are compared in NFC.
     static func unparsedRefusal(of mutants: [Mutant], onto files: [FileRecord]) -> String? {
-        let scanned = Set(files.map { MutationMapper.normalized($0.path) })
+        let scanned = Set(files.map { NFCPath($0.path) })
         let reasons: Set<String> = [PackageFileClassifier.excludedReason, PackageFileClassifier.notParsedReason]
         return mutants.filter { $0.place == .unmapped && reasons.contains($0.reason ?? "") }
-            .map { MutationMapper.normalized($0.path) }
+            .map { NFCPath($0.path) }
             .filter(scanned.contains)
             .min()
             .map { "`\($0)` is scanned now, but its mutants weren't mapped" }
@@ -107,9 +107,9 @@ enum MutationCarry {
     /// first such path; nil when each is. Paths are compared in NFC, as
     /// the mapping compares them.
     static func filesRefusal(of mutants: [Mutant], onto files: [FileRecord]) -> String? {
-        let scanned = Dictionary(files.map { (MutationMapper.normalized($0.path), $0.sha256) }) { first, _ in first }
+        let scanned = Dictionary(files.map { (NFCPath($0.path), $0.sha256) }) { first, _ in first }
         let mapped = mutants.filter { [.record, .type, .file].contains($0.place) }
-            .map { (path: MutationMapper.normalized($0.path), hash: $0.fileSHA256) }
+            .map { (path: NFCPath($0.path), hash: $0.fileSHA256) }
             .sorted { $0.path < $1.path }
         for mutant in mapped {
             guard let hash = scanned[mutant.path] else {

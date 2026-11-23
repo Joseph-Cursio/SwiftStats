@@ -106,7 +106,7 @@ struct MutationMerge {
     /// whose kills `suspects` judged, merged with the base.
     func merged(results: MutationResults?, run: MutationRunRecord?, suspects: SuspectReport) -> Merged {
         let paths = Paths(base: base, results: results, changes: changes)
-        var outcomes: [String: Outcome] = [:]
+        var outcomes: [NFCPath: Outcome] = [:]
         for path in paths.all {
             outcomes[path] = outcome(of: path, in: paths, ranWithResults: results != nil)
         }
@@ -158,7 +158,7 @@ struct MutationMerge {
     /// What becomes of the path whose NFC spelling is `path`, given
     /// `paths`, when the run wrote a results file (`ranWithResults`) or
     /// didn't.
-    private func outcome(of path: String, in paths: Paths, ranWithResults: Bool) -> Outcome {
+    private func outcome(of path: NFCPath, in paths: Paths, ranWithResults: Bool) -> Outcome {
         guard let current = paths.newTree[path] else {
             return paths.baseTree[path] == nil ? .untested : .deleted
         }
@@ -184,7 +184,7 @@ struct MutationMerge {
     /// their run as `renumbering` renumbers it, retested ones run
     /// `ordinal`.
     private func files(
-        _ outcomes: [String: Outcome],
+        _ outcomes: [NFCPath: Outcome],
         paths: Paths,
         renumbering: [Int: Int],
         ordinal: Int
@@ -216,7 +216,7 @@ struct MutationMerge {
     /// carried path, and nil otherwise (a retested one is the new run's,
     /// which the caller names).
     private func disposition(
-        of path: String,
+        of path: NFCPath,
         spelled: String,
         outcome: Outcome,
         paths: Paths
