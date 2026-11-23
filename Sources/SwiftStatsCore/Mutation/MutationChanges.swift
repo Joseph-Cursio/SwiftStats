@@ -12,7 +12,9 @@
 //  test files are the ones carried verdicts weren't retested against.
 //  Then, for a run that wrote no results file, the tree itself: every
 //  Swift file of the copy SwiftMutator lists, hashed as SwiftMutator
-//  hashes it, since there is no header to take it from.
+//  hashes it, since there is no header to take it from. Before the run, in
+//  the package itself, the manifests that differ from the base's commit
+//  (deletions included), which refuse the merge.
 //
 
 import Foundation
@@ -28,6 +30,10 @@ struct MutationChanges: Hashable, Sendable {
     private static let twoPathStatuses: Set<Character> = ["C", "R"]
     /// How many paths such an entry names.
     private static let twoPaths = 2
+    /// The package manifest's name.
+    private static let manifest = "Package.swift"
+    /// What a versioned manifest's name starts with.
+    private static let versionedManifestPrefix = "Package@swift-"
 
     /// The Swift paths changed since the base's commit, relative to the
     /// project, as SwiftMutator's own selection lists them, sorted.
@@ -50,6 +56,25 @@ struct MutationChanges: Hashable, Sendable {
         let untracked = try git(["ls-files", "--others", "--exclude-standard", "-z"], in: project)
         let paths = changedPaths(diff) + untracked
         return Self(selection: Set(paths.filter { $0.hasSuffix(swiftSuffix) }).sorted(), tree: [:])
+    }
+
+    /// The manifests at the top of `project`, the package (`Package.swift`
+    /// and `Package@swift-*.swift`), that differ in its working tree from
+    /// `commit`: changed, added, deleted, or untracked and not ignored,
+    /// sorted.
+    static func manifests(in project: URL, since commit: String) throws(MutationFailure) -> [String] {
+        let diff = try git(
+            ["diff", "--name-only", "-z", "--relative", "--no-renames", "--ignore-submodules=all", commit, "--"],
+            in: project
+        )
+        let untracked = try git(["ls-files", "--others", "--exclude-standard", "-z"], in: project)
+        return Set((diff + untracked).filter(isManifest)).sorted()
+    }
+
+    /// Whether `path`, relative to the package, is one of its manifests.
+    static func isManifest(_ path: String) -> Bool {
+        path == manifest
+            || (path.hasPrefix(versionedManifestPrefix) && path.hasSuffix(swiftSuffix) && path.contains("/") == false)
     }
 
     /// The paths `entries`, a `--name-status -z` listing, names: each

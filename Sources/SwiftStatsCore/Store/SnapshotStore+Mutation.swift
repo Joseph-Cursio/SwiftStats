@@ -12,7 +12,8 @@
 //  has a `mutationScan` row. `scan --mutation --since` reads the results of
 //  its base this way, and names the nearest snapshot that holds complete
 //  ones when its base holds none; a rescan of the same tree reads those of
-//  the snapshot it replaces, with its production records' spans.
+//  the snapshot it replaces, with its production records' spans. `trend`
+//  reads only what the results leave out (`MutationGaps`).
 //
 
 import GRDB
@@ -92,5 +93,29 @@ extension SnapshotStore {
             arguments: [package, packagePath, MutationAdapter.name, CollectorState.ran.rawValue]
         )
         return Set(commits)
+    }
+
+    /// What the mutation results snapshot `id` holds leave out, read in
+    /// `database` from its `mutationScan` and `mutationFile` rows alone;
+    /// nil when it holds none, or they leave nothing out.
+    static func mutationGaps(id: Int64, in database: Database) throws -> MutationGaps? {
+        guard try holdsMutation(id: id, in: database),
+              let complete = try Bool.fetchOne(
+                  database,
+                  sql: "SELECT complete FROM mutationScan WHERE snapshotId = ?",
+                  arguments: [id]
+              )
+        else {
+            return nil
+        }
+        let count = { (disposition: MutationFileDisposition) in
+            try Int.fetchOne(
+                database,
+                sql: "SELECT COUNT(*) FROM mutationFile WHERE snapshotId = ? AND disposition = ?",
+                arguments: [id, disposition.rawValue]
+            ) ?? 0
+        }
+        let gaps = MutationGaps(unlisted: try count(.unlisted), unresolved: try count(.unresolved), complete: complete)
+        return gaps.isEmpty ? nil : gaps
     }
 }

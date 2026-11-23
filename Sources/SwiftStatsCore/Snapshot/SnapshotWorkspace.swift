@@ -154,7 +154,7 @@ public struct SnapshotWorkspace {
                 toolchain: MutationBase.toolchainLine(swift: swift, root: root),
                 root: root,
                 environment: MutationBase.sdkEnvironment(of: ProcessInfo.processInfo.environment)
-            ) {
+            ) ?? base.manifestRefusal(root: root) {
                 throw StoreError.noMutationBase(reason)
             }
             return base

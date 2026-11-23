@@ -37,10 +37,11 @@ public struct MutationProvenance: Codable, Hashable, Sendable {
     /// The runs the mutants refer to, by ordinal.
     public let runs: [Run]
 
-    /// Whether the results are anything but one full run of the
-    /// snapshot's own: a merge, or results holding carried mutants.
+    /// Whether the results are a merge rather than a full run. Only a
+    /// merge carries mutants from earlier snapshots: a same-tree carry
+    /// keeps a full run's results, and their flags, as they were.
     var isMerged: Bool {
-        mode == .since || carried > 0
+        mode == .since
     }
 
     /// The provenance of `mutation`; nil when there are no results.

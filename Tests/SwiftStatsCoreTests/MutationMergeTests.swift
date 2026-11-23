@@ -9,8 +9,10 @@ import Testing
 /// nothing retested (an ignored file edited) is unresolved and makes the
 /// results incomplete, as is one with a base row of no file hash and an
 /// unchanged one the base held untested; a case-only rename keeps no old spelling alive and counts the file once;
-/// a path spelled in another Unicode form is the same path; and a path the
-/// base held unlisted stays so while unchanged.
+/// a path spelled in another Unicode form is the same path; a path the
+/// base held unlisted stays so while unchanged; a test file deleted since
+/// the base is a changed test file; and an unchanged path the base held as
+/// production that isn't one now keeps none of its rows.
 @Suite("Mutation merge")
 struct MutationMergeTests {
     /// The fixture's `main`, as the recordings name it.
@@ -177,6 +179,78 @@ struct MutationMergeTests {
         #expect(cafe.map(\.disposition) == [.carried])
         #expect(cafe.first?.path.unicodeScalars.elementsEqual(composed.unicodeScalars) == true)
         #expect(Self.disposition("Sources/Extras/Quiet.swift", in: report) == .unlisted)
+        #expect(report.complete)
+    }
+
+    @Test("""
+        a test file deleted since the base is a changed test file, so the reason says carried verdicts weren't \
+        retested against it; a deleted production file isn't
+        """)
+    func deletedTestFile() throws {
+        let (harness, base) = try Self.base()
+        defer { harness.remove() }
+        var tree = Self.tree(of: base)
+        let testFile = "Tests/CoreTests/SignTests.swift"
+        let production = "Sources/Extras/Unused.swift"
+        #expect(tree.removeValue(forKey: testFile) != nil)
+        #expect(tree.removeValue(forKey: production) != nil)
+
+        let merged = Self.merged(harness, base: base, tree: tree, selection: [])
+
+        let deleted = merged.report.files.filter { $0.disposition == .deleted }
+        #expect(deleted.map(\.path) == [production, testFile])
+        #expect(deleted.map(\.changedTest) == [false, true])
+        #expect(merged.report.complete)
+        #expect(merged.notes == [
+            "merged: 0 files retested since 37124375f4, 6 carried",
+            "1 test file changed since 37124375f4 (1 deleted), so carried verdicts weren't retested against them"
+        ])
+    }
+
+    @Test("""
+        an unchanged file the base held as production that is now in a test target, as a manifest change would \
+        make it, keeps none of its rows: a full run wouldn't have them
+        """)
+    func noLongerProduction() throws {
+        let (harness, base) = try Self.base()
+        defer { harness.remove() }
+        let targets = MappingHarness.mutationTargets.map { target in
+            guard target.name == "Extras" else {
+                return target
+            }
+            return DescribedTarget(
+                name: target.name,
+                type: "test",
+                moduleType: target.moduleType,
+                path: target.path,
+                sources: target.sources
+            )
+        }
+        let package = try TemporaryPackage([:], targets: targets)
+        defer { package.remove() }
+        for part in ["Sources", "Tests"] {
+            try FileManager.default.copyItem(
+                at: MutationFixture.directory.appendingPathComponent(part),
+                to: package.root.appendingPathComponent(part)
+            )
+        }
+        let moved = try MappingHarness(package)
+        let extras = base.report.files.filter { $0.path.hasPrefix("Sources/Extras/") }
+
+        let merged = MutationMerge(
+            base: base,
+            mapper: moved.mapper,
+            changes: MutationChanges(selection: [], tree: Self.tree(of: base))
+        )
+        .merged(results: nil, run: nil, suspects: .unjudged)
+
+        #expect(extras.count == 3 && extras.allSatisfy { $0.disposition == .tested })
+        #expect(base.report.mutants.contains { $0.path.hasPrefix("Sources/Extras/") })
+        let report = merged.report
+        #expect(extras.allSatisfy { Self.disposition($0.path, in: report) == .untested })
+        #expect(report.mutants.contains { $0.path.hasPrefix("Sources/Extras/") } == false)
+        #expect(Self.disposition("Sources/Core/Bounds.swift", in: report) == .carried)
+        #expect(report.mutants.contains { $0.path == "Sources/Core/Bounds.swift" })
         #expect(report.complete)
     }
 

@@ -280,6 +280,13 @@ public struct SnapshotStore: Sendable {
         try queue.read { database in try Self.mutationResults(id: id, in: database) }
     }
 
+    /// What the mutation results snapshot `id` holds leave out, read
+    /// without reading them (`SnapshotStore+Mutation`); nil when it holds
+    /// none, or they leave nothing out.
+    func mutationGaps(id: Int64) throws -> MutationGaps? {
+        try queue.read { database in try Self.mutationGaps(id: id, in: database) }
+    }
+
     /// The commits of the clean snapshots of `package` at `packagePath`
     /// that hold complete mutation results (`SnapshotStore+Mutation`).
     func commitsHoldingMutation(package: String, packagePath: String) throws -> Set<String> {

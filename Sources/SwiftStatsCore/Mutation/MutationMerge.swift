@@ -21,7 +21,10 @@
 //  unlisted (an ignored file edited, a nested repository's), one with a
 //  base row of no file hash, and an unchanged one the base held untested
 //  (moved into a production target since), is unresolved: no results, and
-//  the merged results are incomplete. Test paths the selection holds are marked:
+//  the merged results are incomplete. An unchanged path the base held as
+//  production that isn't one now keeps none of its rows (a manifest change
+//  is refused before the run, so this is a guard). Test paths the
+//  selection holds, and test paths deleted since the base, are marked:
 //  carried verdicts weren't retested against them.
 //
 
@@ -171,9 +174,11 @@ struct MutationMerge {
         }
         let rowsHaveHashes = (paths.baseRows[path] ?? []).allSatisfy { $0.fileSHA256 != nil }
         // A production path the base didn't test (a test target's file
-        // then) has nothing to carry, however unchanged its bytes.
+        // then) has nothing to carry, however unchanged its bytes; nor has
+        // a path the base held as production that no longer is one, whose
+        // rows a full run wouldn't have.
         if let earlier = paths.baseTree[path], earlier.sha256 == current.sha256, rowsHaveHashes,
-           isProduction == false || earlier.disposition != .untested {
+           isProduction ? earlier.disposition != .untested : earlier.disposition == .untested {
             return .carried
         }
         return isProduction ? .unresolved : .untested
@@ -194,8 +199,16 @@ struct MutationMerge {
                 return nil
             }
             guard let current = paths.newTree[path] else {
+                // A test file deleted since the base is a test change too:
+                // carried kills may have needed it.
                 return paths.baseTree[path].map { earlier in
-                    MutationFile(path: earlier.path, sha256: nil, disposition: .deleted, changedTest: false, run: nil)
+                    MutationFile(
+                        path: earlier.path,
+                        sha256: nil,
+                        disposition: .deleted,
+                        changedTest: mapper.isTestFile(earlier.path),
+                        run: nil
+                    )
                 }
             }
             let changedTest = mapper.isTestFile(current.path) && paths.selection.contains(path)
@@ -262,19 +275,22 @@ struct MutationMerge {
 
     /// The reason notes the merged tree `files` gives: how many paths were
     /// retested and carried, then, when there are any, the test files
-    /// changed, the paths with no results and the unlisted ones.
+    /// changed (deleted ones counted apart too), the paths with no results
+    /// and the unlisted ones.
     private func notes(_ files: [MutationFile]) -> [String] {
         let since = "since \(base.shortCommit)"
         let tested = files.count { $0.disposition == .tested }
         let carried = files.count { $0.disposition == .carried }
         let changedTests = files.count(where: \.changedTest)
+        let deletedTests = files.count { $0.changedTest && $0.disposition == .deleted }
         let unresolved = files.count { $0.disposition == .unresolved }
         let unlisted = files.count { $0.disposition == .unlisted }
         var notes = ["merged: \(Self.counted(tested, "file")) retested \(since), \(carried) carried"]
         if changedTests > 0 {
             notes.append(
-                "\(Self.counted(changedTests, "test file")) changed \(since), "
-                    + "so carried verdicts weren't retested against them"
+                "\(Self.counted(changedTests, "test file")) changed \(since)"
+                    + (deletedTests > 0 ? " (\(deletedTests) deleted)" : "")
+                    + ", so carried verdicts weren't retested against them"
             )
         }
         if unresolved > 0 {

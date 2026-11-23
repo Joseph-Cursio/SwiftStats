@@ -107,8 +107,9 @@ base S_B, per path and per function, as the done-when reads them:
      deletions dropped) and the since run's `since.files` less test files;
      fresh rows name the since run.
   s3 no S_B row of a retested or deleted path remains; a base path gone from
-     C's tree is deleted; the selection's test files are marked, and the
-     reason says carried verdicts weren't retested against them.
+     C's tree is deleted; the selection's test files and the test files
+     deleted since B are marked, and the reason says carried verdicts
+     weren't retested against them.
   s4 every production function whose key and body hash are equal in both
      keeps the same multiset of (operator, line from its first line, column,
      occurrence, before, after, verdict): zero differences, but a
@@ -1804,7 +1805,9 @@ class Merge:
         for path in sorted(set(base_tree) | set(new_tree) | set(base_rows) | fresh_paths):
             if path not in new_tree:
                 if path in base_tree:
-                    self.files[base_tree[path][0]] = {"disposition": "deleted", "changedTest": False, "sha256": None}
+                    spelled = base_tree[path][0]
+                    self.files[spelled] = {"disposition": "deleted", "sha256": None,
+                                           "changedTest": package.classify(spelled)[0] == "testFiles"}
                 elif path not in fresh_paths:
                     self.carry(path, base_rows, base_expected)  # rows of no tree are kept
                 continue
@@ -1962,7 +1965,8 @@ class SinceChecks(Checker):
                 differences.append(f"{path}: gone from C's tree but not deleted")
             if rows.rows_of(path):
                 differences.append(f"{path}: rows remain at a deleted path")
-        tests = sorted(p for p in selection if package.classify(p)[0] == "testFiles")
+        tests = sorted({p for p in selection if package.classify(p)[0] == "testFiles"}
+                       | {p for p in deleted if package.classify(p)[0] == "testFiles"})
         marked = sorted(p for p, f in rows.files.items() if f["changedTest"])
         if tests != marked:
             differences.append(f"changed tests {marked}, selection's test files {tests}")

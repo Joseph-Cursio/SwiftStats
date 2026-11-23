@@ -8,7 +8,8 @@ import Testing
 /// `scan --mutation`, on a clean tree and on one with uncommitted changes,
 /// a SwiftStats rebuild, `scan --mutation` whose run fails or is turned
 /// off, `diff --rescan` of an exported commit, and a working-tree rescan
-/// over other uncommitted changes, which `--drop-mutation` replaces.
+/// over other uncommitted changes, by `scan` or `diff --include-dirty`,
+/// which `--drop-mutation` replaces.
 @Suite("Mutation carry through scans")
 struct MutationCarryScanTests {
     /// Another SwiftStats build.
@@ -162,6 +163,43 @@ struct MutationCarryScanTests {
         #expect(older.mutation == StoredMutation(report: results))
         #expect(older.info.collectors.first { $0.name == SwiftStatsCollector.name }?.identity == "inputs:rebuilt")
         #expect(try rebuilt.store.load(id: ids.newer).mutation == nil)
+        #expect(harness.runs() == 1)
+    }
+
+    @Test("""
+        diff --include-dirty over other uncommitted changes refuses to drop the held mutation results, and \
+        --drop-mutation replaces them
+        """)
+    func diffDropsMutation() throws {
+        let harness = try SinceHarness()
+        defer { harness.remove() }
+        try Self.edit(harness, appending: "// Dirty.\n")
+        let first = try harness.base()
+        try Self.edit(harness, appending: "// Dirtier.\n")
+        let head = String(harness.mainCommit.prefix(10))
+        let results = try #require(first.snapshot.report.mutation)
+
+        #expect(throws: StoreError.mutationNotKept(
+            snapshot: "Mutation at \(head) with uncommitted changes",
+            collectedAt: results.collectedAt,
+            reason: "the uncommitted changes differ"
+        )) {
+            try harness.workspace.diffSnapshotIDs(older: "main", newer: nil, includeDirty: true, rescan: false)
+        }
+        let held = try harness.workspace.store.load(id: first.id)
+        let replaced = try harness.workspace.diffSnapshotIDs(
+            older: "main",
+            newer: nil,
+            includeDirty: true,
+            rescan: false,
+            drop: .mutation
+        )
+
+        #expect(first.snapshot.info.git.isDirty)
+        #expect(held.mutation == StoredMutation(report: results))
+        let newer = try harness.workspace.store.load(id: replaced.newer)
+        #expect(newer.info.git.isDirty && newer.mutation == nil)
+        #expect(newer.info.git.dirtyHash != first.snapshot.info.git.dirtyHash)
         #expect(harness.runs() == 1)
     }
 }

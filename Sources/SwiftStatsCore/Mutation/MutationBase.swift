@@ -11,7 +11,11 @@
 //  an ancestor of HEAD, so files changed on both sides would have no
 //  results; and when this scan's SwiftMutator build or settings differ
 //  from the ones its results were made with, since SwiftMutator itself
-//  won't combine results across builds. Once the run is over, its
+//  won't combine results across builds; and when a package manifest
+//  changed since its commit, since which files SwiftMutator compiles and
+//  mutates may have changed with it while their bytes didn't, so their
+//  carried results could hold rows a full run wouldn't, or lack rows it
+//  would. Once the run is over, its
 //  header is checked against the base again (a binary replaced during the
 //  run): the same build, operators and test executable, and the merge
 //  base it compared with must be the base's commit. A resumed `--since`
@@ -221,6 +225,24 @@ struct MutationBase: Hashable, Sendable {
             }
         }
         return nil
+    }
+
+    /// Why a run in the package at `root` can't merge with this base: a
+    /// manifest (`Package.swift`, `Package@swift-*.swift`) differs from
+    /// the base's commit, or the files changed since couldn't be listed;
+    /// nil when it can.
+    func manifestRefusal(root: URL) -> String? {
+        let changed: [String]
+        do {
+            changed = try MutationChanges.manifests(in: root, since: commit)
+        } catch {
+            return error.description
+        }
+        guard changed.isEmpty == false else {
+            return nil
+        }
+        return "\(changed.joined(separator: ", ")) changed since \(revision), so the files SwiftMutator compiles "
+            + "and mutates may differ from those of its results; run a full scan --mutation"
     }
 
     /// Why a run whose results header gave `facts` can't merge with this

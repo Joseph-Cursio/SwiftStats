@@ -93,8 +93,8 @@ public enum MarkdownDiff {
     }
 
     /// Where each side's mutation results came from, as a fact beside the
-    /// deltas, when either side's are merged or carried; nothing when both
-    /// are full runs of their own or hold none.
+    /// deltas, when either side's are merged; nothing when both are full
+    /// runs or hold none.
     private static func mutationSources(_ diff: SnapshotDiffReport) -> [String] {
         let sides = [diff.older.mutation, diff.newer.mutation]
         guard sides.contains(where: { $0?.isMerged == true }) else {
@@ -111,10 +111,10 @@ public enum MarkdownDiff {
         guard let provenance else {
             return "none"
         }
-        let carried = "\(provenance.carried) of \(provenance.mutants) mutants carried"
         guard let base = provenance.base else {
-            return provenance.carried > 0 ? "a full run, \(carried)" : "a full run"
+            return "a full run"
         }
+        let carried = "\(provenance.carried) of \(provenance.mutants) mutants carried"
         return "merged with the results of \(base.commit.prefix(shortCommitLength)) (\(carried))"
     }
 
