@@ -14,7 +14,8 @@
 //  copy keeps the run's own; the command is the run's own, so a `--since`
 //  run is resumed with its `--since`, and its selection is worked out in
 //  the copy again for the merge. The record names the file before
-//  SwiftMutator starts, when the interrupted scan couldn't. SwiftMutator
+//  SwiftMutator starts, when the scan that left it couldn't (a scan
+//  killed outright, or an older SwiftStats). SwiftMutator
 //  appends a session to that file, or, when it stops before its first
 //  mutant, leaves it as it was and writes a `stopped` line in a run folder
 //  of its own, which is read for the reason. A resume that ran is kept and
@@ -67,6 +68,8 @@ extension MutationSession {
             to: directory.configuration
         )
         let before = command.runFolders
+        // The record names the file already, so an interruption has
+        // nothing to add to it.
         let finished = try command.run(resume.pending.command + ["--resume", resume.resultsFile.path])
         let file = try command.resumedResultsFile(
             output: finished.output,

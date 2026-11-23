@@ -224,6 +224,13 @@ struct MutationCommand {
         try logged(mutator, arguments, display: "swift-mutator run", stop: .swiftMutator)
     }
 
+    /// Runs SwiftMutator with `arguments` as `run(_:)` does; an
+    /// interruption that stops it then does `afterStop`'s work, since the
+    /// step never learns how it ended.
+    func run(_ arguments: [String], afterStop: @escaping @Sendable () -> Void) throws(MutationFailure) -> Finished {
+        try logged(mutator, arguments, display: "swift-mutator run", stop: .swiftMutator, afterStop: afterStop)
+    }
+
     /// The results file the run that printed `output` left, after checking
     /// the log folder against the path it printed; nil when it left none.
     func resultsFile(output: String) throws(MutationFailure) -> URL? {
@@ -321,13 +328,15 @@ struct MutationCommand {
 
     /// Runs `tool` with `arguments` in the project, its output appended to
     /// the log between lines naming it as `display` and saying how it
-    /// ended, an interruption stopping it by `policy`: how it ended, its
-    /// output and its milliseconds; a failure when it can't start.
+    /// ended, an interruption stopping it by `policy`, then doing
+    /// `afterStop`'s work when given: how it ended, its output and its
+    /// milliseconds; a failure when it can't start.
     private func logged(
         _ tool: URL,
         _ arguments: [String],
         display: String,
-        stop policy: StopPolicy
+        stop policy: StopPolicy,
+        afterStop: (@Sendable () -> Void)? = nil
     ) throws(MutationFailure) -> Finished {
         log.note(display)
         let start = log.offset()
@@ -341,7 +350,7 @@ struct MutationCommand {
                         added: Self.environment,
                         removed: MutationWorkCopy.repositoryVariables
                     ),
-                    logging: LoggedRun(log: log.url, stop: policy)
+                    logging: LoggedRun(log: log.url, stop: policy, afterStop: afterStop)
                 )
             }
         }

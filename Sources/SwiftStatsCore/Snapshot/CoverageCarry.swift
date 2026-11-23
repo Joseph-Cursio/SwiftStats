@@ -30,6 +30,9 @@ enum CoverageCarry {
     private static let unaskedSkips: Set<String> = [
         CoverageAdapter.notRequestedReason, SnapshotWorkspace.backfillToolSkipReason
     ]
+    /// What says what became of a scan's own run, before `failed` or `was
+    /// skipped`.
+    static let ownRunLead = "this scan's coverage run "
 
     /// Why `held` can't be carried onto `snapshot`, a scan of the same
     /// package, commit and dirtiness whose coverage collector didn't run;
@@ -109,10 +112,10 @@ enum CoverageCarry {
             return nil
 
         case .failed:
-            return "this scan's coverage run failed (\(reason))"
+            return "\(ownRunLead)failed (\(reason))"
 
         case .skipped:
-            return unaskedSkips.contains(reason) ? nil : "this scan's coverage run was skipped (\(reason))"
+            return unaskedSkips.contains(reason) ? nil : "\(ownRunLead)was skipped (\(reason))"
         }
     }
 

@@ -112,7 +112,9 @@ base S_B, per path and per function, as the done-when reads them:
      weren't retested against them.
   s4 every production function whose key and body hash are equal in both
      keeps the same multiset of (operator, line from its first line, column,
-     occurrence, before, after, verdict): zero differences, but a
+     occurrence, before, after, verdict), except that one in a path S_C
+     marks unlisted holds no rows, since an unlisted path's rows are
+     dropped (design section 6.1): zero differences, but a
      killed/timedOut flip that a solo rerun of that mutant confirmed as
      SwiftMutator's timing (listed in `--confirmed-flips`) is listed and
      allowed; every flip is printed with the rerun command.
@@ -1978,12 +1980,21 @@ class SinceChecks(Checker):
         self.listing(differences)
 
         self.section("s4  per function: unchanged functions keep their verdicts")
-        same = {key for key, row in rows.functions.items()
-                if key in base_rows.functions and base_rows.functions[key]["bodyHash"] == row["bodyHash"]}
+        unchanged_functions = {key for key, row in rows.functions.items()
+                               if key in base_rows.functions
+                               and base_rows.functions[key]["bodyHash"] == row["bodyHash"]}
+        # An unlisted path's rows are dropped (design section 6.1), so its
+        # unchanged functions are expected to hold none, not S_B's.
+        unlisted_paths = {p for p, f in rows.files.items() if f["disposition"] == "unlisted"}
+        dropped = {key for key in unchanged_functions if rows.functions[key]["file"] in unlisted_paths}
+        same = unchanged_functions - dropped
         mine = function_mutants(base_rows.mutants, {k: base_rows.functions[k] for k in same})
         theirs = function_mutants(rows.mutants, {k: rows.functions[k] for k in same})
         differences = []
         flips = []
+        for key, table in sorted(function_mutants(rows.mutants, {k: rows.functions[k] for k in dropped}).items()):
+            if table:
+                differences.append(f"{key}: {sum(table.values())} rows in an unlisted path, expected none")
         for key in sorted(same):
             before, after = mine.get(key, {}), theirs.get(key, {})
             if before == after:
@@ -2005,7 +2016,8 @@ class SinceChecks(Checker):
         moved = sum(1 for key in same if rows.functions[key]["startLine"] != base_rows.functions[key]["startLine"])
         self.result("verdicts", not differences and not unconfirmed,
                     f"{len(same)} functions unchanged ({moved} moved), {sum(sum(t.values()) for t in theirs.values())} "
-                    f"mutants; {len(differences)} differences, {len(flips)} killed↔timedOut flips "
+                    f"mutants; {len(dropped)} unchanged in unlisted paths, expected to hold no rows; {len(differences)} "
+                    f"differences, {len(flips)} killed↔timedOut flips "
                     f"({len(flips) - len(unconfirmed)} confirmed by a solo rerun)")
         self.listing(differences)
         for text, old, new in flips:

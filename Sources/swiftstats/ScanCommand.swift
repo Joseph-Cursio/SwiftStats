@@ -35,7 +35,8 @@ struct ScanCommand: ParsableCommand {
         discards that run. A scan without --mutation, or whose mutation run fails, keeps the mutation results \
         of the snapshot it replaces when the tree, the records they name, the files they test and the mapping \
         rule are the same, and otherwise stops without storing anything; --drop-mutation replaces the snapshot \
-        without them instead.
+        without them instead. A coverage or mutation run asked for that fails or is skipped doesn't fail the scan, \
+        which says so on standard error.
         """
     )
 
@@ -128,6 +129,11 @@ struct ScanCommand: ParsableCommand {
                 )
                 report = snapshot.report
                 FileHandle.standardError.write(Data((summary(snapshot.info, store: workspace.store.url) + "\n").utf8))
+            }
+            // A run asked for that collected nothing doesn't fail the
+            // scan, as a failed coverage run never has, but says so.
+            for line in UnrunNotice.lines(for: report, requested: requested) {
+                FileHandle.standardError.write(Data((line + "\n").utf8))
             }
             if output != nil || format != nil || noStore {
                 try CommandFailure.write(try ScanReportEncoder.encode(report), to: output)

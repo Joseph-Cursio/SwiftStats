@@ -137,7 +137,8 @@ enum ProcessRunner {
     /// empty (`/dev/null`) and standard output and standard error both
     /// appended to `logging`'s log, which must exist: a run that prints
     /// for hours (SwiftMutator, M6) never fills memory or a pipe. An
-    /// interruption stops it by `logging`'s policy. Returns how it ended,
+    /// interruption stops it by `logging`'s policy, then does its
+    /// `afterStop` work. Returns how it ended,
     /// whatever its status; throws `ScanError.commandFailed` only when it
     /// can't start or the log can't be opened.
     static func runLogged(
@@ -174,7 +175,7 @@ enum ProcessRunner {
         process.standardOutput = handle
         process.standardError = handle
         do {
-            try ScratchRegistry.shared.start(process, stop: logging.stop)
+            try ScratchRegistry.shared.start(process, stop: logging.stop, afterStop: logging.afterStop)
         } catch {
             throw ScanError.commandFailed(command, -1, error.localizedDescription)
         }

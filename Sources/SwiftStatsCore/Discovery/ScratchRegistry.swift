@@ -16,7 +16,11 @@
 //  each child as the leader of a group of its own, so they reach the
 //  descendants that stay in it, such as the real `swift` under a wrapper
 //  script that forwards no signal. SIGKILL goes to the child alone, as in
-//  M5.
+//  M5. A process can be started with work to do once an interruption has
+//  stopped it (`afterStop`), which runs before the command ends, while the
+//  thread waiting on the process stays blocked: SwiftMutator's run names
+//  its results file in `pending.json` that way (M6, design §1.7, as
+//  built), since the command never returns to record it.
 //
 
 import Foundation
@@ -30,6 +34,9 @@ final class ScratchRegistry: @unchecked Sendable {
         let process: Process
         /// How an interruption stops it.
         let policy: StopPolicy
+        /// What to do once an interruption has stopped it, before the
+        /// command ends; nil for nothing.
+        var afterStop: (@Sendable () -> Void)?
     }
 
     /// A process being stopped: when it gets SIGTERM and SIGKILL, and
@@ -106,12 +113,22 @@ final class ScratchRegistry: @unchecked Sendable {
     }
 
     /// Stops every process of `registered` still running, each by its
+    /// policy (`signalAndWait(_:)`), then does each one's `afterStop`
+    /// work, in order, whether it was still running or had ended unseen.
+    static func stop(_ registered: [Registered]) {
+        signalAndWait(registered)
+        for entry in registered {
+            entry.afterStop?()
+        }
+    }
+
+    /// Stops every process of `registered` still running, each by its
     /// policy: its first signal now, then, while it still runs, SIGTERM
     /// after its grace unless that was the first signal, and SIGKILL after
     /// its kill grace. The first signal and SIGTERM go to the process's
     /// group, SIGKILL to the process alone. Returns once each has ended
     /// or had SIGKILL.
-    static func stop(_ registered: [Registered]) {
+    private static func signalAndWait(_ registered: [Registered]) {
         let start = Date()
         var stopping: [Stopping] = []
         for entry in registered where entry.process.isRunning {
@@ -186,10 +203,17 @@ final class ScratchRegistry: @unchecked Sendable {
     /// Starts `process` and registers it until `finished(_:)`, to be
     /// stopped by `policy`.
     func start(_ process: Process, stop policy: StopPolicy) throws {
+        try start(process, stop: policy, afterStop: nil)
+    }
+
+    /// Starts `process` and registers it until `finished(_:)`, to be
+    /// stopped by `policy`, an interruption then doing `afterStop`'s work
+    /// when given.
+    func start(_ process: Process, stop policy: StopPolicy, afterStop: (@Sendable () -> Void)?) throws {
         lock.lock()
         defer { lock.unlock() }
         try process.run()
-        processes[ObjectIdentifier(process)] = Registered(process: process, policy: policy)
+        processes[ObjectIdentifier(process)] = Registered(process: process, policy: policy, afterStop: afterStop)
     }
 
     /// Forgets `process`, which has exited.
@@ -212,6 +236,18 @@ final class ScratchRegistry: @unchecked Sendable {
         lock.lock()
         defer { lock.unlock() }
         cleanUpHoldingLock()
+    }
+
+    /// Stops `registered` as an interruption does (`stop(_:)`), holding
+    /// the lock as `end(by:)` holds it, so none of them is forgotten and
+    /// the commands waiting on them stay waiting, as when the process then
+    /// ends; what `look` sees meanwhile. For tests, which stop their own
+    /// processes without ending the process or cleaning up the others'.
+    func interrupting<Value>(_ registered: [Registered], then look: () throws -> Value) rethrows -> Value {
+        lock.lock()
+        defer { lock.unlock() }
+        Self.stop(registered)
+        return try look()
     }
 
     /// Cleans up as `cleanUp()` does, then ends this process with the

@@ -32,6 +32,9 @@ enum MutationCarry {
     static let unaskedSkips: Set<String> = [
         MutationAdapter.notRequestedReason, SnapshotWorkspace.backfillToolSkipReason
     ]
+    /// What says what became of a scan's own run, before `failed` or `was
+    /// skipped`.
+    static let ownRunLead = "this scan's mutation run "
 
     /// Why `held` can't be carried onto `snapshot`, a scan of the same
     /// package, commit and dirtiness whose SwiftMutator collector didn't
@@ -130,16 +133,22 @@ enum MutationCarry {
         guard let run = snapshot.info.collectors.first(where: { $0.name == MutationAdapter.name }) else {
             return nil
         }
-        let reason = run.reason ?? "no reason given"
-        switch run.state {
+        return ownRun(state: run.state, reason: run.reason)
+    }
+
+    /// What became of a SwiftMutator run that ended as `state` for
+    /// `reason`, as `ownRun(of:)` says it.
+    static func ownRun(state: CollectorState, reason given: String?) -> String? {
+        let reason = given ?? "no reason given"
+        switch state {
         case .ran:
             return nil
 
         case .failed:
-            return "this scan's mutation run failed (\(reason))"
+            return "\(ownRunLead)failed (\(reason))"
 
         case .skipped:
-            return unaskedSkips.contains(reason) ? nil : "this scan's mutation run was skipped (\(reason))"
+            return unaskedSkips.contains(reason) ? nil : "\(ownRunLead)was skipped (\(reason))"
         }
     }
 

@@ -13,9 +13,11 @@
 //  digits of the file's SHA-256). Then the copy ends, its build going back
 //  to `build-cache/`, unless the run failed with a results file a resume
 //  can continue, whose copy stays for it. `pending.json` (design §1.7) is
-//  written just before SwiftMutator starts, so an interrupted scan leaves
-//  it, then names the results file of a run a resume can continue, or is
-//  removed; but in a scan that stores its snapshot, a run that ran with a
+//  written just before SwiftMutator starts, then names the results file of
+//  a run a resume can continue, or is removed; an interrupted scan, which
+//  ends before the step learns how the run ended, does the same once it
+//  has stopped SwiftMutator (`MutationSession+Interrupted`). But in a scan
+//  that stores its snapshot, a run that ran with a
 //  results file names the kept results in it until the snapshot is stored
 //  (`MutationSession+Kept`). A run discards a pending run it finds, with a
 //  warning; a resume continues it instead, or stores the kept results. A `--since` run (design §6.1) works out
@@ -210,7 +212,7 @@ struct MutationSession {
             scanned: job.scanned
         )
         try pending.write(in: directory)
-        let finished = try command.run(arguments)
+        let finished = try command.run(arguments, afterStop: afterInterruption(of: pending, in: command.copy))
         let file = try command.resultsFile(output: finished.output)
         let outcome = try judged(finished, file: file, command: command, warmBuild: build)
         try record(pending, after: outcome, file: file, work: command.copy.work)

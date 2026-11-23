@@ -5,10 +5,13 @@
 //  The SwiftMutator run `scan --mutation --resume` can continue (M6,
 //  design §1.7), recorded in `.swiftstats/mutation/pending.json`. A run
 //  writes it just before SwiftMutator starts, without the results file,
-//  which only SwiftMutator names: an interrupted scan ends with
-//  SwiftMutator, before it could learn it, and leaves the record for a
-//  resume, which then finds the file in SwiftMutator's log folder in the
-//  kept copy. Once the run has been judged, the record names the results
+//  which only SwiftMutator names. An interrupted scan, which ends before
+//  the step could judge the run, names the file once it has stopped
+//  SwiftMutator, or removes the record when no file has a readable header
+//  (`MutationSession+Interrupted`); a record without one is left only by a
+//  scan killed outright (SIGKILL) or written by an older SwiftStats, and
+//  its resume finds the file in SwiftMutator's log folder in the kept
+//  copy. Once the run has been judged, the record names the results
 //  file when the run failed with one a resume can continue (a readable
 //  header, design §1.5), and is removed otherwise, except after a run that
 //  ran in a scan that stores its snapshot: then it names the results kept
@@ -148,7 +151,8 @@ struct PendingMutationRun: Codable, Equatable, Sendable {
     let mode: Mode
     /// The snapshot a `--since` run merges with; nil for a full run.
     let base: Base?
-    /// The results file, relative to `work/`; nil until the run was judged.
+    /// The results file, relative to `work/`; nil until the run was judged
+    /// or interrupted.
     let resultsFile: String?
     /// The copy's project folder, relative to `work/`.
     let project: String

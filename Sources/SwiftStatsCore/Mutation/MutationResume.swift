@@ -4,9 +4,10 @@
 //
 //  Where `scan --mutation --resume` starts (M6, design §1.7): the pending
 //  run `pending.json` records, its kept copy in `work/`, and its results
-//  file, named by the record or, when the scan that made it was
-//  interrupted before it could name it, the one results file in
-//  SwiftMutator's log folder beside the copy. A resume is refused, in this
+//  file, named by the record (an interrupted scan names it too), or, for
+//  a record that names none (a scan killed outright, or an older
+//  SwiftStats), the one results file in SwiftMutator's log folder beside
+//  the copy. A resume is refused, in this
 //  order, when no run is pending, when it leaves other files out of the
 //  tree than the run did, when the tree's git state differs from the run's,
 //  when the settings differ, when a file the run's scan parsed changed,
