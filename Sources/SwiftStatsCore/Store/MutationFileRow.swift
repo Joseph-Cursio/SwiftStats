@@ -9,8 +9,10 @@
 //  A later merge compares against it.
 //
 
+import GRDB
+
 /// One path of a snapshot's mutation tree.
-struct MutationFileRow: Codable, Equatable {
+struct MutationFileRow: Codable, Equatable, FetchableRecord, PersistableRecord {
     /// The table name.
     static let databaseTableName = "mutationFile"
 

@@ -20,7 +20,7 @@ struct MutationRowsTests {
     }
 
     /// A killing test's name holding a line break, a comma and quotes.
-    private static let oddName = "kills \"this\",\nand that()"
+    static let oddName = "kills \"this\",\nand that()"
     /// When the base snapshot's results were collected.
     private static let baseDate = "2026-11-20T09:00:00.000Z"
     /// A run's suspect tests, out of order: two sharing a name in different
@@ -133,7 +133,7 @@ struct MutationRowsTests {
 
     /// A merged report filling every optional column, and leaving each
     /// empty somewhere.
-    private static func merged() -> MutationReport {
+    static func merged() -> MutationReport {
         let base = MutationSource(commit: "b1", collectedAt: baseDate)
         let since = MutationSinceRevision(ref: "main", commit: "b1", mergeBase: "b1")
         let unflagged = Flags(activated: nil, complete: nil, suspect: nil)

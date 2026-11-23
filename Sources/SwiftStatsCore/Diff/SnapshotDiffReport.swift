@@ -7,9 +7,11 @@
 
 /// The difference between two snapshots.
 public struct SnapshotDiffReport: Codable, Hashable, Sendable {
-    /// The version of this document's format: 2 adds records' coverage
-    /// percentages and the test bundles that changed (M5).
-    public static let currentSchemaVersion = 2
+    /// The version of this document's format: 1 is M2's; 2 adds records'
+    /// coverage percentages and the test bundles that changed (M5); 3
+    /// adds records' mutation figures, the mutation roll-ups and where
+    /// each side's mutation results came from (M6).
+    public static let currentSchemaVersion = 3
 
     /// The document's format version.
     public let schemaVersion: Int
@@ -33,7 +35,8 @@ public struct SnapshotDiffReport: Codable, Hashable, Sendable {
 
     /// Whether nothing changed: no families, no deltas, no test bundles
     /// added or removed, and every collector either compared or not
-    /// collected.
+    /// collected. Where the sides' mutation results came from is a fact,
+    /// not a change.
     public var isEmpty: Bool {
         families.isEmpty && functions.isEmpty && rollups.isEmpty && bundles == nil
             && collectors.allSatisfy { $0.outcome != .notComparable }

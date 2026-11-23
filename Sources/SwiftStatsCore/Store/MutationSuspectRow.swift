@@ -7,8 +7,10 @@
 //  tells tests apart, so two rows of a run may share a name.
 //
 
+import GRDB
+
 /// One suspect test of a snapshot's run.
-struct MutationSuspectRow: Codable, Equatable {
+struct MutationSuspectRow: Codable, Equatable, FetchableRecord, PersistableRecord {
     /// The table name.
     static let databaseTableName = "mutationSuspect"
 

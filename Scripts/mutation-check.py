@@ -60,6 +60,13 @@ SwiftMutator's own JSON report, which this script makes itself with
   f  the not-covered rows are the last header's `mutantsNotCovered` less the
      tested keys, each placed as in d.
 
+  g  with `--store`, the snapshot's stored rows (store v5) equal the scan's
+     mutation block column by column: the scan row, each run, each path of
+     the tree, each suspect test and each mutant in order, and the stored
+     `mutation.*` roll-up numbers equal the scan's roll-ups. The snapshot is
+     the newest one of the scan's package, its path in the repository, and
+     the commit and dirtiness of the last run not carried from a base.
+
 It also prints the mapped share of in-body mutants (section 9 step 3), for
 information.
 
@@ -73,7 +80,8 @@ Usage:
     Scripts/mutation-check.py base <package-dir> <scan.json>
                               [--results <results.jsonl>]
                               [--report <report.json> | --mutator <swift-mutator>]
-                              [--work-dir <dir>] [--all] [--dump <path>]
+                              [--work-dir <dir>] [--store <stats.sqlite>]
+                              [--all] [--dump <path>]
 
 <scan.json> is `swiftstats scan --mutation --format json` of <package-dir>
 (with or without a store): its `mutation` block from one full run. The
@@ -94,6 +102,7 @@ import importlib.util
 import json
 import os
 import shutil
+import sqlite3
 import subprocess
 import sys
 import tempfile
@@ -1312,6 +1321,141 @@ class Checker:
               f"{attached} attached; {len(placement.places) - in_records - attached - len(unmapped_kept)} "
               "dropped or in unscanned files")
 
+    # g
+    def stored(self, package, store_path):
+        self.section("g   stored rows equal the scan's mutation block")
+        mutation = package.mutation
+        # The scan's own commit is its fresh run's: in a merged result the
+        # carried runs name the base, so take the last run not carried.
+        fresh = [entry for entry in mutation["runs"] if entry.get("carriedFrom") is None]
+        run = (fresh or mutation["runs"])[-1]
+        name = package.scan["package"]
+        prefix = subprocess.run(["git", "rev-parse", "--show-prefix"], cwd=package.root,
+                                capture_output=True, text=True).stdout.strip()
+        package_path = prefix[:-1] if prefix.endswith("/") else prefix
+        database = sqlite3.connect(f"file:{os.path.abspath(store_path)}?mode=ro", uri=True)
+        database.row_factory = sqlite3.Row
+        found = database.execute(
+            "SELECT id FROM snapshot WHERE package = ? AND packagePath = ? AND ifnull(commitHash, '') = ? "
+            "AND isDirty = ? ORDER BY id DESC LIMIT 1",
+            (name, package_path, run.get("commit") or "", 1 if run["dirty"] else 0),
+        ).fetchone()
+        if found is None:
+            self.result("snapshot found", False,
+                        f"no snapshot of {name} at '{package_path}' of {run.get('commit')}")
+            return
+        snapshot = found["id"]
+        print(f"    snapshot {snapshot} of {name} at '{package_path}' of {run.get('commit')} "
+              f"in {os.path.realpath(store_path)}")
+        version = database.execute("PRAGMA user_version").fetchone()[0]
+        self.result("store version", version == 5, f"user_version {version}")
+
+        def rows(table, order):
+            return [dict(row) for row in database.execute(
+                f'SELECT * FROM "{table}" WHERE snapshotId = ? ORDER BY {order}', (snapshot,))]
+
+        def compare(name, stored_rows, expected_rows):
+            differences = []
+            if len(stored_rows) != len(expected_rows):
+                differences.append(f"{len(stored_rows)} rows stored, {len(expected_rows)} in the scan")
+            for index, (got, want) in enumerate(zip(stored_rows, expected_rows)):
+                for column in sorted(set(got) | set(want)):
+                    if got.get(column) != want.get(column):
+                        differences.append(f"row {index} {column}: stored {got.get(column)!r}, "
+                                           f"scan {want.get(column)!r}")
+            self.result(name, not differences, f"{len(stored_rows)} rows")
+            self.listing(differences)
+
+        def flag(value):
+            return None if value is None else (1 if value else 0)
+
+        def text(value):
+            return json.dumps(value, ensure_ascii=False, separators=(",", ":"), sort_keys=True)
+
+        base = mutation.get("base") or {}
+        compare("mutationScan", [{k: v for k, v in row.items() if k != "snapshotId"}
+                                 for row in rows("mutationScan", "snapshotId")], [{
+            "collectedAt": mutation["collectedAt"], "complete": flag(mutation["complete"]),
+            "listsNotCovered": flag(mutation["listsNotCovered"]), "mode": mutation["mode"],
+            "baseCommit": base.get("commit"), "baseCollectedAt": base.get("collectedAt"),
+        }])
+
+        def run_row(entry):
+            since = entry.get("since") or {}
+            carried = entry.get("carriedFrom") or {}
+            row = {key: entry.get(key) for key in (
+                "ordinal", "identity", "version", "startedAt", "endedAt", "endReason", "commit", "mode",
+                "sessions", "resultsFile", "resultsSHA256", "workers", "timeoutSeconds", "mutantsDiscovered",
+                "mutantsDropped", "controlRuns", "controlFailures", "toolchain", "testExecutableSHA256",
+                "sdkEnvironment")}
+            row.update({
+                "dirty": flag(entry["dirty"]), "skipCoverage": flag(entry["skipCoverage"]),
+                "listsNotCovered": flag(entry["listsNotCovered"]),
+                "stopsAtFirstFailure": flag(entry["stopsAtFirstFailure"]),
+                "suspectsJudged": flag(entry.get("suspectsJudged")),
+                "formatVersions": text(entry["formatVersions"]), "operators": text(entry["operators"]),
+                "sinceRef": since.get("ref"), "sinceCommit": since.get("commit"), "mergeBase": since.get("mergeBase"),
+                "carriedFrom": carried.get("commit"), "carriedFromCollectedAt": carried.get("collectedAt"),
+            })
+            return row
+
+        def strip(stored_rows):
+            return [{k: v for k, v in row.items() if k != "snapshotId"} for row in stored_rows]
+
+        compare("mutationRun", strip(rows("mutationRun", "ordinal")), [run_row(entry) for entry in mutation["runs"]])
+        compare("mutationFile", strip(rows("mutationFile", "path")), sorted((
+            {"path": entry["path"], "sha256": entry.get("sha256"), "disposition": entry["disposition"],
+             "changedTest": flag(entry["changedTest"]), "run": entry.get("run")}
+            for entry in mutation["files"]), key=lambda row: row["path"].encode()))
+        compare("mutationSuspect", strip(rows("mutationSuspect", "run, name, file")), sorted((
+            {"run": entry["run"], "name": entry["name"], "file": entry.get("file"), "why": entry["why"],
+             "files": entry.get("files"), "filesWithKills": entry.get("filesWithKills")}
+            for entry in mutation["suspectTests"]),
+            key=lambda row: (row["run"], row["name"].encode(), "" if row["file"] is None else row["file"])))
+
+        def mutant_row(ordinal, entry):
+            anchor = entry.get("anchor") or {}
+            row = {key: entry.get(key) for key in (
+                "path", "line", "column", "occurrence", "operator", "verdict", "outcome", "endedBy", "exitStatus",
+                "failedTestCount", "fileSHA256", "before", "after", "description", "session", "durationSeconds",
+                "run", "place", "owner", "reason")}
+            row.update({
+                "ordinal": ordinal, "anchorLine": anchor.get("line"), "anchorColumn": anchor.get("column"),
+                "activated": flag(entry.get("activated")), "killedByComplete": flag(entry.get("killedByComplete")),
+                "suspectOnly": flag(entry.get("suspectOnly")), "carried": flag(entry["carried"]),
+                "reused": flag(entry["reused"]), "rerunBecause": entry.get("rerun"),
+                "killedBy": entry["killedBy"],
+            })
+            return row
+
+        stored_mutants = strip(rows("mutant", "ordinal"))
+        for row in stored_mutants:
+            row["killedBy"] = json.loads(row["killedBy"])
+        compare("mutant", stored_mutants, [mutant_row(index, entry) for index, entry in enumerate(mutation["mutants"])])
+
+        def flattened(value, prefix):
+            if isinstance(value, dict):
+                return {path: number for key, inner in value.items()
+                        for path, number in flattened(inner, f"{prefix}.{key}").items()}
+            return {prefix: float(value)} if value is not None else {}
+
+        expected = {}
+        for rollup in package.scan.get("rollups", []):
+            for metric, number in flattened(rollup.get("mutation") or {}, "mutation").items():
+                expected[(rollup["scope"], rollup["name"], metric)] = number
+        stored_numbers = {(row["scope"], row["name"], row["metric"]): row["value"] for row in database.execute(
+            "SELECT scope, name, metric, value, collector FROM rollupMetric "
+            "WHERE snapshotId = ? AND metric LIKE 'mutation.%'", (snapshot,))}
+        collectors = {row[0] for row in database.execute(
+            "SELECT DISTINCT collector FROM rollupMetric WHERE snapshotId = ? AND metric LIKE 'mutation.%'",
+            (snapshot,))}
+        differences = [f"{' '.join(key)}: stored {stored_numbers.get(key)!r}, scan {expected.get(key)!r}"
+                       for key in sorted(set(stored_numbers) | set(expected)) if stored_numbers.get(key) != expected.get(key)]
+        self.result("mutation roll-up numbers", not differences and collectors == {"swiftmutator"},
+                    f"{len(stored_numbers)} numbers from {sorted(collectors)}")
+        self.listing(differences)
+        database.close()
+
 
 def mutant_key(mutant):
     return (mutant["path"], mutant["operator"], mutant["line"], mutant["column"], mutant["occurrence"])
@@ -1365,6 +1509,8 @@ def check(arguments, package, results, results_path, report_path):
     checker.figures(package, figures)
     checker.not_covered(results, scanned, placement)
     checker.share(placement)
+    if arguments.store:
+        checker.stored(package, arguments.store)
     print()
     if checker.failures:
         print(f"FAILED: {', '.join(checker.failures)}")
@@ -1383,6 +1529,7 @@ def main():
     checking.add_argument("--report", help="SwiftMutator's JSON report of the results file, already made")
     checking.add_argument("--mutator", help="the swift-mutator executable that makes the report (default: PATH)")
     checking.add_argument("--work-dir", help="where the report's temporary folder goes (default: the scan's folder)")
+    checking.add_argument("--store", help="also compare the snapshot's stored rows in this store (store v5)")
     checking.add_argument("--all", action="store_true", help="list every difference")
     checking.add_argument("--dump", help="write this script's placement of every mutant here")
     arguments = parser.parse_args()

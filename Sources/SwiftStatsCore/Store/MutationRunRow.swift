@@ -10,8 +10,10 @@
 //  was judged is 1, 0 or null when no report was read.
 //
 
+import GRDB
+
 /// One run of a snapshot's mutation results.
-struct MutationRunRow: Codable, Equatable {
+struct MutationRunRow: Codable, Equatable, FetchableRecord, PersistableRecord {
     /// The table name.
     static let databaseTableName = "mutationRun"
 

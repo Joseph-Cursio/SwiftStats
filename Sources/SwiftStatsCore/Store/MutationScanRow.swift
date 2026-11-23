@@ -8,8 +8,10 @@
 //  and unmapped ones too, and the counts follow from them.
 //
 
+import GRDB
+
 /// A snapshot's mutation results, as one row.
-struct MutationScanRow: Codable, Equatable {
+struct MutationScanRow: Codable, Equatable, FetchableRecord, PersistableRecord {
     /// The table name.
     static let databaseTableName = "mutationScan"
 

@@ -38,8 +38,10 @@ extension SnapshotWorkspace {
     /// it without coverage instead, but never drops coverage that carries.
     /// Coverage too damaged to read throws `StoreError.damagedCoverage`,
     /// naming the way past it, unless `drop` lets it go; any other failure
-    /// to read it throws the store's error. No snapshot holds mutation
-    /// results yet, so `.mutation` changes nothing.
+    /// to read it throws the store's error. Mutation results are stored
+    /// with the snapshot but not yet carried or refused (M6 step 7): a
+    /// rescan whose swiftmutator didn't run replaces a snapshot holding
+    /// them without them, and `.mutation` changes nothing.
     @discardableResult
     func save(_ snapshot: ScannedSnapshot, drop: DropOptions) throws -> (snapshot: ScannedSnapshot, id: Int64) {
         let dropCoverage = drop.contains(.coverage)

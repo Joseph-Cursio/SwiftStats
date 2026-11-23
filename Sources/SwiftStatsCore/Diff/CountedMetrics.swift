@@ -9,8 +9,9 @@
 //  they read as zero too; clone counts are listed with them, though every
 //  production scope has them once SwiftCloneDetector ran. A count's
 //  collector must have run in both snapshots for the diff to read it at all.
-//  Coverage numbers are left out on purpose: a missing one was not
-//  collected (a record with no coverage data), never zero.
+//  Coverage and mutation numbers are left out on purpose: a missing one
+//  was not collected (a record with no coverage data, or no mutant),
+//  never zero.
 //
 
 /// Which missing metrics read as zero.

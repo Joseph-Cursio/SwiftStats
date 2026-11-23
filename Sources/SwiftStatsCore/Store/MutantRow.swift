@@ -9,8 +9,10 @@
 //  anchor is null when there is none.
 //
 
+import GRDB
+
 /// One mutant of a snapshot.
-struct MutantRow: Codable, Equatable {
+struct MutantRow: Codable, Equatable, FetchableRecord, PersistableRecord {
     /// The columns; `operator` is a keyword.
     private enum CodingKeys: String, CodingKey {
         case snapshotId

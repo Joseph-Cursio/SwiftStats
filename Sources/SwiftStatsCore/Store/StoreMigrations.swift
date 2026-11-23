@@ -18,6 +18,7 @@ enum StoreMigrations {
         steps.registerMigration("v2", migrate: version2)
         steps.registerMigration("v3", migrate: version3)
         steps.registerMigration("v4", migrate: version4)
+        steps.registerMigration("v5", migrate: version5)
         return steps
     }
 

@@ -132,7 +132,7 @@ struct StoreRowTests {
         #expect(try Self.query(url, "SELECT ordinal, ifnull(similarity, '-') FROM cloneClass") == "1|-\n2|0.9012\n")
     }
 
-    @Test("a v2 store migrates to v4: old rows get nulls and no v3 rows, and new scans get all of them")
+    @Test("a v2 store migrates to v5: old rows get nulls and no v3 rows, and new scans get all of them")
     func migration() throws {
         let directory = try SnapshotHarness.temporaryDirectory("StoreRows")
         defer { try? FileManager.default.removeItem(at: directory) }
@@ -147,7 +147,7 @@ struct StoreRowTests {
         let store = try SnapshotStore(at: url)
         let migrated = try store.load(id: old.id)
 
-        #expect(try Self.query(url, "PRAGMA user_version") == "4\n")
+        #expect(try Self.query(url, "PRAGMA user_version") == "5\n")
         #expect(migrated.functions.map(\.key) == old.functions.map(\.key))
         #expect(migrated.functions.allSatisfy { $0.facts == nil })
         #expect(migrated.scanFacts == nil)

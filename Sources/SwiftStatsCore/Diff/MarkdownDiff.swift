@@ -4,8 +4,8 @@
 //
 //  `swiftstats diff --format markdown` (PRD §6.6, §10): a summary, the
 //  function families that changed, the test bundles that came or went,
-//  metric deltas grouped into worse, better and neutral, and what couldn't
-//  be compared.
+//  where merged mutation results came from, metric deltas grouped into
+//  worse, better and neutral, and what couldn't be compared.
 //
 
 /// Renders a diff as Markdown.
@@ -17,7 +17,7 @@ public enum MarkdownDiff {
     public static func render(_ diff: SnapshotDiffReport) -> String {
         var lines = ["# \(diff.newer.package): \(side(diff.older)) → \(side(diff.newer))", ""]
         guard diff.isEmpty == false else {
-            lines += ["No changes."] + notCompared(diff) + warnings(diff)
+            lines += ["No changes."] + mutationSources(diff) + notCompared(diff) + warnings(diff)
             return lines.joined(separator: "\n") + "\n"
         }
         let own = diff.collectors.first { $0.name == SwiftStatsCollector.name }
@@ -28,7 +28,7 @@ public enum MarkdownDiff {
             lines += summary(diff)
             lines += ["", "## Functions", ""] + families(diff.families)
         }
-        lines += bundles(diff.bundles)
+        lines += bundles(diff.bundles) + mutationSources(diff)
         let deltas = diff.functions.flatMap { function in
             function.metrics.map { (place: function.key, delta: $0) }
         } + diff.rollups.map { (place: "\($0.scope.rawValue) \($0.name)", delta: $0.delta) }
@@ -90,6 +90,32 @@ public enum MarkdownDiff {
             names.isEmpty ? nil : "\(verb) " + names.map { "`\($0)`" }.joined(separator: ", ")
         }
         return ["", "Test bundles " + parts.joined(separator: "; ") + "."]
+    }
+
+    /// Where each side's mutation results came from, as a fact beside the
+    /// deltas, when either side's are merged or carried; nothing when both
+    /// are full runs of their own or hold none.
+    private static func mutationSources(_ diff: SnapshotDiffReport) -> [String] {
+        let sides = [diff.older.mutation, diff.newer.mutation]
+        guard sides.contains(where: { $0?.isMerged == true }) else {
+            return []
+        }
+        let parts = [("older", diff.older.mutation), ("newer", diff.newer.mutation)].map { name, provenance in
+            "\(name) " + describe(provenance)
+        }
+        return ["", "Mutation results: " + parts.joined(separator: "; ") + "."]
+    }
+
+    /// One side's mutation results, in words.
+    private static func describe(_ provenance: MutationProvenance?) -> String {
+        guard let provenance else {
+            return "none"
+        }
+        let carried = "\(provenance.carried) of \(provenance.mutants) mutants carried"
+        guard let base = provenance.base else {
+            return provenance.carried > 0 ? "a full run, \(carried)" : "a full run"
+        }
+        return "merged with the results of \(base.commit.prefix(shortCommitLength)) (\(carried))"
     }
 
     /// The collectors that weren't compared, and why.
