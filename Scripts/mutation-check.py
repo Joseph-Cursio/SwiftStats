@@ -120,6 +120,10 @@ base S_B, per path and per function, as the done-when reads them:
 them with `swiftstats report --format json` of that snapshot (the snapshot
 the report names, by package, path, commit and dirtiness):
 
+  t  the report is schema 5 and its `thresholds` lists exactly the limits
+     this script uses (the defaults with each `--set` applied, genuinely
+     under-tested's ratio only when set), so the limits the report states
+     are checked against the ones given here, not taken from it.
   s  each of weak tests, genuinely under-tested, best property-test target
      and uneven clone testing (mutation) is computed, or left out with the
      reason its inputs give: a scan before schema 8 or with no swiftmutator
@@ -2166,6 +2170,8 @@ WEAK_NOT_LISTED_NOTE = ("; the mutation results don't list code no test ran (a S
 NOT_LISTED_REASON = ("the mutation results don't list code no test ran (a SwiftMutator build before 13f96a46), "
                      "so low scores can't be told from missing ones")
 FIRST_M6_SCHEMA = 8
+# The `swiftstats report --format json` version that lists the thresholds used.
+REPORT_SCHEMA = 5
 NAMED_KILLING_TESTS = 5
 VERIFIED_BONUS = 50
 UNKILLED = ("survived", "timedOut", "noCoverage", "notCovered")
@@ -2772,6 +2778,13 @@ class SignalModel:
 
 
 class SignalChecks(Checker):
+    def thresholds(self, report, limits):
+        self.section("t   thresholds: report 5 lists the limits this script uses")
+        self.result("report schema", report.get("schemaVersion") == REPORT_SCHEMA,
+                    f"expected {REPORT_SCHEMA}, got {report.get('schemaVersion')}")
+        listed = (report.get("thresholds") or {}).get("limits")
+        self.result("mutation limits", listed == limits, f"expected {limits}, got {listed}")
+
     def requirements(self, model, signals):
         self.section("s   requirements: each signal is computed, or left out with the reason its inputs give")
         for name in SIGNAL_COLLECTORS:
@@ -2871,10 +2884,12 @@ def signals(arguments):
         if name not in by_name:
             fail(f"{arguments.report} lists no {name} signal")
     store = SignalStore(arguments.store, report["snapshot"])
-    model = SignalModel(store, signal_limits(arguments.set), report.get("scan"))
+    limits = signal_limits(arguments.set)
+    model = SignalModel(store, limits, report.get("scan"))
     checker = SignalChecks(arguments.all)
     checker.lists_not_covered = store.scan["listsNotCovered"] if store.scan else None
     print(f"snapshot {store.id} of {report['snapshot']['package']} at {report['snapshot']['git'].get('commit')}")
+    checker.thresholds(report, limits)
     checker.requirements(model, by_name)
     checker.ratios(model)
     if model.left_out("weak-tests") is None:

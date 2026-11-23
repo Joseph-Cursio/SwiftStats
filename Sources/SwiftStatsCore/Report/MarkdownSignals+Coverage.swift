@@ -37,7 +37,7 @@ extension MarkdownSignals {
     }
 
     /// Covered of total, with the percentage; a dash without data.
-    private static func tally(_ tally: CoverageTally?) -> String {
+    static func tally(_ tally: CoverageTally?) -> String {
         guard let tally else {
             return "—"
         }
@@ -56,7 +56,7 @@ extension MarkdownSignals {
     }
 
     /// A cell reading an item's coverage with `cell`.
-    private static func coverage(_ cell: @escaping (SignalItem.Coverage) -> String) -> (SignalItem) -> String {
+    static func coverage(_ cell: @escaping (SignalItem.Coverage) -> String) -> (SignalItem) -> String {
         { item in item.coverage.map(cell) ?? "—" }
     }
 

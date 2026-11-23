@@ -16,9 +16,11 @@ struct TopCommand: ParsableCommand {
         commandName: "top",
         abstract: "List a derived signal's functions, highest score first.",
         discussion: """
-        Ranks every production function with a score above zero and marks the signal's members. \
-        Signals: \(SignalName.reportOrder.map(\.rawValue).joined(separator: ", ")). The snapshot is \
-        the one `report` would show; thresholds come from this package's configuration.
+        A ranked signal (hotspot, bug-prone, clone-hotspot) lists every candidate with a score above zero \
+        and marks its members; the others list only their members, highest score first, so `top` adds the \
+        ranking. Signals: \(SignalName.reportOrder.map(\.rawValue).joined(separator: ", ")). The snapshot is \
+        the one `report` would show; thresholds and the mutation signals' limits come from `signals:` in this \
+        package's configuration.
         """
     )
 

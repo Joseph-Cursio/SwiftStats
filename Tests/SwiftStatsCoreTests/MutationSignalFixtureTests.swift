@@ -22,7 +22,7 @@ struct MutationSignalFixtureTests {
 
     /// The fixture scanned with its recorded coverage and mutation runs,
     /// stored and read back.
-    private static func stored() throws -> StoredSnapshot {
+    static func stored() throws -> StoredSnapshot {
         let recorded = MutationFixture.directory.appendingPathComponent("Recorded")
         let toolchain = try FakeToolchain.make(FakeToolchain.recorded(in: recorded))
         defer { toolchain.remove() }

@@ -28,7 +28,7 @@ struct CloneMutationFixtureTests {
     private static let appendEnd = 29
 
     /// The pair of whole functions.
-    private static let functions = FakeClone(
+    static let functions = FakeClone(
         run: "default",
         mass: 60,
         spans: [(first, 6...11), (second, 2...7)]
@@ -45,7 +45,7 @@ struct CloneMutationFixtureTests {
 
     /// The fixture scanned with a fake detector reporting `clones` and its
     /// recorded mutation run, stored and read back.
-    private static func stored(_ clones: [FakeClone]) throws -> StoredSnapshot {
+    static func stored(_ clones: [FakeClone]) throws -> StoredSnapshot {
         var outputs: [String: String] = [:]
         for run in ["default", "--type3", "--sequence", "--type1"] {
             outputs[run] = try CloneRepository.json(clones.filter { $0.run == run }, run: run)

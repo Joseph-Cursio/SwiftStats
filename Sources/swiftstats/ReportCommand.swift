@@ -9,7 +9,10 @@ struct ReportCommand: ParsableCommand {
         abstract: "Show a stored snapshot.",
         discussion: """
         Shows the working tree's snapshot (HEAD's, or its uncommitted one when the tree has changes and one \
-        was scanned), or --commit's. Outside git, the latest. Run `swiftstats scan` first.
+        was scanned), or --commit's. Outside git, the latest. Run `swiftstats scan` first. The signals are \
+        computed when the report is made, with the thresholds under `signals:` in this package's configuration \
+        (the mutation signals' limits included); each signal's rule states those it used, and the JSON lists \
+        them under `thresholds`.
         """
     )
 
@@ -34,6 +37,7 @@ struct ReportCommand: ParsableCommand {
             let report = SnapshotReport(
                 snapshot: try workspace.store.info(id: id),
                 signals: try workspace.signals(id: id),
+                thresholds: workspace.configuration.signals,
                 scan: try workspace.store.report(id: id)
             )
             let data: Data = switch format {

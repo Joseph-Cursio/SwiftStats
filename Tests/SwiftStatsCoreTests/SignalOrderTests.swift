@@ -184,7 +184,7 @@ struct SignalOrderTests {
         })
     }
 
-    @Test("report 4 and top 3 name each item's subject and carry M3's inputs in history, and no other payload")
+    @Test("report 5 and top 4 name each item's subject and carry M3's inputs in history, and no other payload")
     func itemShape() throws {
         let repository = try Self.repository()
         defer { repository.remove() }
@@ -198,17 +198,22 @@ struct SignalOrderTests {
             with: try ScanReportEncoder.encode(TopReport(snapshot: info, signal: hotspot, limit: 5))
         ) as? [String: Any]
         let report = try JSONSerialization.jsonObject(with: try ScanReportEncoder.encode(
-            SnapshotReport(snapshot: info, signals: signals, scan: try workspace.store.report(id: id))
+            SnapshotReport(
+                snapshot: info,
+                signals: signals,
+                thresholds: workspace.configuration.signals,
+                scan: try workspace.store.report(id: id)
+            )
         )) as? [String: Any]
         let topItems = (top?["signal"] as? [String: Any])?["items"] as? [[String: Any]] ?? []
         let reportSignals = report?["signals"] as? [[String: Any]] ?? []
         let reportHotspot = reportSignals.first { $0["name"] as? String == "hotspot" }
         let reportItems = reportHotspot?["items"] as? [[String: Any]] ?? []
 
-        #expect(TopReport.currentSchemaVersion == 3)
-        #expect(SnapshotReport.currentSchemaVersion == 4)
-        #expect(top?["schemaVersion"] as? Int == 3)
-        #expect(report?["schemaVersion"] as? Int == 4)
+        #expect(TopReport.currentSchemaVersion == 4)
+        #expect(SnapshotReport.currentSchemaVersion == 5)
+        #expect(top?["schemaVersion"] as? Int == 4)
+        #expect(report?["schemaVersion"] as? Int == 5)
         let item = try #require(topItems.first)
         #expect(topItems.count == 1)
         #expect(Self.keys(item) == ["rank", "subject", "file", "line", "score", "member", "history"])
@@ -270,6 +275,7 @@ struct SignalOrderTests {
         let report = SnapshotReport(
             snapshot: try workspace.store.info(id: id),
             signals: try workspace.signals(id: id),
+            thresholds: workspace.configuration.signals,
             scan: try workspace.store.report(id: id)
         )
 

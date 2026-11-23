@@ -190,10 +190,12 @@ public enum MarkdownSignals {
                 traced
             ]
 
-        case .bestPropertyTarget, .cloneHotspot, .divergentClones, .genuinelyUnderTested, .missingTemplate,
-            .riskyUntested, .toolDisagreement, .uncheckedLaws, .unevenCloneMutation, .unevenCloneTesting,
-            .untestedProperty, .weakTests:
+        case .cloneHotspot, .divergentClones, .missingTemplate, .riskyUntested, .toolDisagreement, .uncheckedLaws,
+            .unevenCloneTesting, .untestedProperty:
             m4Columns(for: signal)
+
+        case .bestPropertyTarget, .genuinelyUnderTested, .unevenCloneMutation, .weakTests:
+            mutationColumns(for: signal)
         }
     }
 
