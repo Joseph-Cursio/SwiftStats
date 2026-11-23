@@ -17,6 +17,9 @@ public enum ScanError: Error, Equatable, CustomStringConvertible {
     /// `swift package describe` output could not be decoded: the package
     /// path and the decoding error.
     case descriptionUnreadable(String, String)
+    /// `scan --mutation` was refused before anything ran, for the reason
+    /// given (M6).
+    case mutationRefused(String)
     /// The given path is not a directory containing `Package.swift`.
     case notAPackage(String)
 
@@ -30,6 +33,8 @@ public enum ScanError: Error, Equatable, CustomStringConvertible {
 
         case let .descriptionUnreadable(path, reason):
             return "could not read SwiftPM's description of \(path): \(reason)"
+        case .mutationRefused(let reason):
+            return "scan --mutation: \(reason)"
         case .notAPackage(let path):
             return "\(path) does not contain a Package.swift"
         }

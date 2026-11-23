@@ -49,7 +49,7 @@ struct SnapshotStoreTests {
         #expect(production.first { $0.metric == "effects.purity.pure" }?.collector == "swifteffectinference")
         let collectorNames = [
             "coverage", "dependencies", "history", "swiftclonedetector", "swifteffectinference", "swiftinferproperties",
-            "swiftlint", "swiftprojectlint", "swiftstats"
+            "swiftlint", "swiftmutator", "swiftprojectlint", "swiftstats"
         ]
         #expect(snapshot.info.collectors.map(\.name) == collectorNames)
     }
@@ -123,7 +123,7 @@ struct SnapshotStoreTests {
             arguments: [url.path, "PRAGMA user_version"],
             in: directory
         )
-        #expect(String(bytes: version, encoding: .utf8) == "4\n")
+        #expect(String(bytes: version, encoding: .utf8) == "5\n")
 
         try SnapshotHarness.sqlite(url, "INSERT INTO grdb_migrations VALUES ('v99')")
 

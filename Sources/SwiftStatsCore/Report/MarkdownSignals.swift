@@ -193,6 +193,9 @@ public enum MarkdownSignals {
         case .cloneHotspot, .divergentClones, .missingTemplate, .riskyUntested, .toolDisagreement, .uncheckedLaws,
             .unevenCloneTesting, .untestedProperty:
             m4Columns(for: signal)
+
+        case .bestPropertyTarget, .genuinelyUnderTested, .unevenCloneMutation, .weakTests:
+            mutationColumns(for: signal)
         }
     }
 
@@ -212,6 +215,9 @@ public enum MarkdownSignals {
 
         case .unevenCloneTesting:
             "Least covered copy"
+
+        case .unevenCloneMutation:
+            "Least killed copy"
 
         case .uncheckedLaws:
             "Type"

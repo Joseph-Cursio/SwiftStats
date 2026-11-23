@@ -6,11 +6,14 @@
 //  `swift test`. Only `--skip <regex>` pairs are allowed, since most other
 //  `swift test` flags change or remove the profiles the collector reads
 //  (`--disable-xctest`, `-c release`, `--filter`, `--parallel`, ...).
+//  `collectors.swiftmutator.arguments` (M6) takes the same allowlist: the
+//  pairs go into the test command of the configuration SwiftStats writes
+//  for SwiftMutator.
 //
 
 import Yams
 
-/// Checks the coverage collector's `swift test` arguments.
+/// Checks the coverage and swiftmutator collectors' `swift test` arguments.
 enum CoverageArguments {
     /// The one flag `arguments` may hold, each time followed by a regex.
     static let skipFlag = "--skip"

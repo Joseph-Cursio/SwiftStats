@@ -30,10 +30,10 @@ struct CoverageCarryReplacementTests {
         let first = try CarrySamples.covered(try CarrySamples.scan(git: CarrySamples.clean))
         let coverage = try #require(first.report.coverage)
 
-        _ = try workspace.save(first, dropCoverage: false)
+        _ = try workspace.save(first, drop: [])
         let rescan = try workspace.save(
             try CarrySamples.scan(git: CarrySamples.clean, date: SnapshotHarness.date + CarrySamples.day),
-            dropCoverage: true
+            drop: .coverage
         )
 
         #expect(rescan.snapshot.report.coverage == coverage)
@@ -62,14 +62,14 @@ struct CoverageCarryReplacementTests {
         let expected = (plain.report.warnings + [PackageScanner.undemangledWarning])
             .sorted(by: PackageScanner.warningOrder)
 
-        _ = try workspace.save(first, dropCoverage: false)
+        _ = try workspace.save(first, drop: [])
         let second = try workspace.save(
             try CarrySamples.scan(git: CarrySamples.clean, date: SnapshotHarness.date + CarrySamples.day),
-            dropCoverage: false
+            drop: []
         )
         let third = try workspace.save(
             try CarrySamples.scan(git: CarrySamples.clean, date: SnapshotHarness.date + 2 * CarrySamples.day),
-            dropCoverage: false
+            drop: []
         )
 
         #expect(second.snapshot.report.warnings == expected)
@@ -98,12 +98,12 @@ struct CoverageCarryReplacementTests {
                 + "so it keeps the coverage collected \(collected)"
         )
 
-        _ = try workspace.save(held, dropCoverage: false)
-        let carried = try workspace.save(failedSame, dropCoverage: false)
+        _ = try workspace.save(held, drop: [])
+        let carried = try workspace.save(failedSame, drop: [])
         let storedCarried = try workspace.store.report(id: carried.id)
         let later = try workspace.save(
             try CarrySamples.scan(git: CarrySamples.clean, date: SnapshotHarness.date + 2 * CarrySamples.day),
-            dropCoverage: false
+            drop: []
         )
 
         #expect(carried.snapshot.report.coverage == held.report.coverage)
@@ -128,10 +128,10 @@ struct CoverageCarryReplacementTests {
         let failedGone = CoverageSnapshots.replacing(gone, git: CarrySamples.clean, coverage: nil, run: Self.failedRun)
 
         let refusal = try CarryHarness.refusal(in: workspace, held: held, rescan: failedGone)
-        let dropped = try workspace.save(failedGone, dropCoverage: true)
+        let dropped = try workspace.save(failedGone, drop: .coverage)
         let droppedCoverage = try workspace.store.load(id: dropped.id).coverage
-        _ = try workspace.save(held, dropCoverage: false)
-        let droppedPlain = try workspace.save(gone, dropCoverage: true)
+        _ = try workspace.save(held, drop: [])
+        let droppedPlain = try workspace.save(gone, drop: .coverage)
         let droppedPlainCoverage = try workspace.store.load(id: droppedPlain.id).coverage
 
         let helper = try CarrySamples.key("helper", in: plain)
@@ -180,14 +180,14 @@ struct CoverageCarryReplacementTests {
                 + "set collectors.coverage.path), so it keeps the coverage collected \(collected)"
         )
 
-        _ = try workspace.save(held, dropCoverage: false)
-        let carried = try workspace.save(skipped, dropCoverage: false)
+        _ = try workspace.save(held, drop: [])
+        let carried = try workspace.save(skipped, drop: [])
         let storedCarried = try workspace.store.report(id: carried.id)
         let later = try workspace.save(
             try CarrySamples.scan(git: CarrySamples.clean, date: SnapshotHarness.date + 2 * CarrySamples.day),
-            dropCoverage: false
+            drop: []
         )
-        let afterBackfill = try workspace.save(backfilled, dropCoverage: false)
+        let afterBackfill = try workspace.save(backfilled, drop: [])
 
         #expect(carried.snapshot.report.coverage == held.report.coverage)
         #expect(CarryHarness.coverageRun(carried.snapshot.info)?.reason
@@ -237,7 +237,7 @@ struct CoverageCarryReplacementTests {
         let (package, workspace) = try CarrySamples.store()
         defer { package.remove() }
         let covered = try CarrySamples.covered(try CarrySamples.scan(git: CarrySamples.clean))
-        let held = try workspace.save(covered, dropCoverage: false)
+        let held = try workspace.save(covered, drop: [])
         try SnapshotHarness.sqlite(
             workspace.store.url,
             "UPDATE coverageLine SET lines = '1:5' WHERE snapshotId = \(held.id) AND file = 'Sources/Kit/Kit.swift'"
@@ -249,14 +249,14 @@ struct CoverageCarryReplacementTests {
             reason: "the coverage line data of Sources/Kit/Kit.swift"
         )
         #expect(throws: damaged) {
-            try workspace.save(rescan, dropCoverage: false)
+            try workspace.save(rescan, drop: [])
         }
         #expect(damaged.description == "the snapshot of Probe at c1 holds coverage too damaged to read "
             + "(the coverage line data of Sources/Kit/Kit.swift); run scan --coverage to collect it again, "
             + "or --drop-coverage to replace it without its coverage")
         #expect(try workspace.store.snapshotID(package: "Probe", packagePath: "", commit: "c1", isDirty: false)
             == held.id)
-        let dropped = try workspace.save(rescan, dropCoverage: true)
+        let dropped = try workspace.save(rescan, drop: .coverage)
 
         #expect(dropped.snapshot == rescan)
         #expect(try workspace.store.load(id: dropped.id).coverage == nil)
@@ -274,8 +274,8 @@ struct CoverageCarryReplacementTests {
         )
 
         let held = try CarrySamples.covered(try CarrySamples.scan(git: CarrySamples.clean))
-        _ = try workspace.save(held, dropCoverage: false)
-        let replaced = try workspace.save(rerun, dropCoverage: false)
+        _ = try workspace.save(held, drop: [])
+        let replaced = try workspace.save(rerun, drop: [])
 
         #expect(replaced.snapshot == rerun)
         #expect(try workspace.store.load(id: replaced.id).coverage?.collectedAt == rerun.info.date)

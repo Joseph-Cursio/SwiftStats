@@ -77,7 +77,7 @@ enum CoverageFixture {
         let package = try copy(toolchain: toolchain)
         defer { package.remove() }
         return try PackageScanner(describer: package.describer, tools: SnapshotHarness.noTools)
-            .scan(packageAt: package.root, coverage: true)
+            .scan(packageAt: package.root, tiers: .coverage)
     }
 
     /// The fixture scanned with coverage as a snapshot of a clean tree at
@@ -98,7 +98,7 @@ enum CoverageFixture {
             git: SnapshotHarness.git(commit: commit),
             toolchain: SnapshotHarness.toolchain,
             date: SnapshotHarness.date,
-            coverage: true
+            tiers: .coverage
         )
     }
 

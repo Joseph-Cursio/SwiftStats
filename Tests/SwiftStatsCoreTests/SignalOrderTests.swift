@@ -69,7 +69,8 @@ struct SignalOrderTests {
             copies: 2,
             churn: nil,
             divergence: divergence,
-            coverage: nil
+            coverage: nil,
+            mutation: nil
         )
     }
 
@@ -174,15 +175,16 @@ struct SignalOrderTests {
         let signals = SignalEngine.signals(of: SignalInputs(snapshot: old), thresholds: SignalThresholds())
         #expect(signals.map(\.name) == SignalName.reportOrder)
         #expect(signals.allSatisfy { $0.items.isEmpty && $0.candidates == 0 })
-        // M3's signals keep history's reason; M4's and M5's say the
+        // M3's signals keep history's reason; M4's, M5's and M6's say the
         // snapshot predates their milestone.
         #expect(signals.map(\.leftOut) == signals.map { signal in
-            let milestone = signal.name.requirements.contains(.m5Snapshot) ? "M5" : "M4"
+            let requirements = signal.name.requirements
+            let milestone = requirements.contains(.m6Snapshot) ? "M6" : requirements.contains(.m5Snapshot) ? "M5" : "M4"
             return signal.name.requirements.contains(.history) ? history : "the snapshot predates \(milestone)"
         })
     }
 
-    @Test("report 4 and top 3 name each item's subject and carry M3's inputs in history, and no other payload")
+    @Test("report 5 and top 4 name each item's subject and carry M3's inputs in history, and no other payload")
     func itemShape() throws {
         let repository = try Self.repository()
         defer { repository.remove() }
@@ -196,17 +198,22 @@ struct SignalOrderTests {
             with: try ScanReportEncoder.encode(TopReport(snapshot: info, signal: hotspot, limit: 5))
         ) as? [String: Any]
         let report = try JSONSerialization.jsonObject(with: try ScanReportEncoder.encode(
-            SnapshotReport(snapshot: info, signals: signals, scan: try workspace.store.report(id: id))
+            SnapshotReport(
+                snapshot: info,
+                signals: signals,
+                thresholds: workspace.configuration.signals,
+                scan: try workspace.store.report(id: id)
+            )
         )) as? [String: Any]
         let topItems = (top?["signal"] as? [String: Any])?["items"] as? [[String: Any]] ?? []
         let reportSignals = report?["signals"] as? [[String: Any]] ?? []
         let reportHotspot = reportSignals.first { $0["name"] as? String == "hotspot" }
         let reportItems = reportHotspot?["items"] as? [[String: Any]] ?? []
 
-        #expect(TopReport.currentSchemaVersion == 3)
-        #expect(SnapshotReport.currentSchemaVersion == 4)
-        #expect(top?["schemaVersion"] as? Int == 3)
-        #expect(report?["schemaVersion"] as? Int == 4)
+        #expect(TopReport.currentSchemaVersion == 4)
+        #expect(SnapshotReport.currentSchemaVersion == 5)
+        #expect(top?["schemaVersion"] as? Int == 4)
+        #expect(report?["schemaVersion"] as? Int == 5)
         let item = try #require(topItems.first)
         #expect(topItems.count == 1)
         #expect(Self.keys(item) == ["rank", "subject", "file", "line", "score", "member", "history"])
@@ -268,6 +275,7 @@ struct SignalOrderTests {
         let report = SnapshotReport(
             snapshot: try workspace.store.info(id: id),
             signals: try workspace.signals(id: id),
+            thresholds: workspace.configuration.signals,
             scan: try workspace.store.report(id: id)
         )
 

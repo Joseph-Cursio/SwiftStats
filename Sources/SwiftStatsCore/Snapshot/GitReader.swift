@@ -17,8 +17,9 @@ enum GitReader {
     private static let packagePathspecs = ["--", ".", ":(exclude).swiftstats"]
     /// Options that make `git diff`'s output depend on the trees alone, not
     /// on the user's diff configuration (external tools, text conversion,
-    /// prefixes, rename detection, colour).
-    private static let plainDiff = [
+    /// prefixes, rename detection, colour). The mutation collector's copy
+    /// lists the changes it overlays with them too (M6, design §1.2).
+    static let plainDiff = [
         "--binary", "--no-ext-diff", "--no-textconv", "--no-color", "--no-renames", "--full-index",
         "--src-prefix=a/", "--dst-prefix=b/"
     ]
@@ -44,8 +45,7 @@ enum GitReader {
             return GitState(commit: nil, branch: nil, isDirty: false, dirtyHash: nil, packagePath: packagePath)
         }
         let branch = line(["symbolic-ref", "--short", "--quiet", "HEAD"], in: root)
-        let excluded = ignored.flatMap { path in databaseCompanions.map { ":(exclude)\(path)\($0)" } }
-        let dirtyHash = changesHash(in: root, pathspecs: packagePathspecs + excluded)
+        let dirtyHash = changesHash(in: root, pathspecs: pathspecs(ignoring: ignored))
         return GitState(
             commit: commit,
             branch: branch,
@@ -53,6 +53,19 @@ enum GitReader {
             dirtyHash: dirtyHash,
             packagePath: packagePath
         )
+    }
+
+    /// Pathspecs for the package directory without SwiftStats' own store,
+    /// the files at `ignored` (paths relative to the package root) or
+    /// SQLite's companions of them: the files whose changes `read` hashes.
+    static func pathspecs(ignoring ignored: [String]) -> [String] {
+        packagePathspecs + companions(of: ignored).map { ":(exclude)\($0)" }
+    }
+
+    /// The files at `ignored` and SQLite's companions of each, as paths
+    /// spelled as `ignored` spells them.
+    static func companions(of ignored: [String]) -> [String] {
+        ignored.flatMap { path in databaseCompanions.map { path + $0 } }
     }
 
     /// Whether the directory at `root` is the top level of a git work tree.

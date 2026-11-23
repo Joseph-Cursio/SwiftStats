@@ -1,0 +1,20 @@
+Sources/Probe/Counter.swift                 5                         100
+Sources/Probe/Dependency.swift              1                         100
+Sources/Probe/Excluded.swift                1                         100
+Sources/Probe/Generated.swift               1                         100
+Sources/Probe/Nested.swift                  5                         80
+Sources/Probe/Overloads.swift               3                         100
+Sources/Probe/Wrappers.swift                2                         100
+Sources/Probe/Secrets.swift                 1                         0
+
+
+
+---
+Run
+---
+
+Results file: @PARENT@/Coverage_muter_logs/Nov 21, 2026 at 10:40 AM/results.jsonl
+SwiftMutator: 0.1.0, executable SHA-256 5138cbf1b810b127accddd8d4973bb2675195797cbae9b734bd09c0ae5a35ba8
+Toolchain: Apple Swift version 6.4.2 (swiftlang-6.4.2.1.9 clang-2100.4.1.1)
+Workers: 1; time limit per mutant: 20 s, the default
+💾 Each mutant's result is in @PARENT@/Coverage_muter_logs/Nov 21, 2026 at 10:40 AM/results.jsonl

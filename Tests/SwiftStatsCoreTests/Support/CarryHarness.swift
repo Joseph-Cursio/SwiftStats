@@ -47,10 +47,10 @@ enum CarryHarness {
         held: ScannedSnapshot,
         rescan: ScannedSnapshot
     ) throws -> (error: StoreError?, kept: Bool) {
-        let id = try workspace.save(held, dropCoverage: false).id
+        let id = try workspace.save(held, drop: []).id
         var error: StoreError?
         do {
-            _ = try workspace.save(rescan, dropCoverage: false)
+            _ = try workspace.save(rescan, drop: [])
         } catch let refused as StoreError {
             error = refused
         }

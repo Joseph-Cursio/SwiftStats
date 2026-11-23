@@ -4,7 +4,8 @@
 //
 //  Runs the external tools' collectors in a fixed order (PRD §7.16), and
 //  starts SwiftInferProperties' slower run (§7.11), SwiftCloneDetector's
-//  runs (§7.12) and the coverage run (M5) in the background.
+//  runs (§7.12) and the coverage run (M5) in the background; the
+//  SwiftMutator run (M6) comes last, alone, in the foreground.
 //
 
 import Foundation
@@ -123,6 +124,47 @@ enum CollectorRun {
                 return CoverageRun.skipped(reason)
             }
         }
+    }
+
+    /// Runs the SwiftMutator collector on the package at `root`, alone,
+    /// once every other collector has finished, as `scope` asks:
+    /// `collectors.swiftmutator` names the `swift-mutator` it runs and the
+    /// coverage collector's `swift` is its test command's; `measured`'s
+    /// files are what its copy is checked against. A resume continues the
+    /// pending run in its kept copy; a `--since` run, which merges with
+    /// the base the scan chose before it started, is skipped without one
+    /// (a scan with no store).
+    static func runMutation(
+        root: URL,
+        configuration: SwiftStatsConfiguration,
+        locator: ToolLocator,
+        scope: MutationScope,
+        measured: [FileRecord]
+    ) -> MutationRun {
+        let (mutator, swift): (URL, URL)
+        switch MutationTools.resolve(root: root, configuration: configuration, locator: locator) {
+        case let .found(found, test):
+            mutator = found
+            swift = test
+
+        case .skip(let reason):
+            return MutationRun.skipped(reason)
+        }
+        if case .since = scope.request, scope.base == nil {
+            return MutationRun.skipped(MutationAdapter.sinceNeedsStoreReason)
+        }
+        return MutationAdapter.run(MutationJob(
+            request: scope.request,
+            base: scope.base,
+            mutator: mutator,
+            swift: swift,
+            root: root,
+            git: scope.git ?? GitReader.read(packageRoot: root, ignoring: scope.ignoring),
+            scanned: Dictionary(measured.map { ($0.path, $0.sha256) }) { first, _ in first },
+            ignoring: scope.ignoring,
+            settings: configuration.collectors[MutationAdapter.name],
+            keepsUntilStored: scope.keepsUntilStored
+        ))
     }
 
     /// Every external collector skipped for `reason`.

@@ -1,0 +1,20 @@
+
+Automated mutation testing for Swift 🕳️
+
+You are running version 0.1.0
+
+Want help? Have suggestions? Want to get involved?
+ ↳ https://github.com/Joseph-Cursio/SwiftMutator/issues
++--------------------------------------------------------+
+
+🌿 1 Swift file changed since the merge base of 3712437 and HEAD (3712437).
+✂️ Copying your project to a temporary directory for testing...
+✅ Finished copying your project to a temporary directory for mutation testing.
+You can find your copied project here:
+
+@PARENT@/Mutation_mutated.noindex
+⚙️ Running tests with coverage enabled to determine which files to mutate
++-----------------+
+🔎 Discovering Swift files which SwiftMutator will analyze...
+✅ In total, SwiftMutator discovered 0 Swift files
+ℹ️ 1 Swift file changed since the merge base of 3712437 and HEAD (3712437), and discovery leaves out it: no target compiles it, or the tests don't cover it, so there is nothing to mutate.

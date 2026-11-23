@@ -169,7 +169,8 @@ struct EffectCollectorTests {
             path: "Sources/Effects/File.swift",
             source: source,
             tree: EffectHarness.parsed(source, path: "Sources/Effects/File.swift").tree,
-            hasByteOrderMark: true
+            hasByteOrderMark: true,
+            sha256: ContentHash.sha256(Data(("\u{FEFF}" + source).utf8))
         )
         let run = try EffectHarness.run([file])
 

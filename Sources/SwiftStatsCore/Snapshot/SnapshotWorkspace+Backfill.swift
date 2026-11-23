@@ -10,18 +10,20 @@
 //  fixed: every Nth commit counts from the first commit holding the
 //  package, and a week's pick is its latest commit by committer time in
 //  UTC, so a later run only adds new points. A snapshot that holds results
-//  a backfill doesn't collect (history, coverage, tools, the dependency
-//  graph) is never replaced; one holding history or coverage, which a
-//  backfill never collects, isn't even rescanned. Snapshots are stored as
-//  every scan is (`save(_:dropCoverage:)`).
+//  a backfill doesn't collect (history, coverage, mutation results, tools,
+//  the dependency graph) is never replaced; one holding history, coverage
+//  or mutation results, which a backfill never collects, isn't even
+//  rescanned. Snapshots are stored as every scan is (`save(_:drop:)`).
 //
 
 import Foundation
 
 extension SnapshotWorkspace {
     /// Collectors whose results a backfill never collects: it reads no
-    /// history and never runs the tests.
-    private static let neverCollected: Set<String> = [HistoryCollector.name, CoverageAdapter.name]
+    /// history and never runs the tests, with coverage or mutated.
+    private static let neverCollected: Set<String> = [
+        HistoryCollector.name, CoverageAdapter.name, MutationAdapter.name
+    ]
     /// Why a backfill without tools skips the external collectors.
     static let backfillToolSkipReason = "backfill runs SwiftStats only; --with-tools adds the tools"
     /// Collectors whose results a backfill without tools doesn't collect.
@@ -164,7 +166,7 @@ extension SnapshotWorkspace {
             guard lost.isEmpty else {
                 return Self.kept(commit, holding: lost)
             }
-            try save(snapshot, dropCoverage: false)
+            try save(snapshot, drop: [])
             return BackfillStep(commit: commit, action: .scanned, note: note)
         } catch {
             return BackfillStep(commit: commit, action: .failed, note: String(describing: error))

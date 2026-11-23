@@ -1,3 +1,4 @@
+import Foundation
 import SwiftParser
 @testable import SwiftStatsCore
 import Testing
@@ -8,7 +9,13 @@ struct GeneratedCodeTests {
     private static let defaults = GeneratedCode.defaultGlobs.map(GlobPattern.init)
 
     private static func file(_ path: String, _ source: String) -> ParsedFile {
-        ParsedFile(path: path, source: source, tree: Parser.parse(source: source), hasByteOrderMark: false)
+        ParsedFile(
+            path: path,
+            source: source,
+            tree: Parser.parse(source: source),
+            hasByteOrderMark: false,
+            sha256: ContentHash.sha256(Data(source.utf8))
+        )
     }
 
     @Test("the default globs match generated paths and nothing else")

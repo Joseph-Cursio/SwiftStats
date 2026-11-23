@@ -4,7 +4,8 @@
 //
 //  Parsing `history:` and `signals:` (PRD §10.1). Unknown sub-keys, bad
 //  durations and invalid regular expressions are errors, like unknown
-//  top-level keys.
+//  top-level keys. The mutation signals' limits are read in
+//  `SwiftStatsConfiguration+Signals.swift`.
 //
 
 import Foundation
@@ -91,7 +92,8 @@ extension SwiftStatsConfiguration {
         guard let value, value.null == nil else {
             return SignalThresholds()
         }
-        let mapping = try Self.mapping(value, key: "signals", allowed: SignalThresholds.rankedSignals, path: path)
+        let allowed = SignalThresholds.rankedSignals.union(SignalThresholds.limitKinds.keys)
+        let mapping = try Self.mapping(value, key: "signals", allowed: allowed, path: path)
         var percents: [String: Double] = [:]
         for name in SignalThresholds.rankedSignals {
             guard let entry = mapping[name], entry.null == nil else {
@@ -106,11 +108,11 @@ extension SwiftStatsConfiguration {
             }
             percents[name] = number
         }
-        return SignalThresholds(percents: percents)
+        return SignalThresholds(percents: percents, limits: try mutationLimits(mapping, path: path))
     }
 
     /// `value` as a mapping whose keys are all in `allowed`.
-    private static func mapping(
+    static func mapping(
         _ value: Node,
         key: String,
         allowed: Set<String>,

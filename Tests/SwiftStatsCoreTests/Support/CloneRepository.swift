@@ -43,9 +43,9 @@ struct CloneRepository {
                     [
                         "path": span.path,
                         "startLine": span.lines.lowerBound,
-                        "startColumn": 1,
+                        "startColumn": clone.startColumn,
                         "endLine": span.lines.upperBound,
-                        "endColumn": endColumn
+                        "endColumn": clone.endColumn ?? endColumn
                     ]
                 }
             ]

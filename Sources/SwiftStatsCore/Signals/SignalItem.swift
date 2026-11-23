@@ -9,7 +9,9 @@
 //  and omits the rest. Report schema 3 and top schema 2 (M4) name the
 //  subject `subject` (it was `family`) and move M3's inputs into `history`;
 //  report schema 4 and top schema 3 (M5) add `markers`, `coverage` and a
-//  clone class's `coverage` (M5's payloads are in `SignalItem+Coverage.swift`).
+//  clone class's `coverage` (M5's payloads are in `SignalItem+Coverage.swift`);
+//  M6 adds `mutation`, `ratio`, `propertyTarget` and a clone class's
+//  `mutation` (in `SignalItem+Mutation.swift`).
 //
 
 /// An item's place in a signal.
@@ -105,7 +107,8 @@ public struct SignalItem: Codable, Hashable, Sendable {
         /// Its stripped lines: for divergent clones, those of the units
         /// in its diverging slots, which the score counts; for a hotspot,
         /// those its copies cover; for uneven clone testing, those of its
-        /// copies at most 20% covered.
+        /// copies at most 20% covered, and for its mutation part, those of
+        /// its copies at most the low limit killed.
         public let lines: Int
         /// Its copies: for divergent clones, those with a production family
         /// outside generated files now.
@@ -120,6 +123,9 @@ public struct SignalItem: Codable, Hashable, Sendable {
         /// How well the tests cover its copies; nil when the signal doesn't
         /// read coverage.
         public let coverage: CloneCoverage?
+        /// How the tests kill its copies' mutants; nil when the signal
+        /// doesn't read mutation results.
+        public let mutation: CloneMutation?
     }
 
     /// How a clone class's copies changed since an earlier snapshot.
@@ -174,6 +180,13 @@ public struct SignalItem: Codable, Hashable, Sendable {
         var markers: Markers?
         /// The subject's coverage.
         var coverage: Coverage?
+        /// The function's mutation results.
+        var mutation: Mutation?
+        /// The module's and the project's test-to-code line ratio.
+        var ratio: Ratio?
+        /// The function's suggestions, its unkilled mutants and its
+        /// partners'.
+        var propertyTarget: PropertyTarget?
     }
 
     /// Its position, from 1.
@@ -204,6 +217,14 @@ public struct SignalItem: Codable, Hashable, Sendable {
     public let markers: Markers?
     /// The subject's coverage, for a signal reading it.
     public let coverage: Coverage?
+    /// The function's mutation results, for a signal reading them.
+    public let mutation: Mutation?
+    /// The module's and the project's test-to-code line ratio, for a
+    /// signal reading it.
+    public let ratio: Ratio?
+    /// The function's suggestions, its unkilled mutants and its partners',
+    /// for best property-test target.
+    public let propertyTarget: PropertyTarget?
 
     /// `draft` ranked at `rank` with `score`, a member or not.
     init(_ draft: Draft, rank: Int, score: Double, member: Bool) {
@@ -221,5 +242,8 @@ public struct SignalItem: Codable, Hashable, Sendable {
         clone = draft.clone
         markers = draft.markers
         coverage = draft.coverage
+        mutation = draft.mutation
+        ratio = draft.ratio
+        propertyTarget = draft.propertyTarget
     }
 }

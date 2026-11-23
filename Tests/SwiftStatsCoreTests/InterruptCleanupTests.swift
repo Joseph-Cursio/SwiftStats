@@ -239,6 +239,17 @@ struct InterruptCleanupTests {
     }
 
     @Test("""
+        the signals cleaned up after are SIGINT, SIGTERM, SIGHUP and SIGQUIT (Ctrl-\\, pressed after Ctrl-C)
+        """)
+    func cleanedSignals() {
+        // SIGQUIT isn't sent to the real binary below: a process it ends
+        // leaves a crash report in ~/Library/Logs/DiagnosticReports on
+        // every test run, however `ulimit -c` stands. The handler is the
+        // same for each signal, so SIGTERM's run covers its cleanup.
+        #expect(Set(InterruptCleanup.signals) == [SIGINT, SIGTERM, SIGHUP, SIGQUIT])
+    }
+
+    @Test("""
         swiftstats scan interrupted by SIGTERM while swift-infer runs stops the runs, removes the copy and \
         still ends by SIGTERM
         """)

@@ -1,0 +1,25 @@
+$s11ExtrasTests12scaleTriplesyyF	ExtrasTests.scaleTriples() -> ()
+$s11ExtrasTests28__SwiftPMGeneratedTestRunnerV14testOutputPath33_0E937DD6CFFA3D899C8BD945B2A44CD0LLSSSgyFZ	static ExtrasTests.__SwiftPMGeneratedTestRunner.(testOutputPath in _0E937DD6CFFA3D899C8BD945B2A44CD0)() -> Swift.String?
+$s11ExtrasTests28__SwiftPMGeneratedTestRunnerV14testingLibrary33_0E937DD6CFFA3D899C8BD945B2A44CD0LLSSyFZ	static ExtrasTests.__SwiftPMGeneratedTestRunner.(testingLibrary in _0E937DD6CFFA3D899C8BD945B2A44CD0)() -> Swift.String
+$s11ExtrasTests28__SwiftPMGeneratedTestRunnerV4mainyyYaFZ	static ExtrasTests.__SwiftPMGeneratedTestRunner.main() async -> ()
+$s4Core11neverCalledyS2iF	Core.neverCalled(Swift.Int) -> Swift.Int
+$s4Core11normalizedA_3logSaySiGAD_ADztF	Core.normalizedA(_: [Swift.Int], log: inout [Swift.Int]) -> [Swift.Int]
+$s4Core11normalizedA_3logSaySiGAD_ADztFS2iXEfU_	closure #1 (Swift.Int) -> Swift.Int in Core.normalizedA(_: [Swift.Int], log: inout [Swift.Int]) -> [Swift.Int]
+$s4Core11normalizedA_3logSaySiGAD_ADztFS2i_SitYbcfu_	implicit closure #1 @Sendable (Swift.Int, Swift.Int) -> Swift.Int in Core.normalizedA(_: [Swift.Int], log: inout [Swift.Int]) -> [Swift.Int]
+$s4Core4signyS2iF	Core.sign(Swift.Int) -> Swift.Int
+$s4Core5clamp_3low4highS2i_S2itF	Core.clamp(_: Swift.Int, low: Swift.Int, high: Swift.Int) -> Swift.Int
+$s4Core8isWithin_3low4highSbSi_S2itF	Core.isWithin(_: Swift.Int, low: Swift.Int, high: Swift.Int) -> Swift.Bool
+$s4Core8isWithin_3low4highSbSi_S2itFSbyKXEfu_	implicit closure #1 () throws -> Swift.Bool in Core.isWithin(_: Swift.Int, low: Swift.Int, high: Swift.Int) -> Swift.Bool
+$s6Extras11normalizedB_3logSaySiGAD_ADztF	Extras.normalizedB(_: [Swift.Int], log: inout [Swift.Int]) -> [Swift.Int]
+$s6Extras11normalizedB_3logSaySiGAD_ADztFS2iXEfU_	closure #1 (Swift.Int) -> Swift.Int in Extras.normalizedB(_: [Swift.Int], log: inout [Swift.Int]) -> [Swift.Int]
+$s6Extras11normalizedB_3logSaySiGAD_ADztFS2i_SitYbcfu_	implicit closure #1 @Sendable (Swift.Int, Swift.Int) -> Swift.Int in Extras.normalizedB(_: [Swift.Int], log: inout [Swift.Int]) -> [Swift.Int]
+$s6Extras5scaleyS2iF	Extras.scale(Swift.Int) -> Swift.Int
+$s6Extras6unusedyS2i_SitF	Extras.unused(Swift.Int, Swift.Int) -> Swift.Int
+$s9CoreTests11signIsExactyyF	CoreTests.signIsExact() -> ()
+$s9CoreTests21clampStaysNonNegativeyyF	CoreTests.clampStaysNonNegative() -> ()
+$s9CoreTests24isWithinChecksBothBoundsyyF	CoreTests.isWithinChecksBothBounds() -> ()
+$s9CoreTests26normalizedAKeepsAZeroTotalyyF	CoreTests.normalizedAKeepsAZeroTotal() -> ()
+$s9CoreTests28__SwiftPMGeneratedTestRunnerV14testOutputPath33_9FC85C184A130DD0F7D9934FDB20D9F2LLSSSgyFZ	static CoreTests.__SwiftPMGeneratedTestRunner.(testOutputPath in _9FC85C184A130DD0F7D9934FDB20D9F2)() -> Swift.String?
+$s9CoreTests28__SwiftPMGeneratedTestRunnerV14testingLibrary33_9FC85C184A130DD0F7D9934FDB20D9F2LLSSyFZ	static CoreTests.__SwiftPMGeneratedTestRunner.(testingLibrary in _9FC85C184A130DD0F7D9934FDB20D9F2)() -> Swift.String
+$s9CoreTests28__SwiftPMGeneratedTestRunnerV4mainyyYaFZ	static CoreTests.__SwiftPMGeneratedTestRunner.main() async -> ()
+$s9CoreTests30normalizedAScalesToPercentagesyyF	CoreTests.normalizedAScalesToPercentages() -> ()

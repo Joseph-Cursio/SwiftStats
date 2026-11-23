@@ -1172,7 +1172,9 @@ def parse_demangled(text):
       local                a local function: base, labels (None when not
                            shown), outer (its context);
       localMember          a member of a local type: type, base, labels,
-                           accessor, outer (the type's context);
+                           accessor, outer (the type's context), also
+                           when its signature returns a local type, as a
+                           local type's initializer's does;
       localInitializer     a stored property initializer of a local type:
                            outer (the type's context);
       initializer          a stored property initializer: module, typePath,
@@ -1197,12 +1199,18 @@ def parse_demangled(text):
             "outer": " in ".join(parts[1:]) if len(parts) > 1 else "",
         }
     parts = split_top(text, " in ")
-    if len(parts) >= 3 and LOCAL_ENTITY.fullmatch(parts[1]):
-        components, parameters, accessor = parse_member(parts[0])
+    # The member is everything before the first local type after it: a
+    # member that returns a local type, as a local type's initializer does,
+    # spells that type's context in its signature, `init(name:
+    # Swift.String) -> Finder #1 in static M.T.f(…) -> Swift.Bool in
+    # Finder #1 in static M.T.f(…) -> Swift.Bool`.
+    local = next((index for index in range(1, len(parts) - 1) if LOCAL_ENTITY.fullmatch(parts[index])), None)
+    if local is not None:
+        components, parameters, accessor = parse_member(" in ".join(parts[:local]))
         return {
-            "kind": "localMember", "type": LOCAL_ENTITY.fullmatch(parts[1]).group(1), "base": components[-1],
+            "kind": "localMember", "type": LOCAL_ENTITY.fullmatch(parts[local]).group(1), "base": components[-1],
             "labels": labels_of(parameters) if parameters is not None else None, "accessor": accessor,
-            "outer": " in ".join(parts[2:]),
+            "outer": " in ".join(parts[local + 1:]),
         }
     plain = re.sub(r"^static ", "", text)
     if re.fullmatch(r"\w+_main|main", plain):

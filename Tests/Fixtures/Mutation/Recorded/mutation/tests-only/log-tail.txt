@@ -1,0 +1,12 @@
+SwiftMutator: mutation testing for Swift, based on Muter
+
+Automated mutation testing for Swift 🕳️
+
+You are running version 0.1.0
+
+Want help? Have suggestions? Want to get involved?
+ ↳ https://github.com/Joseph-Cursio/SwiftMutator/issues
++--------------------------------------------------------+
+
+🌿 1 Swift file changed since the merge base of 3712437 and HEAD (3712437).
+ℹ️ 1 Swift file changed since the merge base of 3712437 and HEAD (3712437), and the excludes leave out it, so there is nothing to mutate.

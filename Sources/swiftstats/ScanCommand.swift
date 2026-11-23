@@ -25,7 +25,18 @@ struct ScanCommand: ParsableCommand {
         may add --skip <regex> pairs to swift test. A scan without --coverage, or whose coverage run fails, keeps \
         the coverage of the snapshot it replaces when the tree, the records and the mapping rule are the same, \
         and otherwise stops without storing anything; --drop-coverage replaces the snapshot without its coverage \
-        instead.
+        instead. --mutation also runs SwiftMutator (swift-mutator on PATH, or collectors.swiftmutator.path) after \
+        every other collector, in a temporary copy under .swiftstats/mutation; collectors.swiftmutator.arguments \
+        may add --skip <regex> pairs to its test command, and collectors.swiftmutator.options sets workers and \
+        timeout; its test command is the swift the coverage collector uses, and its output goes to \
+        .swiftstats/mutation/swift-mutator.log. --since <rev> retests only the files changed since that commit's \
+        snapshot and keeps its results for the rest; --resume continues an interrupted or failed run in its \
+        kept copy while the tree and settings are those it started with, and a scan --mutation without it \
+        discards that run. A scan without --mutation, or whose mutation run fails, keeps the mutation results \
+        of the snapshot it replaces when the tree, the records they name, the files they test and the mapping \
+        rule are the same, and otherwise stops without storing anything; --drop-mutation replaces the snapshot \
+        without them instead. A coverage or mutation run asked for that fails or is skipped doesn't fail the scan, \
+        which says so on standard error.
         """
     )
 
@@ -50,9 +61,53 @@ struct ScanCommand: ParsableCommand {
     @Flag(help: "Replace a snapshot holding coverage this scan can't keep or can't read, dropping the coverage.")
     var dropCoverage = false
 
+    @Flag(help: "Also run SwiftMutator on the package's tests (most of an hour on a real package).")
+    var mutation = false
+
+    @Option(help: "With --mutation, retest only the files changed since this commit's snapshot, keeping the rest.")
+    var since: String?
+
+    @Flag(help: "With --mutation, continue the SwiftMutator run an earlier scan left interrupted or failed.")
+    var resume = false
+
+    @Flag(help: "Replace a snapshot holding mutation results this scan can't keep or can't read, dropping them.")
+    var dropMutation = false
+
     @OptionGroup var options: PackageOptions
 
+    /// The opt-in collectors the flags ask for.
+    private var tiers: RequestedTiers {
+        get throws(RequestedTiers.FlagConflict) {
+            try RequestedTiers.scanFlags(
+                coverage: coverage,
+                mutation: mutation,
+                since: since,
+                resume: resume,
+                storing: noStore == false
+            )
+        }
+    }
+
+    func validate() throws {
+        do {
+            _ = try tiers
+        } catch {
+            throw ValidationError(error.description)
+        }
+    }
+
     func run() throws {
+        let requested = try tiers
+        let started = Date()
+        defer {
+            // Named only when this scan's mutation step wrote it, whether
+            // or not the scan then stored a snapshot.
+            let root = URL(fileURLWithPath: path, isDirectory: true)
+            if requested.mutation != nil,
+               let log = StoreLocation.mutationLog(packageRoot: root, writtenSince: started) {
+                FileHandle.standardError.write(Data("SwiftMutator's output is in \(log.path)\n".utf8))
+            }
+        }
         try CommandFailure.reporting {
             let report: ScanReport
             if noStore {
@@ -61,19 +116,24 @@ struct ScanCommand: ParsableCommand {
                     try PackageScanner().scan(
                         packageAt: root,
                         configurationFile: URL(fileURLWithPath: file),
-                        coverage: coverage
+                        tiers: requested
                     )
-                } ?? PackageScanner().scan(packageAt: root, coverage: coverage)
+                } ?? PackageScanner().scan(packageAt: root, tiers: requested)
             } else {
                 let workspace = try options.workspace(path: path)
                 let history: HistorySource = noHistory ? .skipped("--no-history") : .automatic
                 let (snapshot, _) = try workspace.scanWorkingTree(
                     history: history,
-                    coverage: coverage,
-                    dropCoverage: dropCoverage
+                    tiers: requested,
+                    drop: DropOptions(coverage: dropCoverage, mutation: dropMutation)
                 )
                 report = snapshot.report
                 FileHandle.standardError.write(Data((summary(snapshot.info, store: workspace.store.url) + "\n").utf8))
+            }
+            // A run asked for that collected nothing doesn't fail the
+            // scan, as a failed coverage run never has, but says so.
+            for line in UnrunNotice.lines(for: report, requested: requested) {
+                FileHandle.standardError.write(Data((line + "\n").utf8))
             }
             if output != nil || format != nil || noStore {
                 try CommandFailure.write(try ScanReportEncoder.encode(report), to: output)

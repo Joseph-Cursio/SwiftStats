@@ -43,6 +43,18 @@ public struct SnapshotScanner {
             if status.state != .skipped, let reported = outcome.identities[status.name] {
                 identity = (reported, nil)
             }
+        } else if status.name == MutationAdapter.name {
+            // The build its results file's header names made every result;
+            // the resolved binary's commit labels it only when it is that
+            // build. A run that read no header is named by the binary.
+            if status.state != .skipped, let executable = outcome.executables[status.name] {
+                let binary = BinaryIdentity.of(executable)
+                if let reported = outcome.identities[status.name] {
+                    identity = (reported, binary?.identity == reported ? binary?.label : nil)
+                } else {
+                    identity = binary
+                }
+            }
         } else if status.name == DependencyGraphAdapter.name {
             // The toolchain is the tool; diff also requires `swiftstats`
             // to match, since SwiftStats' own code reads the graph.
@@ -71,13 +83,19 @@ public struct SnapshotScanner {
         )
     }
 
+    /// The same scanner, its scans storing their snapshots as `added`
+    /// says (`MutationSaving`).
+    func saving(_ added: MutationSaving?) -> Self {
+        Self(scanner: scanner.saving(added), build: build)
+    }
+
     /// Scans the package at `root` with the configuration in
     /// `configurationFile` (or the default). `git` and `toolchain` are read
     /// when not given; a scan of an exported revision supplies its git state.
     /// Changes to the files at `ignoring` (relative to `root`, such as a
     /// store kept in the package) don't make the tree dirty. `history` says
-    /// whether and where to read the history (PRD §7.13); the coverage
-    /// collector runs only when `coverage` asks for it (M5).
+    /// whether and where to read the history (PRD §7.13); the coverage and
+    /// SwiftMutator collectors run only when `tiers` asks for them (M5, M6).
     public func scan(
         packageAt root: URL,
         configurationFile: URL?,
@@ -86,11 +104,17 @@ public struct SnapshotScanner {
         toolchain: Toolchain? = nil,
         date: Date = Date(),
         history: HistorySource = .automatic,
-        coverage: Bool = false
+        tiers: RequestedTiers = .syntaxOnly
     ) throws -> ScannedSnapshot {
         let packageRoot = root.standardizedFileURL
         let gitState = git ?? GitReader.read(packageRoot: packageRoot, ignoring: ignoring)
-        let scanned = try scanner.run(packageAt: packageRoot, configurationFile: configurationFile, coverage: coverage)
+        let scanned = try scanner.run(
+            packageAt: packageRoot,
+            configurationFile: configurationFile,
+            tiers: tiers,
+            git: gitState,
+            ignoring: ignoring
+        )
         let (outcome, historyRun) = Self.addHistory(
             to: scanned,
             source: history.resolved(packageRoot: packageRoot, git: gitState)

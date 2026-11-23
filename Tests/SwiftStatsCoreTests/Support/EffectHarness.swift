@@ -35,7 +35,13 @@ enum EffectHarness {
 
     /// `source` parsed as the file at `path`, with no byte order mark.
     static func parsed(_ source: String, path: String) -> ParsedFile {
-        ParsedFile(path: path, source: source, tree: Parser.parse(source: source), hasByteOrderMark: false)
+        ParsedFile(
+            path: path,
+            source: source,
+            tree: Parser.parse(source: source),
+            hasByteOrderMark: false,
+            sha256: ContentHash.sha256(Data(source.utf8))
+        )
     }
 
     /// The records of `files`, as production code of module `Effects`.

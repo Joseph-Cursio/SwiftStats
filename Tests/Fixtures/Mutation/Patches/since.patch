@@ -1,0 +1,29 @@
+diff --git a/Sources/Core/Bounds.swift b/Sources/Core/Bounds.swift
+index 87658e0..0e18121 100644
+--- a/Sources/Core/Bounds.swift
++++ b/Sources/Core/Bounds.swift
+@@ -2,6 +2,7 @@
+ /// check only that the result isn't negative, so its mutants survive:
+ /// weak tests.
+ public func clamp(_ value: Int, low: Int, high: Int) -> Int {
++    precondition(low <= high, "low must not exceed high")
+     if value < low {
+         return low
+     }
+diff --git a/Sources/Core/Signs.swift b/Sources/Core/Signum.swift
+similarity index 100%
+rename from Sources/Core/Signs.swift
+rename to Sources/Core/Signum.swift
+diff --git a/Tests/CoreTests/SignTests.swift b/Tests/CoreTests/SignTests.swift
+index fff5627..7ad02f4 100644
+--- a/Tests/CoreTests/SignTests.swift
++++ b/Tests/CoreTests/SignTests.swift
+@@ -1,7 +1,7 @@
+ import Core
+ import Testing
+ 
+-/// Checks every sign exactly.
++/// Checks every sign exactly, zero included.
+ @Test func signIsExact() {
+     #expect(sign(5) == 1)
+     #expect(sign(1) == 1)

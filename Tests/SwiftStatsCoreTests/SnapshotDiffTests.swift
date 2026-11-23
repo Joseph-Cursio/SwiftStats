@@ -47,8 +47,8 @@ struct SnapshotDiffTests {
         #expect(outcomes == [
             "coverage": .notCollected, "dependencies": .notCollected, "history": .notCollected,
             "swiftclonedetector": .notCollected, "swifteffectinference": .compared,
-            "swiftinferproperties": .notCollected, "swiftlint": .notCollected, "swiftprojectlint": .notCollected,
-            "swiftstats": .compared
+            "swiftinferproperties": .notCollected, "swiftlint": .notCollected, "swiftmutator": .notCollected,
+            "swiftprojectlint": .notCollected, "swiftstats": .compared
         ])
         #expect(MarkdownDiff.render(diff).contains("No changes."))
     }

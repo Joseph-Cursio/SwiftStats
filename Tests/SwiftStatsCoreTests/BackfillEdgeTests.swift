@@ -3,8 +3,9 @@ import Foundation
 import Testing
 
 /// `backfill` and `trend` at the edges (PRD §7.13, §10): a renamed package,
-/// a package newer than its repository, results a backfill can't collect,
-/// collectors that ran on neither side, and snapshots no longer reachable.
+/// a package newer than its repository, results a backfill can't collect
+/// (coverage and mutation results among them), collectors that ran on
+/// neither side, and snapshots no longer reachable.
 @Suite("Backfill and trend edges")
 struct BackfillEdgeTests {
     /// A plan picking every `step`th commit.
@@ -195,7 +196,7 @@ struct BackfillEdgeTests {
             coverage: try CoverageSamples.stored(),
             run: CoverageSnapshots.ran(options: ["map: " + CoverageMapper.rule, "links: " + CoverageTestLinks.rule])
         )
-        let id = try workspace.save(covered, dropCoverage: false).id
+        let id = try workspace.save(covered, drop: []).id
         // Fails any export scan, which would make the step fail, not keep it.
         let other = try SnapshotWorkspace(
             packageRoot: repository.root,
@@ -213,6 +214,40 @@ struct BackfillEdgeTests {
         #expect(try other.store.snapshotID(package: "Probe", packagePath: "", commit: steps[0].commit, isDirty: false)
             == id)
         #expect(try other.store.load(id: id).coverage?.report == covered.report.coverage)
+    }
+
+    @Test("--rerun, even with tools, keeps a snapshot holding mutation results without rescanning it")
+    func rerunKeepsHeldMutation() throws {
+        let repository = try HistoryRepository()
+        defer { repository.remove() }
+        try repository.write(["Sources/Lib/One.swift": Self.one(1)])
+        try repository.commit("One", day: 0)
+        let workspace = try repository.workspace()
+        let plain = try workspace.scanWorkingTree(history: .skipped("test")).snapshot
+        let mutated = MutationSnapshots.replacing(
+            plain,
+            git: plain.info.git,
+            mutation: try MutationCarrySamples.results(),
+            run: MutationSnapshots.ran(identity: MutationSnapshots.identity)
+        )
+        let id = try workspace.save(mutated, drop: []).id
+        // Fails any export scan, which would make the step fail, not keep it.
+        let other = try SnapshotWorkspace(
+            packageRoot: repository.root,
+            configurationFile: nil,
+            storeOverride: nil,
+            build: SwiftStatsBuild(identity: "inputs:other", label: nil),
+            describer: RootOnlyDescriber(root: repository.root),
+            tools: SnapshotHarness.noTools
+        )
+
+        let steps = try Self.backfill(other, Self.every(1, rerun: true, withTools: true))
+
+        #expect(steps.map(\.action) == [.kept])
+        #expect(steps.first?.note == "its snapshot holds swiftmutator; rescan it with `swiftstats scan`")
+        #expect(try other.store.snapshotID(package: "Probe", packagePath: "", commit: steps[0].commit, isDirty: false)
+            == id)
+        #expect(try other.store.load(id: id).mutation?.report == mutated.report.mutation)
     }
 
     @Test("a tool metric doesn't break between snapshots where the tool ran on neither side")

@@ -2,19 +2,20 @@
 //  PackageScanner+Run.swift
 //  SwiftStatsCore
 //
-//  The scan itself (PRD M0–M2, M4, M5): describe the package, start
+//  The scan itself (PRD M0–M2, M4–M6): describe the package, start
 //  SwiftInferProperties and, when asked for, the coverage run, measure its
 //  files, infer side effects, run the other external collectors,
-//  SwiftCloneDetector among them, attach the suggestions and clones and
-//  assemble the report, timing each collector for the snapshot (PRD §6.2).
+//  SwiftCloneDetector among them, then, when asked for, SwiftMutator alone,
+//  attach the suggestions and clones and assemble the report, timing each
+//  collector for the snapshot (PRD §6.2).
 //
 
 import Foundation
 
 extension PackageScanner {
     /// The roll-ups of `measured` over `targets`, with `external`'s findings,
-    /// SwiftInferProperties' suggestions, SwiftCloneDetector's classes and
-    /// the coverage counted.
+    /// SwiftInferProperties' suggestions, SwiftCloneDetector's classes, the
+    /// coverage and the mutation results counted.
     private static func rollups(
         _ targets: [TargetSummary],
         measured: ScanMeasurements,
@@ -35,10 +36,18 @@ extension PackageScanner {
                 clones: external.clones
             )
         )
-        guard let coverage = external.coverage else {
-            return rollups
+        let covered = external.coverage.map { coverage in
+            CoverageRollupBuilder(targets: targets, records: measured.records, coverage: coverage).rollups(rollups)
+        } ?? rollups
+        guard let mutation = external.mutationReport else {
+            return covered
         }
-        return CoverageRollupBuilder(targets: targets, records: measured.records, coverage: coverage).rollups(rollups)
+        return MutationRollupBuilder(
+            targets: targets,
+            records: measured.records,
+            files: measured.files,
+            report: mutation
+        ).rollups(covered)
     }
 
     /// Every collector's status but history's real one, sorted by name.
@@ -57,25 +66,40 @@ extension PackageScanner {
         UnbuiltTests.warnings(root: root, compiled: Set(TargetResolver.resolve(package).flatMap(\.files)))
     }
 
-    /// Throws `ScanError.notAPackage` unless `root` holds a `Package.swift`.
-    private static func requirePackage(at root: URL) throws {
+    /// `packageRoot`, standardized; throws `ScanError.notAPackage` unless
+    /// it holds a `Package.swift`.
+    private static func requiredRoot(_ packageRoot: URL) throws -> URL {
+        let root = packageRoot.standardizedFileURL
         guard FileManager.default.fileExists(atPath: root.appendingPathComponent("Package.swift").path) else {
             throw ScanError.notAPackage(root.path)
         }
+        return root
     }
 
     /// The scan of `packageRoot`, with each collector's run time and binary;
-    /// the coverage collector runs only when `coverage` asks for it.
-    func run(packageAt packageRoot: URL, configurationFile: URL?, coverage: Bool) throws -> ScanOutcome {
-        let root = packageRoot.standardizedFileURL
-        try Self.requirePackage(at: root)
+    /// the coverage and SwiftMutator collectors run only when `tiers` asks
+    /// for them. SwiftMutator's copy checks out the commit of `git`, the
+    /// package's state as read before the scan (read when it runs when
+    /// nil), and leaves out the files at `ignoring`; a `--since` run, or
+    /// the resume of one, merges with the base `tiers` carries. For a scan
+    /// that stores its snapshot, `saving`'s gate runs before SwiftMutator
+    /// starts and may stop the scan.
+    func run(
+        packageAt packageRoot: URL,
+        configurationFile: URL?,
+        tiers: RequestedTiers,
+        git: GitState?,
+        ignoring: [String]
+    ) throws -> ScanOutcome {
+        let root = try Self.requiredRoot(packageRoot)
         let configuration = try SwiftStatsConfiguration.load(configurationFile, root: root)
         let package = try describer.describePackage(at: root)
         let (targets, excludedFiles) = Self.excluding(TargetResolver.resolve(package), by: configuration)
-        let pending = startBackground(root: root, targets: targets, configuration: configuration, coverage: coverage)
+        var pending = startBackground(root: root, targets: targets, configuration: configuration, tiers: tiers)
+        pending.prepareMutation(git: git, ignoring: ignoring, saving: saving)
         let scan = Self.measured(targets, root: root, configuration: configuration)
         let (measured, effects) = (scan.measurements, scan.effects)
-        let external = externalRuns(
+        let external = try externalRuns(
             root: root,
             targets: targets,
             configuration: configuration,
@@ -106,7 +130,8 @@ extension PackageScanner {
             properties: external.properties,
             clones: external.clones?.report,
             laws: measured.laws.with(kitDependency: KitProtocols.isDependency(in: dependencies.report)),
-            coverage: external.coverage
+            coverage: external.coverage,
+            mutation: external.mutationReport
         )
         return ScanOutcome(
             report: report,

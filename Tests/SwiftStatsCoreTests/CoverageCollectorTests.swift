@@ -22,7 +22,7 @@ struct CoverageCollectorTests {
         let package = try TemporaryPackage(Self.files.merging(files) { $1 })
         defer { package.remove() }
         let scanner = PackageScanner(describer: package.describer, tools: tools, toolSkipReason: toolSkipReason)
-        return try scanner.scan(packageAt: package.root, coverage: coverage).collectors
+        return try scanner.scan(packageAt: package.root, tiers: RequestedTiers(coverage: coverage)).collectors
             .first { $0.name == CoverageAdapter.name }
     }
 
@@ -173,7 +173,7 @@ struct CoverageCollectorTests {
             tools: SnapshotHarness.noTools
         )
 
-        let asked = try workspace.scanWorkingTree(history: .skipped("test"), coverage: true).snapshot
+        let asked = try workspace.scanWorkingTree(history: .skipped("test"), tiers: .coverage).snapshot
         let plain = try workspace.scanWorkingTree(history: .skipped("test")).snapshot
 
         let askedRun = asked.info.collectors.first { $0.name == CoverageAdapter.name }

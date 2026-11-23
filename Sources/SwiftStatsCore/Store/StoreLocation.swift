@@ -40,6 +40,22 @@ public enum StoreLocation {
         root.standardizedFileURL.appendingPathComponent(directoryName).appendingPathComponent(fileName)
     }
 
+    /// SwiftMutator's log in the package at `root`
+    /// (`.swiftstats/mutation/swift-mutator.log`, M6) when a mutation step
+    /// wrote it at or after `start` (from the start of its second, for
+    /// file systems that keep whole seconds); nil when none did, as when
+    /// the collector was disabled, its tools weren't found or the run was
+    /// refused, so a log an earlier scan left isn't named as this one's.
+    public static func mutationLog(packageRoot root: URL, writtenSince start: Date) -> URL? {
+        let log = MutationDirectory.log(packageRoot: root)
+        let values = try? log.resourceValues(forKeys: [.contentModificationDateKey])
+        let second = Date(timeIntervalSince1970: start.timeIntervalSince1970.rounded(.down))
+        guard let modified = values?.contentModificationDate, modified >= second else {
+            return nil
+        }
+        return log
+    }
+
     /// Creates the default store directory's `.gitignore` when `store` is in
     /// it and the file is missing.
     public static func prepare(_ store: URL, packageRoot root: URL) throws {

@@ -183,7 +183,7 @@ struct StoreCoverageTests {
         }
     }
 
-    @Test("a v3 store migrates to v4: old rows get no access, owning type or coverage, and new scans get them")
+    @Test("a v3 store migrates to v5: old rows get no access, owning type or coverage, and new scans get them")
     func migration() throws {
         let directory = try SnapshotHarness.temporaryDirectory("StoreCoverage")
         defer { try? FileManager.default.removeItem(at: directory) }
@@ -197,7 +197,7 @@ struct StoreCoverageTests {
         let store = try SnapshotStore(at: url)
         let migrated = try store.load(id: old.id)
 
-        #expect(try Self.query(url, "PRAGMA user_version") == "4\n")
+        #expect(try Self.query(url, "PRAGMA user_version") == "5\n")
         #expect(migrated.functions.map(\.key) == old.functions.map(\.key))
         #expect(migrated.functions.allSatisfy { $0.access == nil && $0.typePath == nil && $0.typeFile == nil })
         #expect(migrated.functions.allSatisfy { $0.facts != nil })

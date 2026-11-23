@@ -2,12 +2,14 @@
 //  InterruptCleanup.swift
 //  SwiftStatsCore
 //
-//  What `swiftstats` does on SIGINT, SIGTERM or SIGHUP: it terminates the
-//  tools it started and removes its temporary files (`ScratchRegistry`),
-//  then ends as the signal would have ended it, so its exit status is
-//  unchanged (128 plus the signal's number in a shell). A signal the
-//  process started with ignored, as `nohup` leaves SIGHUP and a shell
-//  leaves SIGINT for a background job, stays ignored.
+//  What `swiftstats` does on SIGINT, SIGTERM, SIGHUP or SIGQUIT (Ctrl-\,
+//  which an impatient user presses after Ctrl-C; added in M6, since a
+//  SwiftMutator run outlives a scan that ends without stopping it): it
+//  terminates the tools it started and removes its temporary files
+//  (`ScratchRegistry`), then ends as the signal would have ended it, so
+//  its exit status is unchanged (128 plus the signal's number in a
+//  shell). A signal the process started with ignored, as `nohup` leaves
+//  SIGHUP and a shell leaves SIGINT for a background job, stays ignored.
 //
 
 import Foundation
@@ -15,7 +17,7 @@ import Foundation
 /// Cleans up when a command is interrupted.
 public enum InterruptCleanup {
     /// The signals that end a command and are cleaned up after.
-    static let signals = [SIGINT, SIGTERM, SIGHUP]
+    static let signals = [SIGINT, SIGTERM, SIGHUP, SIGQUIT]
 
     /// Installs the handlers; call once, before any work starts.
     public static func install() {

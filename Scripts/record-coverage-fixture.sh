@@ -4,8 +4,9 @@
 #  SwiftStats
 #
 #  Regenerates Tests/Fixtures/<fixture>/Recorded: what the real tools
-#  print for a coverage fixture, `Coverage` (the mapping's) or `Risky`
-#  (risky + untested's), run the way the coverage collector runs them (M5).
+#  print for a coverage fixture, `Coverage` (the mapping's), `Risky`
+#  (risky + untested's) or `Mutation` (M6's signals'), run the way the
+#  coverage collector runs them (M5).
 #  The fixture is copied to a work directory outside the repository and
 #  built there, never in Tests/Fixtures. In the recorded text the copy's
 #  build directory becomes @BUILD@ and its root @ROOT@; the tests' fake
@@ -52,9 +53,9 @@ esac
 package="$work/$name"
 rm -rf "$package"
 mkdir -p "$package"
-# Everything but what an earlier recording left, and build or index
-# directories an editor may have made.
-(cd "$fixture" && find . \( -path ./Recorded -o -name .build -o -name .swiftstats \) -prune -o -type f -print) |
+# Everything but what an earlier recording left, the patches of the
+# mutation cases, and build or index directories an editor may have made.
+(cd "$fixture" && find . \( -path ./Recorded -o -path ./Patches -o -name .build -o -name .swiftstats \) -prune -o -type f -print) |
     while read -r file; do
         mkdir -p "$package/$(dirname "$file")"
         cp "$fixture/$file" "$package/$file"
@@ -83,7 +84,9 @@ redact() {
     sed "s|$build|@BUILD@|g; s|$package|@ROOT@|g"
 }
 
-rm -rf "$recorded"
+# Only this script's files: Recorded/mutation is record-mutation-fixture.sh's.
+rm -f "$recorded"/profiles.txt "$recorded"/bundles.txt "$recorded"/show-*.txt "$recorded"/demangled.txt \
+    "$recorded"/export.json
 mkdir -p "$recorded"
 (cd "$bin/codecov" && ls -1 -- *.profraw) | LC_ALL=C sort > "$recorded/profiles.txt"
 (cd "$bin" && ls -1d -- *.xctest) | sed 's/\.xctest$//' | LC_ALL=C sort > "$recorded/bundles.txt"

@@ -4,10 +4,13 @@
 //
 //  Which way is better for each metric (PRD §6.6): lower for sizes,
 //  complexity, nesting, parameters, findings, unchecked law pairs, clones,
-//  unmapped coverage entries and unlinked public functions; higher for
+//  unmapped coverage entries, unlinked public functions, and mutants
+//  left unkilled (a roll-up's survived, no-coverage, timed-out and
+//  not-covered counts, a record's unkilled count) or unmapped; higher for
 //  tests, assertions, documentation, the test line ratio, coverage
-//  percentages (a roll-up's or a record's) and linked public functions;
-//  neutral for counts.
+//  percentages (a roll-up's or a record's), linked public functions and
+//  mutation scores (a roll-up's, a record's, and a record's function
+//  score); neutral for counts, kills and scored mutants among them.
 //
 
 /// Whether a metric going up is good, bad or neither.
@@ -33,14 +36,17 @@ public enum MetricDirection: String, Codable, Hashable, Sendable {
         "findings.", "findingKinds.", "api.overExposed", "tests.xctestWithoutAssertions",
         "tests.swiftTestingWithoutAssertions", "tests.parameterizedUnknownCases",
         "strippedLines", "parameterCount", "cognitive", "decisionCount", "swiftLintCompatible", "maxNesting",
-        "laws.state.notRun", "clones.", "coverage.unmapped", "coverage.publicFunctions.unlinked"
+        "laws.state.notRun", "clones.", "coverage.unmapped", "coverage.publicFunctions.unlinked",
+        "mutation.survived", "mutation.noCoverage", "mutation.timedOut", "mutation.notCovered", "mutation.unmapped",
+        "mutation.unkilled"
     ]
     /// Paths, or path prefixes ending in a dot, that are better higher.
     private static let higherPaths = [
         "tests.tests.", "tests.parameterizedCases", "tests.lineRatio.testLines", "tests.lineRatio.testLinesByKind.",
         "documentedFunctions",
         "api.documentedPublicDeclarations",
-        "coverage.lines.percent", "coverage.regions.percent", "coverage.publicFunctions.linked"
+        "coverage.lines.percent", "coverage.regions.percent", "coverage.publicFunctions.linked",
+        "mutation.score.percent", "mutation.functionScore.percent"
     ]
 
     /// The direction of the metric at `path`, a roll-up path or a function metric.

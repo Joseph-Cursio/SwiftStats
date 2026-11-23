@@ -1,0 +1,1367 @@
+{
+  "totalAppliedMutationOperators": 35,
+  "fileReports": [
+    {
+      "fileName": "Bounds.swift",
+      "path": "Sources/Core/Bounds.swift",
+      "mutationScore": 50,
+      "appliedOperators": [
+        {
+          "path": "Sources/Core/Bounds.swift",
+          "durationSeconds": 0.12,
+          "mutationPoint": {
+            "mutationOperatorId": "RelationalBoundary",
+            "position": {
+              "column": 14,
+              "utf8Offset": 325,
+              "line": 5
+            },
+            "filePath": "@PARENT@/Mutation_mutated.noindex/Sources/Core/Bounds.swift"
+          },
+          "key": "Sources/Core/Bounds.swift:5:14 RelationalBoundary",
+          "sourceChange": {
+            "line": 5,
+            "before": "    if value < low {",
+            "after": "    if value <= low {"
+          },
+          "testSuiteOutcome": "passed",
+          "mutationSnapshot": {
+            "description": "changed < to <=",
+            "before": "<",
+            "after": "<="
+          }
+        },
+        {
+          "path": "Sources/Core/Bounds.swift",
+          "durationSeconds": 0.12,
+          "mutationPoint": {
+            "mutationOperatorId": "RelationalOperatorReplacement",
+            "position": {
+              "column": 14,
+              "utf8Offset": 325,
+              "line": 5
+            },
+            "filePath": "@PARENT@/Mutation_mutated.noindex/Sources/Core/Bounds.swift"
+          },
+          "key": "Sources/Core/Bounds.swift:5:14 RelationalOperatorReplacement",
+          "sourceChange": {
+            "line": 5,
+            "before": "    if value < low {",
+            "after": "    if value != low {"
+          },
+          "testSuiteOutcome": "passed",
+          "mutationSnapshot": {
+            "description": "changed < to !=",
+            "before": "<",
+            "after": "!="
+          }
+        },
+        {
+          "path": "Sources/Core/Bounds.swift",
+          "durationSeconds": 0.12,
+          "mutationPoint": {
+            "mutationOperatorId": "RelationalOperatorReplacement",
+            "position": {
+              "column": 19,
+              "utf8Offset": 330,
+              "line": 5
+            },
+            "filePath": "@PARENT@/Mutation_mutated.noindex/Sources/Core/Bounds.swift"
+          },
+          "key": "Sources/Core/Bounds.swift:5:19 RelationalOperatorReplacement",
+          "sourceChange": {
+            "line": 5,
+            "before": "    if value < low {",
+            "after": "    if false {"
+          },
+          "testSuiteOutcome": "passed",
+          "mutationSnapshot": {
+            "description": "replaced the comparison with false",
+            "before": "value < low",
+            "after": "false"
+          }
+        },
+        {
+          "path": "Sources/Core/Bounds.swift",
+          "durationSeconds": 0.12,
+          "mutationPoint": {
+            "mutationOperatorId": "ReplaceReturnValue",
+            "position": {
+              "column": 16,
+              "utf8Offset": 348,
+              "line": 6
+            },
+            "filePath": "@PARENT@/Mutation_mutated.noindex/Sources/Core/Bounds.swift"
+          },
+          "key": "Sources/Core/Bounds.swift:6:16 ReplaceReturnValue",
+          "sourceChange": {
+            "line": 6,
+            "before": "        return low",
+            "after": "        return 0"
+          },
+          "testSuiteOutcome": "passed",
+          "mutationSnapshot": {
+            "description": "replaced the return value with 0",
+            "before": "low",
+            "after": "0"
+          }
+        },
+        {
+          "path": "Sources/Core/Bounds.swift",
+          "durationSeconds": 0.12,
+          "mutationPoint": {
+            "mutationOperatorId": "RelationalBoundary",
+            "position": {
+              "column": 14,
+              "utf8Offset": 371,
+              "line": 8
+            },
+            "filePath": "@PARENT@/Mutation_mutated.noindex/Sources/Core/Bounds.swift"
+          },
+          "key": "Sources/Core/Bounds.swift:8:14 RelationalBoundary",
+          "sourceChange": {
+            "line": 8,
+            "before": "    if value > high {",
+            "after": "    if value >= high {"
+          },
+          "testSuiteOutcome": "passed",
+          "mutationSnapshot": {
+            "description": "changed > to >=",
+            "before": ">",
+            "after": ">="
+          }
+        },
+        {
+          "path": "Sources/Core/Bounds.swift",
+          "durationSeconds": 0.12,
+          "mutationPoint": {
+            "mutationOperatorId": "RelationalOperatorReplacement",
+            "position": {
+              "column": 14,
+              "utf8Offset": 371,
+              "line": 8
+            },
+            "filePath": "@PARENT@/Mutation_mutated.noindex/Sources/Core/Bounds.swift"
+          },
+          "key": "Sources/Core/Bounds.swift:8:14 RelationalOperatorReplacement",
+          "sourceChange": {
+            "line": 8,
+            "before": "    if value > high {",
+            "after": "    if value != high {"
+          },
+          "testSuiteOutcome": "passed",
+          "mutationSnapshot": {
+            "description": "changed > to !=",
+            "before": ">",
+            "after": "!="
+          }
+        },
+        {
+          "path": "Sources/Core/Bounds.swift",
+          "durationSeconds": 0.12,
+          "mutationPoint": {
+            "mutationOperatorId": "RelationalOperatorReplacement",
+            "position": {
+              "column": 20,
+              "utf8Offset": 377,
+              "line": 8
+            },
+            "filePath": "@PARENT@/Mutation_mutated.noindex/Sources/Core/Bounds.swift"
+          },
+          "key": "Sources/Core/Bounds.swift:8:20 RelationalOperatorReplacement",
+          "sourceChange": {
+            "line": 8,
+            "before": "    if value > high {",
+            "after": "    if false {"
+          },
+          "testSuiteOutcome": "passed",
+          "mutationSnapshot": {
+            "description": "replaced the comparison with false",
+            "before": "value > high",
+            "after": "false"
+          }
+        },
+        {
+          "path": "Sources/Core/Bounds.swift",
+          "durationSeconds": 0.119,
+          "mutationPoint": {
+            "mutationOperatorId": "ReplaceReturnValue",
+            "position": {
+              "column": 16,
+              "utf8Offset": 395,
+              "line": 9
+            },
+            "filePath": "@PARENT@/Mutation_mutated.noindex/Sources/Core/Bounds.swift"
+          },
+          "key": "Sources/Core/Bounds.swift:9:16 ReplaceReturnValue",
+          "sourceChange": {
+            "line": 9,
+            "before": "        return high",
+            "after": "        return 0"
+          },
+          "testSuiteOutcome": "passed",
+          "mutationSnapshot": {
+            "description": "replaced the return value with 0",
+            "before": "high",
+            "after": "0"
+          }
+        },
+        {
+          "path": "Sources/Core/Bounds.swift",
+          "durationSeconds": 0.121,
+          "mutationPoint": {
+            "mutationOperatorId": "ReplaceReturnValue",
+            "position": {
+              "column": 12,
+              "utf8Offset": 417,
+              "line": 11
+            },
+            "filePath": "@PARENT@/Mutation_mutated.noindex/Sources/Core/Bounds.swift"
+          },
+          "key": "Sources/Core/Bounds.swift:11:12 ReplaceReturnValue",
+          "sourceChange": {
+            "line": 11,
+            "before": "    return value",
+            "after": "    return 0"
+          },
+          "testSuiteOutcome": "passed",
+          "mutationSnapshot": {
+            "description": "replaced the return value with 0",
+            "before": "value",
+            "after": "0"
+          }
+        },
+        {
+          "path": "Sources/Core/Bounds.swift",
+          "durationSeconds": 0.105,
+          "mutationPoint": {
+            "mutationOperatorId": "RelationalOperatorReplacement",
+            "position": {
+              "column": 5,
+              "utf8Offset": 666,
+              "line": 18
+            },
+            "filePath": "@PARENT@/Mutation_mutated.noindex/Sources/Core/Bounds.swift"
+          },
+          "testSuiteOutcome": "failed",
+          "killingTests": {
+            "count": 1,
+            "isComplete": false,
+            "tests": [
+              {
+                "location": "BoundsTests.swift:17:5",
+                "name": "isWithinChecksBothBounds()"
+              }
+            ]
+          },
+          "sourceChange": {
+            "line": 18,
+            "before": "    value >= low && value <= high",
+            "after": "    true && value <= high"
+          },
+          "mutationSnapshot": {
+            "description": "replaced the comparison with true",
+            "before": "value >= low",
+            "after": "true"
+          },
+          "key": "Sources/Core/Bounds.swift:18:5 RelationalOperatorReplacement"
+        },
+        {
+          "path": "Sources/Core/Bounds.swift",
+          "durationSeconds": 0.105,
+          "mutationPoint": {
+            "mutationOperatorId": "ReplaceBooleanValue",
+            "position": {
+              "column": 5,
+              "utf8Offset": 666,
+              "line": 18
+            },
+            "filePath": "@PARENT@/Mutation_mutated.noindex/Sources/Core/Bounds.swift"
+          },
+          "testSuiteOutcome": "failed",
+          "killingTests": {
+            "count": 1,
+            "isComplete": false,
+            "tests": [
+              {
+                "location": "BoundsTests.swift:17:5",
+                "name": "isWithinChecksBothBounds()"
+              }
+            ]
+          },
+          "sourceChange": {
+            "line": 18,
+            "before": "    value >= low && value <= high",
+            "after": "    true"
+          },
+          "mutationSnapshot": {
+            "description": "replaced the Bool with true",
+            "before": "value >= low && value <= high",
+            "after": "true"
+          },
+          "key": "Sources/Core/Bounds.swift:18:5 ReplaceBooleanValue"
+        },
+        {
+          "path": "Sources/Core/Bounds.swift",
+          "durationSeconds": 0.104,
+          "mutationPoint": {
+            "mutationOperatorId": "RelationalBoundary",
+            "position": {
+              "column": 11,
+              "utf8Offset": 672,
+              "line": 18
+            },
+            "filePath": "@PARENT@/Mutation_mutated.noindex/Sources/Core/Bounds.swift"
+          },
+          "testSuiteOutcome": "failed",
+          "killingTests": {
+            "count": 1,
+            "isComplete": false,
+            "tests": [
+              {
+                "location": "BoundsTests.swift:15:5",
+                "name": "isWithinChecksBothBounds()"
+              }
+            ]
+          },
+          "sourceChange": {
+            "line": 18,
+            "before": "    value >= low && value <= high",
+            "after": "    value > low && value <= high"
+          },
+          "mutationSnapshot": {
+            "description": "changed >= to >",
+            "before": ">=",
+            "after": ">"
+          },
+          "key": "Sources/Core/Bounds.swift:18:11 RelationalBoundary"
+        },
+        {
+          "path": "Sources/Core/Bounds.swift",
+          "durationSeconds": 0.106,
+          "mutationPoint": {
+            "mutationOperatorId": "RelationalOperatorReplacement",
+            "position": {
+              "column": 11,
+              "utf8Offset": 672,
+              "line": 18
+            },
+            "filePath": "@PARENT@/Mutation_mutated.noindex/Sources/Core/Bounds.swift"
+          },
+          "testSuiteOutcome": "failed",
+          "killingTests": {
+            "count": 1,
+            "isComplete": false,
+            "tests": [
+              {
+                "location": "BoundsTests.swift:14:5",
+                "name": "isWithinChecksBothBounds()"
+              }
+            ]
+          },
+          "sourceChange": {
+            "line": 18,
+            "before": "    value >= low && value <= high",
+            "after": "    value == low && value <= high"
+          },
+          "mutationSnapshot": {
+            "description": "changed >= to ==",
+            "before": ">=",
+            "after": "=="
+          },
+          "key": "Sources/Core/Bounds.swift:18:11 RelationalOperatorReplacement"
+        },
+        {
+          "path": "Sources/Core/Bounds.swift",
+          "durationSeconds": 0.105,
+          "mutationPoint": {
+            "mutationOperatorId": "ChangeLogicalConnector",
+            "position": {
+              "column": 18,
+              "utf8Offset": 679,
+              "line": 18
+            },
+            "filePath": "@PARENT@/Mutation_mutated.noindex/Sources/Core/Bounds.swift"
+          },
+          "testSuiteOutcome": "failed",
+          "killingTests": {
+            "count": 1,
+            "isComplete": false,
+            "tests": [
+              {
+                "location": "BoundsTests.swift:17:5",
+                "name": "isWithinChecksBothBounds()"
+              }
+            ]
+          },
+          "sourceChange": {
+            "line": 18,
+            "before": "    value >= low && value <= high",
+            "after": "    value >= low || value <= high"
+          },
+          "mutationSnapshot": {
+            "description": "changed && to ||",
+            "before": "&&",
+            "after": "||"
+          },
+          "key": "Sources/Core/Bounds.swift:18:18 ChangeLogicalConnector"
+        },
+        {
+          "path": "Sources/Core/Bounds.swift",
+          "durationSeconds": 0.105,
+          "mutationPoint": {
+            "mutationOperatorId": "RelationalOperatorReplacement",
+            "position": {
+              "column": 21,
+              "utf8Offset": 682,
+              "line": 18
+            },
+            "filePath": "@PARENT@/Mutation_mutated.noindex/Sources/Core/Bounds.swift"
+          },
+          "testSuiteOutcome": "failed",
+          "killingTests": {
+            "count": 1,
+            "isComplete": false,
+            "tests": [
+              {
+                "location": "BoundsTests.swift:18:5",
+                "name": "isWithinChecksBothBounds()"
+              }
+            ]
+          },
+          "sourceChange": {
+            "line": 18,
+            "before": "    value >= low && value <= high",
+            "after": "    value >= low && true"
+          },
+          "mutationSnapshot": {
+            "description": "replaced the comparison with true",
+            "before": "value <= high",
+            "after": "true"
+          },
+          "key": "Sources/Core/Bounds.swift:18:21 RelationalOperatorReplacement"
+        },
+        {
+          "path": "Sources/Core/Bounds.swift",
+          "durationSeconds": 0.111,
+          "mutationPoint": {
+            "mutationOperatorId": "RelationalBoundary",
+            "position": {
+              "column": 27,
+              "utf8Offset": 688,
+              "line": 18
+            },
+            "filePath": "@PARENT@/Mutation_mutated.noindex/Sources/Core/Bounds.swift"
+          },
+          "testSuiteOutcome": "failed",
+          "killingTests": {
+            "count": 1,
+            "isComplete": false,
+            "tests": [
+              {
+                "location": "BoundsTests.swift:16:5",
+                "name": "isWithinChecksBothBounds()"
+              }
+            ]
+          },
+          "sourceChange": {
+            "line": 18,
+            "before": "    value >= low && value <= high",
+            "after": "    value >= low && value < high"
+          },
+          "mutationSnapshot": {
+            "description": "changed <= to <",
+            "before": "<=",
+            "after": "<"
+          },
+          "key": "Sources/Core/Bounds.swift:18:27 RelationalBoundary"
+        },
+        {
+          "path": "Sources/Core/Bounds.swift",
+          "durationSeconds": 0.105,
+          "mutationPoint": {
+            "mutationOperatorId": "RelationalOperatorReplacement",
+            "position": {
+              "column": 27,
+              "utf8Offset": 688,
+              "line": 18
+            },
+            "filePath": "@PARENT@/Mutation_mutated.noindex/Sources/Core/Bounds.swift"
+          },
+          "testSuiteOutcome": "failed",
+          "killingTests": {
+            "count": 1,
+            "isComplete": false,
+            "tests": [
+              {
+                "location": "BoundsTests.swift:14:5",
+                "name": "isWithinChecksBothBounds()"
+              }
+            ]
+          },
+          "sourceChange": {
+            "line": 18,
+            "before": "    value >= low && value <= high",
+            "after": "    value >= low && value == high"
+          },
+          "mutationSnapshot": {
+            "description": "changed <= to ==",
+            "before": "<=",
+            "after": "=="
+          },
+          "key": "Sources/Core/Bounds.swift:18:27 RelationalOperatorReplacement"
+        },
+        {
+          "path": "Sources/Core/Bounds.swift",
+          "durationSeconds": 0.105,
+          "mutationPoint": {
+            "mutationOperatorId": "ReplaceBooleanValue",
+            "position": {
+              "column": 34,
+              "utf8Offset": 695,
+              "line": 18
+            },
+            "filePath": "@PARENT@/Mutation_mutated.noindex/Sources/Core/Bounds.swift"
+          },
+          "testSuiteOutcome": "failed",
+          "killingTests": {
+            "count": 1,
+            "isComplete": false,
+            "tests": [
+              {
+                "location": "BoundsTests.swift:14:5",
+                "name": "isWithinChecksBothBounds()"
+              }
+            ]
+          },
+          "sourceChange": {
+            "line": 18,
+            "before": "    value >= low && value <= high",
+            "after": "    false"
+          },
+          "mutationSnapshot": {
+            "description": "replaced the Bool with false",
+            "before": "value >= low && value <= high",
+            "after": "false"
+          },
+          "key": "Sources/Core/Bounds.swift:18:34 ReplaceBooleanValue"
+        }
+      ]
+    },
+    {
+      "fileName": "NormalizeA.swift",
+      "path": "Sources/Core/NormalizeA.swift",
+      "mutationScore": 100,
+      "appliedOperators": [
+        {
+          "path": "Sources/Core/NormalizeA.swift",
+          "durationSeconds": 0.105,
+          "mutationPoint": {
+            "mutationOperatorId": "RelationalOperatorReplacement",
+            "position": {
+              "column": 18,
+              "utf8Offset": 565,
+              "line": 8
+            },
+            "filePath": "@PARENT@/Mutation_mutated.noindex/Sources/Core/NormalizeA.swift"
+          },
+          "testSuiteOutcome": "failed",
+          "killingTests": {
+            "count": 1,
+            "isComplete": false,
+            "tests": [
+              {
+                "location": "NormalizeTests.swift:7:5",
+                "name": "normalizedAScalesToPercentages()"
+              }
+            ]
+          },
+          "sourceChange": {
+            "line": 8,
+            "before": "    let scaled = total == 0 ? values : values.map { $0 * 100 / total }",
+            "after": "    let scaled = true ? values : values.map { $0 * 100 / total }"
+          },
+          "mutationSnapshot": {
+            "description": "replaced the comparison with true",
+            "before": "total == 0",
+            "after": "true"
+          },
+          "key": "Sources/Core/NormalizeA.swift:8:18 RelationalOperatorReplacement"
+        },
+        {
+          "path": "Sources/Core/NormalizeA.swift",
+          "durationSeconds": 0.111,
+          "mutationPoint": {
+            "mutationOperatorId": "RelationalOperatorReplacement",
+            "position": {
+              "column": 28,
+              "utf8Offset": 575,
+              "line": 8
+            },
+            "filePath": "@PARENT@/Mutation_mutated.noindex/Sources/Core/NormalizeA.swift"
+          },
+          "testSuiteOutcome": "runtimeError",
+          "killingTests": {
+            "count": 0,
+            "isComplete": true,
+            "tests": []
+          },
+          "sourceChange": {
+            "line": 8,
+            "before": "    let scaled = total == 0 ? values : values.map { $0 * 100 / total }",
+            "after": "    let scaled = false ? values : values.map { $0 * 100 / total }"
+          },
+          "mutationSnapshot": {
+            "description": "replaced the comparison with false",
+            "before": "total == 0",
+            "after": "false"
+          },
+          "key": "Sources/Core/NormalizeA.swift:8:28 RelationalOperatorReplacement"
+        },
+        {
+          "path": "Sources/Core/NormalizeA.swift",
+          "durationSeconds": 0.106,
+          "mutationPoint": {
+            "mutationOperatorId": "ChangeArithmeticOperator",
+            "position": {
+              "column": 56,
+              "utf8Offset": 603,
+              "line": 8
+            },
+            "filePath": "@PARENT@/Mutation_mutated.noindex/Sources/Core/NormalizeA.swift"
+          },
+          "testSuiteOutcome": "failed",
+          "killingTests": {
+            "count": 1,
+            "isComplete": false,
+            "tests": [
+              {
+                "location": "NormalizeTests.swift:7:5",
+                "name": "normalizedAScalesToPercentages()"
+              }
+            ]
+          },
+          "sourceChange": {
+            "line": 8,
+            "before": "    let scaled = total == 0 ? values : values.map { $0 * 100 / total }",
+            "after": "    let scaled = total == 0 ? values : values.map { $0 / 100 / total }"
+          },
+          "mutationSnapshot": {
+            "description": "changed * to /",
+            "before": "*",
+            "after": "/"
+          },
+          "key": "Sources/Core/NormalizeA.swift:8:56 ChangeArithmeticOperator"
+        },
+        {
+          "path": "Sources/Core/NormalizeA.swift",
+          "durationSeconds": 0.106,
+          "mutationPoint": {
+            "mutationOperatorId": "ChangeArithmeticOperator",
+            "position": {
+              "column": 62,
+              "utf8Offset": 609,
+              "line": 8
+            },
+            "filePath": "@PARENT@/Mutation_mutated.noindex/Sources/Core/NormalizeA.swift"
+          },
+          "testSuiteOutcome": "failed",
+          "killingTests": {
+            "count": 1,
+            "isComplete": false,
+            "tests": [
+              {
+                "location": "NormalizeTests.swift:7:5",
+                "name": "normalizedAScalesToPercentages()"
+              }
+            ]
+          },
+          "sourceChange": {
+            "line": 8,
+            "before": "    let scaled = total == 0 ? values : values.map { $0 * 100 / total }",
+            "after": "    let scaled = total == 0 ? values : values.map { $0 * 100 * total }"
+          },
+          "mutationSnapshot": {
+            "description": "changed / to *",
+            "before": "/",
+            "after": "*"
+          },
+          "key": "Sources/Core/NormalizeA.swift:8:62 ChangeArithmeticOperator"
+        },
+        {
+          "path": "Sources/Core/NormalizeA.swift",
+          "durationSeconds": 0.106,
+          "mutationPoint": {
+            "mutationOperatorId": "SwapTernary",
+            "position": {
+              "column": 71,
+              "utf8Offset": 618,
+              "line": 8
+            },
+            "filePath": "@PARENT@/Mutation_mutated.noindex/Sources/Core/NormalizeA.swift"
+          },
+          "testSuiteOutcome": "runtimeError",
+          "killingTests": {
+            "count": 0,
+            "isComplete": false,
+            "tests": []
+          },
+          "sourceChange": {
+            "line": 8,
+            "before": "    let scaled = total == 0 ? values : values.map { $0 * 100 / total }",
+            "after": "    let scaled = total == 0 ? values.map { $0 * 100 / total } :  values"
+          },
+          "mutationSnapshot": {
+            "description": "swapped ternary operator",
+            "before": "total == 0 ? values : values.map { $0 * 100 / total }",
+            "after": "total == 0 ? values.map { $0 * 100 / total } :  values"
+          },
+          "key": "Sources/Core/NormalizeA.swift:8:71 SwapTernary"
+        },
+        {
+          "path": "Sources/Core/NormalizeA.swift",
+          "durationSeconds": 0.104,
+          "mutationPoint": {
+            "mutationOperatorId": "RemoveSideEffects",
+            "position": {
+              "column": 29,
+              "utf8Offset": 647,
+              "line": 9
+            },
+            "filePath": "@PARENT@/Mutation_mutated.noindex/Sources/Core/NormalizeA.swift"
+          },
+          "testSuiteOutcome": "failed",
+          "killingTests": {
+            "count": 2,
+            "isComplete": false,
+            "tests": [
+              {
+                "location": "NormalizeTests.swift:15:5",
+                "name": "normalizedAKeepsAZeroTotal()"
+              },
+              {
+                "location": "NormalizeTests.swift:8:5",
+                "name": "normalizedAScalesToPercentages()"
+              }
+            ]
+          },
+          "sourceChange": {
+            "line": 9,
+            "before": "    log.append(scaled.count)"
+          },
+          "mutationSnapshot": {
+            "description": "removed line",
+            "before": "log.append(scaled.count)",
+            "after": "removed line"
+          },
+          "key": "Sources/Core/NormalizeA.swift:9:29 RemoveSideEffects"
+        },
+        {
+          "path": "Sources/Core/NormalizeA.swift",
+          "durationSeconds": 0.108,
+          "mutationPoint": {
+            "mutationOperatorId": "ReplaceReturnValue",
+            "position": {
+              "column": 12,
+              "utf8Offset": 659,
+              "line": 10
+            },
+            "filePath": "@PARENT@/Mutation_mutated.noindex/Sources/Core/NormalizeA.swift"
+          },
+          "testSuiteOutcome": "failed",
+          "killingTests": {
+            "count": 2,
+            "isComplete": false,
+            "tests": [
+              {
+                "location": "NormalizeTests.swift:14:5",
+                "name": "normalizedAKeepsAZeroTotal()"
+              },
+              {
+                "location": "NormalizeTests.swift:7:5",
+                "name": "normalizedAScalesToPercentages()"
+              }
+            ]
+          },
+          "sourceChange": {
+            "line": 10,
+            "before": "    return scaled",
+            "after": "    return []"
+          },
+          "mutationSnapshot": {
+            "description": "replaced the return value with []",
+            "before": "scaled",
+            "after": "[]"
+          },
+          "key": "Sources/Core/NormalizeA.swift:10:12 ReplaceReturnValue"
+        }
+      ]
+    },
+    {
+      "fileName": "Signs.swift",
+      "path": "Sources/Core/Signs.swift",
+      "mutationScore": 100,
+      "appliedOperators": [
+        {
+          "path": "Sources/Core/Signs.swift",
+          "durationSeconds": 0.108,
+          "mutationPoint": {
+            "mutationOperatorId": "RelationalBoundary",
+            "position": {
+              "column": 14,
+              "utf8Offset": 278,
+              "line": 4
+            },
+            "filePath": "@PARENT@/Mutation_mutated.noindex/Sources/Core/Signs.swift"
+          },
+          "testSuiteOutcome": "failed",
+          "killingTests": {
+            "count": 1,
+            "isComplete": false,
+            "tests": [
+              {
+                "location": "SignTests.swift:10:5",
+                "name": "signIsExact()"
+              }
+            ]
+          },
+          "sourceChange": {
+            "line": 4,
+            "before": "    if value > 0 {",
+            "after": "    if value >= 0 {"
+          },
+          "mutationSnapshot": {
+            "description": "changed > to >=",
+            "before": ">",
+            "after": ">="
+          },
+          "key": "Sources/Core/Signs.swift:4:14 RelationalBoundary"
+        },
+        {
+          "path": "Sources/Core/Signs.swift",
+          "durationSeconds": 0.108,
+          "mutationPoint": {
+            "mutationOperatorId": "RelationalOperatorReplacement",
+            "position": {
+              "column": 14,
+              "utf8Offset": 278,
+              "line": 4
+            },
+            "filePath": "@PARENT@/Mutation_mutated.noindex/Sources/Core/Signs.swift"
+          },
+          "testSuiteOutcome": "failed",
+          "killingTests": {
+            "count": 1,
+            "isComplete": false,
+            "tests": [
+              {
+                "location": "SignTests.swift:8:5",
+                "name": "signIsExact()"
+              }
+            ]
+          },
+          "sourceChange": {
+            "line": 4,
+            "before": "    if value > 0 {",
+            "after": "    if value != 0 {"
+          },
+          "mutationSnapshot": {
+            "description": "changed > to !=",
+            "before": ">",
+            "after": "!="
+          },
+          "key": "Sources/Core/Signs.swift:4:14 RelationalOperatorReplacement"
+        },
+        {
+          "path": "Sources/Core/Signs.swift",
+          "durationSeconds": 0.105,
+          "mutationPoint": {
+            "mutationOperatorId": "RelationalOperatorReplacement",
+            "position": {
+              "column": 17,
+              "utf8Offset": 281,
+              "line": 4
+            },
+            "filePath": "@PARENT@/Mutation_mutated.noindex/Sources/Core/Signs.swift"
+          },
+          "testSuiteOutcome": "failed",
+          "killingTests": {
+            "count": 1,
+            "isComplete": false,
+            "tests": [
+              {
+                "location": "SignTests.swift:6:5",
+                "name": "signIsExact()"
+              }
+            ]
+          },
+          "sourceChange": {
+            "line": 4,
+            "before": "    if value > 0 {",
+            "after": "    if false {"
+          },
+          "mutationSnapshot": {
+            "description": "replaced the comparison with false",
+            "before": "value > 0",
+            "after": "false"
+          },
+          "key": "Sources/Core/Signs.swift:4:17 RelationalOperatorReplacement"
+        },
+        {
+          "path": "Sources/Core/Signs.swift",
+          "durationSeconds": 0.105,
+          "mutationPoint": {
+            "mutationOperatorId": "ReplaceReturnValue",
+            "position": {
+              "column": 16,
+              "utf8Offset": 299,
+              "line": 5
+            },
+            "filePath": "@PARENT@/Mutation_mutated.noindex/Sources/Core/Signs.swift"
+          },
+          "testSuiteOutcome": "failed",
+          "killingTests": {
+            "count": 1,
+            "isComplete": false,
+            "tests": [
+              {
+                "location": "SignTests.swift:6:5",
+                "name": "signIsExact()"
+              }
+            ]
+          },
+          "sourceChange": {
+            "line": 5,
+            "before": "        return 1",
+            "after": "        return 0"
+          },
+          "mutationSnapshot": {
+            "description": "replaced the return value with 0",
+            "before": "1",
+            "after": "0"
+          },
+          "key": "Sources/Core/Signs.swift:5:16 ReplaceReturnValue"
+        },
+        {
+          "path": "Sources/Core/Signs.swift",
+          "durationSeconds": 0.105,
+          "mutationPoint": {
+            "mutationOperatorId": "RelationalOperatorReplacement",
+            "position": {
+              "column": 12,
+              "utf8Offset": 318,
+              "line": 7
+            },
+            "filePath": "@PARENT@/Mutation_mutated.noindex/Sources/Core/Signs.swift"
+          },
+          "testSuiteOutcome": "failed",
+          "killingTests": {
+            "count": 1,
+            "isComplete": false,
+            "tests": [
+              {
+                "location": "SignTests.swift:8:5",
+                "name": "signIsExact()"
+              }
+            ]
+          },
+          "sourceChange": {
+            "line": 7,
+            "before": "    return value == 0 ? 0 : -1",
+            "after": "    return true ? 0 : -1"
+          },
+          "mutationSnapshot": {
+            "description": "replaced the comparison with true",
+            "before": "value == 0",
+            "after": "true"
+          },
+          "key": "Sources/Core/Signs.swift:7:12 RelationalOperatorReplacement"
+        },
+        {
+          "path": "Sources/Core/Signs.swift",
+          "durationSeconds": 0.105,
+          "mutationPoint": {
+            "mutationOperatorId": "ReplaceReturnValue",
+            "position": {
+              "column": 12,
+              "utf8Offset": 318,
+              "line": 7
+            },
+            "filePath": "@PARENT@/Mutation_mutated.noindex/Sources/Core/Signs.swift"
+          },
+          "testSuiteOutcome": "failed",
+          "killingTests": {
+            "count": 1,
+            "isComplete": false,
+            "tests": [
+              {
+                "location": "SignTests.swift:8:5",
+                "name": "signIsExact()"
+              }
+            ]
+          },
+          "sourceChange": {
+            "line": 7,
+            "before": "    return value == 0 ? 0 : -1",
+            "after": "    return 0"
+          },
+          "mutationSnapshot": {
+            "description": "replaced the return value with 0",
+            "before": "value == 0 ? 0 : -1",
+            "after": "0"
+          },
+          "key": "Sources/Core/Signs.swift:7:12 ReplaceReturnValue"
+        },
+        {
+          "path": "Sources/Core/Signs.swift",
+          "durationSeconds": 0.11,
+          "mutationPoint": {
+            "mutationOperatorId": "RelationalOperatorReplacement",
+            "position": {
+              "column": 22,
+              "utf8Offset": 328,
+              "line": 7
+            },
+            "filePath": "@PARENT@/Mutation_mutated.noindex/Sources/Core/Signs.swift"
+          },
+          "testSuiteOutcome": "failed",
+          "killingTests": {
+            "count": 1,
+            "isComplete": false,
+            "tests": [
+              {
+                "location": "SignTests.swift:10:5",
+                "name": "signIsExact()"
+              }
+            ]
+          },
+          "sourceChange": {
+            "line": 7,
+            "before": "    return value == 0 ? 0 : -1",
+            "after": "    return false ? 0 : -1"
+          },
+          "mutationSnapshot": {
+            "description": "replaced the comparison with false",
+            "before": "value == 0",
+            "after": "false"
+          },
+          "key": "Sources/Core/Signs.swift:7:22 RelationalOperatorReplacement"
+        },
+        {
+          "path": "Sources/Core/Signs.swift",
+          "durationSeconds": 0.105,
+          "mutationPoint": {
+            "mutationOperatorId": "SwapTernary",
+            "position": {
+              "column": 31,
+              "utf8Offset": 337,
+              "line": 7
+            },
+            "filePath": "@PARENT@/Mutation_mutated.noindex/Sources/Core/Signs.swift"
+          },
+          "testSuiteOutcome": "failed",
+          "killingTests": {
+            "count": 1,
+            "isComplete": false,
+            "tests": [
+              {
+                "location": "SignTests.swift:8:5",
+                "name": "signIsExact()"
+              }
+            ]
+          },
+          "sourceChange": {
+            "line": 7,
+            "before": "    return value == 0 ? 0 : -1",
+            "after": "    return value == 0 ? -1 :  0"
+          },
+          "mutationSnapshot": {
+            "description": "swapped ternary operator",
+            "before": "value == 0 ? 0 : -1",
+            "after": "value == 0 ? -1 :  0"
+          },
+          "key": "Sources/Core/Signs.swift:7:31 SwapTernary"
+        }
+      ]
+    },
+    {
+      "fileName": "Scale.swift",
+      "path": "Sources/Extras/Scale.swift",
+      "mutationScore": 100,
+      "appliedOperators": [
+        {
+          "path": "Sources/Extras/Scale.swift",
+          "durationSeconds": 0.105,
+          "mutationPoint": {
+            "mutationOperatorId": "ReplaceReturnValue",
+            "position": {
+              "column": 5,
+              "utf8Offset": 195,
+              "line": 3
+            },
+            "filePath": "@PARENT@/Mutation_mutated.noindex/Sources/Extras/Scale.swift"
+          },
+          "testSuiteOutcome": "failed",
+          "killingTests": {
+            "count": 1,
+            "isComplete": false,
+            "tests": [
+              {
+                "location": "ScaleTests.swift:5:5",
+                "name": "scaleTriples()"
+              }
+            ]
+          },
+          "sourceChange": {
+            "line": 3,
+            "before": "    value * 3",
+            "after": "    0"
+          },
+          "mutationSnapshot": {
+            "description": "replaced the return value with 0",
+            "before": "value * 3",
+            "after": "0"
+          },
+          "key": "Sources/Extras/Scale.swift:3:5 ReplaceReturnValue"
+        },
+        {
+          "path": "Sources/Extras/Scale.swift",
+          "durationSeconds": 0.104,
+          "mutationPoint": {
+            "mutationOperatorId": "ChangeArithmeticOperator",
+            "position": {
+              "column": 11,
+              "utf8Offset": 201,
+              "line": 3
+            },
+            "filePath": "@PARENT@/Mutation_mutated.noindex/Sources/Extras/Scale.swift"
+          },
+          "testSuiteOutcome": "failed",
+          "killingTests": {
+            "count": 1,
+            "isComplete": false,
+            "tests": [
+              {
+                "location": "ScaleTests.swift:5:5",
+                "name": "scaleTriples()"
+              }
+            ]
+          },
+          "sourceChange": {
+            "line": 3,
+            "before": "    value * 3",
+            "after": "    value / 3"
+          },
+          "mutationSnapshot": {
+            "description": "changed * to /",
+            "before": "*",
+            "after": "/"
+          },
+          "key": "Sources/Extras/Scale.swift:3:11 ChangeArithmeticOperator"
+        }
+      ]
+    },
+    {
+      "fileName": "Dormant.swift",
+      "path": "Sources/Core/Dormant.swift",
+      "mutationScore": 0,
+      "appliedOperators": [
+        {
+          "mutationPoint": {
+            "mutationOperatorId": "RemoveSideEffects",
+            "position": {
+              "column": 0,
+              "utf8Offset": 0,
+              "line": 0
+            },
+            "filePath": ""
+          },
+          "testSuiteOutcome": "noCoverage",
+          "mutationSnapshot": {
+            "description": "",
+            "before": "",
+            "after": ""
+          }
+        }
+      ]
+    },
+    {
+      "fileName": "NormalizeB.swift",
+      "path": "Sources/Extras/NormalizeB.swift",
+      "mutationScore": 0,
+      "appliedOperators": [
+        {
+          "mutationPoint": {
+            "mutationOperatorId": "RemoveSideEffects",
+            "position": {
+              "column": 0,
+              "utf8Offset": 0,
+              "line": 0
+            },
+            "filePath": ""
+          },
+          "testSuiteOutcome": "noCoverage",
+          "mutationSnapshot": {
+            "description": "",
+            "before": "",
+            "after": ""
+          }
+        }
+      ]
+    },
+    {
+      "fileName": "Unused.swift",
+      "path": "Sources/Extras/Unused.swift",
+      "mutationScore": 0,
+      "appliedOperators": [
+        {
+          "mutationPoint": {
+            "mutationOperatorId": "RemoveSideEffects",
+            "position": {
+              "column": 0,
+              "utf8Offset": 0,
+              "line": 0
+            },
+            "filePath": ""
+          },
+          "testSuiteOutcome": "noCoverage",
+          "mutationSnapshot": {
+            "description": "",
+            "before": "",
+            "after": ""
+          }
+        }
+      ]
+    }
+  ],
+  "mutantsByOutcome": {
+    "timedOut": 0,
+    "buildErrors": 0,
+    "notCovered": 0,
+    "survived": 9,
+    "killed": 26
+  },
+  "numberOfKilledMutants": 26,
+  "run": {
+    "workers": 4,
+    "swiftMutator": {
+      "executableSHA256": "5138cbf1b810b127accddd8d4973bb2675195797cbae9b734bd09c0ae5a35ba8",
+      "version": "0.1.0",
+      "executablePath": "@SWIFT_MUTATOR@"
+    },
+    "configuration": {
+      "exclude": [],
+      "excludeCalls": [],
+      "coverageThreshold": 0,
+      "arguments": [
+        "test"
+      ],
+      "executable": "@SWIFT@"
+    },
+    "sessions": 1,
+    "timeoutSeconds": 20,
+    "toolchain": {
+      "testCommandVersion": "Apple Swift version 6.4.2 (swiftlang-6.4.2.1.9 clang-2100.4.1.1)\nTarget: arm64-apple-macosx27.2.0",
+      "environment": {}
+    },
+    "timeoutIsDefault": true,
+    "resultsFiles": [
+      "@PARENT@/Mutation_muter_logs/Nov 21, 2026 at 10:40 AM/results.jsonl"
+    ]
+  },
+  "projectCodeCoverage": 60,
+  "killingTestSummary": {
+    "distinctTests": 5,
+    "incompleteLists": 24,
+    "flakyTests": [],
+    "suspectsChecked": false,
+    "failedControlRunsNamingNoTest": 0,
+    "suspectOnlyKillsWithIncompleteLists": 0,
+    "controlRuns": 0,
+    "failedControlRuns": 0,
+    "killsTestedAlone": 0,
+    "killedMutants": 24,
+    "killedMutantsNamingNoTest": 0,
+    "tests": [
+      {
+        "failedAgainAlone": 0,
+        "file": "BoundsTests.swift",
+        "files": 1,
+        "onlyRecordedFailureOf": 9,
+        "clearedAlone": false,
+        "notReproducedAlone": 0,
+        "suspect": false,
+        "failedControlRuns": 0,
+        "mutants": 9,
+        "name": "isWithinChecksBothBounds()"
+      },
+      {
+        "failedAgainAlone": 0,
+        "file": "SignTests.swift",
+        "files": 1,
+        "onlyRecordedFailureOf": 8,
+        "clearedAlone": false,
+        "notReproducedAlone": 0,
+        "suspect": false,
+        "failedControlRuns": 0,
+        "mutants": 8,
+        "name": "signIsExact()"
+      },
+      {
+        "failedAgainAlone": 0,
+        "file": "NormalizeTests.swift",
+        "files": 1,
+        "onlyRecordedFailureOf": 3,
+        "clearedAlone": false,
+        "notReproducedAlone": 0,
+        "suspect": false,
+        "failedControlRuns": 0,
+        "mutants": 5,
+        "name": "normalizedAScalesToPercentages()"
+      },
+      {
+        "failedAgainAlone": 0,
+        "file": "NormalizeTests.swift",
+        "files": 1,
+        "onlyRecordedFailureOf": 0,
+        "clearedAlone": false,
+        "notReproducedAlone": 0,
+        "suspect": false,
+        "failedControlRuns": 0,
+        "mutants": 2,
+        "name": "normalizedAKeepsAZeroTotal()"
+      },
+      {
+        "failedAgainAlone": 0,
+        "file": "ScaleTests.swift",
+        "files": 1,
+        "onlyRecordedFailureOf": 2,
+        "clearedAlone": false,
+        "notReproducedAlone": 0,
+        "suspect": false,
+        "failedControlRuns": 0,
+        "mutants": 2,
+        "name": "scaleTriples()"
+      }
+    ],
+    "suspectMinimumFiles": 10,
+    "suspectOnlyKills": 0,
+    "suspectFilePercent": 15,
+    "killedMutantsNotRecorded": 0,
+    "killsThatSurvivedAlone": 0,
+    "suspectOnlyKillsNotTestedAlone": 0,
+    "filesWithKills": 4
+  },
+  "globalMutationScore": 74,
+  "operatorExplanations": {
+    "SwapTernary": "Swaps the two branches of a ternary expression.",
+    "ChangeLogicalConnector": "Swaps a logical AND for OR, and OR for AND.",
+    "ChangeArithmeticOperator": "Swaps arithmetic: plus and minus swap, as do times and divide, and remainder becomes times.",
+    "RelationalBoundary": "Moves a comparison's boundary: less than and at most swap, as do greater than and at least.",
+    "ReplaceReturnValue": "Replaces a returned value with an empty one of its type: nil, an empty array, dictionary or string, or zero.",
+    "ReplaceBooleanValue": "Replaces a Bool that is returned or stored with true, and in a second mutant with false.",
+    "RemoveSideEffects": "Removes a call whose result isn't used, to check that a test notices its side effect is gone.",
+    "RelationalOperatorReplacement": "Replaces a comparison with true or false, and turns less than and greater than into not equal, and at most and at least into equal."
+  },
+  "timeElapsed": "00:00:06.885"
+}

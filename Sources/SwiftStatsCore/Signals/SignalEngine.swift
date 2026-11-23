@@ -33,7 +33,7 @@ public enum SignalEngine {
                 // coverage rows of a coverage run that ran.
                 results.append(SignalResult(
                     name: name,
-                    leftOut: reason ?? missingInput(name, snapshot.info),
+                    leftOut: reason ?? missingInput(name, snapshot),
                     rule: rule(for: name, thresholds: thresholds),
                     candidates: 0,
                     items: []
@@ -65,6 +65,9 @@ public enum SignalEngine {
         case .divergentClones:
             return DivergentClones.compute(inputs)
 
+        case .bestPropertyTarget, .genuinelyUnderTested, .unevenCloneMutation, .weakTests:
+            return mutationComputation(signal, snapshot: snapshot, thresholds: thresholds)
+
         case .missingTemplate:
             return MissingTemplate.compute(snapshot)
 
@@ -87,22 +90,23 @@ public enum SignalEngine {
 
     /// Why a signal needing `requirements` can't be computed from
     /// `snapshot`; nil when it can. A missing history says so as M3 did;
-    /// else, in the requirements' order, a snapshot stored before M5, or
+    /// else, in the requirements' order, a snapshot stored before M6, or
+    /// without a SwiftMutator run, predates M6; one stored before M5, or
     /// without a coverage run, predates M5; one stored before M4, or
-    /// without a row for a collector or its scan facts, predates M4; and
-    /// the first required collector that didn't run is named with its
-    /// state and reason.
+    /// without a row for a collector or its scan facts, predates M4; the
+    /// first required collector that didn't run is named with its state
+    /// and reason; and mutation results that don't list code no test ran
+    /// say so.
     static func leftOut(_ requirements: [SignalRequirement], in snapshot: StoredSnapshot) -> String? {
         if requirements.contains(.history), snapshot.history == nil {
             return historyAbsence(snapshot.info)
         }
-        let predates = "the snapshot predates M4"
         for requirement in requirements {
             switch requirement {
             case .collector(let name):
                 guard snapshot.reportSchemaVersion >= SignalRequirement.firstM4Schema,
                       let run = snapshot.info.collectors.first(where: { $0.name == name }) else {
-                    return predates
+                    return "the snapshot predates M4"
                 }
                 guard run.state == .ran else {
                     return "needs \(name): \(run.state.rawValue)" + (run.reason.map { ", \($0)" } ?? "")
@@ -111,19 +115,44 @@ public enum SignalEngine {
             case .history:
                 continue
 
-            case .m4Snapshot:
-                guard snapshot.reportSchemaVersion >= SignalRequirement.firstM4Schema, snapshot.scanFacts != nil else {
-                    return predates
-                }
-
-            case .m5Snapshot:
-                guard snapshot.reportSchemaVersion >= SignalRequirement.firstM5Schema,
-                      snapshot.info.collectors.contains(where: { $0.name == CoverageAdapter.name }) else {
-                    return "the snapshot predates M5"
+            case .m4Snapshot, .m5Snapshot, .m6Snapshot, .notCoveredListed:
+                if let reason = rowsMissing(requirement, in: snapshot) {
+                    return reason
                 }
             }
         }
         return nil
+    }
+
+    /// Why `snapshot` lacks the rows `requirement` asks for: stored before
+    /// the milestone that added them, without the collector run that
+    /// marks them, or, for listed code no test ran, results that don't
+    /// list it; nil when it has them, and for any other requirement.
+    private static func rowsMissing(_ requirement: SignalRequirement, in snapshot: StoredSnapshot) -> String? {
+        let schema = snapshot.reportSchemaVersion
+        let collectors = Set(snapshot.info.collectors.map(\.name))
+        switch requirement {
+        case .m4Snapshot:
+            return schema >= SignalRequirement.firstM4Schema && snapshot.scanFacts != nil
+                ? nil : "the snapshot predates M4"
+
+        case .m5Snapshot:
+            return schema >= SignalRequirement.firstM5Schema && collectors.contains(CoverageAdapter.name)
+                ? nil : "the snapshot predates M5"
+
+        case .m6Snapshot:
+            return schema >= SignalRequirement.firstM6Schema && collectors.contains(MutationAdapter.name)
+                ? nil : "the snapshot predates M6"
+
+        case .notCoveredListed:
+            guard let mutation = snapshot.mutation?.report, mutation.listsNotCovered == false else {
+                return nil
+            }
+            return GenuinelyUnderTested.notListedReason(of: mutation)
+
+        case .collector, .history:
+            return nil
+        }
     }
 
     /// Why `signal`, which compares the snapshot with an earlier one, can't
@@ -168,14 +197,59 @@ public enum SignalEngine {
         )
     }
 
-    /// Why `signal`'s computation found no input its requirements check:
-    /// for a coverage signal, the coverage rows a run that ran leaves; for
-    /// the others, history.
-    private static func missingInput(_ signal: SignalName, _ info: SnapshotInfo) -> String {
-        guard signal.requirements.contains(.m5Snapshot) else {
-            return historyAbsence(info)
+    /// M6's signal `signal`, weak tests, genuinely under-tested, best
+    /// property-test target or uneven clone testing's mutation part,
+    /// computed from `snapshot`.
+    private static func mutationComputation(
+        _ signal: SignalName,
+        snapshot: StoredSnapshot,
+        thresholds: SignalThresholds
+    ) -> SignalComputation? {
+        switch signal {
+        case .weakTests:
+            WeakTests.compute(snapshot, thresholds: thresholds)
+
+        case .genuinelyUnderTested:
+            GenuinelyUnderTested.compute(snapshot, thresholds: thresholds)
+
+        case .unevenCloneMutation:
+            UnevenCloneMutation.compute(snapshot, thresholds: thresholds)
+
+        default:
+            BestPropertyTarget.compute(snapshot)
         }
-        return "the snapshot holds no coverage rows"
+    }
+
+    /// The rule M6's signal `signal` states when left out.
+    private static func mutationRule(_ signal: SignalName, thresholds: SignalThresholds) -> String {
+        switch signal {
+        case .weakTests:
+            WeakTests.rule(thresholds: thresholds)
+
+        case .genuinelyUnderTested:
+            GenuinelyUnderTested.rule(thresholds: thresholds)
+
+        case .unevenCloneMutation:
+            UnevenCloneMutation.rule(thresholds: thresholds)
+
+        default:
+            BestPropertyTarget.rule
+        }
+    }
+
+    /// Why `signal`'s computation found no input its requirements check:
+    /// for a mutation signal, the mutation rows a run that ran leaves,
+    /// then, for one needing coverage, the coverage rows; for a coverage
+    /// signal, the coverage rows; for the others, history.
+    private static func missingInput(_ signal: SignalName, _ snapshot: StoredSnapshot) -> String {
+        let noCoverage = "the snapshot holds no coverage rows"
+        if signal.requirements.contains(.m6Snapshot) {
+            return snapshot.mutation == nil ? "the snapshot holds no mutation rows" : noCoverage
+        }
+        guard signal.requirements.contains(.m5Snapshot) else {
+            return historyAbsence(snapshot.info)
+        }
+        return noCoverage
     }
 
     /// Why a snapshot has no history, from its history collector's run.
@@ -187,7 +261,8 @@ public enum SignalEngine {
     }
 
     /// The rule a left-out signal states: as over an empty pool, without
-    /// the counts a computed M4 signal adds.
+    /// the counts a computed M4 signal adds; an M6 signal's with the
+    /// thresholds it would use.
     private static func rule(for signal: SignalName, thresholds: SignalThresholds) -> String {
         switch signal {
         case .bugProne, .hotspot, .safeToLeave, .testsNotKeepingUp, .unstableFixes:
@@ -198,6 +273,9 @@ public enum SignalEngine {
 
         case .divergentClones:
             DivergentClones.rule
+
+        case .bestPropertyTarget, .genuinelyUnderTested, .unevenCloneMutation, .weakTests:
+            mutationRule(signal, thresholds: thresholds)
 
         case .missingTemplate:
             MissingTemplate.rule

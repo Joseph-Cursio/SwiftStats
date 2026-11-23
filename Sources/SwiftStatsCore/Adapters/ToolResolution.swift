@@ -23,7 +23,19 @@ enum ToolResolution {
         locator: ToolLocator,
         root: URL
     ) -> Self {
-        let settings = configuration.collectors[name]
+        resolve(name, executable: executable, settings: configuration.collectors[name], locator: locator, root: root)
+    }
+
+    /// How collector `name`, whose tool is called `executable` on PATH,
+    /// resolves under its `settings` (nil when `.swiftstats.yml` has none).
+    /// A configured path is relative to `root`.
+    static func resolve(
+        _ name: String,
+        executable: String,
+        settings: CollectorSettings?,
+        locator: ToolLocator,
+        root: URL
+    ) -> Self {
         if settings?.enabled == false {
             return .skip("disabled by collectors.\(name).enabled")
         }

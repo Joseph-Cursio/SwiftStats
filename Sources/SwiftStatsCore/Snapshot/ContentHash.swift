@@ -3,7 +3,7 @@
 //  SwiftStatsCore
 //
 //  SHA-256 in lowercase hex, for build identities and dirty-tree hashes
-//  (PRD §6.2).
+//  (PRD §6.2), and for each scanned file's bytes (M6).
 //
 
 import CryptoKit

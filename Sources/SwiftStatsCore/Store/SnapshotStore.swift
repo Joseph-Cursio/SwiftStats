@@ -5,7 +5,8 @@
 //  The SQLite snapshot store (PRD §9, D9): one clean and one dirty snapshot
 //  per package and commit, each with its collector runs, function rows,
 //  finding rows, roll-up numbers, history, M4 rows (`SnapshotStore+Rows`),
-//  coverage rows (`CoverageRows`) and the whole scan report.
+//  coverage rows (`CoverageRows`), mutation rows (`MutationRows`) and the
+//  whole scan report.
 //
 
 import Foundation
@@ -49,8 +50,8 @@ public struct SnapshotStore: Sendable {
     }
 
     /// Inserts `snapshot`'s collector runs, functions, findings, roll-up
-    /// numbers and coverage, collected at `coverageCollectedAt`, as rows of
-    /// snapshot `snapshotId`.
+    /// numbers, coverage, collected at `coverageCollectedAt`, and mutation
+    /// results as rows of snapshot `snapshotId`.
     private static func insertRows(
         of snapshot: ScannedSnapshot,
         metrics: [(Rollup, [RollupMetrics.Metric])],
@@ -77,6 +78,9 @@ public struct SnapshotStore: Sendable {
         try insertM4Rows(of: snapshot.report, snapshotId: snapshotId, in: database)
         if let coverage = snapshot.report.coverage {
             try CoverageRows(coverage, collectedAt: coverageCollectedAt, snapshotId: snapshotId).insert(database)
+        }
+        if let mutation = snapshot.report.mutation {
+            try MutationRows(mutation, snapshotId: snapshotId).insert(database)
         }
         for (rollup, numbers) in metrics {
             for number in numbers {
@@ -107,7 +111,8 @@ public struct SnapshotStore: Sendable {
     /// Stores `snapshot`, replacing any snapshot of the same package, commit
     /// and dirtiness (PRD §6.2), and returns its id. Its coverage, if any,
     /// is dated `coverageCollectedAt` when given (coverage carried from an
-    /// earlier scan), else the snapshot's own date.
+    /// earlier scan), else the snapshot's own date. Its mutation results,
+    /// if any, keep the date they record.
     @discardableResult
     public func save(_ snapshot: ScannedSnapshot, coverageCollectedAt: String? = nil) throws -> Int64 {
         let json = try Self.encodeReport(snapshot.report)
@@ -254,6 +259,40 @@ public struct SnapshotStore: Sendable {
     /// (`SnapshotStore+Coverage`); nil when it holds none.
     func heldCoverage(id: Int64) throws -> HeldCoverage? {
         try queue.read { database in try Self.heldCoverage(id: id, in: database) }
+    }
+
+    /// Whether snapshot `id` holds mutation results a rescan would have to
+    /// carry or drop, read without reading them (`SnapshotStore+Mutation`).
+    func holdsMutation(id: Int64) throws -> Bool {
+        try queue.read { database in try Self.holdsMutation(id: id, in: database) }
+    }
+
+    /// The mutation results snapshot `id` holds, for a rescan that may
+    /// carry them (`SnapshotStore+Mutation`); nil when it holds none.
+    func heldMutation(id: Int64) throws -> HeldMutation? {
+        try queue.read { database in try Self.heldMutation(id: id, in: database) }
+    }
+
+    /// The mutation results snapshot `id` holds, with its swiftmutator run,
+    /// for a scan that merges with them (`SnapshotStore+Mutation`); nil
+    /// when it holds none.
+    func mutationResults(id: Int64) throws -> (results: StoredMutation, run: CollectorRunInfo)? {
+        try queue.read { database in try Self.mutationResults(id: id, in: database) }
+    }
+
+    /// What the mutation results snapshot `id` holds leave out, read
+    /// without reading them (`SnapshotStore+Mutation`); nil when it holds
+    /// none, or they leave nothing out.
+    func mutationGaps(id: Int64) throws -> MutationGaps? {
+        try queue.read { database in try Self.mutationGaps(id: id, in: database) }
+    }
+
+    /// The commits of the clean snapshots of `package` at `packagePath`
+    /// that hold complete mutation results (`SnapshotStore+Mutation`).
+    func commitsHoldingMutation(package: String, packagePath: String) throws -> Set<String> {
+        try queue.read { database in
+            try Self.commitsHoldingMutation(package: package, packagePath: packagePath, in: database)
+        }
     }
 
     /// Snapshot `id`'s scan report. One written with another report schema

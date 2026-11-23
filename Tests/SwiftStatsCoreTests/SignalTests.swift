@@ -164,7 +164,12 @@ struct SignalTests {
             let fresh = try repository.workspace()
             let info = try fresh.store.info(id: id)
             let signals = try fresh.signals(id: id)
-            let report = SnapshotReport(snapshot: info, signals: signals, scan: try fresh.store.report(id: id))
+            let report = SnapshotReport(
+                snapshot: info,
+                signals: signals,
+                thresholds: fresh.configuration.signals,
+                scan: try fresh.store.report(id: id)
+            )
             let hotspot = try #require(signals.first { $0.name == .hotspot })
             return (
                 try ScanReportEncoder.encode(report),

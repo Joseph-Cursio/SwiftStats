@@ -61,6 +61,14 @@
       "state" : "skipped"
     },
     {
+      "name" : "swiftmutator",
+      "options" : [
+
+      ],
+      "reason" : "not requested; scan --mutation runs it",
+      "state" : "skipped"
+    },
+    {
       "name" : "swiftprojectlint",
       "options" : [
 
@@ -101,6 +109,7 @@
       "lines" : 43,
       "module" : "AllKinds",
       "path" : "Sources/AllKinds/Resources.swift",
+      "sha256" : "b021a9abfb406b918aca459794e353d324e406abaadd9301b0a2c649dd4e6974",
       "strippedLines" : 33
     },
     {
@@ -108,6 +117,7 @@
       "lines" : 69,
       "module" : "AllKinds",
       "path" : "Sources/AllKinds/Shapes.swift",
+      "sha256" : "2a534ab3f38275308043c4b54bf0cfca2ddb2b0a42680d993f6f9fa7b26d4c06",
       "strippedLines" : 51
     },
     {
@@ -115,6 +125,7 @@
       "lines" : 10,
       "module" : "Tool",
       "path" : "Sources/Tool/main.swift",
+      "sha256" : "5b22439a85b3e54502196b0d3f156dab2618b37fa0968ae2d0b442ab132bd64d",
       "strippedLines" : 7
     },
     {
@@ -122,6 +133,7 @@
       "lines" : 14,
       "module" : "AllKindsTests",
       "path" : "Tests/AllKindsTests/SwiftTestingTests.swift",
+      "sha256" : "e30c9d8e6bce929633e1f065924e2eb0d7438663b5820265a31ac88e501900e1",
       "strippedLines" : 11
     },
     {
@@ -129,6 +141,7 @@
       "lines" : 20,
       "module" : "AllKindsTests",
       "path" : "Tests/AllKindsTests/XCTestTests.swift",
+      "sha256" : "5ddee430d5813ca94b4c7d6e049f5bd3ee39377b340a50f59f2a6d881fec23a5",
       "strippedLines" : 16
     }
   ],
@@ -2280,7 +2293,7 @@
       }
     }
   ],
-  "schemaVersion" : 7,
+  "schemaVersion" : 8,
   "sitrep" : {
     "imports" : [
       {

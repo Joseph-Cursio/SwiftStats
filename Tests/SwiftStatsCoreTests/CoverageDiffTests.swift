@@ -85,7 +85,7 @@ struct CoverageDiffTests {
 
         let diff = try Self.diff(old, new)
 
-        #expect(diff.schemaVersion == 2)
+        #expect(diff.schemaVersion == 3)
         #expect(diff.collectors.first { $0.name == CoverageAdapter.name }?.outcome == .compared)
         let helperDelta = try #require(diff.functions.first { $0.key == Self.helper })
         #expect(helperDelta.metrics == [

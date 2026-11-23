@@ -1,0 +1,327 @@
+{
+  "projectCodeCoverage": 60,
+  "totalAppliedMutationOperators": 8,
+  "run": {
+    "configuration": {
+      "arguments": [
+        "test"
+      ],
+      "executable": "@SWIFT@",
+      "exclude": [],
+      "excludeCalls": [],
+      "coverageThreshold": 0
+    },
+    "toolchain": {
+      "environment": {},
+      "testCommandVersion": "Apple Swift version 6.4.2 (swiftlang-6.4.2.1.9 clang-2100.4.1.1)\nTarget: arm64-apple-macosx27.2.0"
+    },
+    "timeoutSeconds": 20,
+    "sessions": 1,
+    "workers": 4,
+    "timeoutIsDefault": true,
+    "resultsFiles": [
+      "@PARENT@/Mutation_muter_logs/Nov 21, 2026 at 10:41 AM/results.jsonl"
+    ],
+    "swiftMutator": {
+      "executableSHA256": "5138cbf1b810b127accddd8d4973bb2675195797cbae9b734bd09c0ae5a35ba8",
+      "version": "0.1.0",
+      "executablePath": "@SWIFT_MUTATOR@"
+    }
+  },
+  "mutantsByOutcome": {
+    "survived": 8,
+    "killed": 0,
+    "timedOut": 0,
+    "buildErrors": 0,
+    "notCovered": 0
+  },
+  "numberOfKilledMutants": 0,
+  "globalMutationScore": 0,
+  "fileReports": [
+    {
+      "fileName": "Bounds.swift",
+      "appliedOperators": [
+        {
+          "durationSeconds": 0.12,
+          "mutationSnapshot": {
+            "description": "changed < to <=",
+            "after": "<=",
+            "before": "<"
+          },
+          "mutationPoint": {
+            "mutationOperatorId": "RelationalBoundary",
+            "position": {
+              "line": 5,
+              "utf8Offset": 325,
+              "column": 14
+            },
+            "filePath": "@PARENT@/Mutation_mutated.noindex/Sources/Core/Bounds.swift"
+          },
+          "sourceChange": {
+            "line": 5,
+            "after": "    if value <= low {",
+            "before": "    if value < low {"
+          },
+          "path": "Sources/Core/Bounds.swift",
+          "testSuiteOutcome": "passed",
+          "key": "Sources/Core/Bounds.swift:5:14 RelationalBoundary"
+        },
+        {
+          "durationSeconds": 0.12,
+          "mutationSnapshot": {
+            "description": "changed < to !=",
+            "after": "!=",
+            "before": "<"
+          },
+          "mutationPoint": {
+            "mutationOperatorId": "RelationalOperatorReplacement",
+            "position": {
+              "column": 14,
+              "utf8Offset": 325,
+              "line": 5
+            },
+            "filePath": "@PARENT@/Mutation_mutated.noindex/Sources/Core/Bounds.swift"
+          },
+          "sourceChange": {
+            "line": 5,
+            "after": "    if value != low {",
+            "before": "    if value < low {"
+          },
+          "path": "Sources/Core/Bounds.swift",
+          "testSuiteOutcome": "passed",
+          "key": "Sources/Core/Bounds.swift:5:14 RelationalOperatorReplacement"
+        },
+        {
+          "testSuiteOutcome": "passed",
+          "mutationPoint": {
+            "mutationOperatorId": "RelationalOperatorReplacement",
+            "position": {
+              "utf8Offset": 330,
+              "column": 19,
+              "line": 5
+            },
+            "filePath": "@PARENT@/Mutation_mutated.noindex/Sources/Core/Bounds.swift"
+          },
+          "path": "Sources/Core/Bounds.swift",
+          "durationSeconds": 0.12,
+          "mutationSnapshot": {
+            "description": "replaced the comparison with false",
+            "after": "false",
+            "before": "value < low"
+          },
+          "sourceChange": {
+            "line": 5,
+            "after": "    if false {",
+            "before": "    if value < low {"
+          },
+          "key": "Sources/Core/Bounds.swift:5:19 RelationalOperatorReplacement"
+        },
+        {
+          "testSuiteOutcome": "passed",
+          "mutationPoint": {
+            "mutationOperatorId": "ReplaceReturnValue",
+            "position": {
+              "column": 16,
+              "line": 6,
+              "utf8Offset": 348
+            },
+            "filePath": "@PARENT@/Mutation_mutated.noindex/Sources/Core/Bounds.swift"
+          },
+          "path": "Sources/Core/Bounds.swift",
+          "durationSeconds": 0.12,
+          "mutationSnapshot": {
+            "description": "replaced the return value with 0",
+            "after": "0",
+            "before": "low"
+          },
+          "sourceChange": {
+            "line": 6,
+            "after": "        return 0",
+            "before": "        return low"
+          },
+          "key": "Sources/Core/Bounds.swift:6:16 ReplaceReturnValue"
+        },
+        {
+          "testSuiteOutcome": "passed",
+          "mutationPoint": {
+            "mutationOperatorId": "RelationalBoundary",
+            "position": {
+              "column": 14,
+              "line": 8,
+              "utf8Offset": 371
+            },
+            "filePath": "@PARENT@/Mutation_mutated.noindex/Sources/Core/Bounds.swift"
+          },
+          "path": "Sources/Core/Bounds.swift",
+          "durationSeconds": 0.12,
+          "mutationSnapshot": {
+            "description": "changed > to >=",
+            "after": ">=",
+            "before": ">"
+          },
+          "sourceChange": {
+            "line": 8,
+            "after": "    if value >= high {",
+            "before": "    if value > high {"
+          },
+          "key": "Sources/Core/Bounds.swift:8:14 RelationalBoundary"
+        },
+        {
+          "testSuiteOutcome": "passed",
+          "mutationPoint": {
+            "mutationOperatorId": "RelationalOperatorReplacement",
+            "position": {
+              "column": 14,
+              "utf8Offset": 371,
+              "line": 8
+            },
+            "filePath": "@PARENT@/Mutation_mutated.noindex/Sources/Core/Bounds.swift"
+          },
+          "path": "Sources/Core/Bounds.swift",
+          "durationSeconds": 0.12,
+          "mutationSnapshot": {
+            "description": "changed > to !=",
+            "after": "!=",
+            "before": ">"
+          },
+          "sourceChange": {
+            "line": 8,
+            "after": "    if value != high {",
+            "before": "    if value > high {"
+          },
+          "key": "Sources/Core/Bounds.swift:8:14 RelationalOperatorReplacement"
+        },
+        {
+          "testSuiteOutcome": "passed",
+          "mutationPoint": {
+            "mutationOperatorId": "RelationalOperatorReplacement",
+            "position": {
+              "utf8Offset": 377,
+              "line": 8,
+              "column": 20
+            },
+            "filePath": "@PARENT@/Mutation_mutated.noindex/Sources/Core/Bounds.swift"
+          },
+          "path": "Sources/Core/Bounds.swift",
+          "durationSeconds": 0.12,
+          "mutationSnapshot": {
+            "description": "replaced the comparison with false",
+            "after": "false",
+            "before": "value > high"
+          },
+          "sourceChange": {
+            "line": 8,
+            "after": "    if false {",
+            "before": "    if value > high {"
+          },
+          "key": "Sources/Core/Bounds.swift:8:20 RelationalOperatorReplacement"
+        },
+        {
+          "testSuiteOutcome": "passed",
+          "mutationPoint": {
+            "mutationOperatorId": "ReplaceReturnValue",
+            "position": {
+              "line": 9,
+              "utf8Offset": 395,
+              "column": 16
+            },
+            "filePath": "@PARENT@/Mutation_mutated.noindex/Sources/Core/Bounds.swift"
+          },
+          "path": "Sources/Core/Bounds.swift",
+          "durationSeconds": 0.119,
+          "mutationSnapshot": {
+            "before": "high",
+            "after": "0",
+            "description": "replaced the return value with 0"
+          },
+          "sourceChange": {
+            "line": 9,
+            "before": "        return high",
+            "after": "        return 0"
+          },
+          "key": "Sources/Core/Bounds.swift:9:16 ReplaceReturnValue"
+        }
+      ],
+      "mutationScore": 0,
+      "path": "Sources/Core/Bounds.swift"
+    },
+    {
+      "path": "Sources/Core/Dormant.swift",
+      "mutationScore": 0,
+      "appliedOperators": [
+        {
+          "mutationPoint": {
+            "mutationOperatorId": "RemoveSideEffects",
+            "position": {
+              "utf8Offset": 0,
+              "line": 0,
+              "column": 0
+            },
+            "filePath": ""
+          },
+          "mutationSnapshot": {
+            "before": "",
+            "after": "",
+            "description": ""
+          },
+          "testSuiteOutcome": "noCoverage"
+        }
+      ],
+      "fileName": "Dormant.swift"
+    },
+    {
+      "path": "Sources/Extras/NormalizeB.swift",
+      "mutationScore": 0,
+      "appliedOperators": [
+        {
+          "mutationPoint": {
+            "position": {
+              "column": 0,
+              "line": 0,
+              "utf8Offset": 0
+            },
+            "mutationOperatorId": "RemoveSideEffects",
+            "filePath": ""
+          },
+          "testSuiteOutcome": "noCoverage",
+          "mutationSnapshot": {
+            "before": "",
+            "description": "",
+            "after": ""
+          }
+        }
+      ],
+      "fileName": "NormalizeB.swift"
+    },
+    {
+      "path": "Sources/Extras/Unused.swift",
+      "mutationScore": 0,
+      "appliedOperators": [
+        {
+          "mutationPoint": {
+            "position": {
+              "utf8Offset": 0,
+              "line": 0,
+              "column": 0
+            },
+            "filePath": "",
+            "mutationOperatorId": "RemoveSideEffects"
+          },
+          "mutationSnapshot": {
+            "after": "",
+            "before": "",
+            "description": ""
+          },
+          "testSuiteOutcome": "noCoverage"
+        }
+      ],
+      "fileName": "Unused.swift"
+    }
+  ],
+  "timeElapsed": "00:00:06.201",
+  "operatorExplanations": {
+    "ReplaceReturnValue": "Replaces a returned value with an empty one of its type: nil, an empty array, dictionary or string, or zero.",
+    "RelationalOperatorReplacement": "Replaces a comparison with true or false, and turns less than and greater than into not equal, and at most and at least into equal.",
+    "RelationalBoundary": "Moves a comparison's boundary: less than and at most swap, as do greater than and at least."
+  }
+}

@@ -4,7 +4,7 @@
 //
 //  Maps a coverage export onto the scan (M5, PRD §7.8). The export's files
 //  are sorted by `CoverageFileClassifier`; in a kept file each entry's
-//  code regions go where `CoveragePlacement` puts it, its skipped ones
+//  code regions go where `PositionPlacement` puts it, its skipped ones
 //  into the file's skipped ranges. An entry spanning several files or
 //  holding an expansion region is unmapped. A testable executable's
 //  top-level entry (`<module>_main`) goes to its file's top-level-code
@@ -69,7 +69,7 @@ struct CoverageMapper {
     /// Sorts the export's files.
     private let classifier: CoverageFileClassifier
     /// Places entries.
-    private let placement: CoveragePlacement
+    private let placement: PositionPlacement
     /// Links public functions to their tests.
     private let links: CoverageTestLinks
 
@@ -93,7 +93,7 @@ struct CoverageMapper {
             parsed: Set(measured.files.map(\.path)),
             excluded: excluded
         )
-        placement = CoveragePlacement(measured: measured)
+        placement = PositionPlacement(measured: measured)
         links = CoverageTestLinks(measured: measured, containers: containers, skipPatterns: skipPatterns)
     }
 
@@ -113,7 +113,7 @@ struct CoverageMapper {
     }
 
     /// How many of the files of `classes` were dropped, by why.
-    private static func dropped(_ classes: [CoverageFileClass]) -> CoverageDropped {
+    private static func dropped(_ classes: [PackageFileClass]) -> CoverageDropped {
         CoverageDropped(
             build: classes.count { $0 == .build },
             outsideRoot: classes.count { $0 == .outsideRoot },
@@ -124,7 +124,7 @@ struct CoverageMapper {
     }
 
     /// The modules of the production files among `classes`, kept or not.
-    private static func linkedModules(_ classes: [CoverageFileClass]) -> Set<String> {
+    private static func linkedModules(_ classes: [PackageFileClass]) -> Set<String> {
         Set(classes.compactMap { fileClass -> String? in
             switch fileClass {
             case let .kept(_, module), let .unmapped(_, module, _):
@@ -159,7 +159,7 @@ struct CoverageMapper {
         profiles: CoverageProfiles,
         demangle: ([String]) -> [String: String]
     ) -> CoverageReport {
-        var classes: [String: CoverageFileClass] = [:]
+        var classes: [String: PackageFileClass] = [:]
         for filename in export.files.map(\.filename) + export.functions.compactMap(\.filenames.first)
         where classes[filename] == nil {
             classes[filename] = classifier.classify(filename)
@@ -205,7 +205,7 @@ struct CoverageMapper {
     /// Adds where `function`, in a file of `fileClass`, goes to `gathered`.
     private func gather(
         _ function: CoverageExportFunction,
-        fileClass: CoverageFileClass,
+        fileClass: PackageFileClass,
         into gathered: inout Gathered
     ) {
         let path: String
@@ -242,7 +242,7 @@ struct CoverageMapper {
             gatherTopLevel(function, entry: entry, record: topLevel, path: path, into: &gathered)
             return
         }
-        switch placement.place(anchor, in: path) {
+        switch placement.place(at: anchor.start, end: anchor.end, in: path) {
         case .record(let key):
             gathered.entries[key, default: []].append(entry)
 

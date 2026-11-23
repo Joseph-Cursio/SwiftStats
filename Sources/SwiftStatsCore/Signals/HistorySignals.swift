@@ -86,11 +86,11 @@ enum HistorySignals {
     static func rule(for signal: SignalName, thresholds: SignalThresholds, count: Int) -> String {
         switch signal {
         case .bugProne:
-            "top \(MarkdownNumber.value(thresholds.percent(for: signal.rawValue)))% of \(count) candidates "
+            "top \(MarkdownNumber.exact(thresholds.percent(for: signal.rawValue)))% of \(count) candidates "
                 + "by age-weighted fixes"
 
         case .hotspot:
-            "top \(MarkdownNumber.value(thresholds.percent(for: signal.rawValue)))% of \(count) candidates "
+            "top \(MarkdownNumber.exact(thresholds.percent(for: signal.rawValue)))% of \(count) candidates "
                 + "by changes in the window × cognitive complexity"
 
         case .safeToLeave:
@@ -103,8 +103,9 @@ enum HistorySignals {
         case .unstableFixes:
             "reverted, or fixed again within the repeat window"
 
-        case .cloneHotspot, .divergentClones, .missingTemplate, .riskyUntested, .toolDisagreement, .uncheckedLaws,
-            .unevenCloneTesting, .untestedProperty:
+        case .bestPropertyTarget, .cloneHotspot, .divergentClones, .genuinelyUnderTested, .missingTemplate,
+            .riskyUntested, .toolDisagreement, .uncheckedLaws, .unevenCloneMutation, .unevenCloneTesting,
+            .untestedProperty, .weakTests:
             ""
         }
     }
@@ -134,8 +135,9 @@ enum HistorySignals {
         case .unstableFixes:
             value = Double((history.reverts ?? 0) + (history.repeatedFixes ?? 0))
 
-        case .cloneHotspot, .divergentClones, .missingTemplate, .riskyUntested, .toolDisagreement, .uncheckedLaws,
-            .unevenCloneTesting, .untestedProperty:
+        case .bestPropertyTarget, .cloneHotspot, .divergentClones, .genuinelyUnderTested, .missingTemplate,
+            .riskyUntested, .toolDisagreement, .uncheckedLaws, .unevenCloneMutation, .unevenCloneTesting,
+            .untestedProperty, .weakTests:
             value = nil
         }
         guard let value, value > 0 else {

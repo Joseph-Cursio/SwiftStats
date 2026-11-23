@@ -18,8 +18,10 @@ public struct ScanReport: Codable, Hashable, Sendable {
     /// (M2); 5 adds history (M3); 6 adds side effects, conformances, law
     /// checks, property-test suggestions and clones (M4); 7 adds the
     /// coverage collector, its coverage mapped to records and rolled up,
-    /// and each record's access level and owning type (M5).
-    public static let currentSchemaVersion = 7
+    /// and each record's access level and owning type (M5); 8 adds each
+    /// file's SHA-256 and the SwiftMutator collector, whose status every
+    /// scan lists and whose results are mapped to records (M6).
+    public static let currentSchemaVersion = 8
 
     /// The output format version (`currentSchemaVersion` when written).
     public let schemaVersion: Int
@@ -67,13 +69,16 @@ public struct ScanReport: Codable, Hashable, Sendable {
     /// The coverage collector's results, mapped to records; absent when it
     /// didn't run (M5, PRD §7.8).
     public let coverage: CoverageReport?
+    /// The SwiftMutator collector's results, mapped to records; absent when
+    /// it didn't run or left no results (M6, design §3).
+    public let mutation: MutationReport?
     /// What the history collector found; absent when it didn't run (PRD §7.13).
     public internal(set) var history: HistoryReport?
 
     /// The report with `history` attached and the history collector's
     /// status replaced by `status`.
     func with(history: HistoryReport?, status: CollectorStatus) -> Self {
-        var report = replacing(status, rollups: rollups, coverage: coverage, warnings: warnings)
+        var report = replacing(status, rollups: rollups, coverage: coverage, mutation: mutation, warnings: warnings)
         report.history = history
         return report
     }
@@ -88,18 +93,36 @@ public struct ScanReport: Codable, Hashable, Sendable {
         let built = CoverageRollupBuilder(targets: targets, records: records, coverage: coverage).rollups(plain)
         let merged = (warnings + added.filter { warnings.contains($0) == false })
             .sorted(by: PackageScanner.warningOrder)
-        var report = replacing(status, rollups: built, coverage: coverage, warnings: merged)
+        var report = replacing(status, rollups: built, coverage: coverage, mutation: mutation, warnings: merged)
+        report.history = history
+        return report
+    }
+
+    /// The report with `mutation` attached, the SwiftMutator collector's
+    /// status replaced by `status`, the roll-ups' mutation results rebuilt
+    /// from it and `added` among its warnings, once each (M6, design §6.4):
+    /// how a scan that didn't run the SwiftMutator collector carries the
+    /// results an earlier scan of the same tree collected, with the
+    /// warnings mapping them gave.
+    func with(mutation: MutationReport, status: CollectorStatus, warnings added: [ScanWarning]) -> Self {
+        let plain = rollups.map { $0.with(mutation: nil) }
+        let built = MutationRollupBuilder(targets: targets, records: records, files: files, report: mutation)
+            .rollups(plain)
+        let merged = (warnings + added.filter { warnings.contains($0) == false })
+            .sorted(by: PackageScanner.warningOrder)
+        var report = replacing(status, rollups: built, coverage: coverage, mutation: mutation, warnings: merged)
         report.history = history
         return report
     }
 
     /// The report with `status` replacing its collector's status, and
-    /// `rollups`, `coverage` and `warnings` replacing its own, and no
-    /// history.
+    /// `rollups`, `coverage`, `mutation` and `warnings` replacing its own,
+    /// and no history.
     private func replacing(
         _ status: CollectorStatus,
         rollups: [Rollup],
         coverage: CoverageReport?,
+        mutation: MutationReport?,
         warnings: [ScanWarning]
     ) -> Self {
         Self(
@@ -123,7 +146,8 @@ public struct ScanReport: Codable, Hashable, Sendable {
             properties: properties,
             clones: clones,
             laws: laws,
-            coverage: coverage
+            coverage: coverage,
+            mutation: mutation
         )
     }
 }

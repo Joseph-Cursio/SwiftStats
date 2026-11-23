@@ -23,6 +23,9 @@ public struct PackageScanner {
     /// When set, the external tool adapters are skipped for this reason
     /// (SwiftStats' own measurements and the dependency graph still run).
     let toolSkipReason: String?
+    /// What a scan that stores its snapshot adds to the SwiftMutator run
+    /// it asks for (`MutationSaving`); nil for any other scan.
+    private(set) var saving: MutationSaving?
 
     /// Creates a scanner that learns a package's targets through
     /// `describer` and finds external tools with `tools`, or skips them
@@ -97,7 +100,8 @@ public struct PackageScanner {
                     path: file,
                     source: source,
                     tree: Parser.parse(source: source),
-                    hasByteOrderMark: data.starts(with: byteOrderMark)
+                    hasByteOrderMark: data.starts(with: byteOrderMark),
+                    sha256: ContentHash.sha256(data)
                 )
             }
         }
@@ -276,21 +280,36 @@ public struct PackageScanner {
     }
 
     /// Scans the package rooted at `packageRoot`, with the `.swiftstats.yml`
-    /// in its root when there is one; the coverage collector runs only when
-    /// `coverage` asks for it (`scan --coverage`).
-    public func scan(packageAt packageRoot: URL, coverage: Bool = false) throws -> ScanReport {
+    /// in its root when there is one; the coverage and SwiftMutator
+    /// collectors run only when `tiers` asks for them (`scan --coverage`,
+    /// `scan --mutation`).
+    public func scan(packageAt packageRoot: URL, tiers: RequestedTiers = .syntaxOnly) throws -> ScanReport {
         let file = packageRoot.standardizedFileURL.appendingPathComponent(SwiftStatsConfiguration.fileName)
         return try scan(
             packageAt: packageRoot,
             configurationFile: FileManager.default.fileExists(atPath: file.path) ? file : nil,
-            coverage: coverage
+            tiers: tiers
         )
+    }
+
+    /// The same scanner, its scans storing their snapshots as `added`
+    /// says.
+    func saving(_ added: MutationSaving?) -> Self {
+        var scanner = self
+        scanner.saving = added
+        return scanner
     }
 
     /// Scans the package rooted at `packageRoot` with the configuration in
     /// `configurationFile`, or the default configuration when it is nil;
-    /// the coverage collector runs only when `coverage` asks for it.
-    public func scan(packageAt packageRoot: URL, configurationFile: URL?, coverage: Bool = false) throws -> ScanReport {
-        try run(packageAt: packageRoot, configurationFile: configurationFile, coverage: coverage).report
+    /// the coverage and SwiftMutator collectors run only when `tiers` asks
+    /// for them.
+    public func scan(
+        packageAt packageRoot: URL,
+        configurationFile: URL?,
+        tiers: RequestedTiers = .syntaxOnly
+    ) throws -> ScanReport {
+        try run(packageAt: packageRoot, configurationFile: configurationFile, tiers: tiers, git: nil, ignoring: [])
+            .report
     }
 }

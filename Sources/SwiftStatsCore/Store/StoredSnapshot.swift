@@ -5,7 +5,8 @@
 //  A snapshot read back from the store's tables, as `diff` and the
 //  signals use it. A snapshot stored before v3 has no scan facts, empty
 //  M4 lists, and function rows without their v3 columns; one stored before
-//  v4 has no coverage and function rows without access or owning type.
+//  v4 has no coverage and function rows without access or owning type;
+//  one stored before v5 has no mutation results.
 //
 
 /// A snapshot's metadata and its rows.
@@ -42,4 +43,7 @@ public struct StoredSnapshot: Hashable, Sendable {
     /// Its coverage, as the scan JSON holds it, and when it was collected;
     /// nil when it holds none.
     public let coverage: StoredCoverage?
+    /// Its mutation results, as the scan JSON holds them; nil when it
+    /// holds none.
+    public let mutation: StoredMutation?
 }

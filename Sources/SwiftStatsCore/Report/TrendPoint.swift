@@ -12,7 +12,8 @@ public struct TrendPoint: Codable, Hashable, Sendable {
     public let commit: String
     /// Its committer date.
     public let date: String
-    /// The number; nil when that snapshot doesn't have it.
+    /// The number; nil when that snapshot doesn't have it, or when it is a
+    /// mutation count and that snapshot's results leave files out.
     public let value: Double?
     /// Why this point doesn't compare with the one before; nil when it does.
     public let breakReason: String?

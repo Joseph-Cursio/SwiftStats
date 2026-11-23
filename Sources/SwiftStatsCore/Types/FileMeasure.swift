@@ -2,7 +2,8 @@
 //  FileMeasure.swift
 //  SwiftStatsCore
 //
-//  A file's length (PRD §7.2): physical lines, and lines holding a token.
+//  A file's length (PRD §7.2): physical lines, and lines holding a token;
+//  with the hash of its bytes (M6).
 //
 
 import SwiftSyntax
@@ -25,7 +26,8 @@ enum FileMeasure {
             module: module,
             lines: physicalLines(in: file.source),
             strippedLines: stripped.count,
-            generated: generated
+            generated: generated,
+            sha256: file.sha256
         )
     }
 

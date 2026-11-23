@@ -1,0 +1,13 @@
+diff --git a/Tests/CoreTests/SignTests.swift b/Tests/CoreTests/SignTests.swift
+index fff5627..7ad02f4 100644
+--- a/Tests/CoreTests/SignTests.swift
++++ b/Tests/CoreTests/SignTests.swift
+@@ -1,7 +1,7 @@
+ import Core
+ import Testing
+ 
+-/// Checks every sign exactly.
++/// Checks every sign exactly, zero included.
+ @Test func signIsExact() {
+     #expect(sign(5) == 1)
+     #expect(sign(1) == 1)

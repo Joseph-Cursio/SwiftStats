@@ -1,0 +1,12 @@
+diff --git a/Tests/CoreTests/FailingTests.swift b/Tests/CoreTests/FailingTests.swift
+new file mode 100644
+index 0000000..444fe9a
+--- /dev/null
++++ b/Tests/CoreTests/FailingTests.swift
+@@ -0,0 +1,6 @@
++import Testing
++
++/// Fails whatever the code does, so SwiftMutator's baseline fails.
++@Test func alwaysFails() {
++    #expect(1 == 2)
++}

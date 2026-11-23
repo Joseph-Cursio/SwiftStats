@@ -92,7 +92,8 @@ enum CoverageSnapshots {
             properties: old.properties,
             clones: old.clones,
             laws: old.laws,
-            coverage: coverage
+            coverage: coverage,
+            mutation: nil
         )
         report.history = old.history
         let info = SnapshotInfo(

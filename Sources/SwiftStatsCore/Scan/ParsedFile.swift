@@ -21,4 +21,7 @@ struct ParsedFile {
     /// Whether the file starts with a UTF-8 byte order mark, which decoding
     /// removed from `source`.
     let hasByteOrderMark: Bool
+    /// SHA-256 of the file's bytes as read, before decoding dropped a byte
+    /// order mark, in lowercase hex (M6).
+    let sha256: String
 }

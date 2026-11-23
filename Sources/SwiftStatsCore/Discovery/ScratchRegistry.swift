@@ -7,7 +7,20 @@
 //  and remove the other (`InterruptCleanup`): a `defer` never runs when a
 //  signal ends the process, and a child outlives its parent. It also holds
 //  the files of the user's package a running command may change
-//  (`PreservedFile`), so an interruption puts them back.
+//  (`PreservedFile`), so an interruption puts them back. Each process is
+//  stopped by its own `StopPolicy`, all at once: the signals go out
+//  together and each process's waits run from the same moment, so an
+//  interruption takes as long as the slowest policy needs, not their sum.
+//  The first signal and SIGTERM go to the child's process group, as M5's
+//  `Process.interrupt()` and `terminate()` sent them: Foundation starts
+//  each child as the leader of a group of its own, so they reach the
+//  descendants that stay in it, such as the real `swift` under a wrapper
+//  script that forwards no signal. SIGKILL goes to the child alone, as in
+//  M5. A process can be started with work to do once an interruption has
+//  stopped it (`afterStop`), which runs before the command ends, while the
+//  thread waiting on the process stays blocked: SwiftMutator's run names
+//  its results file in `pending.json` that way (M6, design §1.7, as
+//  built), since the command never returns to record it.
 //
 
 import Foundation
@@ -15,15 +28,39 @@ import Foundation
 /// Temporary files and running child processes to clean up when a
 /// command is interrupted.
 final class ScratchRegistry: @unchecked Sendable {
+    /// A running process and how to stop it.
+    struct Registered {
+        /// The process.
+        let process: Process
+        /// How an interruption stops it.
+        let policy: StopPolicy
+        /// What to do once an interruption has stopped it, before the
+        /// command ends; nil for nothing.
+        var afterStop: (@Sendable () -> Void)?
+    }
+
+    /// A process being stopped: when it gets SIGTERM and SIGKILL, and
+    /// whether it has had SIGTERM.
+    private struct Stopping {
+        /// The process.
+        let process: Process
+        /// When it gets SIGTERM, if its policy sends one.
+        let terminateAt: Date
+        /// When it gets SIGKILL.
+        let killAt: Date
+        /// Whether its policy sends SIGTERM after the first signal.
+        let terminates: Bool
+        /// Whether it has had that SIGTERM.
+        var terminated = false
+    }
+
     /// The registry SwiftStats' own temporary files and processes join.
     static let shared = ScratchRegistry()
 
-    /// How long an interrupted process gets to exit before it is
-    /// terminated.
-    private static let terminationGrace: TimeInterval = 2
-    /// How long a terminated process gets to exit before it is killed.
-    private static let killGrace: TimeInterval = 0.5
-    /// How often to look whether terminated processes have exited, in
+    /// How long this process waits for the signal it sent itself to end
+    /// it, after cleaning up.
+    private static let selfSignalWait: TimeInterval = 2
+    /// How often to look whether stopped processes have exited, in
     /// microseconds.
     private static let pollInterval: useconds_t = 10_000
 
@@ -32,8 +69,8 @@ final class ScratchRegistry: @unchecked Sendable {
     private let lock = NSLock()
     /// The temporary files and directories that exist.
     private var paths: Set<URL> = []
-    /// The running processes, by identity.
-    private var processes: [ObjectIdentifier: Process] = [:]
+    /// The running processes and their stop policies, by identity.
+    private var processes: [ObjectIdentifier: Registered] = [:]
     /// The package files to put back, by path.
     private var preserved: [URL: PreservedFile] = [:]
     /// The signal sources an installed handler keeps alive.
@@ -53,17 +90,72 @@ final class ScratchRegistry: @unchecked Sendable {
         return Set(preserved.keys)
     }
 
-    /// The running processes registered, for tests.
-    var registeredProcesses: [Process] {
+    /// The running processes registered, with their stop policies, for
+    /// tests.
+    var registeredProcesses: [Registered] {
         lock.lock()
         defer { lock.unlock() }
         return Array(processes.values)
     }
 
-    /// Waits until none of `processes` runs or `grace` passes.
-    private static func wait(for processes: [Process], grace: TimeInterval) {
-        let deadline = Date().addingTimeInterval(grace)
-        while processes.contains(where: \.isRunning), Date() < deadline {
+    /// Sends `number` to the process group `process` leads, or to
+    /// `process` alone when no such group exists. A process never started
+    /// has the identifier 0, which `killpg(2)` reads as SwiftStats' own
+    /// group, so it gets nothing.
+    private static func signalGroup(of process: Process, _ number: Int32) {
+        let pid = process.processIdentifier
+        guard pid > 0 else {
+            return
+        }
+        if killpg(pid, number) != 0 {
+            kill(pid, number)
+        }
+    }
+
+    /// Stops every process of `registered` still running, each by its
+    /// policy (`signalAndWait(_:)`), then does each one's `afterStop`
+    /// work, in order, whether it was still running or had ended unseen.
+    static func stop(_ registered: [Registered]) {
+        signalAndWait(registered)
+        for entry in registered {
+            entry.afterStop?()
+        }
+    }
+
+    /// Stops every process of `registered` still running, each by its
+    /// policy: its first signal now, then, while it still runs, SIGTERM
+    /// after its grace unless that was the first signal, and SIGKILL after
+    /// its kill grace. The first signal and SIGTERM go to the process's
+    /// group, SIGKILL to the process alone. Returns once each has ended
+    /// or had SIGKILL.
+    private static func signalAndWait(_ registered: [Registered]) {
+        let start = Date()
+        var stopping: [Stopping] = []
+        for entry in registered where entry.process.isRunning {
+            signalGroup(of: entry.process, entry.policy.firstSignal)
+            stopping.append(Stopping(
+                process: entry.process,
+                terminateAt: start.addingTimeInterval(entry.policy.grace),
+                killAt: start.addingTimeInterval(entry.policy.killAfter),
+                terminates: entry.policy.terminates
+            ))
+        }
+        while true {
+            stopping.removeAll { $0.process.isRunning == false }
+            guard stopping.isEmpty == false else {
+                return
+            }
+            let now = Date()
+            for index in stopping.indices
+            where stopping[index].terminates && stopping[index].terminated == false
+                && now >= stopping[index].terminateAt {
+                signalGroup(of: stopping[index].process, SIGTERM)
+                stopping[index].terminated = true
+            }
+            for entry in stopping where now >= entry.killAt {
+                kill(entry.process.processIdentifier, SIGKILL)
+            }
+            stopping.removeAll { now >= $0.killAt }
             usleep(pollInterval)
         }
     }
@@ -102,12 +194,26 @@ final class ScratchRegistry: @unchecked Sendable {
         try file.restore()
     }
 
-    /// Starts `process` and registers it until `finished(_:)`.
+    /// Starts `process` and registers it until `finished(_:)`, to be
+    /// stopped by the standard policy.
     func start(_ process: Process) throws {
+        try start(process, stop: .standard)
+    }
+
+    /// Starts `process` and registers it until `finished(_:)`, to be
+    /// stopped by `policy`.
+    func start(_ process: Process, stop policy: StopPolicy) throws {
+        try start(process, stop: policy, afterStop: nil)
+    }
+
+    /// Starts `process` and registers it until `finished(_:)`, to be
+    /// stopped by `policy`, an interruption then doing `afterStop`'s work
+    /// when given.
+    func start(_ process: Process, stop policy: StopPolicy, afterStop: (@Sendable () -> Void)?) throws {
         lock.lock()
         defer { lock.unlock() }
         try process.run()
-        processes[ObjectIdentifier(process)] = process
+        processes[ObjectIdentifier(process)] = Registered(process: process, policy: policy, afterStop: afterStop)
     }
 
     /// Forgets `process`, which has exited.
@@ -124,14 +230,24 @@ final class ScratchRegistry: @unchecked Sendable {
         lock.unlock()
     }
 
-    /// Interrupts every registered process, terminates any still running
-    /// after a grace period and kills any still running after a shorter
-    /// one, then puts every preserved file back and removes every
-    /// registered path.
+    /// Stops every registered process by its policy (`stop(_:)`), then
+    /// puts every preserved file back and removes every registered path.
     func cleanUp() {
         lock.lock()
         defer { lock.unlock() }
         cleanUpHoldingLock()
+    }
+
+    /// Stops `registered` as an interruption does (`stop(_:)`), holding
+    /// the lock as `end(by:)` holds it, so none of them is forgotten and
+    /// the commands waiting on them stay waiting, as when the process then
+    /// ends; what `look` sees meanwhile. For tests, which stop their own
+    /// processes without ending the process or cleaning up the others'.
+    func interrupting<Value>(_ registered: [Registered], then look: () throws -> Value) rethrows -> Value {
+        lock.lock()
+        defer { lock.unlock() }
+        Self.stop(registered)
+        return try look()
     }
 
     /// Cleans up as `cleanUp()` does, then ends this process with the
@@ -144,24 +260,14 @@ final class ScratchRegistry: @unchecked Sendable {
         // Sent to the process, not raised on this thread: a dispatch
         // thread blocks signals, so another thread takes it.
         kill(getpid(), number)
-        Thread.sleep(forTimeInterval: Self.terminationGrace)
+        Thread.sleep(forTimeInterval: Self.selfSignalWait)
         _exit(EXIT_FAILURE)
     }
 
-    /// `cleanUp()`'s work; the caller holds the lock. SIGINT goes first:
-    /// SwiftPM's `swift test` forwards it to the test processes it started
-    /// in process groups of their own, which neither SIGTERM nor SIGKILL
-    /// of `swift` reaches (M5), and every other tool ends on it as well.
+    /// `cleanUp()`'s work; the caller holds the lock. Each process's
+    /// policy says what it gets first (`StopPolicy`).
     private func cleanUpHoldingLock() {
-        let running = processes.values.filter(\.isRunning)
-        running.forEach { $0.interrupt() }
-        Self.wait(for: running, grace: Self.terminationGrace)
-        let stubborn = running.filter(\.isRunning)
-        stubborn.forEach { $0.terminate() }
-        Self.wait(for: stubborn, grace: Self.killGrace)
-        for process in stubborn where process.isRunning {
-            kill(process.processIdentifier, SIGKILL)
-        }
+        Self.stop(Array(processes.values))
         for file in preserved.values {
             try? file.restore()
         }

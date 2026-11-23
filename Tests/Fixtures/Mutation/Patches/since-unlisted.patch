@@ -1,0 +1,11 @@
+diff --git a/Sources/Core/Dormant.swift b/Sources/Core/Dormant.swift
+index 807e5bb..f61951e 100644
+--- a/Sources/Core/Dormant.swift
++++ b/Sources/Core/Dormant.swift
+@@ -5,5 +5,5 @@ public func neverCalled(_ value: Int) -> Int {
+     if value > 10 {
+         return value * 2
+     }
+-    return value + 1
++    return value + 2
+ }

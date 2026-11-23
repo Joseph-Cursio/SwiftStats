@@ -1,20 +1,21 @@
 //
-//  CoveragePlacement.swift
+//  PositionPlacement.swift
 //  SwiftStatsCore
 //
-//  Where a coverage export entry of a kept file goes (M5): by the start of
-//  its first region, the anchor, compared by (line, column), to the
-//  innermost record holding it (the latest start, then the earliest end;
-//  a file's top-level-code record only on its statement lines), else to the
-//  innermost type holding it, else to its file. Columns compare as they
-//  are: the compiler and the records both count a byte order mark's bytes
-//  on line 1. An entry whose first region ends past its record is
-//  unmapped.
+//  Where something at a position of a kept file goes (M5, M6): coverage
+//  places an export entry by the start of its first region, mutation a
+//  mutant by its anchor. The position, compared by (line, column), goes to
+//  the innermost production record holding it (the latest start, then the
+//  earliest end, then the key; a file's top-level-code record only on its
+//  statement lines), else to the innermost type holding it, else to its
+//  file. Columns compare as they are: the records count a byte order
+//  mark's bytes on line 1, and callers give positions counted the same
+//  way. Given an end, a span ending past its record is unmapped.
 //
 
-/// Places export entries on records, types and files.
-struct CoveragePlacement {
-    /// Where an entry goes.
+/// Places positions on records, types and files.
+struct PositionPlacement {
+    /// Where a position goes.
     enum Place: Hashable {
         /// To the record with this key.
         case record(String)
@@ -26,7 +27,7 @@ struct CoveragePlacement {
         case unmapped(String)
     }
 
-    /// Why an entry whose first region ends past its record is unmapped.
+    /// Why a span ending past its record is unmapped.
     static let pastRecord = "region extends past its record"
 
     /// Production records by file.
@@ -89,18 +90,23 @@ struct CoveragePlacement {
             : Set(record.range.start.line...record.range.end.line)
     }
 
-    /// Where an entry of `file` whose first region is `anchor` goes.
-    func place(_ anchor: CoverageRegion, in file: String) -> Place {
+    /// Where something of `file` at `position` goes; given `end`, the
+    /// position just past its span's last character, a span ending past
+    /// its record is unmapped.
+    func place(at position: SourcePosition, end: SourcePosition?, in file: String) -> Place {
         let statements = statementLines(in: file)
         let holding = records(in: file).filter { record in
-            record.range.contains(anchor.start)
-                && (record.kind != .topLevelCode || statements.contains(anchor.start.line))
+            record.range.contains(position)
+                && (record.kind != .topLevelCode || statements.contains(position.line))
         }
         if let record = Self.innermost(holding, range: \.range, name: \.key) {
-            let last = SourcePosition(line: anchor.end.line, column: anchor.end.column - 1)
+            guard let end else {
+                return .record(record.key)
+            }
+            let last = SourcePosition(line: end.line, column: end.column - 1)
             return last <= record.range.end ? .record(record.key) : .unmapped(Self.pastRecord)
         }
-        let types = (typesByFile[file] ?? []).filter { $0.range.contains(anchor.start) }
+        let types = (typesByFile[file] ?? []).filter { $0.range.contains(position) }
         if let type = Self.innermost(types, range: \.range, name: \.name) {
             return .type(owner(of: type))
         }

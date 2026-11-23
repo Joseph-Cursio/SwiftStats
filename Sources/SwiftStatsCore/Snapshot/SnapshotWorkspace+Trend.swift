@@ -7,6 +7,9 @@
 //  commits only reachable through a merged branch are counted, not shown.
 //  A keyed count reads 0 where its collector ran and the roll-up is there,
 //  once some point stores it, as `diff` reads it only when a side has it.
+//  A mutation count at a snapshot whose results leave files out
+//  (`MutationGaps`) has no value there, its break saying why, as `diff`
+//  doesn't compare it.
 //
 
 import Foundation
@@ -38,6 +41,13 @@ extension SnapshotWorkspace {
             "\(comparison.name): \(comparison.reason ?? comparison.outcome.rawValue)"
         }
         return reasons.isEmpty ? nil : reasons.joined(separator: "; ")
+    }
+
+    /// Why a mutation count has no value at a snapshot whose results leave
+    /// files out (`gaps`).
+    static func gapsReason(_ gaps: MutationGaps) -> String {
+        "\(MutationAdapter.name): files' mutants are missing from this snapshot's results (\(gaps.description)), "
+            + "so its count isn't compared"
     }
 
     /// HEAD's first-parent commits with their committer dates, oldest first.
@@ -132,11 +142,17 @@ extension SnapshotWorkspace {
         var points: [TrendPoint] = []
         var previous: SnapshotInfo?
         for (point, value) in zip(shown, values) {
+            let gaps = MutationGaps.affects(metric) ? try store.mutationGaps(id: point.id) : nil
+            let reasons = [
+                previous.flatMap { Self.breakReason(from: $0, to: point.info, watching: watched) },
+                gaps.map(Self.gapsReason)
+            ]
+            .compactMap(\.self)
             points.append(TrendPoint(
                 commit: point.commit,
                 date: HistoryCollector.date(point.time),
-                value: value,
-                breakReason: previous.flatMap { Self.breakReason(from: $0, to: point.info, watching: watched) }
+                value: gaps == nil ? value : nil,
+                breakReason: reasons.isEmpty ? nil : reasons.joined(separator: "; ")
             ))
             previous = point.info
         }

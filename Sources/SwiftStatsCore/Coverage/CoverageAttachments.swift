@@ -41,7 +41,7 @@ struct CoverageAttachments {
     func attachments(
         fileLines: [String: [CoverageLineIterator.Line]],
         kept: [String],
-        placement: CoveragePlacement
+        placement: PositionPlacement
     ) -> [CoverageAttachment] {
         var lines: [Key: [CoverageLineIterator.Line]] = [:]
         for path in kept {

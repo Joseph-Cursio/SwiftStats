@@ -4,7 +4,8 @@
 //
 //  The input columns of M4's signal tables (PRD §8): what each reads from
 //  an item's payloads. A cell whose payload is absent shows a dash. M5's
-//  are in `MarkdownSignals+Coverage.swift`.
+//  are in `MarkdownSignals+Coverage.swift`, M6's in
+//  `MarkdownSignals+Mutation.swift`.
 //
 
 extension MarkdownSignals {
@@ -77,10 +78,13 @@ extension MarkdownSignals {
         ]
     }
 
-    /// The input columns of M4's and M5's signal `signal`; none for M3's.
+    /// The input columns of M4's and M5's signal `signal`; none for M3's,
+    /// whose columns `columns(for:)` gives, nor for M6's, which
+    /// `mutationColumns(for:)` gives.
     static func m4Columns(for signal: SignalName) -> [Column] {
         switch signal {
-        case .bugProne, .hotspot, .safeToLeave, .testsNotKeepingUp, .unstableFixes:
+        case .bestPropertyTarget, .bugProne, .genuinelyUnderTested, .hotspot, .safeToLeave, .testsNotKeepingUp,
+            .unevenCloneMutation, .unstableFixes, .weakTests:
             []
 
         case .cloneHotspot:

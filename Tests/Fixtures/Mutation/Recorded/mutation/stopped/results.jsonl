@@ -1,0 +1,1 @@
+{"detail":"baselineTestFailed","failedTestCount":1,"failedTests":[{"location":"FailingTests.swift:5:5","name":"alwaysFails()"}],"kind":"stopped","log":"baseline run.log","logDirectory":"@PARENT@/Mutation_muter_logs/Nov 21, 2026 at 10:41 AM","projectPath":"@ROOT@","reason":"failed","startedAt":"2026-11-21T16:41:18.367Z","step":"baseline","stoppedAt":"2026-11-21T16:41:28.630Z"}

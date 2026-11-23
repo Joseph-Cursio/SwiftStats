@@ -192,7 +192,8 @@ enum DivergentClones {
                     changed: member.changed.map(\.copy),
                     unchanged: member.unchanged.map(\.copy)
                 ),
-                coverage: nil
+                coverage: nil,
+                mutation: nil
             )
         )
         let order = SignalSortKey([

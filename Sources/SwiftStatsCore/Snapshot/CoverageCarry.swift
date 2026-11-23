@@ -23,19 +23,34 @@
 /// Decides whether stored coverage carries onto a rescan, and carries it.
 enum CoverageCarry {
     /// The start of a carried run's reason, before the collection date.
-    static let carriedPrefix = "carried from the scan of "
+    static let carriedPrefix = CollectorRunInfo.carriedPrefix
 
     /// Skip reasons a coverage run gives when it wasn't asked for: a plain
     /// scan's, and a backfill's without tools.
     private static let unaskedSkips: Set<String> = [
         CoverageAdapter.notRequestedReason, SnapshotWorkspace.backfillToolSkipReason
     ]
+    /// What says what became of a scan's own run, before `failed` or `was
+    /// skipped`.
+    static let ownRunLead = "this scan's coverage run "
 
     /// Why `held` can't be carried onto `snapshot`, a scan of the same
     /// package, commit and dirtiness whose coverage collector didn't run;
     /// nil when it can.
     static func refusal(of held: HeldCoverage, onto snapshot: ScannedSnapshot) -> String? {
-        let git = snapshot.info.git
+        refusal(of: held, git: snapshot.info.git, records: snapshot.report.records)
+    }
+
+    /// Why `held` can't be carried onto a scan at `git` whose records are
+    /// `records`; nil when it can.
+    static func refusal(of held: HeldCoverage, git: GitState, records: [FunctionRecord]) -> String? {
+        stateRefusal(of: held, git: git) ?? recordsRefusal(of: held, onto: records)
+    }
+
+    /// Why `held` can't be carried onto any scan at `git` by this build,
+    /// whatever its records: the reasons known before a scan runs; nil
+    /// when there is none.
+    static func stateRefusal(of held: HeldCoverage, git: GitState) -> String? {
         guard held.git.commit != nil, git.commit != nil else {
             return "no git commit to compare against"
         }
@@ -49,7 +64,7 @@ enum CoverageCarry {
         guard held.run.options.contains("links: " + CoverageTestLinks.rule) else {
             return "its functions were linked to tests by another rule"
         }
-        return recordsRefusal(of: held, onto: snapshot.report.records)
+        return nil
     }
 
     /// Why `held`'s records aren't the production records among `records`,
@@ -85,16 +100,22 @@ enum CoverageCarry {
         guard let run = snapshot.info.collectors.first(where: { $0.name == CoverageAdapter.name }) else {
             return nil
         }
-        let reason = run.reason ?? "no reason given"
-        switch run.state {
+        return ownRun(state: run.state, reason: run.reason)
+    }
+
+    /// What became of a coverage run that ended as `state` for `reason`,
+    /// as `ownRun(of:)` says it.
+    static func ownRun(state: CollectorState, reason given: String?) -> String? {
+        let reason = given ?? "no reason given"
+        switch state {
         case .ran:
             return nil
 
         case .failed:
-            return "this scan's coverage run failed (\(reason))"
+            return "\(ownRunLead)failed (\(reason))"
 
         case .skipped:
-            return unaskedSkips.contains(reason) ? nil : "this scan's coverage run was skipped (\(reason))"
+            return unaskedSkips.contains(reason) ? nil : "\(ownRunLead)was skipped (\(reason))"
         }
     }
 
@@ -110,45 +131,14 @@ enum CoverageCarry {
                 message: "coverage: \(what), so it keeps the coverage collected \(held.coverage.collectedAt)"
             )
         }
-        let original = held.run
-        let run = CollectorRunInfo(
-            name: original.name,
-            state: .ran,
-            reason: reason(of: original, collectedAt: held.coverage.collectedAt),
-            version: original.version,
-            identity: original.identity,
-            identityLabel: original.identityLabel,
-            options: original.options,
-            durationMilliseconds: original.durationMilliseconds
-        )
-        let status = CollectorStatus(
-            name: run.name,
-            state: run.state,
-            version: run.version,
-            reason: run.reason,
-            options: run.options
-        )
+        let run = held.run.carried(collectedAt: held.coverage.collectedAt)
         return ScannedSnapshot(
             info: snapshot.info.with(run: run),
             report: snapshot.report.with(
                 coverage: held.coverage.report,
-                status: status,
+                status: run.status,
                 warnings: held.warnings + [notice].compactMap(\.self)
             )
         )
-    }
-
-    /// A carried run's reason: when its coverage was collected, then the
-    /// reason the run that collected it gave (failing tests), which a run
-    /// carried before still holds after its own date.
-    private static func reason(of run: CollectorRunInfo, collectedAt: String) -> String {
-        let carried = carriedPrefix + collectedAt
-        let separator = "; "
-        var original = run.reason
-        if let reason = original, reason.hasPrefix(carried) {
-            let rest = reason.dropFirst(carried.count)
-            original = rest.hasPrefix(separator) ? String(rest.dropFirst(separator.count)) : nil
-        }
-        return original.map { carried + separator + $0 } ?? carried
     }
 }

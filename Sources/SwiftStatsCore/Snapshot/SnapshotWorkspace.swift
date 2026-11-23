@@ -7,7 +7,9 @@
 //  that has none from an export into the invoking package's store, using the
 //  revision's own `.swiftstats.yml` unless a configuration file was given.
 //  A stored dirty snapshot stands for the working tree only while its hash
-//  of the changes matches the tree's.
+//  of the changes matches the tree's. Before `scan --mutation --since`, or
+//  the resume of such a run, it chooses the stored snapshot the run merges
+//  with (M6, `MutationBase`).
 //
 
 import Foundation
@@ -72,22 +74,91 @@ public struct SnapshotWorkspace {
     }
 
     /// Scans the working tree, reading history from `history` and running
-    /// the coverage collector when `coverage` asks for it, stores the
-    /// snapshot as `save(_:dropCoverage:)` does and returns what it stored
-    /// with its id.
+    /// the coverage and SwiftMutator collectors when `tiers` asks for them,
+    /// stores the snapshot as `save(_:drop:)` does and returns what it
+    /// stored with its id. Before anything runs, `--since` chooses the
+    /// stored snapshot it merges with and is refused when there is none it
+    /// can merge with (`StoreError.noMutationBase`, `MutationBase`), and
+    /// `--resume` is refused (`ScanError.mutationRefused`) when no run is
+    /// pending, or when the tree, the settings, the copy or the results
+    /// file don't let it go on (`MutationResume`); the resume of a
+    /// `--since` run chooses its base again. Neither is checked when the
+    /// collector's tools aren't found, which skips it. A scan asking for
+    /// coverage or SwiftMutator is refused, before the run, as its save
+    /// would refuse held results it can't keep, and a SwiftMutator run
+    /// that ran is kept until its snapshot is stored
+    /// (`SnapshotWorkspace+Held`).
     public func scanWorkingTree(
         history: HistorySource = .automatic,
-        coverage: Bool = false,
-        dropCoverage: Bool = false
+        tiers: RequestedTiers = .syntaxOnly,
+        drop: DropOptions = []
     ) throws -> (snapshot: ScannedSnapshot, id: Int64) {
-        let snapshot = try scanner.scan(
+        let git = GitReader.read(packageRoot: root, ignoring: storeInPackage)
+        let base = try mutationBase(tiers.mutation, git: git)
+        let saving = try heldResultsChecks(git: git, tiers: tiers, drop: drop)
+        let snapshot = try scanner.saving(saving).scan(
             packageAt: root,
             configurationFile: configurationFile ?? StoreLocation.localConfiguration(packageRoot: root),
+            git: git,
             ignoring: storeInPackage,
             history: history,
-            coverage: coverage
+            tiers: tiers.merging(with: base)
         )
-        return try save(snapshot, dropCoverage: dropCoverage)
+        return try storing(snapshot, drop: drop)
+    }
+
+    /// The stored snapshot the SwiftMutator run `request` asks for merges
+    /// with: for `--since`, the one its revision names, checked against the
+    /// tools and settings; for the resume of a `--since` run, the one the
+    /// pending run recorded, chosen again. Nil for a full run, the resume
+    /// of one, and when the tools aren't found. It throws the refusal that
+    /// stops the scan before anything runs. `git` is the package's state.
+    private func mutationBase(_ request: MutationRequest?, git: GitState) throws -> MutationBase? {
+        guard let request else {
+            return nil
+        }
+        if case .resume = request, let reason = MutationResume.refusal(
+            root: root,
+            configuration: configuration,
+            locator: scanner.scanner.tools,
+            ignoring: storeInPackage
+        ) {
+            throw ScanError.mutationRefused(reason)
+        }
+        guard case let .found(mutator, swift) = MutationTools.resolve(
+            root: root,
+            configuration: configuration,
+            locator: scanner.scanner.tools
+        ) else {
+            return nil
+        }
+        let lookup = MutationBase.Lookup(
+            store: store,
+            package: try describer.describePackage(at: root).name,
+            root: root,
+            git: git
+        )
+        switch request {
+        case .full:
+            return nil
+
+        case .resume:
+            let pending = try? PendingMutationRun.read(in: MutationDirectory(lookingIn: root))
+            return try pending?.base.map { recorded in try MutationBase.resumed(recorded, lookup: lookup) }
+
+        case .since(let revision):
+            let base = try MutationBase.select(revision: revision, lookup: lookup)
+            if let reason = base.settingsRefusal(
+                mutator: mutator,
+                settings: configuration.collectors[MutationAdapter.name],
+                toolchain: MutationBase.toolchainLine(swift: swift, root: root),
+                root: root,
+                environment: MutationBase.sdkEnvironment(of: ProcessInfo.processInfo.environment)
+            ) ?? base.manifestRefusal(root: root) {
+                throw StoreError.noMutationBase(reason)
+            }
+            return base
+        }
     }
 
     /// The snapshot `report` shows: `revision`'s clean one when given; else
@@ -122,13 +193,13 @@ public struct SnapshotWorkspace {
     /// (HEAD when nil) clean snapshots, scanning any that is missing, or
     /// both when `rescan` is set. With `includeDirty`, a nil `newer` on a
     /// dirty tree means the working tree itself. Each scan is stored as
-    /// `save(_:dropCoverage:)` does.
+    /// `save(_:drop:)` does.
     public func diffSnapshotIDs(
         older: String,
         newer: String?,
         includeDirty: Bool,
         rescan: Bool,
-        dropCoverage: Bool = false
+        drop: DropOptions = []
     ) throws -> (older: Int64, newer: Int64) {
         let name = try describer.describePackage(at: root).name
         let git = GitReader.read(packageRoot: root, ignoring: storeInPackage)
@@ -138,13 +209,13 @@ public struct SnapshotWorkspace {
             name: name,
             git: git,
             rescan: rescan,
-            dropCoverage: dropCoverage
+            drop: drop
         )
         if newer == nil, includeDirty, git.isDirty, let commit = git.commit {
             if rescan == false, let current = try currentDirtySnapshot(name, git, commit: commit) {
                 return (olderID, current)
             }
-            return (olderID, try scanWorkingTree(dropCoverage: dropCoverage).id)
+            return (olderID, try scanWorkingTree(drop: drop).id)
         }
         let newerCommit = try Self.commit(of: newer ?? "HEAD", in: root)
         guard newerCommit != olderCommit else {
@@ -153,28 +224,28 @@ public struct SnapshotWorkspace {
         }
         return (
             olderID,
-            try cleanSnapshotID(newerCommit, name: name, git: git, rescan: rescan, dropCoverage: dropCoverage)
+            try cleanSnapshotID(newerCommit, name: name, git: git, rescan: rescan, drop: drop)
         )
     }
 
     /// `commit`'s clean snapshot, scanned first when missing or when
     /// `rescan` is set: in place when it is HEAD and the tree is clean,
-    /// otherwise from an export; stored as `save(_:dropCoverage:)` does.
+    /// otherwise from an export; stored as `save(_:drop:)` does.
     private func cleanSnapshotID(
         _ commit: String,
         name: String,
         git: GitState,
         rescan: Bool,
-        dropCoverage: Bool
+        drop: DropOptions
     ) throws -> Int64 {
         if rescan == false, let existing = try snapshot(name, git, commit: commit, isDirty: false) {
             return existing
         }
         if commit == git.commit, git.isDirty == false {
-            return try scanWorkingTree(dropCoverage: dropCoverage).id
+            return try scanWorkingTree(drop: drop).id
         }
         let scanned = try scanExport(commit, git: git, scanner: scanner, history: .skipped("exported revision"))
-        return try save(scanned.snapshot, dropCoverage: dropCoverage).id
+        return try save(scanned.snapshot, drop: drop).id
     }
 
     /// HEAD's stored dirty snapshot when its hash of the changes is the
