@@ -13,7 +13,8 @@
 //  verdict and the functions by state. What follows the scores, from the
 //  survivors by operator to the unmapped mutants, is in
 //  `MarkdownMutation+Mutants.swift`. When the collector didn't run, the
-//  section says why.
+//  section says why; results of a run that found nothing to test say so,
+//  with no runs, settings or scores.
 //
 
 /// Renders the Mutation section.
@@ -26,19 +27,26 @@ enum MarkdownMutation {
     /// What starts a SwiftMutator build's identity.
     private static let hashPrefix = "sha256:"
 
-    /// The section's lines after its heading.
+    /// The section's lines after its heading. Results no run made, from a
+    /// full run that found nothing to test, have no runs, settings or
+    /// scores to show.
     static func render(_ scan: ScanReport) -> [String] {
         let status = scan.collectors.first { $0.name == MutationAdapter.name }
         guard let mutation = scan.mutation else {
-            let why = status.map { status in
-                status.state.rawValue + (status.reason.map { ", \($0)" } ?? "")
+            guard let status else {
+                return ["Not collected: not in this snapshot."]
             }
-            return ["Not collected: \(why ?? "not in this snapshot")."]
+            let reason = status.reason.map { ", \($0)" } ?? ""
+            return status.state == .ran
+                ? ["No results\(reason)."]
+                : ["Not collected: \(status.state.rawValue)\(reason)."]
         }
         var lines = header(mutation, reason: status?.reason)
-        lines += [""] + runs(mutation)
-        lines += ["", settings(mutation.runs)]
-        lines += ["", scoreHeading(mutation), ""] + scores(scan, mutation: mutation)
+        if mutation.runs.isEmpty == false {
+            lines += [""] + runs(mutation)
+            lines += ["", settings(mutation.runs)]
+            lines += ["", scoreHeading(mutation), ""] + scores(scan, mutation: mutation)
+        }
         lines += ["", "Production functions by mutation state:", ""] + functions(scan)
         lines += [""] + details(mutation)
         return lines
@@ -63,6 +71,8 @@ enum MarkdownMutation {
         if let base = mutation.base {
             lines.append("Merged: a --since run retested the files changed since \(short(base.commit)); the other "
                 + "files' results are carried from its scan of \(base.collectedAt).")
+        } else if mutation.runs.isEmpty {
+            return lines + ["Made by one full run, which found no code SwiftMutator could test: no mutants."]
         } else {
             lines.append("Made by one full run.")
         }

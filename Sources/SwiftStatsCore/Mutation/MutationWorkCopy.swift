@@ -6,14 +6,18 @@
 //  each run in `.swiftstats/mutation/work/` and removed after it, so its
 //  side folders, which it writes beside the project, land in the ignored
 //  folder too. With git, the copy is a shared clone of the package's
-//  repository (no object copied, nothing in the source written), sparse
-//  to the package's folder when the package isn't the repository's top
-//  level, checked out at the commit the scan read, with the package's
-//  changes against it, the files SwiftMutator lists even when git ignores
-//  them and the work tree's `.swift-version`s above the package laid over
-//  it. Outside git, or in a folder its repository ignores (where
-//  SwiftMutator walks the package rather than asking git), it is a copy
-//  of the package.
+//  repository (no object copied, nothing in the source written), the
+//  whole tree checked out at the commit the scan read, so a package below
+//  the top level reaches the rest of its repository as it does in place
+//  (a local dependency beside it, say), with the package's changes
+//  against it, the files SwiftMutator lists even when git ignores them,
+//  the rest of the repository's changes and the work tree's
+//  `.swift-version`s above the package laid over it, and each file git
+//  may check out with other bytes and not list as changed
+//  (`skip-worktree`, `assume-unchanged`, a filter or `ident`) taken from
+//  the work tree where it differs. Outside git, or in a folder its
+//  repository ignores (where SwiftMutator walks the package rather than
+//  asking git), it is a copy of the package.
 //  Either way every file the scan parsed is then checked against the
 //  scan's hash, and one git checked out differently is copied from the
 //  package, so the copy is the scanned tree, file for file. Only the
@@ -34,8 +38,9 @@ struct MutationWorkCopy: Sendable {
     let work: URL
     /// The copy of the package: the project SwiftMutator runs in.
     let project: URL
-    /// How many scanned files the copy took from the package because git
-    /// checked them out with other bytes.
+    /// How many files the copy took from the work tree because git checked
+    /// them out with other bytes: scanned files (`fixHashes`) and flagged
+    /// or filtered ones (`fixFlagged`).
     let fixedFiles: Int
 
     /// The project's path inside `work/` for the package at `packageRoot`
@@ -69,17 +74,20 @@ struct MutationWorkCopy: Sendable {
         let copy = folder.appendingPathComponent(projectPath(packageRoot: packageRoot, git: git))
         do throws(MutationFailure) {
             try created(folder)
+            var flagged = 0
             if let commit = git.commit, let top = clonedRepository(of: packageRoot, git: git) {
                 let clone = folder.appendingPathComponent(top.lastPathComponent)
-                try checkOut(commit, of: top, packagePath: git.packagePath, into: clone)
+                try checkOut(commit, of: top, into: clone)
                 try overlay(packageRoot, against: commit, ignoring: ignored, onto: copy)
+                try overlayOutside(top, packagePath: git.packagePath, against: commit, onto: clone)
                 try overlayPins(of: top, packagePath: git.packagePath, into: clone)
+                flagged = try fixFlagged(of: top, in: clone)
             } else {
                 try copyPackage(packageRoot, ignoring: ignored, to: copy)
             }
             let fixed = try fixHashes(scanned, of: packageRoot, in: copy)
             try borrowBuild(from: directory, into: copy)
-            return Self(work: folder, project: copy, fixedFiles: fixed)
+            return Self(work: folder, project: copy, fixedFiles: flagged + fixed)
         } catch {
             try? FileClone.remove(folder)
             throw error

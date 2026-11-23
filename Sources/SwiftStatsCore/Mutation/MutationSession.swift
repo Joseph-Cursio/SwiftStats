@@ -3,9 +3,11 @@
 //  SwiftStatsCore
 //
 //  One mutation step (M6, design §1.2 to §1.5), holding the package's
-//  mutation lock throughout: empty the log, recover a copy an interrupted
-//  run left, make the copy, write the configuration, warm the build, run
-//  SwiftMutator, find and read its results file, judge how it ended, and
+//  mutation lock throughout: refuse while a SwiftMutator run an earlier
+//  scan started still runs (`MutationLiveRun`), empty the log, recover a
+//  copy an interrupted run left, make the copy, write the configuration,
+//  warm the build, run SwiftMutator, find and read its results file,
+//  judge how it ended, and
 //  for a run that ran, judge its kills with `swift-mutator report` and
 //  keep the results file and the report in `runs/<id>/` (the first 16 hex
 //  digits of the file's SHA-256). Then the copy ends, its build going back
@@ -37,8 +39,8 @@ struct MutationSession {
         /// Where the results file was kept, from the package root; nil
         /// unless the run ran with results.
         let resultsFile: String?
-        /// How many scanned files the copy took from the package because
-        /// git checked them out with other bytes.
+        /// How many files the copy took from the work tree because git
+        /// checked them out with other bytes.
         let fixedFiles: Int
         /// How long the warm build took; nil for a resume, which builds
         /// nothing before SwiftMutator.
@@ -133,8 +135,13 @@ struct MutationSession {
         }
     }
 
-    /// The step, with the lock held.
+    /// The step, with the lock held: refused, before the log or anything
+    /// an earlier run left is touched, while a SwiftMutator run an earlier
+    /// scan started still runs in its copy.
     private func locked() throws(MutationFailure) -> Outcome {
+        if let refusal = MutationLiveRun.refusal(packageRoot: job.root, git: job.git, in: directory) {
+            throw refusal
+        }
         let log = try MutationLog.started(at: directory.log)
         if case .resume = job.request {
             return try resumed(log: log)

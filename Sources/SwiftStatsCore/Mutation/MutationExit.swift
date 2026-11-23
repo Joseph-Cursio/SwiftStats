@@ -84,12 +84,6 @@ struct MutationExit: Equatable, Sendable {
     }
 
     /// The state after a run that ended by `termination`, left `output`,
-    /// and printed `log`, of which `tail` is the last lines, cleaned.
-    static func judge(_ termination: ProcessTermination, output: Output, log: String, tail: String) -> Self {
-        judge(termination, output: output, log: log, tail: tail, since: false)
-    }
-
-    /// The state after a run that ended by `termination`, left `output`,
     /// and printed `log`, of which `tail` is the last lines, cleaned; a
     /// `--since` run (`since`) that exits 0 without a results file ran.
     static func judge(

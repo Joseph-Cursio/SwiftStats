@@ -189,9 +189,9 @@ struct MutationBase: Hashable, Sendable {
 
     /// Why a run of `mutator`, with `settings`, whose tests' `swift` prints
     /// `toolchain` for its version, in the package at `root` under the SDK
-    /// environment `environment`, can't merge with this base: another
-    /// SwiftMutator build, or the first option of `comparedOptions` that
-    /// differs; nil when it can.
+    /// environment `environment`, can't merge with this base: results no
+    /// run made, another SwiftMutator build, or the first option of
+    /// `comparedOptions` that differs; nil when it can.
     func settingsRefusal(
         mutator: URL,
         settings: CollectorSettings?,
@@ -199,6 +199,12 @@ struct MutationBase: Hashable, Sendable {
         root: URL,
         environment: [String: String]
     ) -> String? {
+        // A full run that found nothing to test leaves results with no run
+        // to compare the build and settings with.
+        guard report.runs.isEmpty == false else {
+            return "the results of \(revision) come from a run that found no code SwiftMutator could test; "
+                + "run a full scan --mutation"
+        }
         let build = ContentHash.sha256(ofFileAt: mutator).map { "sha256:\($0)" }
         guard let identity, build == identity else {
             return "the results of \(revision) were made with another SwiftMutator build; run a full scan --mutation"

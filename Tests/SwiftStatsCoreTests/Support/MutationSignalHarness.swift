@@ -87,6 +87,10 @@ enum MutationSignalHarness {
         var withCoverage = true
         /// The store to keep the snapshot in; a new one, removed again, when nil.
         var store: SnapshotStore?
+        /// Whether the results are a full run's that found no code
+        /// SwiftMutator could test: no run, no mutant, every file unlisted
+        /// and code no test ran not listed, whatever the other fields say.
+        var nothingTested = false
     }
 
     /// The file holding `Lib`'s functions.
@@ -162,24 +166,25 @@ enum MutationSignalHarness {
                 }
             }
         }
+        let nothing = setup.nothingTested
         let report = MutationReport(
             collectedAt: "2026-11-21T09:00:00.000Z",
             complete: true,
-            listsNotCovered: setup.listsNotCovered,
+            listsNotCovered: nothing ? false : setup.listsNotCovered,
             mode: .full,
             base: nil,
             files: modules.map { module in
                 MutationFile(
                     path: module.file,
                     sha256: "abc",
-                    disposition: setup.dispositions[module.file] ?? .tested,
+                    disposition: nothing ? .unlisted : setup.dispositions[module.file] ?? .tested,
                     changedTest: false,
-                    run: 0
+                    run: nothing ? nil : 0
                 )
             },
-            runs: [run(listsNotCovered: setup.listsNotCovered)],
-            suspectTests: setup.suspects,
-            mutants: mutants
+            runs: nothing ? [] : [run(listsNotCovered: setup.listsNotCovered)],
+            suspectTests: nothing ? [] : setup.suspects,
+            mutants: nothing ? [] : mutants
         )
         return try stored(
             files,

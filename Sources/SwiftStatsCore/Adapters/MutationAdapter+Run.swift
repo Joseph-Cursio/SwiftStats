@@ -27,6 +27,7 @@ extension MutationAdapter {
     /// those settings and every result it holds comes from the base.
     static func run(_ job: MutationJob) -> MutationRun {
         let known = options(settings: job.settings, root: job.root)
+        let startedAt = Date().formatted(PendingMutationRun.dateFormat)
         let (result, milliseconds) = Stopwatch.time { () -> Result<MutationSession.Outcome, MutationFailure> in
             do throws(MutationFailure) {
                 return .success(try MutationSession.run(job))
@@ -36,7 +37,7 @@ extension MutationAdapter {
         }
         switch result {
         case .failure(let failure):
-            return failed(failure, job: job, options: known, milliseconds: milliseconds)
+            return failed(failure, job: job, options: known, milliseconds: milliseconds, startedAt: startedAt)
 
         case .success(let outcome):
             let ran = outcome.exit.state == .ran
@@ -64,18 +65,20 @@ extension MutationAdapter {
                 base: job.base,
                 changes: outcome.changes,
                 exitReason: outcome.exit.reason,
-                fixedFiles: outcome.fixedFiles
+                fixedFiles: outcome.fixedFiles,
+                startedAt: startedAt
             )
         }
     }
 
-    /// The run of `job` that failed with `failure` after `milliseconds`, its
-    /// settings giving `options`.
+    /// The run of `job`, started at `startedAt`, that failed with
+    /// `failure` after `milliseconds`, its settings giving `options`.
     static func failed(
         _ failure: MutationFailure,
         job: MutationJob,
         options: [String],
-        milliseconds: Int
+        milliseconds: Int,
+        startedAt: String
     ) -> MutationRun {
         MutationRun(
             status: CollectorStatus(
@@ -98,7 +101,8 @@ extension MutationAdapter {
             base: job.base,
             changes: nil,
             exitReason: failure.description,
-            fixedFiles: 0
+            fixedFiles: 0,
+            startedAt: startedAt
         )
     }
 

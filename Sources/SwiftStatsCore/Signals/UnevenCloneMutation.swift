@@ -115,7 +115,7 @@ enum UnevenCloneMutation {
             }
         }
         let kept = CloneFolding.folded(members, cloneClass: \.cloneClass) { $0.holds($1) }
-        let notes = mutation.listsNotCovered ? "" : "; " + WeakTests.notListedNote
+        let notes = mutation.listsNotCovered ? "" : "; " + WeakTests.notListedNote(of: mutation)
         return SignalComputation(
             rule: rule(thresholds: thresholds) + "; " + funnel(tally, members: members, kept: kept, limits: limits)
                 + notes,

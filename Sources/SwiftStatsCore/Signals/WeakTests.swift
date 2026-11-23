@@ -65,8 +65,19 @@ enum WeakTests {
 
     /// What the rule adds when the results don't list code no test ran:
     /// such functions read as having no mutant.
-    static let notListedNote = "the mutation results don't list code no test ran (a SwiftMutator build before "
-        + "13f96a46), so functions no test ran aren't judged"
+    static let notListedNote = notListedNote(cause: "a SwiftMutator build before 13f96a46")
+
+    /// What the rule adds when `mutation`, results that don't list code
+    /// no test ran, says why they don't.
+    static func notListedNote(of mutation: MutationReport) -> String {
+        notListedNote(cause: mutation.notListedCause)
+    }
+
+    /// What the rule adds when the results don't list code no test ran,
+    /// because of `cause`.
+    private static func notListedNote(cause: String) -> String {
+        "the mutation results don't list code no test ran (\(cause)), so functions no test ran aren't judged"
+    }
 
     /// The rule as reports state it with `thresholds`, before the funnel.
     static func rule(thresholds: SignalThresholds) -> String {
@@ -112,7 +123,7 @@ enum WeakTests {
                 scored.append(item(candidate, judge: judge, ratios: ratios))
             }
         }
-        let notes = mutation.listsNotCovered ? "" : "; " + notListedNote
+        let notes = mutation.listsNotCovered ? "" : "; " + notListedNote(of: mutation)
         return SignalComputation(
             rule: rule(thresholds: thresholds) + "; " + funnel(pool, tally: tally, limits: limits) + notes,
             candidates: pool.candidates.count,

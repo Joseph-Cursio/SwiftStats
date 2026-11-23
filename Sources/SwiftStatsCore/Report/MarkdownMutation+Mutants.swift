@@ -9,7 +9,8 @@
 //  tree's files by disposition with the changed test files and the
 //  unresolved and unlisted files, the mutants dropped by design per class,
 //  and the unmapped mutants by reason with the first of them (all are in
-//  the JSON).
+//  the JSON). Results no run made, from a full run that found nothing to
+//  test, have no mutants, kills or base to describe: only their files.
 //
 
 extension MarkdownMutation {
@@ -18,6 +19,9 @@ extension MarkdownMutation {
 
     /// Everything after the functions by state.
     static func details(_ mutation: MutationReport) -> [String] {
+        guard mutation.runs.isEmpty == false else {
+            return filesNoRunTested(mutation)
+        }
         let mapped = mutation.mutants.filter { [.record, .type, .file].contains($0.place) }
         var lines = ["Mapped mutants by operator:", ""] + operators(mapped)
         lines += ["", killingTests(mapped, runs: mutation.runs)]
@@ -151,6 +155,20 @@ extension MarkdownMutation {
             files.filter(\.changedTest)
         )
         return lines
+    }
+
+    /// The files of results no run made: the production files unlisted,
+    /// with why, and the rest not mutated.
+    private static func filesNoRunTested(_ mutation: MutationReport) -> [String] {
+        let unlisted = mutation.files.filter { $0.disposition == .unlisted }
+        let untested = mutation.files.count { $0.disposition == .untested }
+        let lines = [
+            "Files: \(unlisted.count) unlisted, \(untested) not mutated (tests, excluded files, other packages)."
+        ]
+        return lines + listing(
+            "Unlisted (\(mutation.notListedCause), so their code no test ran isn't listed)",
+            unlisted
+        )
     }
 
     /// `files` under `title`, the first of them; nothing when there are none.

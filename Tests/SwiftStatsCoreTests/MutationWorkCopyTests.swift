@@ -3,11 +3,12 @@ import Foundation
 import Testing
 
 /// What the copy SwiftMutator runs in holds (M6, design §1.2), on
-/// temporary repositories: a shared clone checked out at HEAD, sparse to
-/// a package below the top level, with the package's changes and the
-/// Swift files git ignores laid over it, every scanned file holding the
-/// bytes the scan read, links kept as links, and nothing of it showing
-/// in the package's `git status`.
+/// temporary repositories: a shared clone checked out at HEAD, the whole
+/// tree even for a package below the top level, with the package's
+/// changes and the Swift files git ignores laid over it, every scanned
+/// file holding the bytes the scan read, links kept as links, and nothing
+/// of it showing in the package's `git status`.
+/// `MutationWorkCopyRepositoryTests` holds what lies outside the package.
 @Suite("Mutation work copy")
 struct MutationWorkCopyTests {
     /// The library file most tests scan.
@@ -85,7 +86,7 @@ struct MutationWorkCopyTests {
         ])
     }
 
-    @Test("a package below the top level is a sparse checkout with the pin above it and nothing beside it")
+    @Test("a package below the top level is a full checkout: the pin above it and the folders beside it come too")
     func subdirectoryPackage() throws {
         let repository = try HistoryRepository()
         defer { repository.remove() }
@@ -106,7 +107,8 @@ struct MutationWorkCopyTests {
                 == WorkCopyHarness.realPath(clone.appendingPathComponent("Packages/Pkg"))
         )
         #expect(WorkCopyHarness.entries(of: clone) == [
-            ".swift-version", "Package.swift", "Packages/Pkg/Package.swift", "Packages/Pkg/\(Self.library)"
+            ".swift-version", "Other/O.swift", "Package.swift", "Packages/Pkg/Package.swift",
+            "Packages/Pkg/\(Self.library)"
         ])
         #expect(try repository.git(["status", "--porcelain"]).isEmpty)
     }

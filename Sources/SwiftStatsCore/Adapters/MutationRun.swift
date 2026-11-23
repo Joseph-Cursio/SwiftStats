@@ -47,9 +47,12 @@ struct MutationRun: Sendable {
     /// The exit's own note, which a reason starts with; nil when it has
     /// none.
     let exitReason: String?
-    /// How many scanned files the copy took from the package because git
+    /// How many files the copy took from the work tree because git
     /// checked them out with other bytes.
     let fixedFiles: Int
+    /// When the collector's step started (ISO 8601, UTC): the results'
+    /// date when the run left no results file to take one from.
+    let startedAt: String
 
     /// The run as the other external collectors' runs are recorded.
     var timed: TimedAdapterResult {
@@ -78,7 +81,8 @@ struct MutationRun: Sendable {
             base: nil,
             changes: nil,
             exitReason: nil,
-            fixedFiles: 0
+            fixedFiles: 0,
+            startedAt: ""
         )
     }
 
@@ -105,7 +109,8 @@ struct MutationRun: Sendable {
             base: base,
             changes: changes,
             exitReason: exitReason,
-            fixedFiles: fixedFiles
+            fixedFiles: fixedFiles,
+            startedAt: startedAt
         )
     }
 }

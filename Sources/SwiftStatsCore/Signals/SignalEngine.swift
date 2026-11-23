@@ -145,7 +145,10 @@ public enum SignalEngine {
                 ? nil : "the snapshot predates M6"
 
         case .notCoveredListed:
-            return snapshot.mutation?.report.listsNotCovered == false ? GenuinelyUnderTested.notListedReason : nil
+            guard let mutation = snapshot.mutation?.report, mutation.listsNotCovered == false else {
+                return nil
+            }
+            return GenuinelyUnderTested.notListedReason(of: mutation)
 
         case .collector, .history:
             return nil

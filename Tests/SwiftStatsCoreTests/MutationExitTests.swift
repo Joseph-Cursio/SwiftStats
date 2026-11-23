@@ -257,9 +257,9 @@ struct MutationExitTests {
     @Test("signals are named in reasons, and only SIGHUP, SIGINT and SIGTERM read from an exit of 128 plus n")
     func signals() {
         let results = MutationExit.Output.noFile
-        let fallback = MutationExit.judge(.exited(130), output: results, log: "", tail: "")
-        let crash = MutationExit.judge(.exited(139), output: results, log: "", tail: "")
-        let killed = MutationExit.judge(.signalled(SIGKILL), output: results, log: "", tail: "")
+        let fallback = MutationExit.judge(.exited(130), output: results, log: "", tail: "", since: false)
+        let crash = MutationExit.judge(.exited(139), output: results, log: "", tail: "", since: false)
+        let killed = MutationExit.judge(.signalled(SIGKILL), output: results, log: "", tail: "", since: false)
 
         #expect(fallback.reason == "interrupted by SIGINT")
         #expect(crash.reason == "swift-mutator exited 139")

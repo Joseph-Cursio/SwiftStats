@@ -42,6 +42,34 @@ extension MutationMapper {
         )
     }
 
+    /// The report of a full run that found no code SwiftMutator could test
+    /// (its exit 255 with the nothing-to-test line, design §1.5), started
+    /// at `collectedAt`, over `tree`, the scan's files with their hashes:
+    /// complete, with no run and no mutant, listing no code no test ran,
+    /// each production path unlisted (it holds no mutant SwiftMutator
+    /// tests) and every other one untested.
+    func nothingTested(in tree: [String: String], collectedAt: String) -> MutationReport {
+        MutationReport(
+            collectedAt: collectedAt,
+            complete: true,
+            listsNotCovered: false,
+            mode: .full,
+            base: nil,
+            files: tree.keys.filter { $0.hasSuffix(Self.swiftExtension) }.sorted().map { path in
+                MutationFile(
+                    path: path,
+                    sha256: tree[path],
+                    disposition: isProduction(path) ? .unlisted : .untested,
+                    changedTest: false,
+                    run: nil
+                )
+            },
+            runs: [],
+            suspectTests: [],
+            mutants: []
+        )
+    }
+
     /// Every mutant of `results`, tested by run `ordinal`, whose kills
     /// `suspects` judged, placed.
     func mutants(of results: MutationResults, run ordinal: Int, suspects: SuspectReport) -> [Mutant] {

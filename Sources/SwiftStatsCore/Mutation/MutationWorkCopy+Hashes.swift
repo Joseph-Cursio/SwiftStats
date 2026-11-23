@@ -8,10 +8,12 @@
 //  Git can check a file out with other bytes and list nothing as changed
 //  (a repository-local `core.autocrlf` or an `eol=crlf` attribute, a
 //  smudge filter, LFS, `ident`, `skip-worktree` or `assume-unchanged`);
-//  such a file is copied from the package and counted. A file the package
-//  no longer holds as the scan read it, because it was edited during the
-//  scan, fails the check naming it, so stale results are never mapped. A
-//  resumed run checks its kept copy again the same way.
+//  such a file is copied from the package and counted. (A file the scan
+//  didn't parse is checked only when git can say it may differ:
+//  `MutationWorkCopy+Flagged.swift`.) A file the package no longer holds
+//  as the scan read it, because it was edited during the scan, fails the
+//  check naming it, so stale results are never mapped. A resumed run
+//  checks its kept copy again the same way.
 //
 
 import Foundation

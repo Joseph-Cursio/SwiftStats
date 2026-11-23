@@ -43,8 +43,19 @@ enum GenuinelyUnderTested {
     }
 
     /// Why the signal is left out when the results don't list code no test ran.
-    static let notListedReason = "the mutation results don't list code no test ran (a SwiftMutator build before "
-        + "13f96a46), so low scores can't be told from missing ones"
+    static let notListedReason = notListedReason(cause: "a SwiftMutator build before 13f96a46")
+
+    /// Why the signal is left out when `mutation`, results that don't list
+    /// code no test ran, says why they don't.
+    static func notListedReason(of mutation: MutationReport) -> String {
+        notListedReason(cause: mutation.notListedCause)
+    }
+
+    /// Why the signal is left out when the results don't list code no test
+    /// ran, because of `cause`.
+    private static func notListedReason(cause: String) -> String {
+        "the mutation results don't list code no test ran (\(cause)), so low scores can't be told from missing ones"
+    }
 
     /// The rule as reports state it with `thresholds`, before the funnel.
     static func rule(thresholds: SignalThresholds) -> String {

@@ -31,7 +31,14 @@ struct ProcessTerminationTests {
         let termination = try ProcessRunner.runLogged(
             executable: "/bin/sh",
             arguments: [
-                "-c", "echo out; echo err >&2; if read -r line; then echo input; else echo \"$COLOR\"; fi; exit 3"
+                "-c",
+                // By its device, since an inherited input can be empty too.
+                """
+                echo out; echo err >&2
+                if [ "$(/usr/bin/stat -L -f %Hr,%Lr /dev/stdin)" = "$(/usr/bin/stat -f %Hr,%Lr /dev/null)" ]
+                then echo "$COLOR"; else echo inherited; fi
+                exit 3
+                """
             ],
             in: directory,
             environment: ProcessEnvironment(added: ["COLOR": "none"], removed: []),

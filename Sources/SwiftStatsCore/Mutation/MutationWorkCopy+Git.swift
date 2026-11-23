@@ -5,19 +5,21 @@
 //  How the mutation collector's copy is filled (M6, design §1.2 steps 1–3
 //  and 6). With git: a shared clone without a checkout, so it reads the
 //  source's objects through `objects/info/alternates` and copies none; a
-//  cone-mode sparse checkout of the package's path when the package is
-//  below the top level (cone mode also checks out the files directly in
-//  each folder above it, so a `.swift-version` above the package comes
-//  too); a detached checkout of the commit the scan read, with no hook
-//  run, no LFS download (a pointer git leaves in place of a parsed file is
-//  fixed by the hash check) and none of the variables that name a
-//  repository, so no command can write into the source's. Then the
-//  overlay, as byte copies from the package with links kept as links: the
-//  package's changes against that commit, listed with the options and
+//  full (not sparse) detached checkout of the commit the scan read, so a
+//  package below the top level finds whatever else of its repository it
+//  reaches (a `.package(path: "../Core")`, a link to a shared folder, the
+//  `.swift-version`s above it), with no hook run, no LFS download (a file
+//  git checks out with other bytes is put right by
+//  `MutationWorkCopy+Flagged.swift` and the hash check) and none of the
+//  variables that name a repository, so no command can write into the
+//  source's. Then the overlay, as byte copies with links kept as links:
+//  the package's changes against that commit, listed with the options and
 //  pathspecs `GitReader` hashes them with, deleted files removed first,
 //  none in a folder SwiftMutator never lists; the files SwiftMutator lists
-//  even when git ignores them that the copy doesn't have; and each
-//  `.swift-version` above the package as the work tree holds it. Outside
+//  even when git ignores them that the copy doesn't have; the rest of the
+//  repository's changes against that commit, tracked and untracked, the
+//  same way, for a package below the top level; and each `.swift-version`
+//  above the package as the work tree holds it, ignored or not. Outside
 //  git, the package is copied whole, but for SwiftStats' own folder, the
 //  files at `ignored` and every folder SwiftMutator never lists.
 //
@@ -46,9 +48,9 @@ extension MutationWorkCopy {
     /// Options for those commands: no hook runs in the copy.
     private static let noHooks = ["-c", "core.hooksPath=/dev/null"]
 
-    /// Clones the repository at `top` into `clone`, sparse to
-    /// `packagePath` when it isn't empty, and checks out `commit`.
-    static func checkOut(_ commit: String, of top: URL, packagePath: String, into clone: URL) throws(MutationFailure) {
+    /// Clones the repository at `top` into `clone` and checks out
+    /// `commit`, the whole tree.
+    static func checkOut(_ commit: String, of top: URL, into clone: URL) throws(MutationFailure) {
         let work = clone.deletingLastPathComponent()
         let redactions = [(work, "<copy>"), (top, "<repository>")]
         try git(
@@ -58,15 +60,6 @@ extension MutationWorkCopy {
             redacting: redactions,
             isolated: true
         )
-        if packagePath.isEmpty == false {
-            try git(
-                "sparse-checkout",
-                noHooks + ["sparse-checkout", "set", "--cone", "--end-of-options", packagePath],
-                in: clone,
-                redacting: redactions,
-                isolated: true
-            )
-        }
         try git(
             "checkout",
             noHooks + ["checkout", "--quiet", "--detach", commit],
@@ -86,15 +79,60 @@ extension MutationWorkCopy {
         ignoring ignored: [String],
         onto project: URL
     ) throws(MutationFailure) {
-        let pathspecs = GitReader.pathspecs(ignoring: ignored)
+        try overlayChanges(
+            of: packageRoot,
+            named: "<package>",
+            pathspecs: GitReader.pathspecs(ignoring: ignored),
+            against: commit,
+            onto: project
+        )
+        try copyListed(packageRoot, ignoring: ignored, to: project)
+    }
+
+    /// Lays over `clone`, a checkout of `commit` of the repository at
+    /// `top`, the repository's changes against `commit` outside the
+    /// package at `packagePath` (which `overlay` covers): tracked and
+    /// untracked files a package below the top level can reach, such as a
+    /// local dependency's beside it. Nothing when the package is the top
+    /// level.
+    static func overlayOutside(
+        _ top: URL,
+        packagePath: String,
+        against commit: String,
+        onto clone: URL
+    ) throws(MutationFailure) {
+        guard packagePath.isEmpty == false else {
+            return
+        }
+        try overlayChanges(
+            of: top,
+            named: "<repository>",
+            pathspecs: ["--", ".", ":(exclude,literal)\(packagePath)"],
+            against: commit,
+            onto: clone
+        )
+    }
+
+    /// Lays over `destination`, the checkout of `commit` of the folder at
+    /// `root` (`placeholder` in an error), the changes `pathspecs` select
+    /// against `commit`, untracked files included: deleted files removed,
+    /// the others copied, none in a folder SwiftMutator never lists.
+    private static func overlayChanges(
+        of root: URL,
+        named placeholder: String,
+        pathspecs: [String],
+        against commit: String,
+        onto destination: URL
+    ) throws(MutationFailure) {
         let diff = ["--no-optional-locks", "-c", "core.quotepath=off", "diff", commit]
             + ["--name-only", "-z", "--relative"] + GitReader.plainDiff
-        let deleted = try paths("diff", diff + ["--diff-filter=D"] + pathspecs, in: packageRoot)
-        let changed = try paths("diff", diff + ["--diff-filter=d"] + pathspecs, in: packageRoot)
+        let deleted = try paths("diff", diff + ["--diff-filter=D"] + pathspecs, in: root, named: placeholder)
+        let changed = try paths("diff", diff + ["--diff-filter=d"] + pathspecs, in: root, named: placeholder)
         let untracked = try paths(
             "ls-files",
             ["ls-files", "-z", "--others", "--exclude-standard"] + pathspecs,
-            in: packageRoot
+            in: root,
+            named: placeholder
         )
         // Deletions first, as git lists them rather than by a lookup: on a
         // case-insensitive volume a case-only rename's old name finds the
@@ -102,28 +140,28 @@ extension MutationWorkCopy {
         // folder's files come.
         for path in deleted.sorted() {
             try attempt(path) {
-                try FileClone.remove(project.appendingPathComponent(path))
+                try FileClone.remove(destination.appendingPathComponent(path))
             }
         }
-        for path in Set(changed + untracked).sorted() where isLeftOut(path, in: packageRoot) == false {
-            let source = packageRoot.appendingPathComponent(path)
-            let destination = project.appendingPathComponent(path)
+        for path in Set(changed + untracked).sorted() where isLeftOut(path, in: root) == false {
+            let source = root.appendingPathComponent(path)
+            let copied = destination.appendingPathComponent(path)
             try attempt(path) {
                 if FileClone.exists(source) {
-                    try FileClone.copy(source, to: destination)
+                    try FileClone.copy(source, to: copied)
                 } else {
-                    try FileClone.remove(destination)
+                    try FileClone.remove(copied)
                 }
             }
         }
-        try copyListed(packageRoot, ignoring: ignored, to: project)
     }
 
     /// Makes each `.swift-version` directly in a folder above the package
     /// in `clone` (the checkout of the repository at `top`, holding the
     /// package at `packagePath`) the one the work tree holds there, or
-    /// removes it when the work tree holds none: cone mode checks out the
-    /// committed one, and swiftly reads the first it finds walking up from
+    /// removes it when the work tree holds none: the checkout holds the
+    /// committed one, which `overlayOutside` misses when git ignores the
+    /// work tree's, and swiftly reads the first it finds walking up from
     /// the copy's project.
     static func overlayPins(of top: URL, packagePath: String, into clone: URL) throws(MutationFailure) {
         let folders = packagePath.split(separator: "/").map(String.init)
@@ -178,12 +216,12 @@ extension MutationWorkCopy {
     }
 
     /// Whether the overlay leaves out the changed path `path` of the
-    /// package at `packageRoot`: a folder, which is a submodule's or an
-    /// untracked nested repository's (git lists either as one path), or a
-    /// path in a folder SwiftMutator never lists, such as a build folder
-    /// git doesn't ignore, which build-cache replaces.
-    private static func isLeftOut(_ path: String, in packageRoot: URL) -> Bool {
-        FileClone.isDirectory(packageRoot.appendingPathComponent(path))
+    /// folder at `root`: a folder, which is a submodule's or an untracked
+    /// nested repository's (git lists either as one path), or a path in a
+    /// folder SwiftMutator never lists, such as a build folder git doesn't
+    /// ignore, which build-cache replaces.
+    static func isLeftOut(_ path: String, in root: URL) -> Bool {
+        FileClone.isDirectory(root.appendingPathComponent(path))
             || path.split(separator: "/").contains { MutationProjectFiles.prunedNames.contains(String($0)) }
     }
 
@@ -217,17 +255,19 @@ extension MutationWorkCopy {
     }
 
     /// The NUL-separated paths `git <arguments>` (its `subcommand`) prints
-    /// in the package at `packageRoot`.
-    private static func paths(
+    /// in the folder at `root`, of the package or its repository, which an
+    /// error names as `placeholder`.
+    static func paths(
         _ subcommand: String,
         _ arguments: [String],
-        in packageRoot: URL
+        in root: URL,
+        named placeholder: String
     ) throws(MutationFailure) -> [String] {
         let data = try git(
             subcommand,
             arguments,
-            in: packageRoot,
-            redacting: [(packageRoot, "<package>")],
+            in: root,
+            redacting: [(root, placeholder)],
             isolated: false
         )
         return try decodedPaths(data)
@@ -265,9 +305,9 @@ extension MutationWorkCopy {
     }
 
     /// Runs `body`, a file operation on `path` (relative to the package,
-    /// or to the repository for a pin above it), turning its error into a
-    /// failure naming the path.
-    private static func attempt(_ path: String, _ body: () throws -> Void) throws(MutationFailure) {
+    /// or to the repository for a path outside it), turning its error into
+    /// a failure naming the path.
+    static func attempt(_ path: String, _ body: () throws -> Void) throws(MutationFailure) {
         do {
             try body()
         } catch {

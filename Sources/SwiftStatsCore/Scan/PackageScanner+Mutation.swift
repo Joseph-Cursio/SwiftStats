@@ -10,7 +10,9 @@
 //  A run that ran with results is mapped onto the scan's records
 //  (`MutationMapper`) and passed through the store's rows
 //  (`MutationRows`), so the scan JSON is what a stored copy would give; a
-//  `--since` run is merged with its base first (`MutationMerge`).
+//  `--since` run is merged with its base first (`MutationMerge`), and a
+//  full run that found no code SwiftMutator could test gives empty
+//  results.
 //
 
 import Foundation
@@ -21,7 +23,7 @@ extension PackageScanner {
         /// The run, its reason with a merge's notes added.
         let run: MutationRun
         /// The results, as the store's rows hold them; nil unless the run
-        /// ran with results, or ran as a `--since` run.
+        /// ran.
         let report: MutationReport?
         /// The mapping's warnings.
         let warnings: [ScanWarning]
@@ -29,9 +31,10 @@ extension PackageScanner {
 
     /// `run`'s results mapped onto `measured`, the package with `targets`
     /// and `configuration`, as the store's rows hold them; nil unless it
-    /// ran with results, or ran as a `--since` run, whose results are
-    /// merged with its base's (`MutationMerge`), the merge's notes added
-    /// to the run's reason. The warnings are the mapping's.
+    /// ran. A `--since` run's results are merged with its base's
+    /// (`MutationMerge`), the merge's notes added to the run's reason; a
+    /// full run that found nothing to test gives empty results over the
+    /// scan's files. The warnings are the mapping's.
     static func mutation(
         of run: MutationRun,
         measured: ScanMeasurements,
@@ -67,7 +70,15 @@ extension PackageScanner {
             )
             return MappedMutation(run: run.with(reasonNotes: notes), report: merged.report, warnings: mapper.warnings)
         }
-        guard let results = run.results, let record else {
+        guard let results = run.results else {
+            // A full run that ran without a results file found no code
+            // SwiftMutator could test (design §1.5): empty results, stored,
+            // carried and reported as any others.
+            let tree = Dictionary(measured.files.map { ($0.path, $0.sha256) }) { first, _ in first }
+            let report = mapper.nothingTested(in: tree, collectedAt: run.startedAt)
+            return MappedMutation(run: run, report: MutationRows.normalized(report), warnings: mapper.warnings)
+        }
+        guard let record else {
             return MappedMutation(run: run, report: nil, warnings: [])
         }
         let report = mapper.report(of: results, run: record, suspects: run.suspects)

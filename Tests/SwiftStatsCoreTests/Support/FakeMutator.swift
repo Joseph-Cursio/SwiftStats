@@ -18,7 +18,9 @@
 //  status, adding a line to `.build/builds.txt` so a test can follow the
 //  build between runs. Each
 //  tool logs its arguments (tab-separated, one call a line), its working
-//  directory, `NO_COLOR` and whether standard input was empty, and `run`
+//  directory, `NO_COLOR` and whether standard input is `/dev/null` (by its
+//  device, since an inherited input can be empty too: `swift test` gives
+//  its tests an empty pipe), and `run`
 //  keeps a copy of the configuration `-c` names. In its interrupt mode
 //  (design §11 step 3c), `run` writes the results file without its last
 //  line, the end line, then waits to be stopped as SwiftMutator does: on
@@ -106,8 +108,8 @@ struct FakeMutator {
     ]
     /// The words of a `status.txt` line: `run: exit 0`.
     static let statusWords = 3
-    /// How often to look whether `run` is waiting, in microseconds.
-    private static let pollInterval: useconds_t = 20_000
+    /// How often to look whether `run` is waiting, in seconds.
+    private static let pollInterval: TimeInterval = 0.02
 
     /// The fake `swift-mutator`.
     private static let mutatorScript = """
@@ -142,7 +144,9 @@ struct FakeMutator {
         awaitStop() {
             trap 'echo INT >> "$here/signals"' INT
             trap stopped TERM
-            /bin/sleep 30 &
+            # Far past any test's timeout: a run that ended by itself
+            # would leave the registry before the test could stop it.
+            /bin/sleep 600 &
             sleeper=$!
             echo $$ > "$here/pid"
             : > "$here/ready"
@@ -236,6 +240,12 @@ struct FakeMutator {
         try? String(contentsOf: directory.appendingPathComponent("pending-at-run.json"), encoding: .utf8)
     }
 
+    /// The process identifier `run` wrote once, in its interrupt mode, it
+    /// waited to be stopped; nil before then.
+    var runIdentifier: pid_t? {
+        lines("pid").first.flatMap { pid_t($0) }
+    }
+
     /// New tools acting out `scenario`.
     static func make(_ scenario: Scenario) throws -> Self {
         let tools = FileManager.default.temporaryDirectory
@@ -256,7 +266,8 @@ struct FakeMutator {
         printf '\\n' >> "$here/\(tool).log"
         pwd -P >> "$here/\(tool)-cwd.log"
         echo "${NO_COLOR-unset}" >> "$here/\(tool)-env.log"
-        if IFS= read -r line; then input=input; else input=empty; fi
+        if [ "$(/usr/bin/stat -L -f '%Hr,%Lr' /dev/stdin 2>/dev/null)" = "$(/usr/bin/stat -f '%Hr,%Lr' /dev/null)" ]
+        then input=null; else input=inherited; fi
         echo "$input" >> "$here/\(tool)-stdin.log"
         """
     }
@@ -269,13 +280,16 @@ struct FakeMutator {
     }
 
     /// The lines `tool` wrote about each call: `cwd` (its real working
-    /// directory), `env` (`NO_COLOR`) or `stdin` (`empty` or `input`).
+    /// directory), `env` (`NO_COLOR`) or `stdin` (`null` when it was
+    /// `/dev/null`, else `inherited`).
     func facts(_ fact: String, of tool: String) -> [String] {
         lines("\(tool)-\(fact).log")
     }
 
     /// The process identifier of `run` once, in its interrupt mode, it
     /// waits to be stopped; nil when it doesn't within `timeout` seconds.
+    /// It blocks, so a test calls it on a thread of its own (`ThreadRun`),
+    /// never on the cooperative pool.
     func waitingRun(within timeout: TimeInterval) -> pid_t? {
         let ready = directory.appendingPathComponent("ready")
         let deadline = Date().addingTimeInterval(timeout)
@@ -283,9 +297,9 @@ struct FakeMutator {
             guard Date() < deadline else {
                 return nil
             }
-            usleep(Self.pollInterval)
+            Thread.sleep(forTimeInterval: Self.pollInterval)
         }
-        return lines("pid").first.flatMap { pid_t($0) }
+        return runIdentifier
     }
 
     /// Makes the tools act out `scenario` from their next call on.

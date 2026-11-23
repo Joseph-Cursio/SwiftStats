@@ -122,8 +122,9 @@ struct StopPolicyTests {
         try registry.start(sleeper)
         defer { kill(sleeper.processIdentifier, SIGKILL) }
 
-        #expect(registry.registered(sleeper.processIdentifier)?.policy == .standard)
-        #expect(registry.registered(getpid()) == nil)
+        let registered = registry.registeredProcesses
+        #expect(registered.map(\.process.processIdentifier) == [sleeper.processIdentifier])
+        #expect(registered.first?.policy == .standard)
     }
 
     @Test("a process that ignores SIGTERM under a SIGTERM-first policy is SIGKILLed after the grace, with no SIGINT")

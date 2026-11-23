@@ -47,6 +47,13 @@ public struct MutationReport: Codable, Hashable, Sendable {
     /// The unmapped mutants, by reason.
     public let unmapped: [String: Int]
 
+    /// Why results whose `listsNotCovered` is false don't list code no
+    /// test ran: no run, so a full run that found no code SwiftMutator
+    /// could test, or else a SwiftMutator build that doesn't list it.
+    var notListedCause: String {
+        runs.isEmpty ? "the run found no code SwiftMutator could test" : "a SwiftMutator build before 13f96a46"
+    }
+
     /// Creates a report. Fields are documented on their properties.
     public init(
         collectedAt: String,

@@ -91,7 +91,7 @@ struct MutationRunTests {
         for tool in ["swift-mutator", "swift"] {
             #expect(Set(harness.fake.facts("cwd", of: tool)) == [project])
             #expect(Set(harness.fake.facts("env", of: tool)) == ["1"])
-            #expect(Set(harness.fake.facts("stdin", of: tool)) == ["empty"])
+            #expect(Set(harness.fake.facts("stdin", of: tool)) == ["null"])
         }
         let log = try String(contentsOf: harness.directory.appendingPathComponent("swift-mutator.log"), encoding: .utf8)
         #expect(log.contains("=== swiftstats: swift build --build-tests exited 0 after "))

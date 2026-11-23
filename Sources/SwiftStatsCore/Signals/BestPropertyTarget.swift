@@ -90,7 +90,7 @@ enum BestPropertyTarget {
             tally.partners += item.counted.count - 1
             listed.append(item)
         }
-        let notes = mutation.listsNotCovered ? "" : "; " + WeakTests.notListedNote
+        let notes = mutation.listsNotCovered ? "" : "; " + WeakTests.notListedNote(of: mutation)
         return SignalComputation(
             rule: rule + "; " + funnel(tally, listed: listed, judge: judge) + notes,
             candidates: tally.withResults,

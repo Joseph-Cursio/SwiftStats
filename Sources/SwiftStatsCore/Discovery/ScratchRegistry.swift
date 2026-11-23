@@ -83,11 +83,12 @@ final class ScratchRegistry: @unchecked Sendable {
         return Set(preserved.keys)
     }
 
-    /// The running processes registered, for tests.
-    var registeredProcesses: [Process] {
+    /// The running processes registered, with their stop policies, for
+    /// tests.
+    var registeredProcesses: [Registered] {
         lock.lock()
         defer { lock.unlock() }
-        return processes.values.map(\.process)
+        return Array(processes.values)
     }
 
     /// Sends `number` to the process group `process` leads, or to
@@ -140,14 +141,6 @@ final class ScratchRegistry: @unchecked Sendable {
             stopping.removeAll { now >= $0.killAt }
             usleep(pollInterval)
         }
-    }
-
-    /// The registered process whose identifier is `pid` and its stop
-    /// policy, for tests; nil when none is registered.
-    func registered(_ pid: pid_t) -> Registered? {
-        lock.lock()
-        defer { lock.unlock() }
-        return processes.values.first { $0.process.processIdentifier == pid }
     }
 
     /// Registers `url`, a temporary file or directory about to be made.
