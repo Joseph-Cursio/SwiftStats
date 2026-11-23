@@ -148,7 +148,8 @@ enum StoreRowSamples {
             ),
             clones: try clones(),
             laws: try laws(),
-            coverage: nil
+            coverage: nil,
+            mutation: nil
         )
     }
 }

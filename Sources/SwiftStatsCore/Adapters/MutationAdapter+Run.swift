@@ -5,7 +5,8 @@
 //  A SwiftMutator run as the collector records it (M6, design §1.5 and
 //  §1.8): the step's outcome becomes the status, whose version and
 //  identity come from the results file's header, whose options add the
-//  header's facts to the settings known before the run, and whose reason
+//  header's facts to the settings known before the run (and, for a run
+//  that ran, the rule its mutants are mapped by), and whose reason
 //  joins the exit's own words with the notes a run that ran carries.
 //
 
@@ -15,6 +16,10 @@ extension MutationAdapter {
     /// The note on results that don't list the mutants of code no test ran.
     static let notCoveredUnlistedNote = "results don't list mutants in code no test ran (a SwiftMutator build before "
         + "13f96a46), so genuinely under-tested is left out and functions no test ran aren't judged"
+
+    /// The last option of a run that ran: the rule its mutants are mapped
+    /// by, which a carry checks.
+    static let mapOption = "map: " + MutationMapper.rule
 
     /// Runs SwiftMutator as `job` says and records how it went.
     static func run(_ job: MutationJob) -> MutationRun {
@@ -28,24 +33,7 @@ extension MutationAdapter {
         }
         switch result {
         case .failure(let failure):
-            return MutationRun(
-                status: CollectorStatus(
-                    name: name,
-                    state: .failed,
-                    version: nil,
-                    reason: failure.description,
-                    options: known
-                ),
-                executable: job.mutator,
-                identity: nil,
-                milliseconds: milliseconds,
-                results: nil,
-                suspects: .unjudged,
-                resultsFile: nil,
-                warmBuildMilliseconds: nil,
-                mutatorMilliseconds: nil,
-                warnings: []
-            )
+            return failed(failure, job: job, options: known, milliseconds: milliseconds)
 
         case .success(let outcome):
             let notes = reasonNotes(outcome)
@@ -56,18 +44,49 @@ extension MutationAdapter {
                     version: outcome.results?.facts.version,
                     reason: notes.isEmpty ? nil : notes.joined(separator: "; "),
                     options: known + (outcome.results.map { options(of: $0.facts) } ?? [])
+                        + (outcome.exit.state == .ran ? [mapOption] : [])
                 ),
                 executable: job.mutator,
                 identity: outcome.results.flatMap { identity(of: $0.facts) },
                 milliseconds: milliseconds,
                 results: outcome.exit.state == .ran ? outcome.results : nil,
                 suspects: outcome.suspects,
+                git: job.git,
                 resultsFile: outcome.resultsFile,
                 warmBuildMilliseconds: outcome.warmBuildMilliseconds,
                 mutatorMilliseconds: outcome.mutatorMilliseconds,
                 warnings: outcome.warnings
             )
         }
+    }
+
+    /// The run of `job` that failed with `failure` after `milliseconds`, its
+    /// settings giving `options`.
+    static func failed(
+        _ failure: MutationFailure,
+        job: MutationJob,
+        options: [String],
+        milliseconds: Int
+    ) -> MutationRun {
+        MutationRun(
+            status: CollectorStatus(
+                name: name,
+                state: .failed,
+                version: nil,
+                reason: failure.description,
+                options: options
+            ),
+            executable: job.mutator,
+            identity: nil,
+            milliseconds: milliseconds,
+            results: nil,
+            suspects: .unjudged,
+            git: job.git,
+            resultsFile: nil,
+            warmBuildMilliseconds: nil,
+            mutatorMilliseconds: nil,
+            warnings: []
+        )
     }
 
     /// The parts of the reason of a run that ended as `outcome` says: the

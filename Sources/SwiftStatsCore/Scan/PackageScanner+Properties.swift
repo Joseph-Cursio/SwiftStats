@@ -52,6 +52,10 @@ extension PackageScanner {
         let coverageWarnings: [ScanWarning]
         /// The SwiftMutator run, or its skip.
         let mutation: MutationRun
+        /// Its results, mapped to records; nil unless it ran with results.
+        let mutationReport: MutationReport?
+        /// Problems mapping the mutants.
+        let mutationWarnings: [ScanWarning]
 
         /// Each external collector's result.
         var adapters: [AdapterResult] {
@@ -60,7 +64,7 @@ extension PackageScanner {
 
         /// The problems the external collectors reported.
         var warnings: [ScanWarning] {
-            adapters.flatMap(\.warnings) + joinWarnings + coverageWarnings
+            adapters.flatMap(\.warnings) + joinWarnings + coverageWarnings + mutationWarnings
         }
     }
 
@@ -132,7 +136,8 @@ extension PackageScanner {
     /// `targets` of the package at `root`, waits for it and for `pending`,
     /// SwiftInferProperties' and the coverage collector's runs, then runs
     /// the SwiftMutator collector alone, and attaches the classes, the
-    /// suggestions, the coverage and every finding to `measured`'s records.
+    /// suggestions, the coverage, the mutants and every finding to
+    /// `measured`'s records.
     func externalRuns(
         root: URL,
         targets: [TargetSummary],
@@ -166,6 +171,12 @@ extension PackageScanner {
             configuration: configuration,
             root: root
         )
+        let mappedMutation = Self.mutation(
+            of: mutation,
+            measured: measured,
+            targets: targets,
+            configuration: configuration
+        )
         return ExternalScan(
             timed: adapters + [run?.timed, cloneRun?.timed, coverage.timed, mutation.timed].compactMap(\.self),
             findings: findings,
@@ -175,7 +186,9 @@ extension PackageScanner {
             clones: cloneRun.flatMap { Self.clones(of: $0, measured: measured) },
             coverage: mapped.report,
             coverageWarnings: mapped.warnings,
-            mutation: mutation
+            mutation: mutation,
+            mutationReport: mappedMutation.report,
+            mutationWarnings: mappedMutation.warnings
         )
     }
 }

@@ -20,6 +20,20 @@ enum KillListCompleteness: String, Sendable {
     /// No list was recorded.
     case notRecorded
 
+    /// The flag the scan JSON writes for it: true, false, or none.
+    var flag: JSONFlag? {
+        switch self {
+        case .complete:
+            JSONFlag(true)
+
+        case .incomplete:
+            JSONFlag(false)
+
+        case .notRecorded:
+            nil
+        }
+    }
+
     /// The completeness of a line's list `killedBy`, not recorded when the
     /// line has no `killedBy` (`listed` false), for a run that ended by
     /// `endedBy` with `failedTestCount`.

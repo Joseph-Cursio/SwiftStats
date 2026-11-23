@@ -97,7 +97,7 @@ struct SuspectReport: Equatable, Sendable {
     static let failuresAlonePerExemption = 4
 
     /// A report that judged nothing: every flag unjudged.
-    static let unjudged = Self(flagged: [], suspectsChecked: false, suspectTests: [], unreadableKeys: 0)
+    static let unjudged = Self(flagged: [], suspectsChecked: false, suspectTests: [], unreadableKeys: 0, read: false)
 
     /// The keys flagged suspect-only.
     let flagged: Set<MutantKey>
@@ -108,6 +108,9 @@ struct SuspectReport: Equatable, Sendable {
     let suspectTests: [SuspectTest]
     /// How many entries had a key that didn't read.
     let unreadableKeys: Int
+    /// Whether a report was read; false for one that wasn't run, failed or
+    /// didn't decode, which judged nothing.
+    let read: Bool
 
     /// The report in `data`; a `MutationFailure` when it doesn't decode.
     static func decode(_ data: Data) throws(MutationFailure) -> Self {
@@ -146,7 +149,8 @@ struct SuspectReport: Equatable, Sendable {
             flagged: flaggedKeys,
             suspectsChecked: summary?.suspectsChecked == true,
             suspectTests: suspects.sorted { ($0.name, $0.file ?? "") < ($1.name, $1.file ?? "") },
-            unreadableKeys: unreadable
+            unreadableKeys: unreadable,
+            read: true
         )
     }
 

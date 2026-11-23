@@ -25,6 +25,9 @@ struct MutationRun: Sendable {
     /// What `swift-mutator report` judged of them; every kill unjudged
     /// when it wasn't run or failed.
     let suspects: SuspectReport
+    /// The package's git state the run's copy checked out; nil when the
+    /// collector was skipped.
+    let git: GitState?
     /// Where the results file was kept, relative to the package root
     /// (`.swiftstats/mutation/runs/<id>/results.jsonl`); nil without
     /// results.
@@ -55,6 +58,7 @@ struct MutationRun: Sendable {
             milliseconds: 0,
             results: nil,
             suspects: .unjudged,
+            git: nil,
             resultsFile: nil,
             warmBuildMilliseconds: nil,
             mutatorMilliseconds: nil,

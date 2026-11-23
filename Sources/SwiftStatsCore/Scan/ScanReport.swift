@@ -20,7 +20,7 @@ public struct ScanReport: Codable, Hashable, Sendable {
     /// coverage collector, its coverage mapped to records and rolled up,
     /// and each record's access level and owning type (M5); 8 adds each
     /// file's SHA-256 and the SwiftMutator collector, whose status every
-    /// scan lists (M6).
+    /// scan lists and whose results are mapped to records (M6).
     public static let currentSchemaVersion = 8
 
     /// The output format version (`currentSchemaVersion` when written).
@@ -69,6 +69,9 @@ public struct ScanReport: Codable, Hashable, Sendable {
     /// The coverage collector's results, mapped to records; absent when it
     /// didn't run (M5, PRD §7.8).
     public let coverage: CoverageReport?
+    /// The SwiftMutator collector's results, mapped to records; absent when
+    /// it didn't run or left no results (M6, design §3).
+    public let mutation: MutationReport?
     /// What the history collector found; absent when it didn't run (PRD §7.13).
     public internal(set) var history: HistoryReport?
 
@@ -125,7 +128,8 @@ public struct ScanReport: Codable, Hashable, Sendable {
             properties: properties,
             clones: clones,
             laws: laws,
-            coverage: coverage
+            coverage: coverage,
+            mutation: mutation
         )
     }
 }

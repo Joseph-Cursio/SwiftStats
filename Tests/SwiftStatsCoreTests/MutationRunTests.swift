@@ -13,8 +13,8 @@ struct MutationRunTests {
     static let recordedBuild = "5138cbf1b810b127accddd8d4973bb2675195797cbae9b734bd09c0ae5a35ba8"
 
     @Test("""
-        a full run that ran takes its version, identity and options from the results file's header, keeps the \
-        results and report in runs/<id>/, removes the copy and keeps the build
+        a full run that ran takes its version, identity and options from the results file's header, ends its \
+        options with the map rule, keeps the results and report in runs/<id>/, removes the copy and keeps the build
         """)
     func ranFull() throws {
         let scenario = try FakeMutator.recorded("full")
@@ -38,7 +38,8 @@ struct MutationRunTests {
             "operators: ChangeArithmeticOperator, ChangeLogicalConnector, FlipBooleanLiteral, NegateConditional, "
                 + "RelationalBoundary, RelationalOperatorReplacement, RemoveSideEffects, ReplaceBooleanValue, "
                 + "ReplaceReturnValue, SwapTernary",
-            "coverage: on"
+            "coverage: on",
+            "map: " + MutationMapper.rule
         ])
         let results = try #require(run.results)
         #expect(results.complete)

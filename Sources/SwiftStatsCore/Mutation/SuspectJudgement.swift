@@ -17,4 +17,18 @@ enum SuspectJudgement: String, Sendable {
     /// Not judged: suspects weren't checked, the report gave no summary,
     /// or the mutant isn't a kill by a failed test.
     case unjudged
+
+    /// The flag the scan JSON writes for it: true, false, or none.
+    var flag: JSONFlag? {
+        switch self {
+        case .suspectOnly:
+            JSONFlag(true)
+
+        case .notSuspectOnly:
+            JSONFlag(false)
+
+        case .unjudged:
+            nil
+        }
+    }
 }

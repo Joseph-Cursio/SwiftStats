@@ -17,6 +17,20 @@ enum MutantActivation: String, Sendable {
     /// The line doesn't say.
     case unknown
 
+    /// The flag the scan JSON writes for it: true, false, or none.
+    var flag: JSONFlag? {
+        switch self {
+        case .ran:
+            JSONFlag(true)
+
+        case .notRan:
+            JSONFlag(false)
+
+        case .unknown:
+            nil
+        }
+    }
+
     /// The activation a line's `activated` flag gives; `.unknown` when it
     /// has none.
     init(_ flag: JSONFlag?) {

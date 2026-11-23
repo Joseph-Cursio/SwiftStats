@@ -27,6 +27,10 @@ struct PackageFileClassifier {
         let isTest: Bool
     }
 
+    /// Why a production file the configuration excludes is unmapped.
+    static let excludedReason = "excluded"
+    /// Why a production file the scan didn't parse otherwise is unmapped.
+    static let notParsedReason = "not parsed"
     /// The root-relative directory a package's own build lands in.
     private static let packageBuild = ".build/"
     /// What a path relative to the root may start with.
@@ -93,6 +97,7 @@ struct PackageFileClassifier {
             return .kept(path: path, module: target.name)
         }
         let isExcluded = excluded.contains { $0.matches(path) }
-        return .unmapped(path: path, module: target.name, reason: isExcluded ? "excluded" : "not parsed")
+        let reason = isExcluded ? Self.excludedReason : Self.notParsedReason
+        return .unmapped(path: path, module: target.name, reason: reason)
     }
 }

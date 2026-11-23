@@ -6,10 +6,11 @@
 //  `outcome`, `activated`, `endedBy` and `leftOutWithOthers`, or, for an
 //  entry of the last header's `mutantsNotCovered` with no line of its own,
 //  `notCovered`: code no test ran, of which SwiftMutator made no mutant.
+//  The scan JSON and the store write it by name.
 //
 
 /// What became of a mutant.
-enum MutationVerdict: String, CaseIterable, Sendable {
+public enum MutationVerdict: String, CaseIterable, Sendable {
     /// Not built: it didn't compile, or was taken out of the build.
     case buildError
     /// A test failed, or a test process crashed.
