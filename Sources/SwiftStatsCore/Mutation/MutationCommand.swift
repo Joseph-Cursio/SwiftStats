@@ -11,7 +11,11 @@
 //  run, and `swift-mutator report -f json` on its results file. After the
 //  run, the results file is found through SwiftMutator's log folder beside
 //  the project, which holds one run folder since the copy is new, and is
-//  checked against the last `💾 … in <path>` line SwiftMutator printed.
+//  checked against the last `💾 … in <path>` line SwiftMutator printed. A
+//  resumed run (`--resume <file>`) appends to the file it continues, in
+//  the first session's run folder, and keeps its logs in a run folder of
+//  its own, which holds a results file only when the resume stopped
+//  before its first mutant: then that file's `stopped` line says why.
 //  Reasons name the copy, its folder, the package and SwiftMutator's run
 //  folder by placeholders. An interruption stops SwiftMutator's commands
 //  by its own policy (SIGTERM, 35 seconds, SIGKILL; design §1.6) and the
@@ -98,16 +102,45 @@ struct MutationCommand {
 
     /// SwiftMutator's log folder, beside the project.
     var logFolder: URL {
-        copy.project.deletingLastPathComponent().appendingPathComponent(copy.project.lastPathComponent + "_muter_logs")
+        Self.logFolder(of: copy.project)
     }
 
     /// The run folders in SwiftMutator's log folder, sorted by name; none
     /// before it runs.
     var runFolders: [URL] {
-        ((try? FileManager.default.contentsOfDirectory(atPath: logFolder.path)) ?? [])
+        Self.runFolders(in: logFolder)
+    }
+
+    /// SwiftMutator's log folder for the project at `project`, beside it.
+    static func logFolder(of project: URL) -> URL {
+        project.deletingLastPathComponent().appendingPathComponent(project.lastPathComponent + "_muter_logs")
+    }
+
+    /// The run folders in the log folder `folder`, sorted by name; none
+    /// when it doesn't exist.
+    static func runFolders(in folder: URL) -> [URL] {
+        ((try? FileManager.default.contentsOfDirectory(atPath: folder.path)) ?? [])
             .sorted()
-            .map(logFolder.appendingPathComponent)
+            .map(folder.appendingPathComponent)
             .filter(FileClone.isDirectory)
+    }
+
+    /// The results files in the run folder `folder`, sorted by name.
+    static func resultsFiles(in folder: URL) -> [URL] {
+        ((try? FileManager.default.contentsOfDirectory(atPath: folder.path)) ?? [])
+            .filter { $0.hasPrefix(resultsPrefix) && $0.hasSuffix("." + resultsExtension) }
+            .sorted()
+            .map(folder.appendingPathComponent)
+    }
+
+    /// The one results file a run left in the log folder `folder`: nil
+    /// unless it holds one run folder holding one results file.
+    static func onlyResultsFile(in folder: URL) -> URL? {
+        let folders = runFolders(in: folder)
+        guard folders.count == 1, let files = folders.first.map(resultsFiles(in:)), files.count == 1 else {
+            return nil
+        }
+        return files.first
     }
 
     /// `run`'s arguments: the configuration written outside the copy, no
@@ -187,31 +220,38 @@ struct MutationCommand {
     /// The results file the run that printed `output` left, after checking
     /// the log folder against the path it printed; nil when it left none.
     func resultsFile(output: String) throws(MutationFailure) -> URL? {
-        let manager = FileManager.default
         let folders = runFolders
         guard folders.count <= 1 else {
             throw MutationFailure(description: "SwiftMutator's log folder holds \(folders.count) run folders, not one")
         }
-        let files = folders.flatMap { folder in
-            ((try? manager.contentsOfDirectory(atPath: folder.path)) ?? [])
-                .filter { $0.hasPrefix(Self.resultsPrefix) && $0.hasSuffix("." + Self.resultsExtension) }
-                .map(folder.appendingPathComponent)
-        }
+        let files = folders.flatMap(Self.resultsFiles(in:))
         guard files.count <= 1 else {
             throw MutationFailure(description: "SwiftMutator's run folder holds \(files.count) results files, not one")
         }
         let found = files.first
         if let saved = Self.savedPath(in: output) {
-            guard let found, let foundPath = Self.realPath(found),
-                  Self.realPath(URL(fileURLWithPath: saved)) == foundPath else {
-                let held = found.map { redacted($0.path) } ?? "none"
-                throw MutationFailure(
-                    description: "SwiftMutator named its results file \(redacted(saved)), "
-                        + "but its log folder holds \(held)"
-                )
-            }
+            try check(saved, against: found, held: "its log folder holds")
         }
         return found
+    }
+
+    /// The file to read after a resume of `resumed` that printed `output`,
+    /// when the log folder held the run folders `before` as it started:
+    /// the results file of a run folder the resume made, which only one
+    /// that stopped before its first mutant writes, else `resumed`, which
+    /// any path it printed must name.
+    func resumedResultsFile(output: String, resuming resumed: URL, before: [URL]) throws(MutationFailure) -> URL {
+        let earlier = Set(before.map(\.path))
+        let stopped = runFolders.filter { earlier.contains($0.path) == false }.flatMap(Self.resultsFiles(in:))
+        guard stopped.count <= 1 else {
+            throw MutationFailure(
+                description: "SwiftMutator's resumed session left \(stopped.count) results files, not one"
+            )
+        }
+        if let saved = Self.savedPath(in: output) {
+            try check(saved, against: resumed, held: "the run it resumed keeps")
+        }
+        return stopped.first ?? resumed
     }
 
     /// `swift-mutator report -f json` of `results`: the report's bytes and
@@ -231,6 +271,18 @@ struct MutationCommand {
             return Self.unjudged("swift-mutator report's JSON doesn't read")
         }
         return Report(data: data, suspects: suspects, warning: nil)
+    }
+
+    /// Fails unless `saved`, a path SwiftMutator printed, names `found`
+    /// (`held` says where that is) by its real path.
+    private func check(_ saved: String, against found: URL?, held: String) throws(MutationFailure) {
+        guard let found, let foundPath = Self.realPath(found),
+              Self.realPath(URL(fileURLWithPath: saved)) == foundPath else {
+            let named = found.map { redacted($0.path) } ?? "none"
+            throw MutationFailure(
+                description: "SwiftMutator named its results file \(redacted(saved)), but \(held) \(named)"
+            )
+        }
     }
 
     /// `text` with the copy, its folder, the package and the tools

@@ -30,8 +30,9 @@ struct ScanCommand: ParsableCommand {
         may add --skip <regex> pairs to its test command, and collectors.swiftmutator.options sets workers and \
         timeout; its test command is the swift the coverage collector uses, and its output goes to \
         .swiftstats/mutation/swift-mutator.log. --since <rev> retests only the files changed since that commit's \
-        snapshot and keeps its results for the rest; --resume continues an interrupted or failed run; \
-        --drop-mutation replaces a snapshot without mutation results it can't keep.
+        snapshot and keeps its results for the rest; --resume continues an interrupted or failed run in its \
+        kept copy while the tree and settings are those it started with, and a scan --mutation without it \
+        discards that run; --drop-mutation replaces a snapshot without mutation results it can't keep.
         """
     )
 

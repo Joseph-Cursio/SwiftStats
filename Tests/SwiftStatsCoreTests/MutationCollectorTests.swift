@@ -138,7 +138,10 @@ struct MutationCollectorTests {
         #expect(storedRun == askedRun)
     }
 
-    @Test("scan --mutation --since and --resume are refused before anything is scanned or stored, until built")
+    @Test("""
+        scan --mutation --since is refused until built, and --resume with no run pending, before anything is \
+        scanned or stored
+        """)
     func sinceAndResumeRefused() throws {
         let (package, workspace) = try Self.workspace([:])
         defer { package.remove() }
@@ -150,7 +153,7 @@ struct MutationCollectorTests {
         )
 
         let since = ScanError.mutationRefused("--since is not built yet; run scan --mutation for a full run")
-        let resume = ScanError.mutationRefused("--resume is not built yet; run scan --mutation for a full run")
+        let resume = ScanError.mutationRefused("no interrupted or failed SwiftMutator run to resume")
         #expect(throws: since) {
             try workspace.scanWorkingTree(tiers: RequestedTiers(mutation: .since("HEAD~1")))
         }

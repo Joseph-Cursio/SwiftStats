@@ -74,8 +74,10 @@ public struct SnapshotWorkspace {
     /// Scans the working tree, reading history from `history` and running
     /// the coverage and SwiftMutator collectors when `tiers` asks for them,
     /// stores the snapshot as `save(_:drop:)` does and returns what it
-    /// stored with its id. `--since` and `--resume` are refused before
-    /// anything runs (`ScanError.mutationRefused`) until they are built.
+    /// stored with its id. `--resume` is refused before anything runs
+    /// (`ScanError.mutationRefused`) when no run is pending, or when the
+    /// tree, the settings, the copy or the results file don't let it go on
+    /// (`MutationResume`); `--since` is refused until it is built.
     public func scanWorkingTree(
         history: HistorySource = .automatic,
         tiers: RequestedTiers = .syntaxOnly,
@@ -86,7 +88,14 @@ public struct SnapshotWorkspace {
             throw ScanError.mutationRefused(MutationAdapter.sinceNotBuiltReason)
 
         case .resume:
-            throw ScanError.mutationRefused(MutationAdapter.resumeNotBuiltReason)
+            if let reason = MutationResume.refusal(
+                root: root,
+                configuration: configuration,
+                locator: scanner.scanner.tools,
+                ignoring: storeInPackage
+            ) {
+                throw ScanError.mutationRefused(reason)
+            }
 
         case .full, nil:
             break

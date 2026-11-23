@@ -3,7 +3,8 @@
 //  SwiftStatsCore
 //
 //  Everything one SwiftMutator run of a package is given (M6, design §1):
-//  the tools, the package and its git state, the scan's hash of each file
+//  the run asked for (a full run, or the resume of a pending one), the
+//  tools, the package and its git state, the scan's hash of each file
 //  it parsed, which the copy is checked against, the files the copy leaves
 //  out, and `collectors.swiftmutator`'s settings.
 //
@@ -12,6 +13,8 @@ import Foundation
 
 /// One SwiftMutator run's inputs.
 struct MutationJob {
+    /// Which run: a full run, or the resume of the pending one.
+    let request: MutationRequest
     /// The `swift-mutator` to run.
     let mutator: URL
     /// The `swift` of the test command and the warm build, by the
@@ -28,4 +31,9 @@ struct MutationJob {
     let ignoring: [String]
     /// `collectors.swiftmutator`; nil when `.swiftstats.yml` has none.
     let settings: CollectorSettings?
+
+    /// The effective settings a pending run records and a resume compares.
+    var pendingSettings: PendingMutationRun.Settings {
+        PendingMutationRun.Settings(mutator: mutator, swift: swift, settings: settings)
+    }
 }

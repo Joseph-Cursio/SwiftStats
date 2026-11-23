@@ -10,7 +10,11 @@
 //  keep the results file and the report in `runs/<id>/` (the first 16 hex
 //  digits of the file's SHA-256). Then the copy ends, its build going back
 //  to `build-cache/`, unless the run failed with a results file a resume
-//  can continue, whose copy stays for it.
+//  can continue, whose copy stays for it. `pending.json` (design §1.7) is
+//  written just before SwiftMutator starts, so an interrupted scan leaves
+//  it, then names the results file of a run a resume can continue, or is
+//  removed. A run discards a pending run it finds, with a warning; a
+//  resume continues it instead.
 //
 
 import Foundation
@@ -32,8 +36,9 @@ struct MutationSession {
         /// How many scanned files the copy took from the package because
         /// git checked them out with other bytes.
         let fixedFiles: Int
-        /// How long the warm build took.
-        let warmBuildMilliseconds: Int
+        /// How long the warm build took; nil for a resume, which builds
+        /// nothing before SwiftMutator.
+        let warmBuildMilliseconds: Int?
         /// How long SwiftMutator's run took.
         let mutatorMilliseconds: Int
         /// Problems worth reporting that didn't fail the run.
@@ -41,6 +46,11 @@ struct MutationSession {
 
         /// The outcome with `warning` added.
         func adding(_ warning: ScanWarning) -> Self {
+            adding([warning])
+        }
+
+        /// The outcome with `added` warnings added after its own.
+        func adding(_ added: [ScanWarning]) -> Self {
             Self(
                 exit: exit,
                 results: results,
@@ -49,7 +59,21 @@ struct MutationSession {
                 fixedFiles: fixedFiles,
                 warmBuildMilliseconds: warmBuildMilliseconds,
                 mutatorMilliseconds: mutatorMilliseconds,
-                warnings: warnings + [warning]
+                warnings: warnings + added
+            )
+        }
+
+        /// The outcome ending as `ended` instead.
+        func ending(_ ended: MutationExit) -> Self {
+            Self(
+                exit: ended,
+                results: results,
+                suspects: suspects,
+                resultsFile: resultsFile,
+                fixedFiles: fixedFiles,
+                warmBuildMilliseconds: warmBuildMilliseconds,
+                mutatorMilliseconds: mutatorMilliseconds,
+                warnings: warnings
             )
         }
     }
@@ -79,7 +103,7 @@ struct MutationSession {
     }
 
     /// What `file`, a results file or nil, holds, with its bytes.
-    private static func read(_ file: URL?) -> (Data?, MutationExit.Output) {
+    static func read(_ file: URL?) -> (Data?, MutationExit.Output) {
         guard let file else {
             return (nil, .noFile)
         }
@@ -100,13 +124,17 @@ struct MutationSession {
     }
 
     /// A scan warning, from the collector, saying `text`.
-    private static func warning(_ text: String) -> ScanWarning {
+    static func warning(_ text: String) -> ScanWarning {
         ScanWarning(file: nil, message: "\(MutationAdapter.name): \(text)")
     }
 
     /// The step, with the lock held.
     private func locked() throws(MutationFailure) -> Outcome {
         let log = try MutationLog.started(at: directory.log)
+        if case .resume = job.request {
+            return try resumed(log: log)
+        }
+        let discarded = try discardPending()
         try MutationWorkCopy.recoverLeftover(packageRoot: job.root, git: job.git, in: directory)
         let copy = try MutationWorkCopy.make(
             packageRoot: job.root,
@@ -127,35 +155,74 @@ struct MutationSession {
         do {
             outcome = try tested(with: command)
         } catch {
+            try? PendingMutationRun.remove(in: directory)
             try? copy.finish(in: directory)
             throw error
         }
-        guard outcome.exit.resumable == false else {
-            return outcome
-        }
-        do {
-            try copy.finish(in: directory)
-        } catch {
-            return outcome.adding(Self.warning(error.description))
-        }
-        return outcome
+        return ended(outcome.adding(discarded), copy: copy)
     }
 
-    /// Writes the configuration, warms the build, runs SwiftMutator with
-    /// `command` and reads what it left.
+    /// Removes a pending run, which a run that isn't its resume replaces:
+    /// a warning saying so when there was one.
+    private func discardPending() throws(MutationFailure) -> [ScanWarning] {
+        let started: String
+        do {
+            guard let pending = try PendingMutationRun.read(in: directory) else {
+                return []
+            }
+            started = "of \(pending.startedAt)"
+        } catch {
+            started = "whose \(MutationDirectory.pendingName) doesn't read"
+        }
+        try PendingMutationRun.remove(in: directory)
+        return [Self.warning("discarding the interrupted run \(started)")]
+    }
+
+    /// Writes the configuration, warms the build, records the pending run,
+    /// runs SwiftMutator with `command` and reads what it left.
     private func tested(with command: MutationCommand) throws(MutationFailure) -> Outcome {
         let settings = job.settings
         let configuration = directory.configuration
         try MutationConfigFile.write(swift: job.swift, arguments: settings?.arguments ?? [], to: configuration)
         let build = try command.warmBuild()
-        let finished = try command.run(
-            MutationCommand.runArguments(
-                configuration: configuration,
-                workers: settings?.workers,
-                timeout: settings?.timeout
-            )
+        let arguments = MutationCommand.runArguments(
+            configuration: configuration,
+            workers: settings?.workers,
+            timeout: settings?.timeout
         )
+        let pending = PendingMutationRun(
+            startedAt: Date().formatted(PendingMutationRun.dateFormat),
+            commit: job.git.commit,
+            dirtyHash: job.git.dirtyHash,
+            packagePath: job.git.packagePath,
+            mode: .full,
+            base: nil,
+            resultsFile: nil,
+            project: MutationResume.path(of: command.copy.project, inside: command.copy.work) ?? "",
+            command: arguments,
+            settings: job.pendingSettings,
+            copyFixed: command.copy.fixedFiles,
+            ignoring: job.ignoring,
+            scanned: job.scanned
+        )
+        try pending.write(in: directory)
+        let finished = try command.run(arguments)
         let file = try command.resultsFile(output: finished.output)
+        let outcome = try judged(finished, file: file, command: command, warmBuild: build)
+        try record(pending, after: outcome, file: file, work: command.copy.work)
+        return outcome
+    }
+
+    /// Reads `file`, what the run that ended as `finished` left (nil when
+    /// it left none), judges how it ended, and for a run that ran, judges
+    /// its kills with `swift-mutator report` and keeps both files; the
+    /// warm build took `build` milliseconds, nil when there was none.
+    func judged(
+        _ finished: MutationCommand.Finished,
+        file: URL?,
+        command: MutationCommand,
+        warmBuild build: Int?
+    ) throws(MutationFailure) -> Outcome {
         let (data, contents) = Self.read(file)
         let exit = MutationExit.judge(
             finished.termination,
@@ -189,6 +256,37 @@ struct MutationSession {
             mutatorMilliseconds: finished.milliseconds,
             warnings: warnings
         )
+    }
+
+    /// Records `pending` after its run ended as `outcome` with `file`, its
+    /// results file (nil when it left none) in the copy's folder `work`:
+    /// naming the file when a resume can continue the run, else removing
+    /// the record.
+    func record(
+        _ pending: PendingMutationRun,
+        after outcome: Outcome,
+        file: URL?,
+        work: URL
+    ) throws(MutationFailure) {
+        guard outcome.exit.resumable, let file, let path = MutationResume.path(of: file, inside: work) else {
+            try PendingMutationRun.remove(in: directory)
+            return
+        }
+        try pending.naming(resultsFile: path).write(in: directory)
+    }
+
+    /// `outcome`, after ending `copy` unless a resume can continue its
+    /// run; a failure to end it becomes a warning.
+    func ended(_ outcome: Outcome, copy: MutationWorkCopy) -> Outcome {
+        guard outcome.exit.resumable == false else {
+            return outcome
+        }
+        do {
+            try copy.finish(in: directory)
+        } catch {
+            return outcome.adding(Self.warning(error.description))
+        }
+        return outcome
     }
 
     /// Keeps `results`, a results file's bytes whose SHA-256 is `sha256`,

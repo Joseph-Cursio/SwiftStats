@@ -130,8 +130,9 @@ enum CollectorRun {
     /// once every other collector has finished, as `scope` asks:
     /// `collectors.swiftmutator` names the `swift-mutator` it runs and the
     /// coverage collector's `swift` is its test command's; `measured`'s
-    /// files are what its copy is checked against. `--since` and
-    /// `--resume` are skipped until they are built.
+    /// files are what its copy is checked against. A resume continues the
+    /// pending run in its kept copy; `--since` is skipped until it is
+    /// built.
     static func runMutation(
         root: URL,
         configuration: SwiftStatsConfiguration,
@@ -139,46 +140,28 @@ enum CollectorRun {
         scope: MutationScope,
         measured: [FileRecord]
     ) -> MutationRun {
-        let executable: URL
-        switch ToolResolution.resolve(
-            MutationAdapter.name,
-            executable: MutationAdapter.executableName,
-            configuration: configuration,
-            locator: locator,
-            root: root
-        ) {
-        case .found(let found):
-            executable = found
+        let (mutator, swift): (URL, URL)
+        switch MutationTools.resolve(root: root, configuration: configuration, locator: locator) {
+        case let .found(found, test):
+            mutator = found
+            swift = test
 
         case .skip(let reason):
             return MutationRun.skipped(reason)
         }
-        let swift: URL
-        switch MutationAdapter.testSwift(configuration: configuration, locator: locator, root: root) {
-        case .found(let found):
-            swift = found
-
-        case .skip(let reason):
-            return MutationRun.skipped(reason)
-        }
-        switch scope.request {
-        case .since:
+        if case .since = scope.request {
             return MutationRun.skipped(MutationAdapter.sinceNotBuiltReason)
-
-        case .resume:
-            return MutationRun.skipped(MutationAdapter.resumeNotBuiltReason)
-
-        case .full:
-            return MutationAdapter.run(MutationJob(
-                mutator: executable,
-                swift: swift,
-                root: root,
-                git: scope.git ?? GitReader.read(packageRoot: root, ignoring: scope.ignoring),
-                scanned: Dictionary(measured.map { ($0.path, $0.sha256) }) { first, _ in first },
-                ignoring: scope.ignoring,
-                settings: configuration.collectors[MutationAdapter.name]
-            ))
         }
+        return MutationAdapter.run(MutationJob(
+            request: scope.request,
+            mutator: mutator,
+            swift: swift,
+            root: root,
+            git: scope.git ?? GitReader.read(packageRoot: root, ignoring: scope.ignoring),
+            scanned: Dictionary(measured.map { ($0.path, $0.sha256) }) { first, _ in first },
+            ignoring: scope.ignoring,
+            settings: configuration.collectors[MutationAdapter.name]
+        ))
     }
 
     /// Every external collector skipped for `reason`.

@@ -40,6 +40,11 @@ struct MutationRunHarness {
         Self.realPath(package.root) + "/.swiftstats/mutation/work/" + package.root.lastPathComponent
     }
 
+    /// The pending run's record, `pending.json`; nil when there is none.
+    var pending: PendingMutationRun? {
+        try? PendingMutationRun.read(in: MutationDirectory(lookingIn: package.root))
+    }
+
     /// A package and tools acting out `scenario`, its `.swiftstats.yml`
     /// pointing the collector at the tools.
     init(_ scenario: FakeMutator.Scenario) throws {
@@ -65,18 +70,42 @@ struct MutationRunHarness {
 
     /// Runs the collector with settings pointing at the fake tools.
     func run() -> MutationRun {
-        run(settings: CollectorSettings(enabled: true, path: fake.mutator.path))
+        run(.full)
+    }
+
+    /// Makes `request` with settings pointing at the fake tools.
+    func run(_ request: MutationRequest) -> MutationRun {
+        run(request, settings: CollectorSettings(enabled: true, path: fake.mutator.path))
     }
 
     /// Runs the collector with `settings`, as a full run of the package
     /// checked against its source's hash.
     func run(settings: CollectorSettings) -> MutationRun {
+        run(.full, settings: settings)
+    }
+
+    /// Makes `request` with `settings`, the package checked against its
+    /// source's hash.
+    func run(_ request: MutationRequest, settings: CollectorSettings) -> MutationRun {
+        run(request, settings: settings, scanned: [Self.sourcePath: ContentHash.sha256(Data(Self.source.utf8))])
+    }
+
+    /// Makes `request` with settings pointing at the fake tools, as after
+    /// a scan that parsed `scanned` (hashes by path from the package root).
+    func run(_ request: MutationRequest, scanned: [String: String]) -> MutationRun {
+        run(request, settings: CollectorSettings(enabled: true, path: fake.mutator.path), scanned: scanned)
+    }
+
+    /// Makes `request` with `settings`, as after a scan that parsed
+    /// `scanned`.
+    func run(_ request: MutationRequest, settings: CollectorSettings, scanned: [String: String]) -> MutationRun {
         MutationAdapter.run(MutationJob(
+            request: request,
             mutator: fake.mutator,
             swift: fake.swift,
             root: package.root,
             git: .outsideGit,
-            scanned: [Self.sourcePath: ContentHash.sha256(Data(Self.source.utf8))],
+            scanned: scanned,
             ignoring: [],
             settings: settings
         ))

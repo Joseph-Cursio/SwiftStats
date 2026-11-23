@@ -27,9 +27,6 @@ enum MutationAdapter {
     /// Why `scan --mutation --since` is refused while the merge isn't
     /// built (M6 step 6 replaces it).
     static let sinceNotBuiltReason = "--since is not built yet; run scan --mutation for a full run"
-    /// Why `scan --mutation --resume` is refused while resuming isn't
-    /// built (M6 step 3d replaces it).
-    static let resumeNotBuiltReason = "--resume is not built yet; run scan --mutation for a full run"
     /// The first option: how SwiftMutator runs, as the package sees it.
     static let invocation = "swift-mutator run -c .swiftstats/mutation/muter.conf.yml --skip-update-check"
     /// The largest number of seconds written as a whole number.

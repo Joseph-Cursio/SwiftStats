@@ -24,7 +24,17 @@
 //  line, the end line, then waits to be stopped as SwiftMutator does: on
 //  SIGTERM a `trap` appends the end line and raises the signal again
 //  (`trap - TERM; kill -TERM $$`), or exits 143 as SwiftMutator's
-//  fallback; each signal it hears is logged.
+//  fallback; each signal it hears is logged. Given `--resume <file>`
+//  (design §11 step 3d), `run` appends the scenario's appended lines to
+//  that file and leaves a note naming it in a run folder of its own,
+//  `Nov 21, 2026 at 7:40 AM`, as SwiftMutator's resumed session does, or
+//  writes the scenario's results file there instead, as a resume that
+//  stopped before its first mutant writes its `stopped` line; the
+//  interrupt mode doesn't resume. `run` also keeps a copy of
+//  `pending.json` as it was when it started, from the mutation folder two
+//  levels above the project (the harness's packages are outside git, so
+//  the project is `work/<package>`). A test can make the tools act out
+//  another scenario between runs, keeping their paths.
 //
 
 import Foundation
@@ -63,10 +73,20 @@ struct FakeMutator {
         /// When set, `run` writes `results` without its last line, waits
         /// for SIGTERM and ends this way after appending that line.
         var interrupt: Interrupt?
+        /// The lines `run --resume <file>` appends to that file; nil when
+        /// it appends none.
+        var appended: String?
     }
 
     /// The run folder's name the fake writes into.
     static let folder = "Nov 21, 2026 at 7:32 AM"
+    /// The run folder's name a resume writes into.
+    static let resumeFolder = "Nov 21, 2026 at 7:40 AM"
+    /// The files a scenario writes beside the tools.
+    private static let scenarioFiles = [
+        "log.txt", "err.txt", "status", "report-status", "build-status", "build-output.txt", "results.jsonl",
+        "report.json", "signal", "end.jsonl", "interrupt", "appended.jsonl"
+    ]
     /// The words of a `status.txt` line: `run: exit 0`.
     static let statusWords = 3
     /// How often to look whether `run` is waiting, in microseconds.
@@ -115,7 +135,19 @@ struct FakeMutator {
             run)
                 config="$(value -c "$@")"
                 if [ -n "$config" ]; then cp "$config" "$here/muter.conf.yml"; fi
-                if [ -f "$here/results.jsonl" ]; then
+                pending="$(dirname "$(dirname "$root")")/pending.json"
+                rm -f "$here/pending-at-run.json"
+                if [ -f "$pending" ]; then cp "$pending" "$here/pending-at-run.json"; fi
+                resume="$(value --resume "$@")"
+                if [ -n "$resume" ]; then
+                    next="$parent/${name}_muter_logs/\(resumeFolder)"
+                    mkdir -p "$next"
+                    if [ -f "$here/appended.jsonl" ]; then
+                        expand "$here/appended.jsonl" >> "$resume"
+                        printf '%s\n' "$resume" > "$next/resumed session.txt"
+                    fi
+                    if [ -f "$here/results.jsonl" ]; then expand "$here/results.jsonl" > "$next/results.jsonl"; fi
+                elif [ -f "$here/results.jsonl" ]; then
                     mkdir -p "$folder"
                     expand "$here/results.jsonl" > "$folder/results.jsonl"
                 fi
@@ -171,6 +203,12 @@ struct FakeMutator {
         lines("signals")
     }
 
+    /// `pending.json` as it was when the last `run` started; nil when
+    /// there was none.
+    var pendingAtRun: String? {
+        try? String(contentsOf: directory.appendingPathComponent("pending-at-run.json"), encoding: .utf8)
+    }
+
     /// The Mutation fixture's interrupted recording in the interrupt mode:
     /// `run` waits for SIGTERM and ends as `ending` says, rather than
     /// raising the signal itself.
@@ -179,6 +217,18 @@ struct FakeMutator {
         scenario.signal = nil
         scenario.status = 0
         scenario.interrupt = ending
+        return scenario
+    }
+
+    /// The Mutation fixture's resumed recording as a resume acts it out:
+    /// `run --resume` appends the lines the resume added to the
+    /// interrupted run's file, prints the resume's log and exits as it did.
+    static func resuming() throws -> Scenario {
+        var scenario = try recorded("resumed")
+        let earlier = (try recorded("interrupted").results ?? "").split(separator: "\n").count
+        let lines = (scenario.results ?? "").split(separator: "\n", omittingEmptySubsequences: false)
+        scenario.appended = lines.dropFirst(earlier).joined(separator: "\n")
+        scenario.results = nil
         return scenario
     }
 
@@ -229,27 +279,7 @@ struct FakeMutator {
             .appendingPathComponent("FakeMutator-\(UUID().uuidString)")
         try FileManager.default.createDirectory(at: tools, withIntermediateDirectories: true)
         let fake = Self(directory: tools)
-        var files = [
-            "log.txt": scenario.log,
-            "err.txt": scenario.errorText,
-            "status": "\(scenario.status)",
-            "report-status": "\(scenario.reportStatus)",
-            "build-status": "\(scenario.buildStatus)",
-            "build-output.txt": scenario.buildOutput
-        ]
-        files["results.jsonl"] = scenario.results
-        files["report.json"] = scenario.report
-        files["signal"] = scenario.signal.map { "\($0)" }
-        if let ending = scenario.interrupt, let results = scenario.results {
-            var lines = results.split(separator: "\n").map(String.init)
-            let end = lines.popLast() ?? ""
-            files["results.jsonl"] = lines.map { $0 + "\n" }.joined()
-            files["end.jsonl"] = end + "\n"
-            files["interrupt"] = ending == .raising ? "raise" : "exit"
-        }
-        for (name, text) in files {
-            try text.write(to: tools.appendingPathComponent(name), atomically: true, encoding: .utf8)
-        }
+        try fake.act(scenario)
         try fake.script("swift-mutator", mutatorScript)
         try fake.script("swift", swiftScript)
         return fake
@@ -293,6 +323,35 @@ struct FakeMutator {
             usleep(Self.pollInterval)
         }
         return lines("pid").first.flatMap { pid_t($0) }
+    }
+
+    /// Makes the tools act out `scenario` from their next call on.
+    func act(_ scenario: Scenario) throws {
+        var files = [
+            "log.txt": scenario.log,
+            "err.txt": scenario.errorText,
+            "status": "\(scenario.status)",
+            "report-status": "\(scenario.reportStatus)",
+            "build-status": "\(scenario.buildStatus)",
+            "build-output.txt": scenario.buildOutput
+        ]
+        files["results.jsonl"] = scenario.results
+        files["report.json"] = scenario.report
+        files["signal"] = scenario.signal.map { "\($0)" }
+        files["appended.jsonl"] = scenario.appended
+        if let ending = scenario.interrupt, let results = scenario.results {
+            var lines = results.split(separator: "\n").map(String.init)
+            let end = lines.popLast() ?? ""
+            files["results.jsonl"] = lines.map { $0 + "\n" }.joined()
+            files["end.jsonl"] = end + "\n"
+            files["interrupt"] = ending == .raising ? "raise" : "exit"
+        }
+        for name in Self.scenarioFiles {
+            try? FileManager.default.removeItem(at: directory.appendingPathComponent(name))
+        }
+        for (name, text) in files {
+            try text.write(to: directory.appendingPathComponent(name), atomically: true, encoding: .utf8)
+        }
     }
 
     /// Removes the tools.

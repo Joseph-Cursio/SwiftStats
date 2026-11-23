@@ -51,6 +51,9 @@ struct MutationExit: Equatable, Sendable {
     static let allBuildErrorsStatus: Int32 = 2
     /// The exit status of a failed baseline: nothing was tested.
     static let baselineStatus: Int32 = 3
+    /// The exit status when SwiftMutator refuses a resume, of a tree or
+    /// settings changed since the run started.
+    static let resumeRefusedStatus: Int32 = 5
     /// The exit status when another SwiftMutator run holds its lock.
     static let lockedStatus: Int32 = 6
     /// What a shell adds to a signal's number when a process exits as if
@@ -182,5 +185,16 @@ struct MutationExit: Equatable, Sendable {
             words += "; failing: " + listed.joined(separator: ", ") + (more > 0 ? " and \(more) more" : "")
         }
         return words + "; " + baselineAdvice
+    }
+
+    /// The same state, resumable: a failed resume leaves the file it
+    /// continued as it was, so it can still be resumed. When `hinting`,
+    /// the reason ends with the resume hint, unless it already does.
+    func keepingCopy(hinting: Bool) -> Self {
+        let hint = "; \(Self.resumeHint)"
+        guard hinting, let reason, reason.hasSuffix(hint) == false else {
+            return Self(state: state, reason: reason, resumable: true)
+        }
+        return Self(state: state, reason: reason + hint, resumable: true)
     }
 }

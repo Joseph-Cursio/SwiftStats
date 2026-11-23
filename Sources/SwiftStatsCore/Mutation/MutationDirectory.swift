@@ -11,7 +11,8 @@
 //  and out of the copy, which the same volume makes cheap. `.lock` is held
 //  for the whole mutation step, `muter.conf.yml` is the configuration
 //  SwiftStats writes for each run (outside the copy, so SwiftMutator never
-//  lists it), `swift-mutator.log` keeps the last step's output, and
+//  lists it), `swift-mutator.log` keeps the last step's output,
+//  `pending.json` names a run `scan --mutation --resume` can continue, and
 //  `runs/<id>/` keeps each run's results file and report.
 //
 
@@ -33,6 +34,8 @@ struct MutationDirectory: Sendable {
     static let logName = "swift-mutator.log"
     /// The kept runs' folder's name.
     static let runsName = "runs"
+    /// The name of the record of a run a resume can continue.
+    static let pendingName = "pending.json"
 
     /// `.swiftstats/mutation/` in the package.
     let root: URL
@@ -67,6 +70,11 @@ struct MutationDirectory: Sendable {
         root.appendingPathComponent(Self.runsName)
     }
 
+    /// The record of the run a resume can continue.
+    var pending: URL {
+        root.appendingPathComponent(Self.pendingName)
+    }
+
     /// The folder of the package at `packageRoot`, made, with
     /// `.swiftstats/` and its `.gitignore`, when missing.
     init(packageRoot: URL) throws {
@@ -74,11 +82,16 @@ struct MutationDirectory: Sendable {
         try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
     }
 
+    /// The folder of the package at `packageRoot`, made or not, for reading
+    /// what is there.
+    init(lookingIn packageRoot: URL) {
+        root = packageRoot.standardizedFileURL
+            .appendingPathComponent(StoreLocation.directoryName)
+            .appendingPathComponent(Self.name)
+    }
+
     /// The log of the package at `packageRoot`, made or not.
     static func log(packageRoot: URL) -> URL {
-        packageRoot.standardizedFileURL
-            .appendingPathComponent(StoreLocation.directoryName)
-            .appendingPathComponent(name)
-            .appendingPathComponent(logName)
+        Self(lookingIn: packageRoot).log
     }
 }
