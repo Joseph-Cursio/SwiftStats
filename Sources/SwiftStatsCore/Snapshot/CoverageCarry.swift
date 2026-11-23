@@ -35,7 +35,19 @@ enum CoverageCarry {
     /// package, commit and dirtiness whose coverage collector didn't run;
     /// nil when it can.
     static func refusal(of held: HeldCoverage, onto snapshot: ScannedSnapshot) -> String? {
-        let git = snapshot.info.git
+        refusal(of: held, git: snapshot.info.git, records: snapshot.report.records)
+    }
+
+    /// Why `held` can't be carried onto a scan at `git` whose records are
+    /// `records`; nil when it can.
+    static func refusal(of held: HeldCoverage, git: GitState, records: [FunctionRecord]) -> String? {
+        stateRefusal(of: held, git: git) ?? recordsRefusal(of: held, onto: records)
+    }
+
+    /// Why `held` can't be carried onto any scan at `git` by this build,
+    /// whatever its records: the reasons known before a scan runs; nil
+    /// when there is none.
+    static func stateRefusal(of held: HeldCoverage, git: GitState) -> String? {
         guard held.git.commit != nil, git.commit != nil else {
             return "no git commit to compare against"
         }
@@ -49,7 +61,7 @@ enum CoverageCarry {
         guard held.run.options.contains("links: " + CoverageTestLinks.rule) else {
             return "its functions were linked to tests by another rule"
         }
-        return recordsRefusal(of: held, onto: snapshot.report.records)
+        return nil
     }
 
     /// Why `held`'s records aren't the production records among `records`,
@@ -85,8 +97,14 @@ enum CoverageCarry {
         guard let run = snapshot.info.collectors.first(where: { $0.name == CoverageAdapter.name }) else {
             return nil
         }
-        let reason = run.reason ?? "no reason given"
-        switch run.state {
+        return ownRun(state: run.state, reason: run.reason)
+    }
+
+    /// What became of a coverage run that ended as `state` for `reason`,
+    /// as `ownRun(of:)` says it.
+    static func ownRun(state: CollectorState, reason given: String?) -> String? {
+        let reason = given ?? "no reason given"
+        switch state {
         case .ran:
             return nil
 

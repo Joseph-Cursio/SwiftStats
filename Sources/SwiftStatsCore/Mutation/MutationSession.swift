@@ -15,8 +15,10 @@
 //  can continue, whose copy stays for it. `pending.json` (design §1.7) is
 //  written just before SwiftMutator starts, so an interrupted scan leaves
 //  it, then names the results file of a run a resume can continue, or is
-//  removed. A run discards a pending run it finds, with a warning; a
-//  resume continues it instead. A `--since` run (design §6.1) works out
+//  removed; but in a scan that stores its snapshot, a run that ran with a
+//  results file names the kept results in it until the snapshot is stored
+//  (`MutationSession+Kept`). A run discards a pending run it finds, with a
+//  warning; a resume continues it instead, or stores the kept results. A `--since` run (design §6.1) works out
 //  SwiftMutator's selection in the copy first, runs with `--since` and its
 //  base's full commit, records its mode and base in `pending.json`, and is
 //  failed, nothing of it kept, when its results header no longer matches
@@ -144,6 +146,9 @@ struct MutationSession {
         }
         let log = try MutationLog.started(at: directory.log)
         if case .resume = job.request {
+            if let record = try PendingMutationRun.read(in: directory), record.kept != nil {
+                return try kept(log: log)
+            }
             return try resumed(log: log)
         }
         let discarded = try discardPending()
@@ -172,22 +177,6 @@ struct MutationSession {
             throw error
         }
         return ended(outcome.adding(discarded), copy: copy)
-    }
-
-    /// Removes a pending run, which a run that isn't its resume replaces:
-    /// a warning saying so when there was one.
-    private func discardPending() throws(MutationFailure) -> [ScanWarning] {
-        let started: String
-        do {
-            guard let pending = try PendingMutationRun.read(in: directory) else {
-                return []
-            }
-            started = "of \(pending.startedAt)"
-        } catch {
-            started = "whose \(MutationDirectory.pendingName) doesn't read"
-        }
-        try PendingMutationRun.remove(in: directory)
-        return [Self.warning("discarding the interrupted run \(started)")]
     }
 
     /// Writes the configuration, warms the build, records the pending run,
@@ -225,7 +214,9 @@ struct MutationSession {
         let file = try command.resultsFile(output: finished.output)
         let outcome = try judged(finished, file: file, command: command, warmBuild: build)
         try record(pending, after: outcome, file: file, work: command.copy.work)
-        return try outcome.with(changes: withTree(changed, after: outcome, in: command.copy.project))
+        let complete = try outcome.with(changes: withTree(changed, after: outcome, in: command.copy.project))
+        try keepUntilStored(pending, after: complete)
+        return complete
     }
 
     /// Reads `file`, what the run that ended as `finished` left (nil when

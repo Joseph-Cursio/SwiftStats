@@ -188,6 +188,23 @@ enum MutationCarrySamples {
         )
     }
 
+    /// The span of each of `snapshot`'s production records, by key, as a
+    /// stored snapshot's held results record them.
+    static func spans(of snapshot: ScannedSnapshot) -> [String: HeldMutation.Span] {
+        Dictionary(
+            snapshot.report.records.filter { $0.role == .production }.map { record in
+                (
+                    record.key,
+                    HeldMutation.Span(
+                        file: record.file,
+                        startLine: record.range.start.line,
+                        endLine: record.range.end.line
+                    )
+                )
+            }
+        ) { first, _ in first }
+    }
+
     /// The SwiftMutator run in `info`.
     static func mutationRun(_ info: SnapshotInfo) -> CollectorRunInfo? {
         info.collectors.first { $0.name == MutationAdapter.name }

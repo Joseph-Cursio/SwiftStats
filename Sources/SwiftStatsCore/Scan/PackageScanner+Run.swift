@@ -81,7 +81,9 @@ extension PackageScanner {
     /// for them. SwiftMutator's copy checks out the commit of `git`, the
     /// package's state as read before the scan (read when it runs when
     /// nil), and leaves out the files at `ignoring`; a `--since` run, or
-    /// the resume of one, merges with the base `tiers` carries.
+    /// the resume of one, merges with the base `tiers` carries. For a scan
+    /// that stores its snapshot, `saving`'s gate runs before SwiftMutator
+    /// starts and may stop the scan.
     func run(
         packageAt packageRoot: URL,
         configurationFile: URL?,
@@ -94,10 +96,10 @@ extension PackageScanner {
         let package = try describer.describePackage(at: root)
         let (targets, excludedFiles) = Self.excluding(TargetResolver.resolve(package), by: configuration)
         var pending = startBackground(root: root, targets: targets, configuration: configuration, tiers: tiers)
-        pending.mutation = pending.mutation?.with(git: git, ignoring: ignoring)
+        pending.prepareMutation(git: git, ignoring: ignoring, saving: saving)
         let scan = Self.measured(targets, root: root, configuration: configuration)
         let (measured, effects) = (scan.measurements, scan.effects)
-        let external = externalRuns(
+        let external = try externalRuns(
             root: root,
             targets: targets,
             configuration: configuration,

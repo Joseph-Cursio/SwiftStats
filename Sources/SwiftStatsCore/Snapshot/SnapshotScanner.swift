@@ -83,6 +83,12 @@ public struct SnapshotScanner {
         )
     }
 
+    /// The same scanner, its scans storing their snapshots as `added`
+    /// says (`MutationSaving`).
+    func saving(_ added: MutationSaving?) -> Self {
+        Self(scanner: scanner.saving(added), build: build)
+    }
+
     /// Scans the package at `root` with the configuration in
     /// `configurationFile` (or the default). `git` and `toolchain` are read
     /// when not given; a scan of an exported revision supplies its git state.

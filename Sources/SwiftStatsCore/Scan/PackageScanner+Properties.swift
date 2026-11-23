@@ -27,6 +27,18 @@ extension PackageScanner {
         let coverage: BackgroundJob<CoverageRun>
         /// The SwiftMutator run the scan asked for; nil when it didn't.
         var mutation: MutationScope?
+        /// What a scan that stores its snapshot checks before its
+        /// SwiftMutator run starts (`MutationSaving`); nil for another scan.
+        var gate: ((CollectorStatus, [FunctionRecord]) throws -> Void)?
+
+        /// Sets the SwiftMutator run's copy to check out `git`'s commit and
+        /// leave out the files at `ignoring`, and, for a scan that stores
+        /// its snapshot as `saving` says, its gate and keeping a run that
+        /// ran until it is stored.
+        mutating func prepareMutation(git: GitState?, ignoring: [String], saving: MutationSaving?) {
+            mutation = mutation?.with(git: git, ignoring: ignoring, keepsUntilStored: saving != nil)
+            gate = saving?.gate
+        }
     }
 
     /// The external collectors' part of a scan.
@@ -115,7 +127,8 @@ extension PackageScanner {
         PendingRuns(
             properties: startProperties(root: root, targets: targets, configuration: configuration),
             coverage: startCoverage(root: root, configuration: configuration, requested: tiers.coverage),
-            mutation: tiers.mutation.map { MutationScope(request: $0, base: tiers.base, git: nil, ignoring: []) }
+            mutation: tiers.mutation.map { MutationScope(request: $0, base: tiers.base, git: nil, ignoring: []) },
+            gate: nil
         )
     }
 
@@ -137,20 +150,26 @@ extension PackageScanner {
     /// SwiftInferProperties' and the coverage collector's runs, then runs
     /// the SwiftMutator collector alone, and attaches the classes, the
     /// suggestions, the coverage, the mutants and every finding to
-    /// `measured`'s records.
+    /// `measured`'s records. When a SwiftMutator run was asked for,
+    /// `pending`'s gate is given the coverage run's status and the records
+    /// before it starts, once every other run has ended, and may stop the
+    /// scan.
     func externalRuns(
         root: URL,
         targets: [TargetSummary],
         configuration: SwiftStatsConfiguration,
         pending: PendingRuns,
         measured: ScanMeasurements
-    ) -> ExternalScan {
+    ) throws -> ExternalScan {
         let cloneJob = startClones(root: root, targets: targets, configuration: configuration, measured: measured)
         let adapters = toolSkipReason.map(CollectorRun.skipped)
             ?? CollectorRun.run(root: root, targets: targets, configuration: configuration, locator: tools)
         let cloneRun = cloneJob?.wait()
         let run = pending.properties?.wait()
         let coverage = pending.coverage.wait()
+        if pending.mutation != nil, let gate = pending.gate {
+            try gate(coverage.status, measured.records)
+        }
         let mutationRun = runMutation(
             root: root,
             configuration: configuration,

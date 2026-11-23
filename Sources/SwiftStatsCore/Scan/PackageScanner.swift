@@ -23,6 +23,9 @@ public struct PackageScanner {
     /// When set, the external tool adapters are skipped for this reason
     /// (SwiftStats' own measurements and the dependency graph still run).
     let toolSkipReason: String?
+    /// What a scan that stores its snapshot adds to the SwiftMutator run
+    /// it asks for (`MutationSaving`); nil for any other scan.
+    private(set) var saving: MutationSaving?
 
     /// Creates a scanner that learns a package's targets through
     /// `describer` and finds external tools with `tools`, or skips them
@@ -287,6 +290,14 @@ public struct PackageScanner {
             configurationFile: FileManager.default.fileExists(atPath: file.path) ? file : nil,
             tiers: tiers
         )
+    }
+
+    /// The same scanner, its scans storing their snapshots as `added`
+    /// says.
+    func saving(_ added: MutationSaving?) -> Self {
+        var scanner = self
+        scanner.saving = added
+        return scanner
     }
 
     /// Scans the package rooted at `packageRoot` with the configuration in

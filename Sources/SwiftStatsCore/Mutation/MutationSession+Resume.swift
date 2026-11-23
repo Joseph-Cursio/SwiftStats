@@ -84,6 +84,7 @@ extension MutationSession {
         }
         try record(resume.pending, after: outcome, file: resume.resultsFile, work: copy.work)
         outcome = try outcome.with(changes: withTree(changed, after: outcome, in: copy.project))
+        try keepUntilStored(resume.pending, after: outcome)
         return ended(outcome, copy: copy)
     }
 }

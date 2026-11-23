@@ -9,8 +9,11 @@
 //  both scans saw a commit and the same tree (both clean, or both dirty
 //  with the same hash of the changes), the results were mapped by the rule
 //  this build maps by, every record a stored mutant names is a production
-//  record of the scan in the same file over the same lines, and every
-//  scanned file holding mapped mutants has the bytes they were tested on.
+//  record of the scan in the same file over the same lines, every
+//  production record of the scan was one of the held scan's (M5's added-
+//  record check), every scanned file holding mapped mutants has the bytes
+//  they were tested on, and no mutant left unmapped because its file
+//  wasn't parsed lies in a file the scan now parses.
 //  A carried result keeps the original runs, identity, version, options and
 //  duration, state `ran`, a reason saying when the results were collected,
 //  each mutant's own `carried` flag and the warnings describing it; the
@@ -34,7 +37,16 @@ enum MutationCarry {
     /// package, commit and dirtiness whose SwiftMutator collector didn't
     /// run; nil when it can.
     static func refusal(of held: HeldMutation, onto snapshot: ScannedSnapshot) -> String? {
-        let git = snapshot.info.git
+        stateRefusal(of: held, git: snapshot.info.git)
+            ?? recordsRefusal(of: held, onto: snapshot.report.records)
+            ?? filesRefusal(of: held.results.report.mutants, onto: snapshot.report.files)
+            ?? unparsedRefusal(of: held.results.report.mutants, onto: snapshot.report.files)
+    }
+
+    /// Why `held` can't be carried onto any scan at `git` by this build,
+    /// whatever it parses: the reasons known before a scan runs; nil when
+    /// there is none.
+    static func stateRefusal(of held: HeldMutation, git: GitState) -> String? {
         guard held.git.commit != nil, git.commit != nil else {
             return "no git commit to compare against"
         }
@@ -44,13 +56,13 @@ enum MutationCarry {
         guard held.run.options.contains("map: " + MutationMapper.rule) else {
             return "it was mapped by another rule"
         }
-        return recordsRefusal(of: held, onto: snapshot.report.records)
-            ?? filesRefusal(of: held.results.report.mutants, onto: snapshot.report.files)
+        return nil
     }
 
     /// Why a record `held`'s mutants name isn't a production record among
-    /// `records` over the lines it spanned, naming the first such key; nil
-    /// when each is.
+    /// `records` over the lines it spanned, or a production record among
+    /// `records` wasn't one of the held snapshot's, so the results never
+    /// mapped onto it, naming the first such key; nil when neither.
     private static func recordsRefusal(of held: HeldMutation, onto records: [FunctionRecord]) -> String? {
         let production = Dictionary(
             records.filter { $0.role == .production }.map { record in
@@ -67,7 +79,27 @@ enum MutationCarry {
                 return "`\(key)` spans other lines now"
             }
         }
+        // A record the held scan didn't have (a file no longer excluded,
+        // a build extracting more records) would read as holding no
+        // mutant, though a fresh mapping could place some on it.
+        if let added = production.keys.filter({ held.spans[$0] == nil }).min() {
+            return "`\(added)` has no mutation results"
+        }
         return nil
+    }
+
+    /// Why a mutant among `mutants` left unmapped because its file wasn't
+    /// parsed (excluded, or not parsed) lies in a file among `files`, which
+    /// the scan now parses, so a fresh mapping would place it, naming the
+    /// first such path; nil when none does. Paths are compared in NFC.
+    static func unparsedRefusal(of mutants: [Mutant], onto files: [FileRecord]) -> String? {
+        let scanned = Set(files.map { MutationMapper.normalized($0.path) })
+        let reasons: Set<String> = [PackageFileClassifier.excludedReason, PackageFileClassifier.notParsedReason]
+        return mutants.filter { $0.place == .unmapped && reasons.contains($0.reason ?? "") }
+            .map { MutationMapper.normalized($0.path) }
+            .filter(scanned.contains)
+            .min()
+            .map { "`\($0)` is scanned now, but its mutants weren't mapped" }
     }
 
     /// Why a file holding mapped mutants among `mutants` isn't among

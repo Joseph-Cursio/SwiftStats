@@ -6,8 +6,9 @@
 //  the run asked for (a full run, a `--since` run, or the resume of a
 //  pending one), the base a `--since` run merges with, the tools, the
 //  package and its git state, the scan's hash of each file it parsed,
-//  which the copy is checked against, the files the copy leaves out, and
-//  `collectors.swiftmutator`'s settings.
+//  which the copy is checked against, the files the copy leaves out,
+//  `collectors.swiftmutator`'s settings, and whether a run that ran keeps
+//  `pending.json` until the scan's snapshot is stored.
 //
 
 import Foundation
@@ -36,6 +37,10 @@ struct MutationJob {
     let ignoring: [String]
     /// `collectors.swiftmutator`; nil when `.swiftstats.yml` has none.
     let settings: CollectorSettings?
+    /// Whether a run that ran keeps `pending.json`, naming its kept
+    /// results, until the scan's snapshot is stored (`scan`, not
+    /// `scan --no-store`).
+    var keepsUntilStored = false
 
     /// The effective settings a pending run records and a resume compares.
     var pendingSettings: PendingMutationRun.Settings {

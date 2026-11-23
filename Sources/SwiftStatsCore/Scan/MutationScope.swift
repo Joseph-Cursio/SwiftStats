@@ -6,8 +6,9 @@
 //  package and its configuration (M6, design §1.2, §6.1): the request, the
 //  base snapshot a `--since` run (or the resume of one) merges with, the
 //  git state the scan read before any collector wrote into the package,
-//  whose commit the copy checks out, and the files in the package the copy
-//  leaves out, such as a store kept there.
+//  whose commit the copy checks out, the files in the package the copy
+//  leaves out, such as a store kept there, and whether the scan stores its
+//  snapshot, so a run that ran keeps `pending.json` until it is stored.
 //
 
 /// A requested SwiftMutator run's part of a scan.
@@ -23,10 +24,14 @@ struct MutationScope: Sendable {
     let git: GitState?
     /// Files in the package, relative to its root, the copy leaves out.
     let ignoring: [String]
+    /// Whether a run that ran keeps `pending.json`, naming its kept
+    /// results, until the scan's snapshot is stored.
+    var keepsUntilStored = false
 
     /// The same run, its copy checking out `state`'s commit and leaving out
-    /// the files at `ignored`.
-    func with(git state: GitState?, ignoring ignored: [String]) -> Self {
-        Self(request: request, base: base, git: state, ignoring: ignored)
+    /// the files at `ignored`, keeping `pending.json` after a run that ran
+    /// when `keeping`.
+    func with(git state: GitState?, ignoring ignored: [String], keepsUntilStored keeping: Bool) -> Self {
+        Self(request: request, base: base, git: state, ignoring: ignored, keepsUntilStored: keeping)
     }
 }

@@ -10,7 +10,11 @@
 //  resume, which then finds the file in SwiftMutator's log folder in the
 //  kept copy. Once the run has been judged, the record names the results
 //  file when the run failed with one a resume can continue (a readable
-//  header, design §1.5), and is removed otherwise. It holds the git state
+//  header, design §1.5), and is removed otherwise, except after a run that
+//  ran in a scan that stores its snapshot: then it names the results kept
+//  in `runs/<id>/` (`kept`) until the snapshot is stored, so a save that is
+//  refused can be resumed without running SwiftMutator again (design §6.4,
+//  as built); the copy has ended by then. It holds the git state
 //  the run's copy was made from, the mode and base, the copy's project
 //  folder inside `work/` (from which SwiftMutator's log folder follows),
 //  the command, the effective settings, how many files the copy fixed,
@@ -51,6 +55,23 @@ struct PendingMutationRun: Codable, Equatable, Sendable {
         let commit: String
         /// When it was collected.
         let collectedAt: String
+    }
+
+    /// The results of a run that ran, kept until its scan's snapshot is
+    /// stored, and what the step said of them that the results file
+    /// doesn't hold.
+    struct Kept: Codable, Equatable, Sendable {
+        /// The kept results file, from the package root
+        /// (`.swiftstats/mutation/runs/<id>/results.jsonl`), beside which
+        /// the JSON report is kept when there was one.
+        let resultsFile: String
+        /// The exit's own note; nil when it had none.
+        let reason: String?
+        /// The warnings the step gave.
+        let warnings: [ScanWarning]
+        /// A `--since` run's selection (`MutationChanges.selection`);
+        /// empty for a full run.
+        let selection: [String]
     }
 
     /// The effective settings a resume must find again: the tools
@@ -144,6 +165,9 @@ struct PendingMutationRun: Codable, Equatable, Sendable {
     /// The SHA-256 of each file the run's scan parsed, by its path from
     /// the package root.
     let scanned: [String: String]
+    /// The results of a run that ran, kept until its scan's snapshot is
+    /// stored; nil for a run a resume continues.
+    var kept: Kept?
 
     /// The record in `directory`; nil when there is none, a failure when
     /// it doesn't read.
@@ -184,6 +208,13 @@ struct PendingMutationRun: Codable, Equatable, Sendable {
             ignoring: ignoring,
             scanned: scanned
         )
+    }
+
+    /// The record of the run that ran and left `kept`.
+    func keeping(_ kept: Kept) -> Self {
+        var record = self
+        record.kept = kept
+        return record
     }
 
     /// Why a resume of this run is refused in a tree whose state is `git`,

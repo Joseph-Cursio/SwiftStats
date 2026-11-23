@@ -207,7 +207,7 @@ struct MutationCarryTests {
             run: MutationCarrySamples.run,
             results: StoredMutation(report: attached),
             warnings: [],
-            spans: [:]
+            spans: MutationCarrySamples.spans(of: plain)
         )
 
         #expect(attached.mutants.isEmpty == false && attached.records.isEmpty)

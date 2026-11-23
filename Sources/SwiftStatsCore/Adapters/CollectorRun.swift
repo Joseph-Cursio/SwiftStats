@@ -162,7 +162,8 @@ enum CollectorRun {
             git: scope.git ?? GitReader.read(packageRoot: root, ignoring: scope.ignoring),
             scanned: Dictionary(measured.map { ($0.path, $0.sha256) }) { first, _ in first },
             ignoring: scope.ignoring,
-            settings: configuration.collectors[MutationAdapter.name]
+            settings: configuration.collectors[MutationAdapter.name],
+            keepsUntilStored: scope.keepsUntilStored
         ))
     }
 

@@ -15,7 +15,9 @@
 //  to read. Both held results are decided before any write, coverage
 //  first, then mutation, and the first refusal stops the save; what
 //  carries is written once. Only a run that ran replaces held results
-//  without asking.
+//  without asking. A scan asking for coverage or SwiftMutator meets the
+//  same refusals before its slow runs, as far as they can be known then
+//  (`SnapshotWorkspace+Held`).
 //
 
 extension SnapshotWorkspace {
@@ -25,11 +27,16 @@ extension SnapshotWorkspace {
     /// How a refusal names the snapshot `info` describes: its package and
     /// commit, and whether it has uncommitted changes.
     private static func name(of info: SnapshotInfo) -> String {
-        guard let commit = info.git.commit else {
-            return "\(info.package) (no git commit)"
+        name(package: info.package, git: info.git)
+    }
+
+    /// How a refusal names the snapshot of `package` at `git`.
+    static func name(package: String, git: GitState) -> String {
+        guard let commit = git.commit else {
+            return "\(package) (no git commit)"
         }
-        return "\(info.package) at \(commit.prefix(Self.shortCommitLength))"
-            + (info.git.isDirty ? " with uncommitted changes" : "")
+        return "\(package) at \(commit.prefix(Self.shortCommitLength))"
+            + (git.isDirty ? " with uncommitted changes" : "")
     }
 
     /// Whether `snapshot`'s collector `name` ran.
@@ -82,32 +89,14 @@ extension SnapshotWorkspace {
         onto snapshot: ScannedSnapshot,
         drop: Bool
     ) throws -> HeldCoverage? {
-        guard let replaced, Self.ran(CoverageAdapter.name, in: snapshot) == false,
-              try store.holdsCoverage(id: replaced) else {
+        guard let replaced, Self.ran(CoverageAdapter.name, in: snapshot) == false else {
             return nil
         }
-        let read: HeldCoverage?
-        do {
-            read = try store.heldCoverage(id: replaced)
-        } catch StoreError.corruptReport(let reason) where !drop {
-            throw StoreError.damagedCoverage(snapshot: Self.name(of: snapshot.info), reason: reason)
-        } catch {
-            guard drop else {
-                throw error
+        return try keptCoverage(in: replaced, named: Self.name(of: snapshot.info), drop: drop) { held in
+            CoverageCarry.refusal(of: held, onto: snapshot).map { reason in
+                [reason, CoverageCarry.ownRun(of: snapshot)].compactMap(\.self).joined(separator: "; ")
             }
-            return nil
         }
-        guard let held = read, let reason = CoverageCarry.refusal(of: held, onto: snapshot) else {
-            return read
-        }
-        guard drop else {
-            throw StoreError.coverageNotKept(
-                snapshot: Self.name(of: snapshot.info),
-                collectedAt: held.coverage.collectedAt,
-                reason: [reason, CoverageCarry.ownRun(of: snapshot)].compactMap(\.self).joined(separator: "; ")
-            )
-        }
-        return nil
     }
 
     /// The mutation results snapshot `replaced` holds that `snapshot`
@@ -121,30 +110,80 @@ extension SnapshotWorkspace {
         onto snapshot: ScannedSnapshot,
         drop: Bool
     ) throws -> HeldMutation? {
-        guard let replaced, Self.ran(MutationAdapter.name, in: snapshot) == false,
-              try store.holdsMutation(id: replaced) else {
+        guard let replaced, Self.ran(MutationAdapter.name, in: snapshot) == false else {
             return nil
         }
-        let read: HeldMutation?
+        return try keptMutation(in: replaced, named: Self.name(of: snapshot.info), drop: drop) { held in
+            MutationCarry.refusal(of: held, onto: snapshot).map { reason in
+                [reason, MutationCarry.ownRun(of: snapshot)].compactMap(\.self).joined(separator: "; ")
+            }
+        }
+    }
+
+    /// The coverage snapshot `id`, named `name`, holds when `refusal`
+    /// gives no reason it can't be kept: nil when it holds none, or `drop`
+    /// lets coverage go that can't be kept or read. Throws
+    /// `StoreError.coverageNotKept` with `refusal`'s reason, and
+    /// `StoreError.damagedCoverage` when it can't be read, unless `drop`.
+    func keptCoverage(
+        in id: Int64,
+        named name: String,
+        drop: Bool,
+        refusal: (HeldCoverage) -> String?
+    ) throws -> HeldCoverage? {
+        guard try store.holdsCoverage(id: id) else {
+            return nil
+        }
+        let read: HeldCoverage?
         do {
-            read = try store.heldMutation(id: replaced)
+            read = try store.heldCoverage(id: id)
         } catch StoreError.corruptReport(let reason) where !drop {
-            throw StoreError.damagedMutation(snapshot: Self.name(of: snapshot.info), reason: reason)
+            throw StoreError.damagedCoverage(snapshot: name, reason: reason)
         } catch {
             guard drop else {
                 throw error
             }
             return nil
         }
-        guard let held = read, let reason = MutationCarry.refusal(of: held, onto: snapshot) else {
+        guard let held = read, let reason = refusal(held) else {
             return read
         }
         guard drop else {
-            throw StoreError.mutationNotKept(
-                snapshot: Self.name(of: snapshot.info),
-                collectedAt: held.results.collectedAt,
-                reason: [reason, MutationCarry.ownRun(of: snapshot)].compactMap(\.self).joined(separator: "; ")
-            )
+            throw StoreError.coverageNotKept(snapshot: name, collectedAt: held.coverage.collectedAt, reason: reason)
+        }
+        return nil
+    }
+
+    /// The mutation results snapshot `id`, named `name`, holds when
+    /// `refusal` gives no reason they can't be kept: nil when it holds
+    /// none, or `drop` lets results go that can't be kept or read. Throws
+    /// `StoreError.mutationNotKept` with `refusal`'s reason, and
+    /// `StoreError.damagedMutation` when they can't be read, unless `drop`.
+    func keptMutation(
+        in id: Int64,
+        named name: String,
+        drop: Bool,
+        refusal: (HeldMutation) -> String?
+    ) throws -> HeldMutation? {
+        guard try store.holdsMutation(id: id) else {
+            return nil
+        }
+        let read: HeldMutation?
+        do {
+            read = try store.heldMutation(id: id)
+        } catch StoreError.corruptReport(let reason) where !drop {
+            throw StoreError.damagedMutation(snapshot: name, reason: reason)
+        } catch {
+            guard drop else {
+                throw error
+            }
+            return nil
+        }
+        guard let held = read, let reason = refusal(held) else {
+            return read
+        }
+        guard drop else {
+            throw StoreError.mutationNotKept(snapshot: name, collectedAt: held.results.collectedAt, reason: reason)
         }
         return nil
     }

@@ -83,21 +83,28 @@ public struct SnapshotWorkspace {
     /// pending, or when the tree, the settings, the copy or the results
     /// file don't let it go on (`MutationResume`); the resume of a
     /// `--since` run chooses its base again. Neither is checked when the
-    /// collector's tools aren't found, which skips it.
+    /// collector's tools aren't found, which skips it. A scan asking for
+    /// coverage or SwiftMutator is refused, before the run, as its save
+    /// would refuse held results it can't keep, and a SwiftMutator run
+    /// that ran is kept until its snapshot is stored
+    /// (`SnapshotWorkspace+Held`).
     public func scanWorkingTree(
         history: HistorySource = .automatic,
         tiers: RequestedTiers = .syntaxOnly,
         drop: DropOptions = []
     ) throws -> (snapshot: ScannedSnapshot, id: Int64) {
-        let base = try mutationBase(tiers.mutation)
-        let snapshot = try scanner.scan(
+        let git = GitReader.read(packageRoot: root, ignoring: storeInPackage)
+        let base = try mutationBase(tiers.mutation, git: git)
+        let saving = try heldResultsChecks(git: git, tiers: tiers, drop: drop)
+        let snapshot = try scanner.saving(saving).scan(
             packageAt: root,
             configurationFile: configurationFile ?? StoreLocation.localConfiguration(packageRoot: root),
+            git: git,
             ignoring: storeInPackage,
             history: history,
             tiers: tiers.merging(with: base)
         )
-        return try save(snapshot, drop: drop)
+        return try storing(snapshot, drop: drop)
     }
 
     /// The stored snapshot the SwiftMutator run `request` asks for merges
@@ -105,8 +112,8 @@ public struct SnapshotWorkspace {
     /// tools and settings; for the resume of a `--since` run, the one the
     /// pending run recorded, chosen again. Nil for a full run, the resume
     /// of one, and when the tools aren't found. It throws the refusal that
-    /// stops the scan before anything runs.
-    private func mutationBase(_ request: MutationRequest?) throws -> MutationBase? {
+    /// stops the scan before anything runs. `git` is the package's state.
+    private func mutationBase(_ request: MutationRequest?, git: GitState) throws -> MutationBase? {
         guard let request else {
             return nil
         }
@@ -129,7 +136,7 @@ public struct SnapshotWorkspace {
             store: store,
             package: try describer.describePackage(at: root).name,
             root: root,
-            git: GitReader.read(packageRoot: root, ignoring: storeInPackage)
+            git: git
         )
         switch request {
         case .full:

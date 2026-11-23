@@ -12,10 +12,13 @@
 //  when the settings differ, when a file the run's scan parsed changed,
 //  was added or is gone, when the copy is gone, and when the results file
 //  is missing or has no readable header (a run that stopped before its
-//  first mutant). `scan` checks all of it before anything runs, reading
-//  the files the run's scan parsed from the package, and the mutation step
-//  again, under the package's mutation lock, against the files its scan
-//  parsed, before it touches the copy or the record. A `--since` run's
+//  first mutant). A run that ran and whose snapshot wasn't stored keeps no
+//  copy: its resume needs only the results kept in `runs/<id>/`, which
+//  must still read (design §6.4, as built). `scan` checks all of it
+//  before anything runs, reading the files the run's scan parsed from the
+//  package, and the mutation step again, under the package's mutation
+//  lock, against the files its scan parsed, before it touches the copy or
+//  the record. A `--since` run's
 //  resume merges with the base its record names, which `scan` chooses
 //  again (`MutationBase.resumed`); the step refuses it without that base.
 //
@@ -27,6 +30,9 @@ import Foundation
 struct MutationResume {
     /// Why a resume is refused when the copy is gone.
     static let copyGoneReason = "the copy of that run is gone; run scan --mutation"
+    /// Why it is refused when the results kept for a run whose snapshot
+    /// wasn't stored are gone or no longer read.
+    static let keptGoneReason = "the results that run kept are gone or don't read; run scan --mutation"
     /// Why it is refused when no results file can be continued.
     static let noResultsReason = "that run left no results a resume can continue; run scan --mutation"
 
@@ -61,17 +67,56 @@ struct MutationResume {
             )
         }
         do {
-            _ = try prepare(
-                root: root,
-                git: GitReader.read(packageRoot: root, ignoring: ignoring),
-                ignoring: ignoring,
-                files: .package(root),
-                settings: settings
-            )
+            let git = GitReader.read(packageRoot: root, ignoring: ignoring)
+            let files = PendingMutationRun.ScannedFiles.package(root)
+            let record = try checked(root: root, git: git, ignoring: ignoring, files: files, settings: settings)
+            if record.kept != nil {
+                _ = try keptResults(of: record, root: root)
+            } else {
+                _ = try prepare(root: root, git: git, ignoring: ignoring, files: files, settings: settings)
+            }
             return nil
         } catch {
             return error.description
         }
+    }
+
+    /// The run pending in the package at `root`, whose git state is `git`,
+    /// read leaving out the files at `ignoring`, whose scanned files are
+    /// now `files`, under `settings` (not compared when nil); a failure
+    /// when there is none, or the tree or the settings refuse its resume.
+    static func checked(
+        root: URL,
+        git: GitState,
+        ignoring: [String],
+        files: PendingMutationRun.ScannedFiles,
+        settings: PendingMutationRun.Settings?
+    ) throws(MutationFailure) -> PendingMutationRun {
+        guard let record = try PendingMutationRun.read(in: MutationDirectory(lookingIn: root)) else {
+            throw MutationFailure(description: PendingMutationRun.noneReason)
+        }
+        if let reason = record.refusal(git: git, ignoring: ignoring, settings: settings)
+            ?? record.treeRefusal(files) {
+            throw MutationFailure(description: reason)
+        }
+        return record
+    }
+
+    /// The results file `record`, of a run that ran in the package at
+    /// `root` and whose snapshot wasn't stored, kept, with what it holds;
+    /// a failure when it names none or they no longer read.
+    static func keptResults(
+        of record: PendingMutationRun,
+        root: URL
+    ) throws(MutationFailure) -> (file: URL, results: MutationResults) {
+        guard let kept = record.kept else {
+            throw MutationFailure(description: noResultsReason)
+        }
+        let file = root.appendingPathComponent(kept.resultsFile)
+        guard case .results(let results) = MutationSession.read(file).1 else {
+            throw MutationFailure(description: keptGoneReason)
+        }
+        return (file, results)
     }
 
     /// The resume of the run pending in the package at `root`, whose git
@@ -86,13 +131,7 @@ struct MutationResume {
         settings: PendingMutationRun.Settings?
     ) throws(MutationFailure) -> Self {
         let directory = MutationDirectory(lookingIn: root)
-        guard let record = try PendingMutationRun.read(in: directory) else {
-            throw MutationFailure(description: PendingMutationRun.noneReason)
-        }
-        if let reason = record.refusal(git: git, ignoring: ignoring, settings: settings)
-            ?? record.treeRefusal(files) {
-            throw MutationFailure(description: reason)
-        }
+        let record = try checked(root: root, git: git, ignoring: ignoring, files: files, settings: settings)
         let work = directory.work
         let project = work.appendingPathComponent(record.project)
         guard FileClone.isDirectory(project) else {
