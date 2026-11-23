@@ -65,11 +65,23 @@ public struct Rollup: Codable, Hashable, Sendable {
     /// §7.8); nil when the coverage collector didn't run, and on test
     /// modules and the `tests` part, whose files it leaves out.
     public internal(set) var coverage: CoverageRollup?
+    /// Mutants by verdict, SwiftMutator's score over them and functions by
+    /// mutation state (M6, design §4); nil when the SwiftMutator collector
+    /// left no results, and on test modules and the `tests` part, which it
+    /// doesn't mutate.
+    public internal(set) var mutation: MutationRollup?
 
     /// The roll-up with `coverage` as its coverage.
     func with(coverage: CoverageRollup?) -> Self {
         var rollup = self
         rollup.coverage = coverage
+        return rollup
+    }
+
+    /// The roll-up with `mutation` as its mutation results.
+    func with(mutation: MutationRollup?) -> Self {
+        var rollup = self
+        rollup.mutation = mutation
         return rollup
     }
 }

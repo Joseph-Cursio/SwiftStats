@@ -215,7 +215,8 @@ struct MutationMapperTests {
                 timedOut: 0,
                 notCovered: 10,
                 buildErrors: 0,
-                suspectOnly: 0
+                suspectOnly: 0,
+                judgedKills: 31
             ),
             dropped: 1,
             unmapped: 1

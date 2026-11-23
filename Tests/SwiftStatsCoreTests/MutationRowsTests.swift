@@ -225,6 +225,7 @@ struct MutationRowsTests {
         #expect(rows.runs.map(\.suspectsJudged) == [nil, 0])
         #expect(report.records.first?.killingTests == ["b()", Self.oddName])
         #expect(report.records.first?.counts.suspectOnly == 1)
+        #expect(report.records.first?.counts.judgedKills == 1 && report.everyMutant.counts.judgedKills == 1)
     }
 
     @Test("""

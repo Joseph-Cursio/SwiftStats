@@ -33,6 +33,8 @@ enum RollupMetrics {
     private static let clonesField = "clones"
     /// The roll-up field whose numbers come from the coverage collector.
     private static let coverageField = "coverage"
+    /// The roll-up field whose numbers come from the SwiftMutator collector.
+    private static let mutationField = "mutation"
 
     /// Every number in `rollup`, sorted by path. Nulls and booleans are left
     /// out: a null is a value not collected, and a flag isn't a metric.
@@ -62,6 +64,9 @@ enum RollupMetrics {
         }
         if path.first == coverageField {
             return CoverageAdapter.name
+        }
+        if path.first == mutationField {
+            return MutationAdapter.name
         }
         return SwiftStatsCollector.name
     }

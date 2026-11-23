@@ -3,11 +3,12 @@
 //  SwiftStatsCoreTests
 //
 //  Packages measured as a scan measures them, for the mutation mapping's
-//  tests (M6, design §3): a copy of the Coverage fixture, its
+//  tests (M6, design §3, §4): a copy of the Coverage fixture, its
 //  configuration excluding `Excluded.swift` and marking `Generated.swift`
-//  generated as `CoverageFixture`'s does, or a small package of the files
-//  given. Results come from the fixture's recorded run or from
-//  hand-written lines (`ResultsLines`); nothing is built or run.
+//  generated as `CoverageFixture`'s does, a copy of the Mutation fixture,
+//  or a small package of the files given. Results come from the fixtures'
+//  recorded runs or from hand-written lines (`ResultsLines`); nothing is
+//  built or run.
 //
 
 import Foundation
@@ -25,6 +26,39 @@ struct MappingHarness {
         """
     /// When the Coverage fixture's recorded run started.
     static let coverageStartedAt = "2026-11-21T16:40:12.995Z"
+    /// The Mutation fixture's targets, as its `Package.swift` declares them.
+    static let mutationTargets = [
+        DescribedTarget(
+            name: "Core",
+            type: "library",
+            moduleType: "SwiftTarget",
+            path: "Sources/Core",
+            sources: ["Bounds.swift", "Dormant.swift", "NormalizeA.swift", "Signs.swift"]
+        ),
+        DescribedTarget(
+            name: "CoreTests",
+            type: "test",
+            moduleType: "SwiftTarget",
+            path: "Tests/CoreTests",
+            sources: ["BoundsTests.swift", "NormalizeTests.swift", "SignTests.swift"],
+            targetDependencies: ["Core"]
+        ),
+        DescribedTarget(
+            name: "Extras",
+            type: "library",
+            moduleType: "SwiftTarget",
+            path: "Sources/Extras",
+            sources: ["NormalizeB.swift", "Scale.swift", "Unused.swift"]
+        ),
+        DescribedTarget(
+            name: "ExtrasTests",
+            type: "test",
+            moduleType: "SwiftTarget",
+            path: "Tests/ExtrasTests",
+            sources: ["ScaleTests.swift"],
+            targetDependencies: ["Extras"]
+        )
+    ]
 
     /// The package.
     let package: TemporaryPackage
@@ -66,14 +100,35 @@ struct MappingHarness {
     /// A copy of the Coverage fixture whose configuration adds `settings`,
     /// measured; removed again if it can't be.
     static func coverage(adding settings: String) throws -> Self {
-        let copy = try TemporaryPackage(
-            [SwiftStatsConfiguration.fileName: coverageConfiguration + settings],
-            targets: CoverageFixture.targets
+        try copy(
+            CoverageFixture.directory,
+            parts: ["Sources", "Tests", "Nested"],
+            targets: CoverageFixture.targets,
+            configuration: coverageConfiguration + settings
         )
+    }
+
+    /// A copy of the Mutation fixture, measured; removed again if it can't
+    /// be.
+    static func mutation() throws -> Self {
+        try copy(MutationFixture.directory, parts: ["Sources", "Tests"], targets: mutationTargets, configuration: "")
+    }
+
+    /// A package of `fixture`'s folders `parts`, described as `targets`,
+    /// whose `.swiftstats.yml` is `configuration` (none when it is empty),
+    /// measured; removed again if it can't be.
+    private static func copy(
+        _ fixture: URL,
+        parts: [String],
+        targets: [DescribedTarget],
+        configuration: String
+    ) throws -> Self {
+        let files = configuration.isEmpty ? [:] : [SwiftStatsConfiguration.fileName: configuration]
+        let copy = try TemporaryPackage(files, targets: targets)
         do {
-            for part in ["Sources", "Tests", "Nested"] {
+            for part in parts {
                 try FileManager.default.copyItem(
-                    at: CoverageFixture.directory.appendingPathComponent(part),
+                    at: fixture.appendingPathComponent(part),
                     to: copy.root.appendingPathComponent(part)
                 )
             }
@@ -87,10 +142,36 @@ struct MappingHarness {
     /// The Coverage fixture's recorded full run: its results and what its
     /// report judged.
     static func coverageRun() throws -> (results: MutationResults, suspects: SuspectReport) {
-        let fixture = MutationFixture.coverageDirectory
-        return (
+        try fullRun(of: MutationFixture.coverageDirectory)
+    }
+
+    /// The recorded full run of `fixture`: its results and what its report
+    /// judged.
+    static func fullRun(of fixture: URL) throws -> (results: MutationResults, suspects: SuspectReport) {
+        (
             try MutationFixture.results(of: "full", in: fixture),
             try SuspectReport.decode(MutationFixture.data("report.json", of: "full", in: fixture))
+        )
+    }
+
+    /// `report` with `complete` and `files` replaced and its mutants
+    /// `mutants`, its records and counts worked out again.
+    static func rebuilt(
+        _ report: MutationReport,
+        complete: Bool,
+        files: [MutationFile],
+        mutants: [Mutant]
+    ) -> MutationReport {
+        MutationReport(
+            collectedAt: report.collectedAt,
+            complete: complete,
+            listsNotCovered: report.listsNotCovered,
+            mode: report.mode,
+            base: report.base,
+            files: files,
+            runs: report.runs,
+            suspectTests: report.suspectTests,
+            mutants: mutants
         )
     }
 
@@ -141,6 +222,11 @@ struct MappingHarness {
             suspects: suspects
         )
         return mapper.report(of: results, run: run, suspects: suspects)
+    }
+
+    /// A roll-up builder of `report` over the package.
+    func rollupBuilder(_ report: MutationReport) -> MutationRollupBuilder {
+        MutationRollupBuilder(targets: targets, records: measured.records, files: measured.files, report: report)
     }
 
     /// Where `mutant` goes.

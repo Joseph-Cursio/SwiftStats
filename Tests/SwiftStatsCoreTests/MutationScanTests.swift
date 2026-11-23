@@ -6,8 +6,8 @@ import Testing
 /// tools acting out the Coverage fixture's recorded run on a copy of the
 /// fixture: a run that ran is mapped onto the scan's records and passed
 /// through the store's rows, recording the commit its copy checked out,
-/// and the collector's options end with the map rule; a run that failed,
-/// or wasn't asked for, leaves no block.
+/// and rolled up, and the collector's options end with the map rule; a
+/// run that failed, or wasn't asked for, leaves no block and no roll-ups.
 @Suite("Mutation scan JSON")
 struct MutationScanTests {
     /// The settings pointing the collectors at `tools`.
@@ -17,8 +17,8 @@ struct MutationScanTests {
 
     @Test("""
         a scan whose SwiftMutator run ran holds its results mapped onto the scan's records, as the store's rows \
-        hold them, recording the commit the copy checked out and where the results file was kept, and the \
-        collector's options end with the map rule
+        hold them, recording the commit the copy checked out and where the results file was kept, rolled up on \
+        the production modules, and the collector's options end with the map rule
         """)
     func ranScan() throws {
         let fake = try FakeMutator.make(FakeMutator.recorded("full", in: MutationFixture.coverageDirectory))
@@ -50,10 +50,13 @@ struct MutationScanTests {
         #expect(run.resultsFile.hasPrefix(".swiftstats/mutation/runs/") && run.resultsFile.hasSuffix("/results.jsonl"))
         let kept = try Data(contentsOf: harness.package.root.appendingPathComponent(run.resultsFile))
         #expect(run.resultsSHA256 == ContentHash.sha256(kept))
+        let production = try #require(report.rollups.first { $0.scope == .project && $0.name == "production" })
+        #expect(production.mutation?.score == MutationScore(killed: 29, scored: 31))
+        #expect(report.rollups.first { $0.name == "ProbeTests" }?.mutation == nil)
         #expect(try JSONDecoder().decode(ScanReport.self, from: ScanReportEncoder.encode(report)) == report)
     }
 
-    @Test("a scan whose SwiftMutator run failed, or that didn't ask for one, has no mutation block")
+    @Test("a scan whose SwiftMutator run failed, or that didn't ask for one, has no mutation block or roll-ups")
     func noBlock() throws {
         let failing = try MutationRunHarness(try FakeMutator.recorded("stopped"))
         defer { failing.remove() }
@@ -65,5 +68,6 @@ struct MutationScanTests {
         #expect(failed.collectors.first { $0.name == MutationAdapter.name }?.state == .failed)
         #expect(failed.mutation == nil)
         #expect(plain.mutation == nil)
+        #expect((failed.rollups + plain.rollups).allSatisfy { $0.mutation == nil })
     }
 }
