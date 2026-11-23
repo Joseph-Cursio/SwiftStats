@@ -4,7 +4,8 @@ import Testing
 
 /// The coverage collector's configuration (M5): `collectors.coverage`
 /// takes `arguments`, which allow only `--skip <regex>` pairs, no other
-/// collector takes any, and the build directory under `.swiftstats` is
+/// collector but swiftmutator (M6) takes any, and the build directory
+/// under `.swiftstats` is
 /// ignored by git whatever the store.
 @Suite("Coverage configuration")
 struct CoverageConfigurationTests {
@@ -86,15 +87,15 @@ struct CoverageConfigurationTests {
         #expect(error == .configurationInvalid("c.yml", "\(key) must be a list of strings; \(allowed)"))
     }
 
-    @Test("only the coverage collector takes arguments")
+    @Test("only the coverage and swiftmutator collectors take arguments")
     func argumentsElsewhere() {
-        for name in ["swiftlint", "dependencies", "swiftmutator"] {
+        for name in ["swiftlint", "dependencies", "swiftinferproperties"] {
             let result = Self.parsed("collectors:\n  \(name):\n    arguments: [\"--skip\", \"A\"]\n")
             guard case .failure(let error) = result else {
                 Issue.record("arguments under \(name) should not parse")
                 continue
             }
-            let message = "`collectors.\(name).arguments`: only the coverage collector takes arguments"
+            let message = "`collectors.\(name).arguments`: only the coverage and swiftmutator collectors take arguments"
             #expect(error == .configurationInvalid("c.yml", message))
         }
     }

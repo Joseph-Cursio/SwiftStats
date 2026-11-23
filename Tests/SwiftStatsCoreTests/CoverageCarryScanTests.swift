@@ -26,7 +26,7 @@ struct CoverageCarryScanTests {
         let workspace = try CarryHarness.workspace(package, build: SnapshotHarness.build)
         let rebuilt = try CarryHarness.workspace(package, build: Self.otherBuild)
 
-        let first = try workspace.scanWorkingTree(history: .skipped("test"), coverage: true).snapshot
+        let first = try workspace.scanWorkingTree(history: .skipped("test"), tiers: .coverage).snapshot
         let second = try workspace.scanWorkingTree(history: .skipped("test"))
         let third = try rebuilt.scanWorkingTree(history: .skipped("test"))
 
@@ -73,7 +73,7 @@ struct CoverageCarryScanTests {
         let source = try String(contentsOf: counter, encoding: .utf8)
         try (source + "// Dirty.\n").write(to: counter, atomically: true, encoding: .utf8)
 
-        let first = try workspace.scanWorkingTree(history: .skipped("test"), coverage: true)
+        let first = try workspace.scanWorkingTree(history: .skipped("test"), tiers: .coverage)
         let second = try workspace.scanWorkingTree(history: .skipped("test"))
 
         let coverage = try #require(first.snapshot.report.coverage)
@@ -119,8 +119,8 @@ struct CoverageCarryScanTests {
         let skip = "this scan's coverage run was skipped "
             + "(collectors.coverage.path \(missing) is not an executable file)"
 
-        let first = try workspace.scanWorkingTree(history: .skipped("test"), coverage: true).snapshot
-        let second = try misconfigured.scanWorkingTree(history: .skipped("test"), coverage: true).snapshot
+        let first = try workspace.scanWorkingTree(history: .skipped("test"), tiers: .coverage).snapshot
+        let second = try misconfigured.scanWorkingTree(history: .skipped("test"), tiers: .coverage).snapshot
 
         #expect(second.report.coverage == first.report.coverage && second.report.coverage != nil)
         #expect(second.report.warnings.contains(ScanWarning(
@@ -131,7 +131,7 @@ struct CoverageCarryScanTests {
         let counter = package.root.appendingPathComponent("Sources/Probe/Counter.swift")
         let source = try String(contentsOf: counter, encoding: .utf8)
         try (source + "// Dirty.\n").write(to: counter, atomically: true, encoding: .utf8)
-        let dirty = try workspace.scanWorkingTree(history: .skipped("test"), coverage: true).snapshot
+        let dirty = try workspace.scanWorkingTree(history: .skipped("test"), tiers: .coverage).snapshot
         try (source + "// Dirtier.\n").write(to: counter, atomically: true, encoding: .utf8)
         let head = String(try SnapshotHarness.runGit(["rev-parse", "HEAD"], in: package.root).prefix(10))
         #expect(throws: StoreError.coverageNotKept(
@@ -139,7 +139,7 @@ struct CoverageCarryScanTests {
             collectedAt: dirty.info.date,
             reason: "the uncommitted changes differ; \(skip)"
         )) {
-            try misconfigured.scanWorkingTree(history: .skipped("test"), coverage: true)
+            try misconfigured.scanWorkingTree(history: .skipped("test"), tiers: .coverage)
         }
     }
 
@@ -156,7 +156,7 @@ struct CoverageCarryScanTests {
         let rebuilt = try CarryHarness.workspace(package, build: Self.otherBuild)
         let counter = package.root.appendingPathComponent("Sources/Probe/Counter.swift")
         let source = try String(contentsOf: counter, encoding: .utf8)
-        let first = try workspace.scanWorkingTree(history: .skipped("test"), coverage: true).snapshot
+        let first = try workspace.scanWorkingTree(history: .skipped("test"), tiers: .coverage).snapshot
         let commit = try #require(first.info.git.commit)
         try (source + "// Changed.\n").write(to: counter, atomically: true, encoding: .utf8)
         try SnapshotHarness.runGit(["commit", "--quiet", "--all", "--message", "Change"], in: package.root)
@@ -171,7 +171,7 @@ struct CoverageCarryScanTests {
         #expect(try rebuilt.store.load(id: ids.newer).coverage == nil)
 
         try (source + "// Dirty.\n").write(to: counter, atomically: true, encoding: .utf8)
-        let dirty = try workspace.scanWorkingTree(history: .skipped("test"), coverage: true).snapshot
+        let dirty = try workspace.scanWorkingTree(history: .skipped("test"), tiers: .coverage).snapshot
         try (source + "// Dirtier.\n").write(to: counter, atomically: true, encoding: .utf8)
         let head = String(try SnapshotHarness.runGit(["rev-parse", "HEAD"], in: package.root).prefix(10))
         #expect(throws: StoreError.coverageNotKept(
@@ -186,7 +186,7 @@ struct CoverageCarryScanTests {
             newer: nil,
             includeDirty: true,
             rescan: false,
-            dropCoverage: true
+            drop: .coverage
         )
         let newer = try workspace.store.load(id: replaced.newer)
         #expect(newer.info.git.isDirty && newer.coverage == nil)

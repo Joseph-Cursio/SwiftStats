@@ -13,7 +13,7 @@
 //  a backfill doesn't collect (history, coverage, tools, the dependency
 //  graph) is never replaced; one holding history or coverage, which a
 //  backfill never collects, isn't even rescanned. Snapshots are stored as
-//  every scan is (`save(_:dropCoverage:)`).
+//  every scan is (`save(_:drop:)`).
 //
 
 import Foundation
@@ -164,7 +164,7 @@ extension SnapshotWorkspace {
             guard lost.isEmpty else {
                 return Self.kept(commit, holding: lost)
             }
-            try save(snapshot, dropCoverage: false)
+            try save(snapshot, drop: [])
             return BackfillStep(commit: commit, action: .scanned, note: note)
         } catch {
             return BackfillStep(commit: commit, action: .failed, note: String(describing: error))

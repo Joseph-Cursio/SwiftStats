@@ -4,7 +4,8 @@
 //
 //  Runs the external tools' collectors in a fixed order (PRD §7.16), and
 //  starts SwiftInferProperties' slower run (§7.11), SwiftCloneDetector's
-//  runs (§7.12) and the coverage run (M5) in the background.
+//  runs (§7.12) and the coverage run (M5) in the background; the
+//  SwiftMutator run (M6) comes last, alone, in the foreground.
 //
 
 import Foundation
@@ -123,6 +124,41 @@ enum CollectorRun {
                 return CoverageRun.skipped(reason)
             }
         }
+    }
+
+    /// Runs the SwiftMutator collector on the package at `root`, alone,
+    /// once every other collector has finished. `collectors.swiftmutator`
+    /// names the `swift-mutator` it runs; until the run is built, one that
+    /// resolves gives `MutationAdapter.notBuiltReason`.
+    static func runMutation(
+        root: URL,
+        configuration: SwiftStatsConfiguration,
+        locator: ToolLocator
+    ) -> TimedAdapterResult {
+        let resolution = ToolResolution.resolve(
+            MutationAdapter.name,
+            executable: MutationAdapter.executableName,
+            configuration: configuration,
+            locator: locator,
+            root: root
+        )
+        switch resolution {
+        case .found:
+            return skippedMutation(MutationAdapter.notBuiltReason)
+
+        case .skip(let reason):
+            return skippedMutation(reason)
+        }
+    }
+
+    /// The SwiftMutator collector skipped for `reason`.
+    static func skippedMutation(_ reason: String) -> TimedAdapterResult {
+        TimedAdapterResult(
+            result: .skipped(MutationAdapter.name, reason: reason),
+            executable: nil,
+            identity: nil,
+            milliseconds: 0
+        )
     }
 
     /// Every external collector skipped for `reason`.

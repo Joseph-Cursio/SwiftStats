@@ -11,7 +11,8 @@
 //  written, saying why and, when it was asked for, why the scan's own run
 //  didn't collect it, unless `--drop-coverage` lets the coverage go, as it
 //  does coverage too damaged to read. Only a coverage run that ran
-//  replaces held coverage without asking.
+//  replaces held coverage without asking. `--drop-mutation` travels with
+//  it in `DropOptions`, for the mutation results a snapshot will hold (M6).
 //
 
 extension SnapshotWorkspace {
@@ -33,13 +34,15 @@ extension SnapshotWorkspace {
     /// the replaced snapshot holds coverage and `snapshot`'s coverage
     /// collector didn't run (skipped or failed), the coverage is carried
     /// onto it, or, when it can't be, `StoreError.coverageNotKept` is
-    /// thrown and nothing is written; `dropCoverage` replaces it without
-    /// coverage instead, but never drops coverage that carries. Coverage
-    /// too damaged to read throws `StoreError.damagedCoverage`, naming the
-    /// way past it, unless `dropCoverage` lets it go; any other failure to
-    /// read it throws the store's error.
+    /// thrown and nothing is written; `drop` holding `.coverage` replaces
+    /// it without coverage instead, but never drops coverage that carries.
+    /// Coverage too damaged to read throws `StoreError.damagedCoverage`,
+    /// naming the way past it, unless `drop` lets it go; any other failure
+    /// to read it throws the store's error. No snapshot holds mutation
+    /// results yet, so `.mutation` changes nothing.
     @discardableResult
-    func save(_ snapshot: ScannedSnapshot, dropCoverage: Bool) throws -> (snapshot: ScannedSnapshot, id: Int64) {
+    func save(_ snapshot: ScannedSnapshot, drop: DropOptions) throws -> (snapshot: ScannedSnapshot, id: Int64) {
+        let dropCoverage = drop.contains(.coverage)
         guard let holder = try coverageHolder(replacedBy: snapshot) else {
             return (snapshot, try store.save(snapshot))
         }

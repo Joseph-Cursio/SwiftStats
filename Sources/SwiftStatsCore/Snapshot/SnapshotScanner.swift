@@ -76,8 +76,8 @@ public struct SnapshotScanner {
     /// when not given; a scan of an exported revision supplies its git state.
     /// Changes to the files at `ignoring` (relative to `root`, such as a
     /// store kept in the package) don't make the tree dirty. `history` says
-    /// whether and where to read the history (PRD §7.13); the coverage
-    /// collector runs only when `coverage` asks for it (M5).
+    /// whether and where to read the history (PRD §7.13); the coverage and
+    /// SwiftMutator collectors run only when `tiers` asks for them (M5, M6).
     public func scan(
         packageAt root: URL,
         configurationFile: URL?,
@@ -86,11 +86,11 @@ public struct SnapshotScanner {
         toolchain: Toolchain? = nil,
         date: Date = Date(),
         history: HistorySource = .automatic,
-        coverage: Bool = false
+        tiers: RequestedTiers = .syntaxOnly
     ) throws -> ScannedSnapshot {
         let packageRoot = root.standardizedFileURL
         let gitState = git ?? GitReader.read(packageRoot: packageRoot, ignoring: ignoring)
-        let scanned = try scanner.run(packageAt: packageRoot, configurationFile: configurationFile, coverage: coverage)
+        let scanned = try scanner.run(packageAt: packageRoot, configurationFile: configurationFile, tiers: tiers)
         let (outcome, historyRun) = Self.addHistory(
             to: scanned,
             source: history.resolved(packageRoot: packageRoot, git: gitState)

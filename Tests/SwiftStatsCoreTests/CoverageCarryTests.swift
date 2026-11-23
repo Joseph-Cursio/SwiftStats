@@ -36,14 +36,14 @@ struct CoverageCarryTests {
         let coverage = try #require(first.report.coverage)
         let carriedReason = "carried from the scan of \(first.info.date); \(CarrySamples.failing)"
 
-        let original = try workspace.save(first, dropCoverage: false)
+        let original = try workspace.save(first, drop: [])
         let second = try workspace.save(
             try CarrySamples.scan(git: CarrySamples.clean, date: SnapshotHarness.date + CarrySamples.day),
-            dropCoverage: false
+            drop: []
         )
         let third = try workspace.save(
             try CarrySamples.scan(git: CarrySamples.clean, date: SnapshotHarness.date + 2 * CarrySamples.day),
-            dropCoverage: false
+            drop: []
         )
 
         #expect(second.snapshot.report.coverage == coverage)
@@ -76,7 +76,7 @@ struct CoverageCarryTests {
         )
         let refusal = CarrySamples.refused("`\(try CarrySamples.key("kit", in: moved))` spans other lines now")
         #expect(throws: refusal) {
-            try workspace.save(moved, dropCoverage: false)
+            try workspace.save(moved, drop: [])
         }
         #expect(try workspace.store.snapshotID(package: "Probe", packagePath: "", commit: "c1", isDirty: false)
             == third.id)
@@ -92,10 +92,10 @@ struct CoverageCarryTests {
         let first = try CarrySamples.covered(try CarrySamples.scan(git: CarrySamples.dirty("aaa")))
         let coverage = try #require(first.report.coverage)
 
-        let original = try workspace.save(first, dropCoverage: false)
+        let original = try workspace.save(first, drop: [])
         let rescan = try workspace.save(
             try CarrySamples.scan(git: CarrySamples.dirty("aaa"), date: SnapshotHarness.date + CarrySamples.day),
-            dropCoverage: false
+            drop: []
         )
 
         #expect(rescan.snapshot.report.coverage == coverage)

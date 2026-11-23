@@ -9,26 +9,31 @@
 //  records, joined to the package's own decisions and verify evidence and
 //  linked to property tests, and every finding is attached to its place.
 //  SwiftCloneDetector starts beside the other external collectors and is
-//  waited for with them, as is the coverage run when the scan asked for it.
-//  The tools' skip reason covers all of them.
+//  waited for with them, as is the coverage run when the scan asked for it;
+//  the SwiftMutator run, when asked for, follows them alone. The tools'
+//  skip reason covers all of them.
 //
 
 import Foundation
 
 extension PackageScanner {
     /// The collectors started in the background before the package is
-    /// measured, waited for with the other external collectors.
+    /// measured, waited for with the other external collectors, and the
+    /// SwiftMutator run asked for, which follows them.
     struct PendingRuns {
         /// SwiftInferProperties' run; nil when the tools are skipped.
         let properties: BackgroundJob<SwiftInferRun>?
         /// The coverage run, or its skip.
         let coverage: BackgroundJob<CoverageRun>
+        /// The SwiftMutator run the scan asked for; nil when it didn't.
+        let mutation: MutationRequest?
     }
 
     /// The external collectors' part of a scan.
     struct ExternalScan {
         /// Each external collector's run, SwiftInferProperties',
-        /// SwiftCloneDetector's and the coverage collector's included.
+        /// SwiftCloneDetector's, the coverage collector's and the
+        /// SwiftMutator collector's included.
         let timed: [TimedAdapterResult]
         /// SwiftStats' markers and the tools' findings, attached.
         let findings: [Finding]
@@ -92,17 +97,18 @@ extension PackageScanner {
     }
 
     /// SwiftInferProperties' run over `targets` of the package at `root`,
-    /// and the coverage run when `coverage` asks for it, started in the
-    /// background.
+    /// and the coverage run when `tiers` asks for it, started in the
+    /// background, with the SwiftMutator run `tiers` asks for.
     func startBackground(
         root: URL,
         targets: [TargetSummary],
         configuration: SwiftStatsConfiguration,
-        coverage: Bool
+        tiers: RequestedTiers
     ) -> PendingRuns {
         PendingRuns(
             properties: startProperties(root: root, targets: targets, configuration: configuration),
-            coverage: startCoverage(root: root, configuration: configuration, requested: coverage)
+            coverage: startCoverage(root: root, configuration: configuration, requested: tiers.coverage),
+            mutation: tiers.mutation
         )
     }
 
@@ -121,9 +127,9 @@ extension PackageScanner {
 
     /// Starts SwiftCloneDetector and runs the other external collectors on
     /// `targets` of the package at `root`, waits for it and for `pending`,
-    /// SwiftInferProperties' and the coverage collector's runs, and
-    /// attaches the classes, the suggestions, the coverage and every
-    /// finding to `measured`'s records.
+    /// SwiftInferProperties' and the coverage collector's runs, then runs
+    /// the SwiftMutator collector alone, and attaches the classes, the
+    /// suggestions, the coverage and every finding to `measured`'s records.
     func externalRuns(
         root: URL,
         targets: [TargetSummary],
@@ -137,6 +143,7 @@ extension PackageScanner {
         let cloneRun = cloneJob?.wait()
         let run = pending.properties?.wait()
         let coverage = pending.coverage.wait()
+        let mutation = runMutation(root: root, configuration: configuration, request: pending.mutation)
         let findings = Self.attach(measured.markers + adapters.flatMap(\.result.findings), to: measured)
         // SwiftInferProperties and SwiftCloneDetector report no findings,
         // so they get no counts.
@@ -152,7 +159,7 @@ extension PackageScanner {
             root: root
         )
         return ExternalScan(
-            timed: adapters + [run?.timed, cloneRun?.timed, coverage.timed].compactMap(\.self),
+            timed: adapters + [run?.timed, cloneRun?.timed, coverage.timed].compactMap(\.self) + [mutation],
             findings: findings,
             tally: FindingTally(findings: findings, tools: Set(ran).union([MarkerCollector.tool])),
             properties: properties?.report,

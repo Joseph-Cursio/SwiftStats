@@ -13,7 +13,8 @@ enum Comparability {
         CoverageAdapter.name: "SwiftStats' build differs, and its own code maps the coverage",
         DependencyGraphAdapter.name: "SwiftStats' build differs, and its own code reads the graph",
         HistoryCollector.name: "SwiftStats' build differs, and its own code reads the history",
-        EffectCollector.name: "SwiftStats' build differs, and its own code maps the side effects"
+        EffectCollector.name: "SwiftStats' build differs, and its own code maps the side effects",
+        MutationAdapter.name: "SwiftStats' build differs, and its own code maps the mutants"
     ]
 
     /// Each collector in either snapshot, sorted by name.

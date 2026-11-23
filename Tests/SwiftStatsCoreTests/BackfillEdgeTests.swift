@@ -195,7 +195,7 @@ struct BackfillEdgeTests {
             coverage: try CoverageSamples.stored(),
             run: CoverageSnapshots.ran(options: ["map: " + CoverageMapper.rule, "links: " + CoverageTestLinks.rule])
         )
-        let id = try workspace.save(covered, dropCoverage: false).id
+        let id = try workspace.save(covered, drop: []).id
         // Fails any export scan, which would make the step fail, not keep it.
         let other = try SnapshotWorkspace(
             packageRoot: repository.root,

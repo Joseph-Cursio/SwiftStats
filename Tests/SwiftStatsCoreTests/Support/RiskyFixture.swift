@@ -156,7 +156,7 @@ enum RiskyFixture {
             git: SnapshotHarness.git(commit: "c1"),
             toolchain: SnapshotHarness.toolchain,
             date: SnapshotHarness.date,
-            coverage: true
+            tiers: .coverage
         )
         let storeDirectory = try SnapshotHarness.temporaryDirectory("Risky")
         defer { try? FileManager.default.removeItem(at: storeDirectory) }

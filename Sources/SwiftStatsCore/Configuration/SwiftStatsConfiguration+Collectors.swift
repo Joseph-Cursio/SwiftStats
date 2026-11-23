@@ -4,9 +4,10 @@
 //
 //  The `collectors` key (PRD §10.1, §7.16): per collector, `enabled` and
 //  `path`, though a collector SwiftStats runs in process takes no `path`;
-//  the coverage collector alone also takes `arguments` (M5). `options`, and
-//  collectors no milestone has built yet, are accepted with a warning; any
-//  other key is an error.
+//  the coverage and swiftmutator collectors also take `arguments` (M5, M6),
+//  and swiftmutator reads `options` (`workers`, `timeout`; M6). `options`
+//  under any other collector, and collectors no milestone has built yet,
+//  are accepted with a warning; any other key is an error.
 //
 
 import Yams
@@ -15,12 +16,14 @@ extension SwiftStatsConfiguration {
     /// Collectors SwiftStats runs.
     static let builtCollectors: Set<String> = [
         "coverage", "dependencies", "swiftclonedetector", "swifteffectinference", "swiftinferproperties",
-        "swiftlint", "swiftprojectlint"
+        "swiftlint", "swiftmutator", "swiftprojectlint"
     ]
     /// Keys a collector's entry may hold.
     private static let collectorKeys: Set<String> = ["arguments", "enabled", "options", "path"]
     /// Collectors whose entry may hold `arguments`.
-    private static let argumentCollectors: Set<String> = [CoverageAdapter.name]
+    private static let argumentCollectors: Set<String> = [CoverageAdapter.name, MutationAdapter.name]
+    /// Collectors that read their entry's `options`.
+    private static let optionCollectors: Set<String> = [MutationAdapter.name]
     /// Collectors SwiftStats runs in process, which take no `path`.
     private static let inProcessCollectors: Set<String> = ["swifteffectinference"]
 
@@ -43,17 +46,22 @@ extension SwiftStatsConfiguration {
                 throw ScanError.configurationInvalid(path, "`collectors` must be a mapping of collector names")
             }
             let entryMapping = try collectorMapping(entry, name: name, path: path)
-            if entryMapping["options"] != nil {
+            if entryMapping["options"] != nil, optionCollectors.contains(name) == false {
                 unused.insert("collectors.\(name).options")
             }
             guard builtCollectors.contains(name) else {
                 unused.insert("collectors.\(name)")
                 continue
             }
+            let options = optionCollectors.contains(name)
+                ? try MutationOptions.parse(entryMapping["options"], path: path)
+                : (workers: nil, timeout: nil)
             settings[name] = CollectorSettings(
                 enabled: try flag(entryMapping["enabled"], key: "collectors.\(name).enabled", path: path),
                 path: try text(entryMapping["path"], key: "collectors.\(name).path", path: path),
-                arguments: try CoverageArguments.parse(entryMapping["arguments"], name: name, path: path)
+                arguments: try CoverageArguments.parse(entryMapping["arguments"], name: name, path: path),
+                workers: options.workers,
+                timeout: options.timeout
             )
         }
         return (settings, unused)
@@ -75,7 +83,7 @@ extension SwiftStatsConfiguration {
         if argumentCollectors.contains(name) == false, mapping["arguments"] != nil {
             throw ScanError.configurationInvalid(
                 path,
-                "`collectors.\(name).arguments`: only the coverage collector takes arguments"
+                "`collectors.\(name).arguments`: only the coverage and swiftmutator collectors take arguments"
             )
         }
         if inProcessCollectors.contains(name), mapping["path"] != nil {

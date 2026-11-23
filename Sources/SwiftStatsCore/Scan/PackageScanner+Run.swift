@@ -2,11 +2,12 @@
 //  PackageScanner+Run.swift
 //  SwiftStatsCore
 //
-//  The scan itself (PRD M0–M2, M4, M5): describe the package, start
+//  The scan itself (PRD M0–M2, M4–M6): describe the package, start
 //  SwiftInferProperties and, when asked for, the coverage run, measure its
 //  files, infer side effects, run the other external collectors,
-//  SwiftCloneDetector among them, attach the suggestions and clones and
-//  assemble the report, timing each collector for the snapshot (PRD §6.2).
+//  SwiftCloneDetector among them, then, when asked for, SwiftMutator alone,
+//  attach the suggestions and clones and assemble the report, timing each
+//  collector for the snapshot (PRD §6.2).
 //
 
 import Foundation
@@ -65,14 +66,15 @@ extension PackageScanner {
     }
 
     /// The scan of `packageRoot`, with each collector's run time and binary;
-    /// the coverage collector runs only when `coverage` asks for it.
-    func run(packageAt packageRoot: URL, configurationFile: URL?, coverage: Bool) throws -> ScanOutcome {
+    /// the coverage and SwiftMutator collectors run only when `tiers` asks
+    /// for them.
+    func run(packageAt packageRoot: URL, configurationFile: URL?, tiers: RequestedTiers) throws -> ScanOutcome {
         let root = packageRoot.standardizedFileURL
         try Self.requirePackage(at: root)
         let configuration = try SwiftStatsConfiguration.load(configurationFile, root: root)
         let package = try describer.describePackage(at: root)
         let (targets, excludedFiles) = Self.excluding(TargetResolver.resolve(package), by: configuration)
-        let pending = startBackground(root: root, targets: targets, configuration: configuration, coverage: coverage)
+        let pending = startBackground(root: root, targets: targets, configuration: configuration, tiers: tiers)
         let scan = Self.measured(targets, root: root, configuration: configuration)
         let (measured, effects) = (scan.measurements, scan.effects)
         let external = externalRuns(

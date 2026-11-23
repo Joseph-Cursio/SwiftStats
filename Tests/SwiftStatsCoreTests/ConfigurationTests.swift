@@ -91,7 +91,7 @@ struct ConfigurationTests {
           swiftprojectlint:
             path: tools/spl
             options: [--strict]
-          swiftmutator:
+          periphery:
             enabled: true
           dependencies:
         """
@@ -102,7 +102,7 @@ struct ConfigurationTests {
             "swiftlint": CollectorSettings(enabled: false, path: nil),
             "swiftprojectlint": CollectorSettings(enabled: true, path: "tools/spl")
         ])
-        #expect(configuration.unusedKeys == ["collectors.swiftmutator", "collectors.swiftprojectlint.options"])
+        #expect(configuration.unusedKeys == ["collectors.periphery", "collectors.swiftprojectlint.options"])
         let invalid = [
             "collectors: [swiftlint]\n", "collectors:\n  swiftlint: on\n",
             "collectors:\n  swiftlint:\n    enabled: maybe\n", "collectors:\n  swiftlint:\n    paths: x\n",

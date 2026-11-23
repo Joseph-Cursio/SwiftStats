@@ -1,3 +1,4 @@
+import Foundation
 import SwiftParser
 @testable import SwiftStatsCore
 import Testing
@@ -11,7 +12,8 @@ struct ComplexityScorerTests {
             path: "Sources/Lib/File.swift",
             source: source,
             tree: Parser.parse(source: source),
-            hasByteOrderMark: false
+            hasByteOrderMark: false,
+            sha256: ContentHash.sha256(Data(source.utf8))
         )
         return ComplexityScorer.score(
             CollectorHarness.collect(source),

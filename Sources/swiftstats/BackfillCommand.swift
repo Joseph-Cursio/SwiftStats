@@ -22,7 +22,8 @@ struct BackfillCommand: ParsableCommand {
         Picks every Nth commit counting from the first (--every), or each week's latest commit in UTC \
         (--weekly, the default). Each is exported without touching the repository and scanned with \
         SwiftStats' own measurements and side effects; --with-tools adds SwiftLint, SwiftProjectLint, \
-        SwiftInferProperties and SwiftCloneDetector; git history is never read, nor coverage collected. A \
+        SwiftInferProperties and SwiftCloneDetector; git history is never read, nor coverage or mutation \
+        results collected. A \
         commit that already has a snapshot is skipped; --rerun rescans those taken by another SwiftStats build, \
         except snapshots holding history, coverage or tool results a backfill wouldn't collect.
         """
