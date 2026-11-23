@@ -10,8 +10,8 @@
 //  subject `subject` (it was `family`) and move M3's inputs into `history`;
 //  report schema 4 and top schema 3 (M5) add `markers`, `coverage` and a
 //  clone class's `coverage` (M5's payloads are in `SignalItem+Coverage.swift`);
-//  M6 adds `mutation`, `ratio` and `propertyTarget` (in
-//  `SignalItem+Mutation.swift`).
+//  M6 adds `mutation`, `ratio`, `propertyTarget` and a clone class's
+//  `mutation` (in `SignalItem+Mutation.swift`).
 //
 
 /// An item's place in a signal.
@@ -107,7 +107,8 @@ public struct SignalItem: Codable, Hashable, Sendable {
         /// Its stripped lines: for divergent clones, those of the units
         /// in its diverging slots, which the score counts; for a hotspot,
         /// those its copies cover; for uneven clone testing, those of its
-        /// copies at most 20% covered.
+        /// copies at most 20% covered, and for its mutation part, those of
+        /// its copies at most the low limit killed.
         public let lines: Int
         /// Its copies: for divergent clones, those with a production family
         /// outside generated files now.
@@ -122,6 +123,9 @@ public struct SignalItem: Codable, Hashable, Sendable {
         /// How well the tests cover its copies; nil when the signal doesn't
         /// read coverage.
         public let coverage: CloneCoverage?
+        /// How the tests kill its copies' mutants; nil when the signal
+        /// doesn't read mutation results.
+        public let mutation: CloneMutation?
     }
 
     /// How a clone class's copies changed since an earlier snapshot.

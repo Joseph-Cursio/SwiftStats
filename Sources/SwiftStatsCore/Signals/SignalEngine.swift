@@ -65,7 +65,7 @@ public enum SignalEngine {
         case .divergentClones:
             return DivergentClones.compute(inputs)
 
-        case .bestPropertyTarget, .genuinelyUnderTested, .weakTests:
+        case .bestPropertyTarget, .genuinelyUnderTested, .unevenCloneMutation, .weakTests:
             return mutationComputation(signal, snapshot: snapshot, thresholds: thresholds)
 
         case .missingTemplate:
@@ -194,8 +194,9 @@ public enum SignalEngine {
         )
     }
 
-    /// M6's per-function signal `signal`, weak tests, genuinely
-    /// under-tested or best property-test target, computed from `snapshot`.
+    /// M6's signal `signal`, weak tests, genuinely under-tested, best
+    /// property-test target or uneven clone testing's mutation part,
+    /// computed from `snapshot`.
     private static func mutationComputation(
         _ signal: SignalName,
         snapshot: StoredSnapshot,
@@ -208,12 +209,15 @@ public enum SignalEngine {
         case .genuinelyUnderTested:
             GenuinelyUnderTested.compute(snapshot, thresholds: thresholds)
 
+        case .unevenCloneMutation:
+            UnevenCloneMutation.compute(snapshot, thresholds: thresholds)
+
         default:
             BestPropertyTarget.compute(snapshot)
         }
     }
 
-    /// The rule M6's per-function signal `signal` states when left out.
+    /// The rule M6's signal `signal` states when left out.
     private static func mutationRule(_ signal: SignalName, thresholds: SignalThresholds) -> String {
         switch signal {
         case .weakTests:
@@ -221,6 +225,9 @@ public enum SignalEngine {
 
         case .genuinelyUnderTested:
             GenuinelyUnderTested.rule(thresholds: thresholds)
+
+        case .unevenCloneMutation:
+            UnevenCloneMutation.rule(thresholds: thresholds)
 
         default:
             BestPropertyTarget.rule
@@ -264,7 +271,7 @@ public enum SignalEngine {
         case .divergentClones:
             DivergentClones.rule
 
-        case .bestPropertyTarget, .genuinelyUnderTested, .weakTests:
+        case .bestPropertyTarget, .genuinelyUnderTested, .unevenCloneMutation, .weakTests:
             mutationRule(signal, thresholds: thresholds)
 
         case .missingTemplate:

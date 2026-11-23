@@ -8,8 +8,11 @@
 //  its suspect-only kills with why (for reach, in how many of the files
 //  with kills each failed); the test-to-code line ratio of its module
 //  and of the project, which weak tests shows as context and genuinely
-//  under-tested judges by; and, for best property-test target, the
-//  function's suggestions, its unkilled mutants and its resolved partners'.
+//  under-tested judges by; for best property-test target, the
+//  function's suggestions, its unkilled mutants and its resolved partners';
+//  and, for uneven clone testing's mutation part, each measured copy's
+//  mutants killed and scored, split into those that ran unchecked and those
+//  in code that never ran.
 //
 
 public extension SignalItem {
@@ -90,5 +93,35 @@ public extension SignalItem {
         /// Its survived, timed-out, no-coverage and not-covered mutants, in
         /// the report's order.
         public let unkilled: [UncheckedMutant]
+    }
+
+    /// How the tests kill the mutants of a clone class's copies (uneven
+    /// clone testing, mutation part).
+    struct CloneMutation: Codable, Hashable, Sendable {
+        /// The ordinals of the classes folded into this item, sorted.
+        public let folded: [Int]
+        /// The measured copies, in the class's order.
+        public let copies: [MutatedCopy]
+    }
+
+    /// One clone copy with its mutants: those anchored in its range.
+    struct MutatedCopy: Codable, Hashable, Sendable {
+        /// Its file.
+        public let file: String
+        /// Where it starts.
+        public let line: Int
+        /// The family holding it, by M4's copy-to-family rule: the first
+        /// family it covers whole, else its containing record's family;
+        /// `<file>:<line>` when neither exists.
+        public let family: String
+        /// Its mutants killed.
+        public let killed: Int
+        /// Its scored mutants: killed, survived, no coverage, timed out
+        /// and not covered (build errors aside).
+        public let scored: Int
+        /// Its mutants that ran and no test checked: survived and timed out.
+        public let runButUnchecked: Int
+        /// Its mutants whose code never ran: no coverage and not covered.
+        public let unrun: Int
     }
 }

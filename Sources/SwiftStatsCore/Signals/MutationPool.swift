@@ -8,7 +8,8 @@
 //  in state scored or only not covered with at least the signal's fewest
 //  scored mutants (the function score's denominator, build errors aside),
 //  the rest counted by why they are out. Shares are compared with their
-//  limits exactly, on integers: `killed × 100 < limit × scored`.
+//  limits exactly, on integers: `killed × 100 < limit × scored` (and the
+//  at-least and at-most forms uneven clone mutation's copies use).
 //
 
 /// The production functions a per-function mutation signal judges.
@@ -101,6 +102,16 @@ struct MutationPool {
     /// Whether `score` lies below `percent`, exactly.
     static func isBelow(_ score: MutationScore, _ percent: Double) -> Bool {
         Double(score.killed) * wholePercent < percent * Double(score.scored)
+    }
+
+    /// Whether `score` reaches `percent`, exactly.
+    static func isAtLeast(_ score: MutationScore, _ percent: Double) -> Bool {
+        Double(score.killed) * wholePercent >= percent * Double(score.scored)
+    }
+
+    /// Whether `score` lies at or below `percent`, exactly.
+    static func isAtMost(_ score: MutationScore, _ percent: Double) -> Bool {
+        Double(score.killed) * wholePercent <= percent * Double(score.scored)
     }
 
     /// Whether `lines` covers at least `percent` of its lines, exactly.

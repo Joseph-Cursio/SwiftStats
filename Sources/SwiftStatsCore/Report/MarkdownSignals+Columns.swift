@@ -82,7 +82,7 @@ extension MarkdownSignals {
     static func m4Columns(for signal: SignalName) -> [Column] {
         switch signal {
         case .bestPropertyTarget, .bugProne, .genuinelyUnderTested, .hotspot, .safeToLeave, .testsNotKeepingUp,
-            .unstableFixes, .weakTests:
+            .unevenCloneMutation, .unstableFixes, .weakTests:
             []
 
         case .cloneHotspot:

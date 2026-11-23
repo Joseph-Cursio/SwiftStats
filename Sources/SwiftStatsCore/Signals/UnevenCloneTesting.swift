@@ -105,7 +105,8 @@ enum UnevenCloneTesting {
                 copies: member.copies.count,
                 churn: nil,
                 divergence: nil,
-                coverage: SignalItem.CloneCoverage(folded: folded, copies: member.copies.map(\.listed))
+                coverage: SignalItem.CloneCoverage(folded: folded, copies: member.copies.map(\.listed)),
+                mutation: nil
             )
         )
         let score = Double(member.uncovered.count)

@@ -10,7 +10,9 @@
 //  kills, its unkilled mutants, and its line coverage. A function has
 //  coverage data when its line tally maps at least one line; a snapshot
 //  read without coverage (best property-test target needs none) gives
-//  none.
+//  none. For clone copies (uneven clone testing, mutation part) it also
+//  indexes each file's mapped mutants (placed on a record, a type or the
+//  file) by anchor, so a copy's mutants are those anchored in its range.
 //
 
 import Foundation
@@ -23,6 +25,11 @@ struct MutationJudge {
     private static let notKilled: Set<MutationVerdict> = [.survived, .timedOut, .noCoverage, .notCovered]
     /// The killing tests an item names.
     static let namedKillingTests = 5
+    /// The position before every other, standing for a missing anchor,
+    /// which the anchor index never holds.
+    private static let origin = SourcePosition(line: 0, column: 0)
+    /// What a binary search divides its span by.
+    private static let halves = 2
 
     /// The production function rows outside generated files.
     let functions: ProductionFunctions
@@ -38,6 +45,8 @@ struct MutationJudge {
     private let coverage: [String: CoverageRecord]
     /// The suspect tests, by run, then name.
     private let suspects: [Int: [String: [MutationSuspectTest]]]
+    /// Each file's mapped mutants, by NFC path, sorted by anchor, then key.
+    private let anchored: [String: [Mutant]]
 
     /// A judge of `snapshot`'s `mutation` results with its `coverage` (none
     /// when nil).
@@ -53,6 +62,45 @@ struct MutationJudge {
         suspects = Dictionary(grouping: mutation.suspectTests, by: \.run).mapValues { tests in
             Dictionary(grouping: tests, by: \.name)
         }
+        anchored = Self.anchorIndex(mutation.mutants)
+    }
+
+    /// `mutants` placed on a record, a type or a file with an anchor, by
+    /// NFC path, each file's sorted by anchor, then key.
+    private static func anchorIndex(_ mutants: [Mutant]) -> [String: [Mutant]] {
+        let mapped = mutants.filter { mutant in
+            mutant.anchor != nil && (mutant.place == .record || mutant.place == .type || mutant.place == .file)
+        }
+        return Dictionary(grouping: mapped) { $0.path.precomposedStringWithCanonicalMapping }.mapValues { held in
+            held.sorted { left, right in
+                let (leftAnchor, rightAnchor) = (left.anchor ?? Self.origin, right.anchor ?? Self.origin)
+                return leftAnchor == rightAnchor ? left.key < right.key : leftAnchor < rightAnchor
+            }
+        }
+    }
+
+    /// The mapped mutants (placed on a record, a type or the file) of
+    /// `file` whose anchor lies in `range`, ends included, by anchor, then
+    /// key; paths compared in NFC.
+    func mutants(in file: String, range: SourceSpan) -> [Mutant] {
+        let held = anchored[file.precomposedStringWithCanonicalMapping] ?? []
+        var low = 0
+        var high = held.count
+        while low < high {
+            let middle = (low + high) / Self.halves
+            if (held[middle].anchor ?? Self.origin) < range.start {
+                low = middle + 1
+            } else {
+                high = middle
+            }
+        }
+        return Array(held[low...].prefix { ($0.anchor ?? Self.origin) <= range.end })
+    }
+
+    /// The disposition of `file`'s results; nil when the results don't name
+    /// it. Paths compared in NFC.
+    func disposition(of file: String) -> MutationFileDisposition? {
+        dispositions[file.precomposedStringWithCanonicalMapping]
     }
 
     /// `row`'s mutants counted; nil when it has none.

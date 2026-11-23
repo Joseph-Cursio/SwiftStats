@@ -4,8 +4,9 @@
 //
 //  The rows `MutationSignalHarness` gives its packages (M6): a function's
 //  coverage record, coverage holding nothing but records, a planted
-//  mutant as a scan maps it onto its record, and the one run the results
-//  come from.
+//  mutant as a scan maps it onto its record (or, for uneven clone
+//  testing's mutation part, onto a type or file, or not at all, with an
+//  anchor of its own), and the one run the results come from.
 //
 
 @testable import SwiftStatsCore
@@ -41,8 +42,17 @@ extension MutationSignalHarness {
         )
     }
 
-    /// `planted` as a mutant of `owner` at `line` and `column` of `path`.
+    /// `planted` as a mutant of `owner` at `line` and `column` of `path`,
+    /// placed on its record and anchored at its point.
     static func mutant(_ planted: Planted, path: String, line: Int, column: Int, owner: String) -> Mutant {
+        let point = SourcePosition(line: line, column: column)
+        return mutant(planted, path: path, at: point, placement: Placement(place: .record, owner: owner, anchor: point))
+    }
+
+    /// `planted` as a mutant at `point` of `path` (SwiftMutator's line and
+    /// column), placed as `placement` says.
+    static func mutant(_ planted: Planted, path: String, at point: SourcePosition, placement: Placement) -> Mutant {
+        let mapped = placement.place == .record || placement.place == .type || placement.place == .file
         let verdict = planted.verdict
         let outcome: String? = switch verdict {
         case .killed:
@@ -62,11 +72,11 @@ extension MutationSignalHarness {
         }
         return Mutant(
             path: path,
-            line: line,
-            column: column,
+            line: point.line,
+            column: point.column,
             occurrence: 0,
-            operatorID: "RelationalOperatorReplacement",
-            anchor: SourcePosition(line: line, column: column),
+            operatorID: planted.operatorID,
+            anchor: mapped ? placement.anchor : nil,
             verdict: verdict,
             outcome: outcome,
             activated: verdict == .noCoverage ? JSONFlag(false) : nil,
@@ -86,9 +96,9 @@ extension MutationSignalHarness {
             carried: false,
             reused: false,
             rerun: nil,
-            place: .record,
-            owner: owner,
-            reason: nil
+            place: placement.place,
+            owner: mapped ? placement.owner : nil,
+            reason: mapped ? nil : placement.place == .unmapped ? "file changed" : "testFiles"
         )
     }
 

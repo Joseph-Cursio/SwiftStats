@@ -39,6 +39,9 @@ public enum SignalName: String, CaseIterable, Codable, Hashable, Sendable {
     /// Types with a hand-written witness for a conformance the kit checks,
     /// which no test checks.
     case uncheckedLaws = "unchecked-laws"
+    /// Clone classes whose mutants the tests kill in one copy and barely
+    /// in another: copy the tests, or merge the code.
+    case unevenCloneMutation = "uneven-clone-mutation"
     /// Clone classes with a copy the tests cover well and a copy they
     /// barely cover: copy the tests, or merge the code.
     case unevenCloneTesting = "uneven-clone-testing"
@@ -54,7 +57,8 @@ public enum SignalName: String, CaseIterable, Codable, Hashable, Sendable {
     public static let reportOrder: [Self] = [
         .hotspot, .bugProne, .unstableFixes, .testsNotKeepingUp, .safeToLeave,
         .untestedProperty, .toolDisagreement, .missingTemplate, .uncheckedLaws, .divergentClones, .cloneHotspot,
-        .riskyUntested, .unevenCloneTesting, .weakTests, .genuinelyUnderTested, .bestPropertyTarget
+        .riskyUntested, .unevenCloneTesting, .weakTests, .genuinelyUnderTested, .bestPropertyTarget,
+        .unevenCloneMutation
     ]
 
     /// The name a report heads the signal with.
@@ -96,6 +100,9 @@ public enum SignalName: String, CaseIterable, Codable, Hashable, Sendable {
         case .uncheckedLaws:
             "Unchecked laws"
 
+        case .unevenCloneMutation:
+            "Uneven clone testing (mutation)"
+
         case .unevenCloneTesting:
             "Uneven clone testing"
 
@@ -125,7 +132,9 @@ public enum SignalName: String, CaseIterable, Codable, Hashable, Sendable {
     /// list the M6 snapshot first likewise, then SwiftMutator, then
     /// coverage (best property-test target SwiftInferProperties instead),
     /// and genuinely under-tested also needs results that list code no
-    /// test ran.
+    /// test ran; uneven clone testing's mutation part lists the clone
+    /// detector before SwiftMutator, as its coverage part lists it before
+    /// coverage.
     var requirements: [SignalRequirement] {
         let mutation = SignalRequirement.collector(MutationAdapter.name)
         let effects = SignalRequirement.collector(EffectCollector.name)
@@ -159,6 +168,9 @@ public enum SignalName: String, CaseIterable, Codable, Hashable, Sendable {
 
         case .uncheckedLaws:
             [.m4Snapshot]
+
+        case .unevenCloneMutation:
+            [.m6Snapshot, clones, mutation]
 
         case .unevenCloneTesting:
             [.m5Snapshot, clones, coverage]

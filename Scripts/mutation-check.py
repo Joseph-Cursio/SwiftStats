@@ -115,20 +115,20 @@ base S_B, per path and per function, as the done-when reads them:
      SwiftMutator's timing (listed in `--confirmed-flips`) is listed and
      allowed; every flip is printed with the rerun command.
 
-`signals` mode re-derives M6's per-function signals (design section 7.1,
-7.2, 7.3, section 9 step 4) from a store's rows by the rules, without
-SwiftStats' code, and compares them with `swiftstats report --format json`
-of that snapshot (the snapshot the report names, by package, path, commit
-and dirtiness):
+`signals` mode re-derives M6's signals (design section 7, section 9 step
+4) from a store's rows by the rules, without SwiftStats' code, and compares
+them with `swiftstats report --format json` of that snapshot (the snapshot
+the report names, by package, path, commit and dirtiness):
 
-  s  each of weak tests, genuinely under-tested and best property-test
-     target is computed, or left out with the reason its inputs give: a scan
-     before schema 8 or with no swiftmutator run predates M6; a required
-     collector (swiftmutator, then coverage, or for best property-test
-     target swiftinferproperties) that didn't run is named with its state and
-     reason; genuinely under-tested also needs results that list code no
-     test ran; then no mutation rows, then, for the two coverage signals, no
-     coverage rows.
+  s  each of weak tests, genuinely under-tested, best property-test target
+     and uneven clone testing (mutation) is computed, or left out with the
+     reason its inputs give: a scan before schema 8 or with no swiftmutator
+     run predates M6; a required collector (swiftmutator, then coverage; for
+     best property-test target swiftmutator, then swiftinferproperties; for
+     uneven clone mutation swiftclonedetector, then swiftmutator) that didn't
+     run is named with its state and reason; genuinely under-tested also
+     needs results that list code no test ran; then no mutation rows, then,
+     for the two coverage signals, no coverage rows.
   r  each production module's and the project's test and production lines
      stored in the roll-ups equal those re-derived from the report's scan
      (the tests of test targets depending on the module directly, generated
@@ -163,14 +163,40 @@ and dirtiness):
      partners with their counts and unkilled mutants; no coverage, ratio or
      single suggestion), and every number of its funnel in order, the
      partners added and the mutants more than one item counts included.
+  u  uneven clone testing (mutation): each clone copy's mutants (every
+     mutant placed on a record, a type or the file, in the copy's file by NFC
+     path, whose stored anchor lies in the copy's inclusive range), the
+     copies skipped (in a file holding a generated function, in a file whose
+     disposition is unresolved or unlisted, with fewer than `mutants` scored
+     mutants), the pool (classes with two or more measured copies), the
+     uneven classes (a copy's function score at least `high`%, another's at
+     most `low`%), folding on the poor copies by lines (this script's own
+     fold: classes holding each other stand as the most specific pass, then
+     largest mass, then lowest ordinal; a held class goes to the maximal
+     holder of largest mass, strongest kind, lowest ordinal), scores (the
+     poor copies' unkilled mutants, each once), subjects (the least killed
+     poor copy, cross-multiplied, then most unkilled, file, line, named by
+     this script's own copy-to-family rule over the stored function rows),
+     order (poor copies with a survived or timed-out mutant first, then
+     score, mass, kind, subject, file, line, ordinal), payloads (the clone
+     class with its folded ordinals and each measured copy's killed, scored,
+     run-but-unchecked and unrun mutants; no other payload) and every number
+     of its rule and funnel in order, the mutants more than one item counts
+     included.
 
 Shares are compared with the limits on integers (`killed × 100 < limit ×
 scored`). The limits are the design's defaults unless `--set` gives the ones
-the report's configuration sets. It trusts the stored coverage tallies and
+the report's configuration sets; a `--set` naming a limit its signal doesn't
+have (weak tests: coverage, score, mutants; genuinely under-tested: those and
+ratio; uneven clone mutation: high, low, mutants) is refused. It trusts the stored coverage tallies and
 the report's scan for the ratio inputs, and, for best property-test target,
 the stored suggestion rows as the SwiftInferProperties collector joined them:
 each one's owner, `partnerKey`, decision, verify judgement (`verified`,
-`disproven`) and `testedBy`.
+`disproven`) and `testedBy`; for uneven clone mutation, the stored clone
+classes and copy ranges (after SwiftStats' end-column adjustment), each
+copy's `wholes` (newline-joined) and `containing` records, the function rows' parents and
+generated marks, and each mutant's stored anchor and place (which `base`
+mode checks against the source).
 
 Inputs it trusts from SwiftStats, as M5's checker verified them against
 llvm-cov: the scan JSON's record and type ranges, roles, modules, the
@@ -2114,14 +2140,27 @@ def since(arguments):
 
 
 # --------------------------------------------------------------------------
-# signals mode: weak tests, genuinely under-tested and best property-test target re-derived from the store
+# signals mode: weak tests, genuinely under-tested, best property-test target and uneven clone mutation
+# re-derived from the store
 
 
 # The mutation signals' limits when none is set (design section 7).
 DEFAULT_LIMITS = {
     "weak-tests": {"coverage": 80.0, "score": 50.0, "mutants": 3.0},
     "genuinely-under-tested": {"coverage": 20.0, "score": 20.0, "mutants": 3.0},
+    "uneven-clone-mutation": {"high": 80.0, "low": 20.0, "mutants": 2.0},
 }
+# The limits each signal's --set may name: its defaults, and genuinely under-tested's ratio, unset by default.
+LIMIT_NAMES = {
+    "weak-tests": ("coverage", "score", "mutants"),
+    "genuinely-under-tested": ("coverage", "score", "mutants", "ratio"),
+    "uneven-clone-mutation": ("high", "low", "mutants"),
+}
+MINIMUM_COPIES = 2
+MAPPED_PLACES = ("record", "type", "file")
+# How specific a clone pass's claim is, and how strong each kind's claim is.
+PASS_SPECIFICITY = {"subtree": 0, "sequence": 1, "near-miss": 2}
+KIND_ORDER = ("exact", "renamed", "sequence", "near-miss")
 WEAK_NOT_LISTED_NOTE = ("; the mutation results don't list code no test ran (a SwiftMutator build before 13f96a46), "
                         "so functions no test ran aren't judged")
 NOT_LISTED_REASON = ("the mutation results don't list code no test ran (a SwiftMutator build before 13f96a46), "
@@ -2135,6 +2174,7 @@ SIGNAL_COLLECTORS = {
     "weak-tests": ("swiftmutator", "coverage"),
     "genuinely-under-tested": ("swiftmutator", "coverage"),
     "best-property-target": ("swiftmutator", "swiftinferproperties"),
+    "uneven-clone-mutation": ("swiftclonedetector", "swiftmutator"),
 }
 NUMBER = re.compile(r"\d+(?:\.\d+)?")
 
@@ -2179,6 +2219,17 @@ class SignalStore:
             self.suspects[(row["run"], row["name"])].append((row["why"], row["files"], row["filesWithKills"]))
         self.rollups = rows("SELECT scope, name, metric, value FROM rollupMetric WHERE snapshotId = ?")
         self.candidates = rows("SELECT * FROM propertyCandidate WHERE snapshotId = ? ORDER BY ordinal")
+        # Every function row (any role), for the copy-to-family rule, and the files holding a generated one.
+        self.all_functions = rows("SELECT key, kind, accessorKind, parentKey, file, startLine FROM function "
+                                  "WHERE snapshotId = ? ORDER BY rowid")
+        self.generated_files = {row["file"] for row in
+                                rows("SELECT DISTINCT file FROM function WHERE snapshotId = ? AND generated = 1")}
+        self.clone_classes = rows("SELECT * FROM cloneClass WHERE snapshotId = ? ORDER BY ordinal")
+        instances = defaultdict(list)
+        for row in rows("SELECT * FROM cloneInstance WHERE snapshotId = ? ORDER BY classOrdinal, ordinal"):
+            instances[row["classOrdinal"]].append(row)
+        for clone in self.clone_classes:
+            clone["instances"] = instances[clone["ordinal"]]
         database.close()
 
 
@@ -2501,6 +2552,201 @@ class SignalModel:
                    len(items), counts["allKilled"], counts["partners"], shared]
         return [entry for _, entry in items], counts["withResults"], numbers
 
+    # Uneven clone mutation
+    def families(self):
+        """Each function key's family id, and each family's root key or accessor keys, by the copy-to-family rule
+        (design section 7.4; PRD 8): a record's family is its topmost ancestor's; a computed property's accessors
+        form one family named by the property's key."""
+        rows = self.store.all_functions
+        first_index = {}
+        for index, row in enumerate(rows):
+            first_index.setdefault(row["key"], index)
+
+        def is_accessor(row):
+            return row["kind"] == "accessor" and row["parentKey"] is None
+
+        def owner_key(row):
+            accessor = row["accessorKind"]
+            suffix = f" {{ {accessor} }}"
+            if accessor and suffix in row["key"]:
+                position = row["key"].rfind(suffix)
+                return row["key"][:position] + row["key"][position + len(suffix):]
+            return row["key"]
+        groups = defaultdict(list)
+        for index, row in enumerate(rows):
+            current, seen = index, {index}
+            while rows[current]["parentKey"] is not None and rows[current]["parentKey"] in first_index \
+                    and first_index[rows[current]["parentKey"]] not in seen:
+                current = first_index[rows[current]["parentKey"]]
+                seen.add(current)
+            top = rows[current]
+            group = ("property", owner_key(top), top["file"]) if is_accessor(top) else ("record", current)
+            groups[group].append(row)
+        families = []
+        for members in groups.values():
+            members = sorted(members, key=lambda row: (row["key"], row["startLine"]))
+            root = next((row for row in members if row["parentKey"] is None and not is_accessor(row)), None)
+            family_id = root["key"] if root else owner_key(members[0])
+            start = root["startLine"] if root else members[0]["startLine"]
+            accessors = [] if root else [row for row in members if is_accessor(row)]
+            families.append({"id": family_id, "file": (root or members[0])["file"], "start": start, "root": root,
+                             "accessors": accessors, "members": members})
+        families.sort(key=lambda family: (family["id"], family["file"], family["start"]))
+        by_key = {}
+        for position, family in enumerate(families):
+            for member in family["members"]:
+                by_key.setdefault(member["key"], position)
+        return families, by_key
+
+    @staticmethod
+    def family_of(instance, families, by_key):
+        """The family naming a copy: the first family whose root (or every accessor) it covers whole, else its
+        containing record's, else `<file>:<line>`."""
+        wholes = [key for key in instance["wholes"].split("\n") if key]
+        covered, seen = set(wholes), set()
+        for key in wholes:
+            position = by_key.get(key)
+            if position is None or position in seen:
+                continue
+            seen.add(position)
+            family = families[position]
+            if family["root"] is not None:
+                if family["root"]["key"] in covered:
+                    return family["id"]
+            elif all(accessor["key"] in covered for accessor in family["accessors"]):
+                return family["id"]
+        holder = instance["containing"]
+        if holder is not None and holder in by_key:
+            return families[by_key[holder]]["id"]
+        return f"{instance['file']}:{instance['startLine']}"
+
+    @staticmethod
+    def holds(holder, held):
+        """Whether every poor copy of `held` lies, by lines, inside a poor copy of `holder`."""
+        return all(any(copy["file"] == other["file"] and other["startLine"] <= copy["startLine"]
+                       and copy["endLine"] <= other["endLine"] for other in holder["poor"]) for copy in held["poor"])
+
+    def folded(self, members):
+        """The members no other holds, each with the ordinals folded into it (CloneFolding's rule, re-written)."""
+        def kind_rank(clone):
+            kind = "near-miss" if clone["pass"] == "near-miss" else "sequence" if clone["pass"] == "sequence" \
+                else "exact" if clone["exact"] else "renamed"
+            return KIND_ORDER.index(kind)
+        groups = []
+        for member in sorted(members, key=lambda member: member["class"]["ordinal"]):
+            for group in groups:
+                if self.holds(group[0], member) and self.holds(member, group[0]):
+                    group.append(member)
+                    break
+            else:
+                groups.append([member])
+        folded_into, representatives = defaultdict(list), []
+        for group in groups:
+            standing = min(group, key=lambda member: (PASS_SPECIFICITY[member["class"]["pass"]],
+                                                      -member["class"]["mass"], member["class"]["ordinal"]))
+            ordinal = standing["class"]["ordinal"]
+            folded_into[ordinal] += [m["class"]["ordinal"] for m in group if m["class"]["ordinal"] != ordinal]
+            representatives.append(standing)
+
+        def strictly(lhs, rhs):
+            return self.holds(lhs, rhs) and not self.holds(rhs, lhs)
+        maximal = [rep for rep in representatives if not any(strictly(other, rep) for other in representatives)]
+        maximal_ordinals = {rep["class"]["ordinal"] for rep in maximal}
+        for rep in representatives:
+            if rep["class"]["ordinal"] in maximal_ordinals:
+                continue
+            holders = [other for other in maximal if strictly(other, rep)]
+            if not holders:
+                continue
+            holder = min(holders, key=lambda other: (-other["class"]["mass"], kind_rank(other["class"]),
+                                                     other["class"]["ordinal"]))
+            ordinal = rep["class"]["ordinal"]
+            folded_into[holder["class"]["ordinal"]] += [ordinal] + folded_into[ordinal]
+        return [(rep, sorted(folded_into[rep["class"]["ordinal"]]))
+                for rep in sorted(maximal, key=lambda rep: rep["class"]["ordinal"])]
+
+    def uneven_clone_mutation(self):
+        limits = self.limits["uneven-clone-mutation"]
+        high, low, minimum = limits["high"], limits["low"], int(limits["mutants"])
+        families, by_key = self.families()
+        anchored = defaultdict(list)
+        for row in self.store.mutants:
+            if row["place"] in MAPPED_PLACES and row["anchorLine"] is not None:
+                anchored[nfc(row["path"])].append(row)
+        counts = {"copies": 0, "generated": 0, "without": 0, "few": 0, "fewCopies": 0}
+        members = []
+        for clone in self.store.clone_classes:
+            copies = []
+            for instance in clone["instances"]:
+                counts["copies"] += 1
+                if instance["file"] in self.store.generated_files:
+                    counts["generated"] += 1
+                    continue
+                if self.store.dispositions.get(nfc(instance["file"])) in ("unresolved", "unlisted"):
+                    counts["without"] += 1
+                    continue
+                start = (instance["startLine"], instance["startColumn"])
+                end = (instance["endLine"], instance["endColumn"])
+                held = [row for row in anchored[nfc(instance["file"])]
+                        if start <= (row["anchorLine"], row["anchorColumn"]) <= end]
+                tally = record_counts(held)
+                scored = sum(tally[verdict] for verdict in ("killed",) + UNKILLED)
+                if scored < minimum:
+                    counts["few"] += 1
+                    continue
+                copies.append({"file": instance["file"], "startLine": instance["startLine"],
+                               "endLine": instance["endLine"], "stripped": instance["strippedLines"],
+                               "family": self.family_of(instance, families, by_key), "killed": tally["killed"],
+                               "scored": scored, "unchecked": tally["survived"] + tally["timedOut"],
+                               "unrun": tally["noCoverage"] + tally["notCovered"],
+                               "unkilled": {mutant_key(row) for row in held if row["verdict"] in UNKILLED}})
+            if len(copies) < MINIMUM_COPIES:
+                counts["fewCopies"] += 1
+                continue
+            poor = [copy for copy in copies if copy["killed"] * 100 <= low * copy["scored"]]
+            if poor and any(copy["killed"] * 100 >= high * copy["scored"] for copy in copies):
+                members.append({"class": clone, "copies": copies, "poor": poor})
+        kept = self.folded(members)
+        items, counting = [], defaultdict(int)
+        for member, folded in kept:
+            unkilled = set().union(*(copy["unkilled"] for copy in member["poor"]))
+            for key in unkilled:
+                counting[key] += 1
+            unchecked = any(copy["unchecked"] > 0 for copy in member["poor"])
+            subject = sorted(member["poor"], key=lambda copy: (share_key(copy["killed"], copy["scored"]),
+                                                               -(copy["scored"] - copy["killed"]), copy["file"],
+                                                               copy["startLine"]))[0]
+            clone = member["class"]
+            kind = KIND_ORDER.index("near-miss" if clone["pass"] == "near-miss" else "sequence"
+                                    if clone["pass"] == "sequence" else "exact" if clone["exact"] else "renamed")
+            payload = {"clone": {"ordinal": clone["ordinal"], "pass": clone["pass"], "exact": clone["exact"] == 1,
+                                 "mass": clone["mass"], "lines": sum(copy["stripped"] for copy in member["poor"]),
+                                 "copies": len(member["copies"]),
+                                 "mutation": {"folded": folded, "copies": [
+                                     {"file": copy["file"], "line": copy["startLine"], "family": copy["family"],
+                                      "killed": copy["killed"], "scored": copy["scored"],
+                                      "runButUnchecked": copy["unchecked"], "unrun": copy["unrun"]}
+                                     for copy in member["copies"]]}},
+                       "mutation": None, "coverage": None, "ratio": None, "property": None, "propertyTarget": None}
+            items.append(((0 if unchecked else 1, -len(unkilled), -clone["mass"], kind, subject["family"],
+                           subject["file"], subject["startLine"], clone["ordinal"]),
+                          {"function": {"key": subject["family"], "file": subject["file"],
+                                        "startLine": subject["startLine"]},
+                           "score": len(unkilled), "payload": payload, "unchecked": unchecked}))
+        items.sort(key=lambda item: item[0])
+        classes = len(self.store.clone_classes)
+        pooled = classes - counts["fewCopies"]
+        measured = counts["copies"] - counts["generated"] - counts["without"] - counts["few"]
+        folded_count = sum(len(folded) for _, folded in kept)
+        unchecked = sum(1 for _, entry in items if entry["unchecked"])
+        shared = sum(1 for number in counting.values() if number > 1)
+        numbers = [high, low, minimum, low,
+                   counts["copies"], classes, counts["generated"], counts["without"], counts["few"], minimum,
+                   measured, classes, pooled, MINIMUM_COPIES, counts["fewCopies"], pooled, len(members), high, low,
+                   pooled - len(members), len(members), len(kept), folded_count, len(kept), unchecked,
+                   len(kept) - unchecked, shared]
+        return [entry for _, entry in items], pooled, numbers
+
     def ordered(self, items):
         items.sort(key=lambda item: item[:5])
         return [{"function": item[6]["function"], "score": item[5], "payload": without_nulls(self.payload(item[6]))}
@@ -2550,13 +2796,14 @@ class SignalChecks(Checker):
             print(f"    {module}: {model.ratios.get(module)} ({model.standing(module)}); project {model.project}")
 
     def signal(self, name, signal, expected, candidates, numbers):
-        letter = {"weak-tests": "w", "genuinely-under-tested": "g", "best-property-target": "p"}[name]
+        letter = {"weak-tests": "w", "genuinely-under-tested": "g", "best-property-target": "p",
+                  "uneven-clone-mutation": "u"}[name]
         self.section(f"{letter}   {name}: items, scores, order, payloads and funnel by the rule")
         items = signal.get("items", [])
         self.result("candidates", signal.get("candidates") == candidates,
                     f"expected {candidates}, got {signal.get('candidates')}")
         rule = signal.get("rule", "")
-        if name in ("weak-tests", "best-property-target"):
+        if name in ("weak-tests", "best-property-target", "uneven-clone-mutation"):
             noted = rule.endswith(WEAK_NOT_LISTED_NOTE)
             listed = bool(self.lists_not_covered)
             self.result("note on results not listing code no test ran", noted != listed, f"listsNotCovered {listed}")
@@ -2585,6 +2832,13 @@ class SignalChecks(Checker):
         self.result("scores, ranks and payloads", not differences, f"{len(expected)} items")
         self.listing(differences)
         for entry in expected[:LIMIT]:
+            clone = entry["payload"].get("clone")
+            if clone is not None:
+                copies = ", ".join(f"{copy['killed']}/{copy['scored']}" for copy in clone["mutation"]["copies"])
+                print(f"    {entry['score']:>4} {entry['function']['key']} ({entry['function']['file']}:"
+                      f"{entry['function']['startLine']}) class #{clone['ordinal']} {clone['pass']} mass "
+                      f"{clone['mass']}, copies {copies}, folded {clone['mutation']['folded']}")
+                continue
             payload = entry["payload"]["mutation"]
             target = entry["payload"].get("propertyTarget")
             detail = (f"lines {entry['payload']['coverage']['lines']}" if target is None else
@@ -2600,8 +2854,11 @@ def signal_limits(settings):
     for setting in settings or []:
         key, _, value = setting.partition("=")
         signal, _, limit = key.rpartition(".")
-        if signal not in limits or limit not in ("coverage", "score", "mutants", "ratio") or not value:
-            fail(f"--set {setting}: expected <signal>.<limit>=<value> for weak-tests or genuinely-under-tested")
+        if signal not in limits or not value:
+            fail(f"--set {setting}: expected <signal>.<limit>=<value> for weak-tests, genuinely-under-tested or "
+                 "uneven-clone-mutation")
+        if limit not in LIMIT_NAMES[signal]:
+            fail(f"--set {setting}: {signal} has no limit {limit}; its limits are {', '.join(LIMIT_NAMES[signal])}")
         limits[signal][limit] = float(value)
     return limits
 
@@ -2632,6 +2889,9 @@ def signals(arguments):
     if model.left_out("best-property-target") is None:
         items, candidates, numbers = model.best_property_target()
         checker.signal("best-property-target", by_name["best-property-target"], items, candidates, numbers)
+    if model.left_out("uneven-clone-mutation") is None:
+        items, candidates, numbers = model.uneven_clone_mutation()
+        checker.signal("uneven-clone-mutation", by_name["uneven-clone-mutation"], items, candidates, numbers)
     print()
     if checker.failures:
         print(f"FAILED: {', '.join(checker.failures)}")
@@ -2669,7 +2929,7 @@ def main():
     sincing.add_argument("--dirty", action="store_true", help="the --since snapshot is of a dirty tree")
     sincing.add_argument("--confirmed-flips", help="killed/timedOut flips a solo rerun confirmed, one key a line")
     sincing.add_argument("--all", action="store_true", help="list every difference")
-    signalling = modes.add_parser("signals", help="re-derive the M6 per-function signals from the store")
+    signalling = modes.add_parser("signals", help="re-derive the M6 signals from the store")
     signalling.add_argument("report", help="`swiftstats report --format json` of the snapshot")
     signalling.add_argument("--store", required=True, help="the store holding the snapshot")
     signalling.add_argument("--set", action="append", metavar="SIGNAL.LIMIT=VALUE",

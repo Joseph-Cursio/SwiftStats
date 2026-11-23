@@ -69,7 +69,8 @@ struct SignalOrderTests {
             copies: 2,
             churn: nil,
             divergence: divergence,
-            coverage: nil
+            coverage: nil,
+            mutation: nil
         )
     }
 

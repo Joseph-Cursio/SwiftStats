@@ -98,7 +98,8 @@ enum CloneHotspot {
                 copies: cloneClass.instances.count,
                 churn: churn,
                 divergence: nil,
-                coverage: nil
+                coverage: nil,
+                mutation: nil
             )
         )
         let score = Double(churn)

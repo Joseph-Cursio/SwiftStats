@@ -28,6 +28,19 @@ enum MutationSignalHarness {
         var suspectOnly: JSONFlag?
         /// The tests its kill names.
         var killedBy: [String] = []
+        /// The operator that made it.
+        var operatorID = "RelationalOperatorReplacement"
+    }
+
+    /// Where the mapping put a planted mutant.
+    struct Placement {
+        /// What it went to.
+        let place: MutationPlace
+        /// The record key, type or file it went to; nil when unmapped or
+        /// dropped.
+        let owner: String?
+        /// Its anchor; nil when unmapped or dropped.
+        let anchor: SourcePosition?
     }
 
     /// A function of the package: its line coverage and its mutants.
