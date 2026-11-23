@@ -28,9 +28,10 @@ struct ScanCommand: ParsableCommand {
         instead. --mutation also runs SwiftMutator (swift-mutator on PATH, or collectors.swiftmutator.path) after \
         every other collector, in a temporary copy under .swiftstats/mutation; collectors.swiftmutator.arguments \
         may add --skip <regex> pairs to its test command, and collectors.swiftmutator.options sets workers and \
-        timeout. --since <rev> retests only the files changed since that commit's snapshot and keeps its results \
-        for the rest; --resume continues an interrupted or failed run; --drop-mutation replaces a snapshot \
-        without mutation results it can't keep.
+        timeout; its test command is the swift the coverage collector uses, and its output goes to \
+        .swiftstats/mutation/swift-mutator.log. --since <rev> retests only the files changed since that commit's \
+        snapshot and keeps its results for the rest; --resume continues an interrupted or failed run; \
+        --drop-mutation replaces a snapshot without mutation results it can't keep.
         """
     )
 
@@ -92,6 +93,16 @@ struct ScanCommand: ParsableCommand {
 
     func run() throws {
         let requested = try tiers
+        let started = Date()
+        defer {
+            // Named only when this scan's mutation step wrote it, whether
+            // or not the scan then stored a snapshot.
+            let root = URL(fileURLWithPath: path, isDirectory: true)
+            if requested.mutation != nil,
+               let log = StoreLocation.mutationLog(packageRoot: root, writtenSince: started) {
+                FileHandle.standardError.write(Data("SwiftMutator's output is in \(log.path)\n".utf8))
+            }
+        }
         try CommandFailure.reporting {
             let report: ScanReport
             if noStore {

@@ -298,6 +298,7 @@ public struct PackageScanner {
         configurationFile: URL?,
         tiers: RequestedTiers = .syntaxOnly
     ) throws -> ScanReport {
-        try run(packageAt: packageRoot, configurationFile: configurationFile, tiers: tiers).report
+        try run(packageAt: packageRoot, configurationFile: configurationFile, tiers: tiers, git: nil, ignoring: [])
+            .report
     }
 }

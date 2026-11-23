@@ -13,19 +13,27 @@ import Foundation
 
 extension PackageScanner {
     /// The SwiftMutator collector's run on the package at `root` under
-    /// `configuration`, made in the foreground; a skip when the scan made
-    /// no `request` or the tools are skipped.
+    /// `configuration`, made in the foreground as `scope` asks, its copy
+    /// checked against `measured`'s files; a skip when the scan asked for
+    /// none or the tools are skipped.
     func runMutation(
         root: URL,
         configuration: SwiftStatsConfiguration,
-        request: MutationRequest?
-    ) -> TimedAdapterResult {
-        guard request != nil else {
-            return CollectorRun.skippedMutation(MutationAdapter.notRequestedReason)
+        scope: MutationScope?,
+        measured: ScanMeasurements
+    ) -> MutationRun {
+        guard let scope else {
+            return MutationRun.skipped(MutationAdapter.notRequestedReason)
         }
         if let toolSkipReason {
-            return CollectorRun.skippedMutation(toolSkipReason)
+            return MutationRun.skipped(toolSkipReason)
         }
-        return CollectorRun.runMutation(root: root, configuration: configuration, locator: tools)
+        return CollectorRun.runMutation(
+            root: root,
+            configuration: configuration,
+            locator: tools,
+            scope: scope,
+            measured: measured.files
+        )
     }
 }

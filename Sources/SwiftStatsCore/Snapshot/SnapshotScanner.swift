@@ -43,6 +43,18 @@ public struct SnapshotScanner {
             if status.state != .skipped, let reported = outcome.identities[status.name] {
                 identity = (reported, nil)
             }
+        } else if status.name == MutationAdapter.name {
+            // The build its results file's header names made every result;
+            // the resolved binary's commit labels it only when it is that
+            // build. A run that read no header is named by the binary.
+            if status.state != .skipped, let executable = outcome.executables[status.name] {
+                let binary = BinaryIdentity.of(executable)
+                if let reported = outcome.identities[status.name] {
+                    identity = (reported, binary?.identity == reported ? binary?.label : nil)
+                } else {
+                    identity = binary
+                }
+            }
         } else if status.name == DependencyGraphAdapter.name {
             // The toolchain is the tool; diff also requires `swiftstats`
             // to match, since SwiftStats' own code reads the graph.
@@ -90,7 +102,13 @@ public struct SnapshotScanner {
     ) throws -> ScannedSnapshot {
         let packageRoot = root.standardizedFileURL
         let gitState = git ?? GitReader.read(packageRoot: packageRoot, ignoring: ignoring)
-        let scanned = try scanner.run(packageAt: packageRoot, configurationFile: configurationFile, tiers: tiers)
+        let scanned = try scanner.run(
+            packageAt: packageRoot,
+            configurationFile: configurationFile,
+            tiers: tiers,
+            git: gitState,
+            ignoring: ignoring
+        )
         let (outcome, historyRun) = Self.addHistory(
             to: scanned,
             source: history.resolved(packageRoot: packageRoot, git: gitState)

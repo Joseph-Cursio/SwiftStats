@@ -26,7 +26,7 @@ extension PackageScanner {
         /// The coverage run, or its skip.
         let coverage: BackgroundJob<CoverageRun>
         /// The SwiftMutator run the scan asked for; nil when it didn't.
-        let mutation: MutationRequest?
+        var mutation: MutationScope?
     }
 
     /// The external collectors' part of a scan.
@@ -50,6 +50,8 @@ extension PackageScanner {
         let coverage: CoverageReport?
         /// Problems mapping the coverage.
         let coverageWarnings: [ScanWarning]
+        /// The SwiftMutator run, or its skip.
+        let mutation: MutationRun
 
         /// Each external collector's result.
         var adapters: [AdapterResult] {
@@ -98,7 +100,8 @@ extension PackageScanner {
 
     /// SwiftInferProperties' run over `targets` of the package at `root`,
     /// and the coverage run when `tiers` asks for it, started in the
-    /// background, with the SwiftMutator run `tiers` asks for.
+    /// background, with the SwiftMutator run `tiers` asks for, before the
+    /// scan sets the git state it read and the files the copy leaves out.
     func startBackground(
         root: URL,
         targets: [TargetSummary],
@@ -108,7 +111,7 @@ extension PackageScanner {
         PendingRuns(
             properties: startProperties(root: root, targets: targets, configuration: configuration),
             coverage: startCoverage(root: root, configuration: configuration, requested: tiers.coverage),
-            mutation: tiers.mutation
+            mutation: tiers.mutation.map { MutationScope(request: $0, git: nil, ignoring: []) }
         )
     }
 
@@ -143,7 +146,12 @@ extension PackageScanner {
         let cloneRun = cloneJob?.wait()
         let run = pending.properties?.wait()
         let coverage = pending.coverage.wait()
-        let mutation = runMutation(root: root, configuration: configuration, request: pending.mutation)
+        let mutation = runMutation(
+            root: root,
+            configuration: configuration,
+            scope: pending.mutation,
+            measured: measured
+        )
         let findings = Self.attach(measured.markers + adapters.flatMap(\.result.findings), to: measured)
         // SwiftInferProperties and SwiftCloneDetector report no findings,
         // so they get no counts.
@@ -159,14 +167,15 @@ extension PackageScanner {
             root: root
         )
         return ExternalScan(
-            timed: adapters + [run?.timed, cloneRun?.timed, coverage.timed].compactMap(\.self) + [mutation],
+            timed: adapters + [run?.timed, cloneRun?.timed, coverage.timed, mutation.timed].compactMap(\.self),
             findings: findings,
             tally: FindingTally(findings: findings, tools: Set(ran).union([MarkerCollector.tool])),
             properties: properties?.report,
             joinWarnings: properties?.warnings ?? [],
             clones: cloneRun.flatMap { Self.clones(of: $0, measured: measured) },
             coverage: mapped.report,
-            coverageWarnings: mapped.warnings
+            coverageWarnings: mapped.warnings,
+            mutation: mutation
         )
     }
 }

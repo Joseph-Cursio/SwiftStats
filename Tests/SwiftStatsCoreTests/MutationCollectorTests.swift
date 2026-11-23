@@ -119,28 +119,6 @@ struct MutationCollectorTests {
         #expect([disabled, missing, badPath, toolsSkipped].allSatisfy { $0?.state == .skipped })
     }
 
-    @Test("asked for with a swift-mutator found, the scan says the run isn't built yet and never runs it")
-    func requestedFound() throws {
-        let tool = try FakeTool.make(outputs: [""], errorText: "", statuses: [0])
-        defer { try? FileManager.default.removeItem(at: tool.deletingLastPathComponent()) }
-
-        let status = try Self.status(
-            [".swiftstats.yml": "collectors:\n  swiftmutator:\n    path: \(tool.path)\n"],
-            toolSkipReason: nil,
-            request: .full
-        )
-
-        #expect(status == CollectorStatus(
-            name: "swiftmutator",
-            state: .skipped,
-            version: nil,
-            reason: "the mutation run is not built yet",
-            options: []
-        ))
-        let log = tool.deletingLastPathComponent().appendingPathComponent("arguments.log")
-        #expect(FileManager.default.fileExists(atPath: log.path) == false)
-    }
-
     @Test("scanWorkingTree passes --mutation to the scan, and a skipped mutation run has no build identity")
     func workspaceThreading() throws {
         let (package, workspace) = try Self.workspace(

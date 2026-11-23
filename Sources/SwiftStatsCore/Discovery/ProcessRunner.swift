@@ -132,6 +132,55 @@ enum ProcessRunner {
         )
     }
 
+    /// Runs `executable` with `arguments` in `directory` to its end, in this
+    /// process's environment changed by `environment`, with standard input
+    /// empty (`/dev/null`) and standard output and standard error both
+    /// appended to the file at `log`, which must exist: a run that prints
+    /// for hours (SwiftMutator, M6) never fills memory or a pipe. Returns
+    /// how it ended, whatever its status; throws `ScanError.commandFailed`
+    /// only when it can't start or `log` can't be opened.
+    static func runLogged(
+        executable: String,
+        arguments: [String],
+        in directory: URL,
+        environment: ProcessEnvironment,
+        appendingTo log: URL
+    ) throws -> ProcessTermination {
+        let command = ([executable] + arguments).joined(separator: " ")
+        // Opened to append, so whatever else writes the log between runs
+        // is never overwritten.
+        let descriptor = open(log.path, O_WRONLY | O_APPEND)
+        guard descriptor >= 0, let nothing = FileHandle(forReadingAtPath: "/dev/null") else {
+            if descriptor >= 0 {
+                close(descriptor)
+            }
+            throw ScanError.commandFailed(command, -1, "could not open \(log.path)")
+        }
+        let handle = FileHandle(fileDescriptor: descriptor, closeOnDealloc: true)
+        defer {
+            try? handle.close()
+            try? nothing.close()
+        }
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: executable)
+        process.arguments = arguments
+        process.currentDirectoryURL = directory
+        if environment.isInherited == false {
+            process.environment = environment.applied(to: ProcessInfo.processInfo.environment)
+        }
+        process.standardInput = nothing
+        process.standardOutput = handle
+        process.standardError = handle
+        do {
+            try ScratchRegistry.shared.start(process)
+        } catch {
+            throw ScanError.commandFailed(command, -1, error.localizedDescription)
+        }
+        process.waitUntilExit()
+        ScratchRegistry.shared.finished(process)
+        return ProcessTermination(process)
+    }
+
     /// Runs `executable` as `run(executable:arguments:in:accepting:)` does,
     /// in this process's environment changed by `environment`, standard
     /// input read from `input` and standard output written to the file at
@@ -198,7 +247,7 @@ enum ProcessRunner {
             let reason = errorText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? outputText : errorText
             throw ScanError.commandFailed(command, process.terminationStatus, lastLines(of: reason))
         }
-        return ProcessOutput(status: process.terminationStatus, output: output, errorText: errorText)
+        return ProcessOutput(process: process, output: output, errorText: errorText)
     }
 
     /// A handle writing to `file`, created or emptied, for `command`'s

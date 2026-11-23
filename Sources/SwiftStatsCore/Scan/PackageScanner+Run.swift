@@ -67,14 +67,23 @@ extension PackageScanner {
 
     /// The scan of `packageRoot`, with each collector's run time and binary;
     /// the coverage and SwiftMutator collectors run only when `tiers` asks
-    /// for them.
-    func run(packageAt packageRoot: URL, configurationFile: URL?, tiers: RequestedTiers) throws -> ScanOutcome {
+    /// for them. SwiftMutator's copy checks out the commit of `git`, the
+    /// package's state as read before the scan (read when it runs when
+    /// nil), and leaves out the files at `ignoring`.
+    func run(
+        packageAt packageRoot: URL,
+        configurationFile: URL?,
+        tiers: RequestedTiers,
+        git: GitState?,
+        ignoring: [String]
+    ) throws -> ScanOutcome {
         let root = packageRoot.standardizedFileURL
         try Self.requirePackage(at: root)
         let configuration = try SwiftStatsConfiguration.load(configurationFile, root: root)
         let package = try describer.describePackage(at: root)
         let (targets, excludedFiles) = Self.excluding(TargetResolver.resolve(package), by: configuration)
-        let pending = startBackground(root: root, targets: targets, configuration: configuration, tiers: tiers)
+        var pending = startBackground(root: root, targets: targets, configuration: configuration, tiers: tiers)
+        pending.mutation = tiers.mutation.map { MutationScope(request: $0, git: git, ignoring: ignoring) }
         let scan = Self.measured(targets, root: root, configuration: configuration)
         let (measured, effects) = (scan.measurements, scan.effects)
         let external = externalRuns(
