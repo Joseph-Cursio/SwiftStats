@@ -1,0 +1,78 @@
+Counters:
+  $s4Core4signyS2iF:
+    Hash: 0x0000000000000000
+    Counters: 3
+    Function count: 5
+    Block counts: [2, 1]
+  @BUILD@/out/Intermediates.noindex/MutationProbe.build/Debug/CoreTests-p.build/DerivedSources/test_entry_point.swift:$s9CoreTests28__SwiftPMGeneratedTestRunnerV14testingLibrary33_9FC85C184A130DD0F7D9934FDB20D9F2LLSSyFZ:
+    Hash: 0x0000000000000000
+    Counters: 3
+    Function count: 1
+    Block counts: [11, 1]
+  $s4Core8isWithin_3low4highSbSi_S2itF:
+    Hash: 0x0000000000000000
+    Counters: 1
+    Function count: 5
+    Block counts: []
+  $s9CoreTests11signIsExactyyF:
+    Hash: 0x0000000000000000
+    Counters: 1
+    Function count: 1
+    Block counts: []
+  $s9CoreTests24isWithinChecksBothBoundsyyF:
+    Hash: 0x0000000000000000
+    Counters: 1
+    Function count: 1
+    Block counts: []
+  $s9CoreTests26normalizedAKeepsAZeroTotalyyF:
+    Hash: 0x0000000000000000
+    Counters: 1
+    Function count: 1
+    Block counts: []
+  @ROOT@/Sources/Core/NormalizeA.swift:$s4Core11normalizedA_3logSaySiGAD_ADztFS2iXEfU_:
+    Hash: 0x0000000000000000
+    Counters: 1
+    Function count: 2
+    Block counts: []
+  $s4Core5clamp_3low4highS2i_S2itF:
+    Hash: 0x0000000000000000
+    Counters: 3
+    Function count: 3
+    Block counts: [1, 1]
+  $s9CoreTests28__SwiftPMGeneratedTestRunnerV4mainyyYaFZ:
+    Hash: 0x0000000000000000
+    Counters: 2
+    Function count: 1
+    Block counts: [1]
+  $s9CoreTests30normalizedAScalesToPercentagesyyF:
+    Hash: 0x0000000000000000
+    Counters: 1
+    Function count: 1
+    Block counts: []
+  $s9CoreTests21clampStaysNonNegativeyyF:
+    Hash: 0x0000000000000000
+    Counters: 1
+    Function count: 1
+    Block counts: []
+  @ROOT@/Sources/Core/Bounds.swift:$s4Core8isWithin_3low4highSbSi_S2itFSbyKXEfu_:
+    Hash: 0x0000000000000000
+    Counters: 1
+    Function count: 4
+    Block counts: []
+  @ROOT@/Sources/Core/NormalizeA.swift:$s4Core11normalizedA_3logSaySiGAD_ADztFS2i_SitYbcfu_:
+    Hash: 0x0000000000000000
+    Counters: 1
+    Function count: 5
+    Block counts: []
+  $s4Core11normalizedA_3logSaySiGAD_ADztF:
+    Hash: 0x0000000000000000
+    Counters: 2
+    Function count: 2
+    Block counts: [1]
+Instrumentation level: Front-end
+Functions shown: 14
+Total functions: 14
+Maximum function count: 5
+Maximum internal block count: 11
+Total number of blocks: 22
+Total count: 52

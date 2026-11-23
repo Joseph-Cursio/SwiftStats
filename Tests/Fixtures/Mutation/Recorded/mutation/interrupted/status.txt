@@ -1,0 +1,2 @@
+run: signal 15
+report: exit 0

@@ -1,0 +1,20 @@
+Mutation Score of Test Suite: 62%
+Code Coverage of your project: 60%
+Only the files changed since the merge base of 37124375f4e9e6e1429daf2651e47fc91132142f and HEAD (3712437) were mutated.
+
+File                        # of Introduced Mutants   Mutation Score
+----                        -----------------------   --------------
+Sources/Core/Bounds.swift   21                        47
+Sources/Core/Signum.swift   8                         100
+
+
+
+---
+Run
+---
+
+Results file: @PARENT@/Mutation_muter_logs/Nov 21, 2026 at 10:40 AM/results.jsonl
+SwiftMutator: 0.1.0, executable SHA-256 5138cbf1b810b127accddd8d4973bb2675195797cbae9b734bd09c0ae5a35ba8
+Toolchain: Apple Swift version 6.4.2 (swiftlang-6.4.2.1.9 clang-2100.4.1.1)
+Workers: 4; time limit per mutant: 20 s, the default
+💾 Each mutant's result is in @PARENT@/Mutation_muter_logs/Nov 21, 2026 at 10:40 AM/results.jsonl

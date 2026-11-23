@@ -1,0 +1,20 @@
+◇ Test isWithinChecksBothBounds() started.
+✔ Test normalizedAKeepsAZeroTotal() passed after 0.001 seconds.
+✔ Test clampStaysNonNegative() passed after 0.001 seconds.
+✔ Test normalizedAScalesToPercentages() passed after 0.001 seconds.
+✔ Test isWithinChecksBothBounds() passed after 0.001 seconds.
+✔ Test signIsExact() passed after 0.001 seconds.
+✘ Test alwaysFails() recorded an issue at FailingTests.swift:5:5: Expectation failed: 1 == 2
+↳ 1 == 2 → false
+✘ Test alwaysFails() failed after 0.001 seconds with 1 issue.
+↳ /// Fails whatever the code does, so SwiftMutator's baseline fails.
+✘ Test run with 6 tests in 0 suites failed after 0.001 seconds with 1 issue.
+Note: Some test targets reported failures:
+  - CoreTests (Swift Testing)
+
+
+
+⚠️ ⚠️ ⚠️ ⚠️ ⚠️  See the SwiftMutator error log above this line  ⚠️ ⚠️ ⚠️ ⚠️ ⚠️
+
+If you think this is a bug, or want help figuring out what could be happening, please open an issue at
+https://github.com/Joseph-Cursio/SwiftMutator/issues

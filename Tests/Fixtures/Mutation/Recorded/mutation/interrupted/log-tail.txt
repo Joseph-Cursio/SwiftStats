@@ -1,0 +1,20 @@
+💾 SwiftMutator saves each mutant's result as it finishes, in @PARENT@/Mutation_muter_logs/Nov 21, 2026 at 10:41 AM/results.jsonl
+📊 Determined baseline for mutation testing.
+🧟 SwiftMutator is now going to apply each mutant one at a time and run your test suite for each mutant.
+📃 After this step, SwiftMutator will generate a report detailing the efficacy of your test suite.
+☕️ This step may take a while.
+
+[10:41:40] 0 of 35 (0%) | 1 min left
+[10:41:40] 1 of 35 (2%) | 1 survived | 1 min left | survived at Bounds.swift:5:19 (replaced the comparison with false)
+[10:41:40] 2 of 35 (5%) | 2 survived | 1 min left | survived at Bounds.swift:6:16 (replaced the return value with 0)
+[10:41:40] 3 of 35 (8%) | 3 survived | 1 min left | survived at Bounds.swift:5:14 (changed < to !=)
+[10:41:40] 4 of 35 (11%) | 4 survived | 1 min left | survived at Bounds.swift:5:14 (changed < to <=)
+[10:41:40] 5 of 35 (14%) | 5 survived | 1 min left | survived at Bounds.swift:8:20 (replaced the comparison with false)
+[10:41:40] 6 of 35 (17%) | 6 survived | 1 min left | survived at Bounds.swift:8:14 (changed > to >=)
+[10:41:40] 7 of 35 (20%) | 7 survived | 1 min left | survived at Bounds.swift:9:16 (replaced the return value with 0)
+[10:41:40] 8 of 35 (22%) | 8 survived | 1 min left | survived at Bounds.swift:8:14 (changed > to !=)
+⏹ Stopping (SIGTERM): ending the test runs under way and keeping what was tested. Send another SIGINT, SIGTERM or SIGHUP to stop at once.
+⏹ Stopped by SIGTERM after testing 8 of 35 mutants. Mutation score so far: 0%.
+💾 Each tested mutant's result is in @PARENT@/Mutation_muter_logs/Nov 21, 2026 at 10:41 AM/results.jsonl
+📝 Full report: swift-mutator report '@PARENT@/Mutation_muter_logs/Nov 21, 2026 at 10:41 AM/results.jsonl'
+▶️ Continue: swift-mutator run -c @PARENT@/muter.conf.yml --skip-update-check --resume '@PARENT@/Mutation_muter_logs/Nov 21, 2026 at 10:41 AM/results.jsonl'

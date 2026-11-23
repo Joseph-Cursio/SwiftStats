@@ -1,0 +1,1399 @@
+{
+  "projectCodeCoverage": 76,
+  "fileReports": [
+    {
+      "fileName": "Helper.swift",
+      "mutationScore": 100,
+      "path": "Nested/Helper/Sources/Helper/Helper.swift",
+      "appliedOperators": [
+        {
+          "mutationPoint": {
+            "mutationOperatorId": "ReplaceReturnValue",
+            "filePath": "@PARENT@/Coverage_mutated.noindex/Nested/Helper/Sources/Helper/Helper.swift",
+            "position": {
+              "utf8Offset": 167,
+              "line": 3,
+              "column": 5
+            }
+          },
+          "mutationSnapshot": {
+            "after": "0",
+            "before": "11",
+            "description": "replaced the return value with 0"
+          },
+          "killingTests": {
+            "isComplete": true,
+            "tests": [
+              {
+                "name": "attachedAndFiles()",
+                "location": "MappingTests.swift:38:5"
+              }
+            ],
+            "count": 1
+          },
+          "testSuiteOutcome": "failed",
+          "key": "Nested/Helper/Sources/Helper/Helper.swift:3:5 ReplaceReturnValue",
+          "durationSeconds": 0.788,
+          "path": "Nested/Helper/Sources/Helper/Helper.swift",
+          "sourceChange": {
+            "before": "    11",
+            "after": "    0",
+            "line": 3
+          }
+        }
+      ]
+    },
+    {
+      "fileName": "main.swift",
+      "mutationScore": 100,
+      "appliedOperators": [
+        {
+          "mutationPoint": {
+            "position": {
+              "line": 5,
+              "utf8Offset": 242,
+              "column": 5
+            },
+            "filePath": "@PARENT@/Coverage_mutated.noindex/Sources/Exe/main.swift",
+            "mutationOperatorId": "ReplaceReturnValue"
+          },
+          "mutationSnapshot": {
+            "after": "0",
+            "before": "value * 3",
+            "description": "replaced the return value with 0"
+          },
+          "killingTests": {
+            "count": 1,
+            "tests": [
+              {
+                "name": "attachedAndFiles()",
+                "location": "MappingTests.swift:41:5"
+              }
+            ],
+            "isComplete": true
+          },
+          "testSuiteOutcome": "failed",
+          "key": "Sources/Exe/main.swift:5:5 ReplaceReturnValue",
+          "durationSeconds": 0.789,
+          "path": "Sources/Exe/main.swift",
+          "sourceChange": {
+            "after": "    0",
+            "line": 5,
+            "before": "    value * 3"
+          }
+        },
+        {
+          "mutationPoint": {
+            "position": {
+              "line": 5,
+              "utf8Offset": 248,
+              "column": 11
+            },
+            "filePath": "@PARENT@/Coverage_mutated.noindex/Sources/Exe/main.swift",
+            "mutationOperatorId": "ChangeArithmeticOperator"
+          },
+          "mutationSnapshot": {
+            "after": "/",
+            "before": "*",
+            "description": "changed * to /"
+          },
+          "killingTests": {
+            "count": 1,
+            "tests": [
+              {
+                "name": "attachedAndFiles()",
+                "location": "MappingTests.swift:41:5"
+              }
+            ],
+            "isComplete": true
+          },
+          "testSuiteOutcome": "failed",
+          "key": "Sources/Exe/main.swift:5:11 ChangeArithmeticOperator",
+          "durationSeconds": 0.791,
+          "path": "Sources/Exe/main.swift",
+          "sourceChange": {
+            "after": "    value / 3",
+            "line": 5,
+            "before": "    value * 3"
+          }
+        }
+      ],
+      "path": "Sources/Exe/main.swift"
+    },
+    {
+      "fileName": "Accessors.swift",
+      "mutationScore": 83,
+      "appliedOperators": [
+        {
+          "mutationPoint": {
+            "position": {
+              "line": 6,
+              "utf8Offset": 309,
+              "column": 34
+            },
+            "filePath": "@PARENT@/Coverage_mutated.noindex/Sources/Probe/Accessors.swift",
+            "mutationOperatorId": "ReplaceReturnValue"
+          },
+          "mutationSnapshot": {
+            "after": "0",
+            "before": "storage",
+            "description": "replaced the return value with 0"
+          },
+          "key": "Sources/Probe/Accessors.swift:6:34 ReplaceReturnValue",
+          "testSuiteOutcome": "passed",
+          "durationSeconds": 0.785,
+          "path": "Sources/Probe/Accessors.swift",
+          "sourceChange": {
+            "after": "    public var both: Int { get { 0 } set { storage = newValue } }",
+            "line": 6,
+            "before": "    public var both: Int { get { storage } set { storage = newValue } }"
+          }
+        },
+        {
+          "mutationPoint": {
+            "position": {
+              "line": 8,
+              "utf8Offset": 473,
+              "column": 78
+            },
+            "filePath": "@PARENT@/Coverage_mutated.noindex/Sources/Probe/Accessors.swift",
+            "mutationOperatorId": "ChangeArithmeticOperator"
+          },
+          "mutationSnapshot": {
+            "after": "-=",
+            "before": "+=",
+            "description": "changed += to -="
+          },
+          "killingTests": {
+            "count": 1,
+            "tests": [
+              {
+                "name": "accessors()",
+                "location": "MappingTests.swift:9:5"
+              }
+            ],
+            "isComplete": true
+          },
+          "testSuiteOutcome": "failed",
+          "key": "Sources/Probe/Accessors.swift:8:78 ChangeArithmeticOperator",
+          "durationSeconds": 0.798,
+          "path": "Sources/Probe/Accessors.swift",
+          "sourceChange": {
+            "after": "    public var watched = 0 { willSet { storage = newValue } didSet { storage -= 1 } }",
+            "line": 8,
+            "before": "    public var watched = 0 { willSet { storage = newValue } didSet { storage += 1 } }"
+          }
+        },
+        {
+          "mutationPoint": {
+            "position": {
+              "line": 10,
+              "utf8Offset": 540,
+              "column": 31
+            },
+            "filePath": "@PARENT@/Coverage_mutated.noindex/Sources/Probe/Accessors.swift",
+            "mutationOperatorId": "ReplaceReturnValue"
+          },
+          "mutationSnapshot": {
+            "after": "0",
+            "before": "storage * 2",
+            "description": "replaced the return value with 0"
+          },
+          "killingTests": {
+            "count": 1,
+            "tests": [
+              {
+                "name": "accessors()",
+                "location": "MappingTests.swift:10:5"
+              }
+            ],
+            "isComplete": true
+          },
+          "testSuiteOutcome": "failed",
+          "key": "Sources/Probe/Accessors.swift:10:31 ReplaceReturnValue",
+          "durationSeconds": 0.792,
+          "path": "Sources/Probe/Accessors.swift",
+          "sourceChange": {
+            "after": "    public var doubled: Int { 0 }",
+            "line": 10,
+            "before": "    public var doubled: Int { storage * 2 }"
+          }
+        },
+        {
+          "mutationPoint": {
+            "position": {
+              "line": 10,
+              "utf8Offset": 548,
+              "column": 39
+            },
+            "filePath": "@PARENT@/Coverage_mutated.noindex/Sources/Probe/Accessors.swift",
+            "mutationOperatorId": "ChangeArithmeticOperator"
+          },
+          "mutationSnapshot": {
+            "after": "/",
+            "before": "*",
+            "description": "changed * to /"
+          },
+          "killingTests": {
+            "count": 1,
+            "tests": [
+              {
+                "name": "accessors()",
+                "location": "MappingTests.swift:10:5"
+              }
+            ],
+            "isComplete": true
+          },
+          "testSuiteOutcome": "failed",
+          "key": "Sources/Probe/Accessors.swift:10:39 ChangeArithmeticOperator",
+          "durationSeconds": 0.793,
+          "path": "Sources/Probe/Accessors.swift",
+          "sourceChange": {
+            "after": "    public var doubled: Int { storage / 2 }",
+            "line": 10,
+            "before": "    public var doubled: Int { storage * 2 }"
+          }
+        },
+        {
+          "mutationPoint": {
+            "position": {
+              "line": 12,
+              "utf8Offset": 660,
+              "column": 45
+            },
+            "filePath": "@PARENT@/Coverage_mutated.noindex/Sources/Probe/Accessors.swift",
+            "mutationOperatorId": "ChangeArithmeticOperator"
+          },
+          "mutationSnapshot": {
+            "after": "-",
+            "before": "+",
+            "description": "changed + to -"
+          },
+          "killingTests": {
+            "count": 1,
+            "tests": [
+              {
+                "name": "accessors()",
+                "location": "MappingTests.swift:11:5"
+              }
+            ],
+            "isComplete": true
+          },
+          "testSuiteOutcome": "failed",
+          "key": "Sources/Probe/Accessors.swift:12:45 ChangeArithmeticOperator",
+          "durationSeconds": 0.797,
+          "path": "Sources/Probe/Accessors.swift",
+          "sourceChange": {
+            "after": "    public lazy var cached: Int = { storage - 1 }()",
+            "line": 12,
+            "before": "    public lazy var cached: Int = { storage + 1 }()"
+          }
+        },
+        {
+          "mutationPoint": {
+            "position": {
+              "line": 14,
+              "utf8Offset": 785,
+              "column": 49
+            },
+            "filePath": "@PARENT@/Coverage_mutated.noindex/Sources/Probe/Accessors.swift",
+            "mutationOperatorId": "ReplaceReturnValue"
+          },
+          "mutationSnapshot": {
+            "after": "0",
+            "before": "storage + index",
+            "description": "replaced the return value with 0"
+          },
+          "killingTests": {
+            "count": 1,
+            "tests": [
+              {
+                "name": "accessors()",
+                "location": "MappingTests.swift:12:5"
+              }
+            ],
+            "isComplete": true
+          },
+          "testSuiteOutcome": "failed",
+          "key": "Sources/Probe/Accessors.swift:14:49 ReplaceReturnValue",
+          "durationSeconds": 0.794,
+          "path": "Sources/Probe/Accessors.swift",
+          "sourceChange": {
+            "after": "    public subscript(index: Int) -> Int { get { 0 } set { storage = newValue - index } }",
+            "line": 14,
+            "before": "    public subscript(index: Int) -> Int { get { storage + index } set { storage = newValue - index } }"
+          }
+        }
+      ],
+      "path": "Sources/Probe/Accessors.swift"
+    },
+    {
+      "fileName": "Attached.swift",
+      "mutationScore": 100,
+      "appliedOperators": [
+        {
+          "mutationPoint": {
+            "position": {
+              "line": 2,
+              "utf8Offset": 192,
+              "column": 36
+            },
+            "filePath": "@PARENT@/Coverage_mutated.noindex/Sources/Probe/Attached.swift",
+            "mutationOperatorId": "ChangeArithmeticOperator"
+          },
+          "mutationSnapshot": {
+            "after": "-",
+            "before": "+",
+            "description": "changed + to -"
+          },
+          "killingTests": {
+            "count": 1,
+            "tests": [
+              {
+                "name": "attachedAndFiles()",
+                "location": "MappingTests.swift:35:5"
+              }
+            ],
+            "isComplete": true
+          },
+          "testSuiteOutcome": "failed",
+          "key": "Sources/Probe/Attached.swift:2:36 ChangeArithmeticOperator",
+          "durationSeconds": 0.794,
+          "path": "Sources/Probe/Attached.swift",
+          "sourceChange": {
+            "after": "public let globalValue: Int = { 40 - 2 }()",
+            "line": 2,
+            "before": "public let globalValue: Int = { 40 + 2 }()"
+          }
+        },
+        {
+          "mutationPoint": {
+            "position": {
+              "line": 5,
+              "utf8Offset": 328,
+              "column": 58
+            },
+            "filePath": "@PARENT@/Coverage_mutated.noindex/Sources/Probe/Attached.swift",
+            "mutationOperatorId": "ChangeArithmeticOperator"
+          },
+          "mutationSnapshot": {
+            "after": "-",
+            "before": "+",
+            "description": "changed + to -"
+          },
+          "killingTests": {
+            "count": 1,
+            "tests": [
+              {
+                "name": "attachedAndFiles()",
+                "location": "MappingTests.swift:36:5"
+              }
+            ],
+            "isComplete": true
+          },
+          "testSuiteOutcome": "failed",
+          "key": "Sources/Probe/Attached.swift:5:58 ChangeArithmeticOperator",
+          "durationSeconds": 0.798,
+          "path": "Sources/Probe/Attached.swift",
+          "sourceChange": {
+            "after": "public func withDefault(_ transform: (Int) -> Int = { $0 - 1 }) -> Int {",
+            "line": 5,
+            "before": "public func withDefault(_ transform: (Int) -> Int = { $0 + 1 }) -> Int {"
+          }
+        },
+        {
+          "mutationPoint": {
+            "position": {
+              "line": 6,
+              "utf8Offset": 348,
+              "column": 5
+            },
+            "filePath": "@PARENT@/Coverage_mutated.noindex/Sources/Probe/Attached.swift",
+            "mutationOperatorId": "ReplaceReturnValue"
+          },
+          "mutationSnapshot": {
+            "after": "0",
+            "before": "transform(1)",
+            "description": "replaced the return value with 0"
+          },
+          "killingTests": {
+            "count": 1,
+            "tests": [
+              {
+                "name": "attachedAndFiles()",
+                "location": "MappingTests.swift:36:5"
+              }
+            ],
+            "isComplete": true
+          },
+          "testSuiteOutcome": "failed",
+          "key": "Sources/Probe/Attached.swift:6:5 ReplaceReturnValue",
+          "durationSeconds": 0.797,
+          "path": "Sources/Probe/Attached.swift",
+          "sourceChange": {
+            "after": "    0",
+            "line": 6,
+            "before": "    transform(1)"
+          }
+        },
+        {
+          "mutationPoint": {
+            "position": {
+              "line": 17,
+              "utf8Offset": 566,
+              "column": 5
+            },
+            "filePath": "@PARENT@/Coverage_mutated.noindex/Sources/Probe/Attached.swift",
+            "mutationOperatorId": "ReplaceReturnValue"
+          },
+          "mutationSnapshot": {
+            "after": "0",
+            "before": "Secret().seed",
+            "description": "replaced the return value with 0"
+          },
+          "killingTests": {
+            "count": 1,
+            "tests": [
+              {
+                "name": "attachedAndFiles()",
+                "location": "MappingTests.swift:37:5"
+              }
+            ],
+            "isComplete": true
+          },
+          "testSuiteOutcome": "failed",
+          "key": "Sources/Probe/Attached.swift:17:5 ReplaceReturnValue",
+          "durationSeconds": 0.8,
+          "path": "Sources/Probe/Attached.swift",
+          "sourceChange": {
+            "after": "    0",
+            "line": 17,
+            "before": "    Secret().seed"
+          }
+        }
+      ],
+      "path": "Sources/Probe/Attached.swift"
+    },
+    {
+      "fileName": "Bom.swift",
+      "mutationScore": 100,
+      "appliedOperators": [
+        {
+          "mutationPoint": {
+            "position": {
+              "line": 1,
+              "utf8Offset": 123,
+              "column": 33
+            },
+            "filePath": "@PARENT@/Coverage_mutated.noindex/Sources/Probe/Bom.swift",
+            "mutationOperatorId": "ReplaceReturnValue"
+          },
+          "mutationSnapshot": {
+            "after": "0",
+            "before": "1",
+            "description": "replaced the return value with 0"
+          },
+          "killingTests": {
+            "count": 1,
+            "tests": [
+              {
+                "name": "overloadsAndModes()",
+                "location": "MappingTests.swift:30:5"
+              }
+            ],
+            "isComplete": true
+          },
+          "testSuiteOutcome": "failed",
+          "key": "Sources/Probe/Bom.swift:1:33 ReplaceReturnValue",
+          "durationSeconds": 0.799,
+          "path": "Sources/Probe/Bom.swift",
+          "sourceChange": {
+            "after": "public func bomFirst() -> Int { 0 }",
+            "line": 1,
+            "before": "public func bomFirst() -> Int { 1 }"
+          }
+        },
+        {
+          "mutationPoint": {
+            "position": {
+              "line": 5,
+              "utf8Offset": 203,
+              "column": 5
+            },
+            "filePath": "@PARENT@/Coverage_mutated.noindex/Sources/Probe/Bom.swift",
+            "mutationOperatorId": "ReplaceReturnValue"
+          },
+          "mutationSnapshot": {
+            "after": "0",
+            "before": "2",
+            "description": "replaced the return value with 0"
+          },
+          "killingTests": {
+            "count": 1,
+            "tests": [
+              {
+                "name": "overloadsAndModes()",
+                "location": "MappingTests.swift:31:5"
+              }
+            ],
+            "isComplete": true
+          },
+          "testSuiteOutcome": "failed",
+          "key": "Sources/Probe/Bom.swift:5:5 ReplaceReturnValue",
+          "durationSeconds": 0.798,
+          "path": "Sources/Probe/Bom.swift",
+          "sourceChange": {
+            "after": "    0",
+            "line": 5,
+            "before": "    2"
+          }
+        }
+      ],
+      "path": "Sources/Probe/Bom.swift"
+    },
+    {
+      "fileName": "Counter.swift",
+      "mutationScore": 100,
+      "appliedOperators": [
+        {
+          "mutationPoint": {
+            "position": {
+              "line": 11,
+              "utf8Offset": 417,
+              "column": 34
+            },
+            "filePath": "@PARENT@/Coverage_mutated.noindex/Sources/Probe/Counter.swift",
+            "mutationOperatorId": "ChangeArithmeticOperator"
+          },
+          "mutationSnapshot": {
+            "after": "/",
+            "before": "*",
+            "description": "changed * to /"
+          },
+          "killingTests": {
+            "count": 1,
+            "tests": [
+              {
+                "name": "addsAndDoubles()",
+                "location": "CounterTests.swift:7:5"
+              }
+            ],
+            "isComplete": true
+          },
+          "testSuiteOutcome": "failed",
+          "key": "Sources/Probe/Counter.swift:11:34 ChangeArithmeticOperator",
+          "durationSeconds": 0.799,
+          "path": "Sources/Probe/Counter.swift",
+          "sourceChange": {
+            "after": "        total += values.map { $0 / 2 }.reduce(0, +)",
+            "line": 11,
+            "before": "        total += values.map { $0 * 2 }.reduce(0, +)"
+          }
+        },
+        {
+          "mutationPoint": {
+            "position": {
+              "line": 16,
+              "utf8Offset": 536,
+              "column": 9
+            },
+            "filePath": "@PARENT@/Coverage_mutated.noindex/Sources/Probe/Counter.swift",
+            "mutationOperatorId": "ReplaceReturnValue"
+          },
+          "mutationSnapshot": {
+            "after": "0",
+            "before": "twice(total)",
+            "description": "replaced the return value with 0"
+          },
+          "killingTests": {
+            "count": 1,
+            "tests": [
+              {
+                "name": "addsAndDoubles()",
+                "location": "CounterTests.swift:8:5"
+              }
+            ],
+            "isComplete": true
+          },
+          "testSuiteOutcome": "failed",
+          "key": "Sources/Probe/Counter.swift:16:9 ReplaceReturnValue",
+          "durationSeconds": 0.797,
+          "path": "Sources/Probe/Counter.swift",
+          "sourceChange": {
+            "after": "        0",
+            "line": 16,
+            "before": "        twice(total)"
+          }
+        },
+        {
+          "mutationPoint": {
+            "position": {
+              "line": 22,
+              "utf8Offset": 672,
+              "column": 5
+            },
+            "filePath": "@PARENT@/Coverage_mutated.noindex/Sources/Probe/Counter.swift",
+            "mutationOperatorId": "ReplaceReturnValue"
+          },
+          "mutationSnapshot": {
+            "after": "0",
+            "before": "value * 2",
+            "description": "replaced the return value with 0"
+          },
+          "killingTests": {
+            "count": 1,
+            "tests": [
+              {
+                "name": "addsAndDoubles()",
+                "location": "CounterTests.swift:8:5"
+              }
+            ],
+            "isComplete": true
+          },
+          "testSuiteOutcome": "failed",
+          "key": "Sources/Probe/Counter.swift:22:5 ReplaceReturnValue",
+          "durationSeconds": 0.799,
+          "path": "Sources/Probe/Counter.swift",
+          "sourceChange": {
+            "after": "    0",
+            "line": 22,
+            "before": "    value * 2"
+          }
+        },
+        {
+          "mutationPoint": {
+            "position": {
+              "line": 22,
+              "utf8Offset": 678,
+              "column": 11
+            },
+            "filePath": "@PARENT@/Coverage_mutated.noindex/Sources/Probe/Counter.swift",
+            "mutationOperatorId": "ChangeArithmeticOperator"
+          },
+          "mutationSnapshot": {
+            "after": "/",
+            "before": "*",
+            "description": "changed * to /"
+          },
+          "killingTests": {
+            "count": 1,
+            "tests": [
+              {
+                "name": "addsAndDoubles()",
+                "location": "CounterTests.swift:8:5"
+              }
+            ],
+            "isComplete": true
+          },
+          "testSuiteOutcome": "failed",
+          "key": "Sources/Probe/Counter.swift:22:11 ChangeArithmeticOperator",
+          "durationSeconds": 0.801,
+          "path": "Sources/Probe/Counter.swift",
+          "sourceChange": {
+            "after": "    value / 2",
+            "line": 22,
+            "before": "    value * 2"
+          }
+        },
+        {
+          "mutationPoint": {
+            "position": {
+              "line": 27,
+              "utf8Offset": 760,
+              "column": 5
+            },
+            "filePath": "@PARENT@/Coverage_mutated.noindex/Sources/Probe/Counter.swift",
+            "mutationOperatorId": "ReplaceReturnValue"
+          },
+          "mutationSnapshot": {
+            "after": "0",
+            "before": "7",
+            "description": "replaced the return value with 0"
+          },
+          "killingTests": {
+            "count": 1,
+            "tests": [
+              {
+                "name": "onlyKitRuns()",
+                "location": "KitTests.swift:5:5"
+              }
+            ],
+            "isComplete": false
+          },
+          "testSuiteOutcome": "failed",
+          "key": "Sources/Probe/Counter.swift:27:5 ReplaceReturnValue",
+          "durationSeconds": 0.764,
+          "path": "Sources/Probe/Counter.swift",
+          "sourceChange": {
+            "after": "    0",
+            "line": 27,
+            "before": "    7"
+          }
+        }
+      ],
+      "path": "Sources/Probe/Counter.swift"
+    },
+    {
+      "fileName": "Dependency.swift",
+      "mutationScore": 100,
+      "appliedOperators": [
+        {
+          "mutationPoint": {
+            "position": {
+              "line": 5,
+              "utf8Offset": 181,
+              "column": 5
+            },
+            "filePath": "@PARENT@/Coverage_mutated.noindex/Sources/Probe/Dependency.swift",
+            "mutationOperatorId": "ReplaceReturnValue"
+          },
+          "mutationSnapshot": {
+            "after": "0",
+            "before": "helperValue()",
+            "description": "replaced the return value with 0"
+          },
+          "killingTests": {
+            "count": 1,
+            "tests": [
+              {
+                "name": "attachedAndFiles()",
+                "location": "MappingTests.swift:38:5"
+              }
+            ],
+            "isComplete": true
+          },
+          "testSuiteOutcome": "failed",
+          "key": "Sources/Probe/Dependency.swift:5:5 ReplaceReturnValue",
+          "durationSeconds": 0.806,
+          "path": "Sources/Probe/Dependency.swift",
+          "sourceChange": {
+            "after": "    0",
+            "line": 5,
+            "before": "    helperValue()"
+          }
+        }
+      ],
+      "path": "Sources/Probe/Dependency.swift"
+    },
+    {
+      "fileName": "Excluded.swift",
+      "mutationScore": 100,
+      "appliedOperators": [
+        {
+          "mutationPoint": {
+            "position": {
+              "line": 3,
+              "utf8Offset": 182,
+              "column": 5
+            },
+            "filePath": "@PARENT@/Coverage_mutated.noindex/Sources/Probe/Excluded.swift",
+            "mutationOperatorId": "ReplaceReturnValue"
+          },
+          "mutationSnapshot": {
+            "after": "0",
+            "before": "3",
+            "description": "replaced the return value with 0"
+          },
+          "killingTests": {
+            "count": 1,
+            "tests": [
+              {
+                "name": "attachedAndFiles()",
+                "location": "MappingTests.swift:39:5"
+              }
+            ],
+            "isComplete": true
+          },
+          "testSuiteOutcome": "failed",
+          "key": "Sources/Probe/Excluded.swift:3:5 ReplaceReturnValue",
+          "durationSeconds": 0.801,
+          "path": "Sources/Probe/Excluded.swift",
+          "sourceChange": {
+            "after": "    0",
+            "line": 3,
+            "before": "    3"
+          }
+        }
+      ],
+      "path": "Sources/Probe/Excluded.swift"
+    },
+    {
+      "fileName": "Generated.swift",
+      "mutationScore": 100,
+      "appliedOperators": [
+        {
+          "mutationPoint": {
+            "position": {
+              "line": 3,
+              "utf8Offset": 190,
+              "column": 5
+            },
+            "filePath": "@PARENT@/Coverage_mutated.noindex/Sources/Probe/Generated.swift",
+            "mutationOperatorId": "ReplaceReturnValue"
+          },
+          "mutationSnapshot": {
+            "after": "0",
+            "before": "4",
+            "description": "replaced the return value with 0"
+          },
+          "killingTests": {
+            "count": 1,
+            "tests": [
+              {
+                "name": "attachedAndFiles()",
+                "location": "MappingTests.swift:40:5"
+              }
+            ],
+            "isComplete": true
+          },
+          "testSuiteOutcome": "failed",
+          "key": "Sources/Probe/Generated.swift:3:5 ReplaceReturnValue",
+          "durationSeconds": 0.8,
+          "path": "Sources/Probe/Generated.swift",
+          "sourceChange": {
+            "after": "    0",
+            "line": 3,
+            "before": "    4"
+          }
+        }
+      ],
+      "path": "Sources/Probe/Generated.swift"
+    },
+    {
+      "fileName": "Nested.swift",
+      "mutationScore": 80,
+      "appliedOperators": [
+        {
+          "mutationPoint": {
+            "position": {
+              "line": 6,
+              "utf8Offset": 253,
+              "column": 8
+            },
+            "filePath": "@PARENT@/Coverage_mutated.noindex/Sources/Probe/Nested.swift",
+            "mutationOperatorId": "NegateConditional"
+          },
+          "mutationSnapshot": {
+            "after": "!(flag)",
+            "before": "flag",
+            "description": "negated the condition"
+          },
+          "killingTests": {
+            "count": 1,
+            "tests": [
+              {
+                "name": "nesting()",
+                "location": "MappingTests.swift:21:5"
+              }
+            ],
+            "isComplete": true
+          },
+          "testSuiteOutcome": "failed",
+          "key": "Sources/Probe/Nested.swift:6:8 NegateConditional",
+          "durationSeconds": 0.806,
+          "path": "Sources/Probe/Nested.swift",
+          "sourceChange": {
+            "after": "    if !(flag) {",
+            "line": 6,
+            "before": "    if flag {"
+          }
+        },
+        {
+          "mutationPoint": {
+            "position": {
+              "line": 14,
+              "utf8Offset": 442,
+              "column": 65
+            },
+            "filePath": "@PARENT@/Coverage_mutated.noindex/Sources/Probe/Nested.swift",
+            "mutationOperatorId": "ReplaceReturnValue"
+          },
+          "mutationSnapshot": {
+            "after": "0",
+            "before": "2",
+            "description": "replaced the return value with 0"
+          },
+          "killingTests": {
+            "count": 1,
+            "tests": [
+              {
+                "name": "nesting()",
+                "location": "MappingTests.swift:22:5"
+              }
+            ],
+            "isComplete": true
+          },
+          "testSuiteOutcome": "failed",
+          "key": "Sources/Probe/Nested.swift:14:65 ReplaceReturnValue",
+          "durationSeconds": 0.799,
+          "path": "Sources/Probe/Nested.swift",
+          "sourceChange": {
+            "after": "public func sameLine() -> Int { func one() -> Int { 1 }; return 0 }",
+            "line": 14,
+            "before": "public func sameLine() -> Int { func one() -> Int { 1 }; return 2 }"
+          }
+        },
+        {
+          "mutationPoint": {
+            "position": {
+              "line": 18,
+              "utf8Offset": 550,
+              "column": 5
+            },
+            "filePath": "@PARENT@/Coverage_mutated.noindex/Sources/Probe/Nested.swift",
+            "mutationOperatorId": "ReplaceBooleanValue"
+          },
+          "mutationSnapshot": {
+            "after": "true",
+            "before": "values.isEmpty || values.contains { $0 > 100 }",
+            "description": "replaced the Bool with true"
+          },
+          "key": "Sources/Probe/Nested.swift:18:5 ReplaceBooleanValue",
+          "testSuiteOutcome": "passed",
+          "durationSeconds": 0.796,
+          "path": "Sources/Probe/Nested.swift",
+          "sourceChange": {
+            "after": "    true",
+            "line": 18,
+            "before": "    values.isEmpty || values.contains { $0 > 100 }"
+          }
+        },
+        {
+          "mutationPoint": {
+            "position": {
+              "line": 18,
+              "utf8Offset": 565,
+              "column": 20
+            },
+            "filePath": "@PARENT@/Coverage_mutated.noindex/Sources/Probe/Nested.swift",
+            "mutationOperatorId": "ChangeLogicalConnector"
+          },
+          "mutationSnapshot": {
+            "after": "&&",
+            "before": "||",
+            "description": "changed || to &&"
+          },
+          "killingTests": {
+            "count": 1,
+            "tests": [
+              {
+                "name": "nesting()",
+                "location": "MappingTests.swift:23:5"
+              }
+            ],
+            "isComplete": true
+          },
+          "testSuiteOutcome": "failed",
+          "key": "Sources/Probe/Nested.swift:18:20 ChangeLogicalConnector",
+          "durationSeconds": 0.804,
+          "path": "Sources/Probe/Nested.swift",
+          "sourceChange": {
+            "after": "    values.isEmpty && values.contains { $0 > 100 }",
+            "line": 18,
+            "before": "    values.isEmpty || values.contains { $0 > 100 }"
+          }
+        },
+        {
+          "mutationPoint": {
+            "position": {
+              "line": 18,
+              "utf8Offset": 596,
+              "column": 51
+            },
+            "filePath": "@PARENT@/Coverage_mutated.noindex/Sources/Probe/Nested.swift",
+            "mutationOperatorId": "ReplaceBooleanValue"
+          },
+          "mutationSnapshot": {
+            "after": "false",
+            "before": "values.isEmpty || values.contains { $0 > 100 }",
+            "description": "replaced the Bool with false"
+          },
+          "killingTests": {
+            "count": 1,
+            "tests": [
+              {
+                "name": "nesting()",
+                "location": "MappingTests.swift:23:5"
+              }
+            ],
+            "isComplete": true
+          },
+          "testSuiteOutcome": "failed",
+          "key": "Sources/Probe/Nested.swift:18:51 ReplaceBooleanValue",
+          "durationSeconds": 0.798,
+          "path": "Sources/Probe/Nested.swift",
+          "sourceChange": {
+            "after": "    false",
+            "line": 18,
+            "before": "    values.isEmpty || values.contains { $0 > 100 }"
+          }
+        }
+      ],
+      "path": "Sources/Probe/Nested.swift"
+    },
+    {
+      "fileName": "Overloads.swift",
+      "mutationScore": 100,
+      "appliedOperators": [
+        {
+          "mutationPoint": {
+            "position": {
+              "line": 3,
+              "utf8Offset": 168,
+              "column": 5
+            },
+            "filePath": "@PARENT@/Coverage_mutated.noindex/Sources/Probe/Overloads.swift",
+            "mutationOperatorId": "ReplaceReturnValue"
+          },
+          "mutationSnapshot": {
+            "after": "\"\"",
+            "before": "\"int \\(value)\"",
+            "description": "replaced the return value with \"\""
+          },
+          "killingTests": {
+            "count": 1,
+            "tests": [
+              {
+                "name": "overloadsAndModes()",
+                "location": "MappingTests.swift:27:5"
+              }
+            ],
+            "isComplete": true
+          },
+          "testSuiteOutcome": "failed",
+          "key": "Sources/Probe/Overloads.swift:3:5 ReplaceReturnValue",
+          "durationSeconds": 0.799,
+          "path": "Sources/Probe/Overloads.swift",
+          "sourceChange": {
+            "after": "    \"\"",
+            "line": 3,
+            "before": "    \"int \\(value)\""
+          }
+        },
+        {
+          "mutationPoint": {
+            "position": {
+              "line": 13,
+              "utf8Offset": 381,
+              "column": 32
+            },
+            "filePath": "@PARENT@/Coverage_mutated.noindex/Sources/Probe/Overloads.swift",
+            "mutationOperatorId": "ReplaceReturnValue"
+          },
+          "mutationSnapshot": {
+            "after": "\"\"",
+            "before": "\"debug\"",
+            "description": "replaced the return value with \"\""
+          },
+          "killingTests": {
+            "count": 1,
+            "tests": [
+              {
+                "name": "overloadsAndModes()",
+                "location": "MappingTests.swift:28:5"
+              }
+            ],
+            "isComplete": true
+          },
+          "testSuiteOutcome": "failed",
+          "key": "Sources/Probe/Overloads.swift:13:32 ReplaceReturnValue",
+          "durationSeconds": 0.799,
+          "path": "Sources/Probe/Overloads.swift",
+          "sourceChange": {
+            "after": "public func mode() -> String { \"\" }",
+            "line": 13,
+            "before": "public func mode() -> String { \"debug\" }"
+          }
+        },
+        {
+          "mutationPoint": {
+            "position": {
+              "line": 24,
+              "utf8Offset": 636,
+              "column": 12
+            },
+            "filePath": "@PARENT@/Coverage_mutated.noindex/Sources/Probe/Overloads.swift",
+            "mutationOperatorId": "ReplaceReturnValue"
+          },
+          "mutationSnapshot": {
+            "after": "\"\"",
+            "before": "\"other\"",
+            "description": "replaced the return value with \"\""
+          },
+          "killingTests": {
+            "count": 1,
+            "tests": [
+              {
+                "name": "overloadsAndModes()",
+                "location": "MappingTests.swift:29:5"
+              }
+            ],
+            "isComplete": true
+          },
+          "testSuiteOutcome": "failed",
+          "key": "Sources/Probe/Overloads.swift:24:12 ReplaceReturnValue",
+          "durationSeconds": 0.802,
+          "path": "Sources/Probe/Overloads.swift",
+          "sourceChange": {
+            "after": "    return \"\"",
+            "line": 24,
+            "before": "    return \"other\""
+          }
+        }
+      ],
+      "path": "Sources/Probe/Overloads.swift"
+    },
+    {
+      "fileName": "Wrappers.swift",
+      "mutationScore": 100,
+      "appliedOperators": [
+        {
+          "mutationPoint": {
+            "position": {
+              "line": 8,
+              "utf8Offset": 302,
+              "column": 15
+            },
+            "filePath": "@PARENT@/Coverage_mutated.noindex/Sources/Probe/Wrappers.swift",
+            "mutationOperatorId": "ReplaceReturnValue"
+          },
+          "mutationSnapshot": {
+            "after": "0",
+            "before": "value",
+            "description": "replaced the return value with 0"
+          },
+          "killingTests": {
+            "count": 1,
+            "tests": [
+              {
+                "name": "wrappersAndCases()",
+                "location": "MappingTests.swift:16:5"
+              }
+            ],
+            "isComplete": true
+          },
+          "testSuiteOutcome": "failed",
+          "key": "Sources/Probe/Wrappers.swift:8:15 ReplaceReturnValue",
+          "durationSeconds": 0.801,
+          "path": "Sources/Probe/Wrappers.swift",
+          "sourceChange": {
+            "after": "        get { 0 }",
+            "line": 8,
+            "before": "        get { value }"
+          }
+        },
+        {
+          "mutationPoint": {
+            "position": {
+              "line": 36,
+              "utf8Offset": 893,
+              "column": 5
+            },
+            "filePath": "@PARENT@/Coverage_mutated.noindex/Sources/Probe/Wrappers.swift",
+            "mutationOperatorId": "ReplaceReturnValue"
+          },
+          "mutationSnapshot": {
+            "after": "[]",
+            "before": "values.map(Side.left)",
+            "description": "replaced the return value with []"
+          },
+          "killingTests": {
+            "count": 1,
+            "tests": [
+              {
+                "name": "wrappersAndCases()",
+                "location": "MappingTests.swift:17:5"
+              }
+            ],
+            "isComplete": true
+          },
+          "testSuiteOutcome": "failed",
+          "key": "Sources/Probe/Wrappers.swift:36:5 ReplaceReturnValue",
+          "durationSeconds": 0.807,
+          "path": "Sources/Probe/Wrappers.swift",
+          "sourceChange": {
+            "after": "    []",
+            "line": 36,
+            "before": "    values.map(Side.left)"
+          }
+        }
+      ],
+      "path": "Sources/Probe/Wrappers.swift"
+    },
+    {
+      "fileName": "Secrets.swift",
+      "mutationScore": 0,
+      "appliedOperators": [
+        {
+          "mutationSnapshot": {
+            "after": "",
+            "before": "",
+            "description": ""
+          },
+          "testSuiteOutcome": "noCoverage",
+          "mutationPoint": {
+            "position": {
+              "line": 0,
+              "utf8Offset": 0,
+              "column": 0
+            },
+            "filePath": "",
+            "mutationOperatorId": "RemoveSideEffects"
+          }
+        }
+      ],
+      "path": "Sources/Probe/Secrets.swift"
+    }
+  ],
+  "globalMutationScore": 93,
+  "timeElapsed": "00:00:32.361",
+  "numberOfKilledMutants": 31,
+  "killingTestSummary": {
+    "suspectOnlyKillsWithIncompleteLists": 0,
+    "killedMutantsNamingNoTest": 0,
+    "suspectOnlyKills": 0,
+    "suspectMinimumFiles": 10,
+    "tests": [
+      {
+        "clearedAlone": false,
+        "failedControlRuns": 0,
+        "mutants": 10,
+        "file": "MappingTests.swift",
+        "files": 6,
+        "onlyRecordedFailureOf": 10,
+        "failedAgainAlone": 0,
+        "name": "attachedAndFiles()",
+        "suspect": false,
+        "notReproducedAlone": 0
+      },
+      {
+        "clearedAlone": false,
+        "failedControlRuns": 0,
+        "mutants": 5,
+        "file": "MappingTests.swift",
+        "files": 1,
+        "onlyRecordedFailureOf": 5,
+        "failedAgainAlone": 0,
+        "name": "accessors()",
+        "suspect": false,
+        "notReproducedAlone": 0
+      },
+      {
+        "clearedAlone": false,
+        "failedControlRuns": 0,
+        "mutants": 5,
+        "file": "MappingTests.swift",
+        "files": 2,
+        "onlyRecordedFailureOf": 5,
+        "failedAgainAlone": 0,
+        "name": "overloadsAndModes()",
+        "suspect": false,
+        "notReproducedAlone": 0
+      },
+      {
+        "clearedAlone": false,
+        "failedControlRuns": 0,
+        "mutants": 4,
+        "file": "CounterTests.swift",
+        "files": 1,
+        "onlyRecordedFailureOf": 4,
+        "failedAgainAlone": 0,
+        "name": "addsAndDoubles()",
+        "suspect": false,
+        "notReproducedAlone": 0
+      },
+      {
+        "clearedAlone": false,
+        "failedControlRuns": 0,
+        "mutants": 4,
+        "file": "MappingTests.swift",
+        "files": 1,
+        "onlyRecordedFailureOf": 4,
+        "failedAgainAlone": 0,
+        "name": "nesting()",
+        "suspect": false,
+        "notReproducedAlone": 0
+      },
+      {
+        "clearedAlone": false,
+        "failedControlRuns": 0,
+        "mutants": 2,
+        "file": "MappingTests.swift",
+        "files": 1,
+        "onlyRecordedFailureOf": 2,
+        "failedAgainAlone": 0,
+        "name": "wrappersAndCases()",
+        "suspect": false,
+        "notReproducedAlone": 0
+      },
+      {
+        "clearedAlone": false,
+        "failedControlRuns": 0,
+        "mutants": 1,
+        "file": "KitTests.swift",
+        "files": 1,
+        "onlyRecordedFailureOf": 1,
+        "failedAgainAlone": 0,
+        "name": "onlyKitRuns()",
+        "suspect": false,
+        "notReproducedAlone": 0
+      }
+    ],
+    "suspectFilePercent": 15,
+    "controlRuns": 0,
+    "failedControlRunsNamingNoTest": 0,
+    "distinctTests": 7,
+    "flakyTests": [],
+    "killsTestedAlone": 0,
+    "suspectsChecked": true,
+    "killsThatSurvivedAlone": 0,
+    "filesWithKills": 12,
+    "incompleteLists": 1,
+    "failedControlRuns": 0,
+    "suspectOnlyKillsNotTestedAlone": 0,
+    "killedMutantsNotRecorded": 0,
+    "killedMutants": 31
+  },
+  "run": {
+    "toolchain": {
+      "environment": {},
+      "testCommandVersion": "Apple Swift version 6.4.2 (swiftlang-6.4.2.1.9 clang-2100.4.1.1)\nTarget: arm64-apple-macosx27.2.0"
+    },
+    "resultsFiles": [
+      "@PARENT@/Coverage_muter_logs/Nov 21, 2026 at 10:40 AM/results.jsonl"
+    ],
+    "swiftMutator": {
+      "executablePath": "@SWIFT_MUTATOR@",
+      "version": "0.1.0",
+      "executableSHA256": "5138cbf1b810b127accddd8d4973bb2675195797cbae9b734bd09c0ae5a35ba8"
+    },
+    "timeoutSeconds": 20,
+    "configuration": {
+      "coverageThreshold": 0,
+      "exclude": [],
+      "excludeCalls": [],
+      "executable": "@SWIFT@",
+      "arguments": [
+        "test"
+      ]
+    },
+    "workers": 1,
+    "sessions": 1,
+    "timeoutIsDefault": true
+  },
+  "mutantsByOutcome": {
+    "killed": 31,
+    "survived": 2,
+    "timedOut": 0,
+    "buildErrors": 0,
+    "notCovered": 0
+  },
+  "operatorExplanations": {
+    "ChangeArithmeticOperator": "Swaps arithmetic: plus and minus swap, as do times and divide, and remainder becomes times.",
+    "ChangeLogicalConnector": "Swaps a logical AND for OR, and OR for AND.",
+    "NegateConditional": "Negates a condition of an if, guard or while, which sends the code down the other branch.",
+    "ReplaceBooleanValue": "Replaces a Bool that is returned or stored with true, and in a second mutant with false.",
+    "ReplaceReturnValue": "Replaces a returned value with an empty one of its type: nil, an empty array, dictionary or string, or zero."
+  },
+  "totalAppliedMutationOperators": 33
+}
