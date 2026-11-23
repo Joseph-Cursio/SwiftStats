@@ -46,6 +46,26 @@ enum ProcessRunner {
             .output
     }
 
+    /// Runs `executable` with `arguments` in `directory`, in this process's
+    /// environment without the variables named in `removed` and with
+    /// `environment` added, and returns its standard output. Throws
+    /// `ScanError.commandFailed` on a non-zero exit.
+    static func run(
+        executable: String,
+        arguments: [String],
+        in directory: URL,
+        environment: [String: String],
+        removing removed: Set<String>
+    ) throws -> Data {
+        try run(
+            executable: executable,
+            arguments: arguments,
+            in: directory,
+            accepting: { $0 == 0 },
+            environment: ProcessEnvironment(added: environment, removed: removed)
+        ).output
+    }
+
     /// Runs `executable` with `arguments` in `directory`, reading standard
     /// input from the file at `input`, and returns its standard output.
     /// Throws `ScanError.commandFailed` on a non-zero exit.
@@ -55,7 +75,7 @@ enum ProcessRunner {
             arguments: arguments,
             in: directory,
             accepting: { $0 == 0 },
-            environment: [:],
+            environment: .inherited,
             input: input
         ).output
     }
@@ -74,7 +94,7 @@ enum ProcessRunner {
             arguments: arguments,
             in: directory,
             accepting: accepted.contains,
-            environment: environment,
+            environment: ProcessEnvironment(added: environment, removed: []),
             input: nil
         )
     }
@@ -84,7 +104,13 @@ enum ProcessRunner {
     /// judges the status itself (the coverage run, M5). Throws
     /// `ScanError.commandFailed` only when it can't start.
     static func runToEnd(executable: String, arguments: [String], in directory: URL) throws -> ProcessOutput {
-        try run(executable: executable, arguments: arguments, in: directory, accepting: { _ in true }, environment: [:])
+        try run(
+            executable: executable,
+            arguments: arguments,
+            in: directory,
+            accepting: { _ in true },
+            environment: .inherited
+        )
     }
 
     /// Runs `executable` as `runToEnd(executable:arguments:in:)` does, with
@@ -101,21 +127,21 @@ enum ProcessRunner {
             arguments: arguments,
             in: directory,
             accepting: { _ in true },
-            environment: [:],
+            environment: .inherited,
             output: output
         )
     }
 
     /// Runs `executable` as `run(executable:arguments:in:accepting:)` does,
-    /// with `environment` added to this process's, standard input read
-    /// from `input` and standard output written to the file at `output`
-    /// when given; `accepts` says which exit statuses succeed.
+    /// in this process's environment changed by `environment`, standard
+    /// input read from `input` and standard output written to the file at
+    /// `output` when given; `accepts` says which exit statuses succeed.
     private static func run(
         executable: String,
         arguments: [String],
         in directory: URL,
         accepting accepts: (Int32) -> Bool,
-        environment: [String: String],
+        environment: ProcessEnvironment,
         input: URL? = nil,
         output outputFile: URL? = nil
     ) throws -> ProcessOutput {
@@ -129,8 +155,8 @@ enum ProcessRunner {
         process.executableURL = URL(fileURLWithPath: executable)
         process.arguments = arguments
         process.currentDirectoryURL = directory
-        if environment.isEmpty == false {
-            process.environment = ProcessInfo.processInfo.environment.merging(environment) { $1 }
+        if environment.isInherited == false {
+            process.environment = environment.applied(to: ProcessInfo.processInfo.environment)
         }
 
         // Standard error goes to a file, so only one stream is read while
