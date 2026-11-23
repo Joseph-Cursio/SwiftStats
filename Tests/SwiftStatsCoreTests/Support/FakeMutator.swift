@@ -19,7 +19,12 @@
 //  build between runs. Each
 //  tool logs its arguments (tab-separated, one call a line), its working
 //  directory, `NO_COLOR` and whether standard input was empty, and `run`
-//  keeps a copy of the configuration `-c` names.
+//  keeps a copy of the configuration `-c` names. In its interrupt mode
+//  (design §11 step 3c), `run` writes the results file without its last
+//  line, the end line, then waits to be stopped as SwiftMutator does: on
+//  SIGTERM a `trap` appends the end line and raises the signal again
+//  (`trap - TERM; kill -TERM $$`), or exits 143 as SwiftMutator's
+//  fallback; each signal it hears is logged.
 //
 
 import Foundation
@@ -27,6 +32,14 @@ import Foundation
 
 /// A fake SwiftMutator and `swift` for the mutation collector.
 struct FakeMutator {
+    /// How `run` ends in its interrupt mode once SIGTERM reaches it.
+    enum Interrupt: Sendable {
+        /// It appends the end line and raises SIGTERM again.
+        case raising
+        /// It appends the end line and exits 143.
+        case exiting143
+    }
+
     /// What the fake tools do.
     struct Scenario {
         /// The results file `run` writes; none when nil.
@@ -47,12 +60,17 @@ struct FakeMutator {
         var buildStatus: Int32 = 0
         /// What `swift build --build-tests` prints.
         var buildOutput = ""
+        /// When set, `run` writes `results` without its last line, waits
+        /// for SIGTERM and ends this way after appending that line.
+        var interrupt: Interrupt?
     }
 
     /// The run folder's name the fake writes into.
     static let folder = "Nov 21, 2026 at 7:32 AM"
     /// The words of a `status.txt` line: `run: exit 0`.
     static let statusWords = 3
+    /// How often to look whether `run` is waiting, in microseconds.
+    private static let pollInterval: useconds_t = 20_000
 
     /// The fake `swift-mutator`.
     private static let mutatorScript = """
@@ -69,21 +87,41 @@ struct FakeMutator {
         root="$(pwd -P)"
         parent="$(dirname "$root")"
         name="$(basename "$root")"
+        folder="$parent/${name}_muter_logs/\(folder)"
         expand() {
             sed -e "s|@ROOT@|$root|g" -e "s|@PARENT@|$parent|g" -e "s|@NAME@|$name|g" \\
                 -e "s|@FOLDER@|\(folder)|g" "$1"
+        }
+        stopped() {
+            echo TERM >> "$here/signals"
+            kill "$sleeper" 2>/dev/null
+            expand "$here/end.jsonl" >> "$folder/results.jsonl"
+            if [ "$(cat "$here/interrupt")" = exit ]; then exit 143; fi
+            trap - TERM
+            # Delivered once the trap returns: a shell holds a signal it
+            # sends itself while one of its traps runs.
+            kill -TERM $$
+        }
+        awaitStop() {
+            trap 'echo INT >> "$here/signals"' INT
+            trap stopped TERM
+            /bin/sleep 30 &
+            sleeper=$!
+            echo $$ > "$here/pid"
+            : > "$here/ready"
+            while kill -0 "$sleeper" 2>/dev/null; do wait "$sleeper"; done
         }
         case "$1" in
             run)
                 config="$(value -c "$@")"
                 if [ -n "$config" ]; then cp "$config" "$here/muter.conf.yml"; fi
                 if [ -f "$here/results.jsonl" ]; then
-                    folder="$parent/${name}_muter_logs/\(folder)"
                     mkdir -p "$folder"
                     expand "$here/results.jsonl" > "$folder/results.jsonl"
                 fi
                 expand "$here/log.txt"
                 cat "$here/err.txt" >&2
+                if [ -f "$here/interrupt" ]; then awaitStop; fi
                 if [ -f "$here/signal" ]; then kill -"$(cat "$here/signal")" $$; sleep 5; fi
                 exit "$(cat "$here/status")"
                 ;;
@@ -125,6 +163,23 @@ struct FakeMutator {
     /// The configuration the last `run` was given, as it read it.
     var configuration: String? {
         try? String(contentsOf: directory.appendingPathComponent("muter.conf.yml"), encoding: .utf8)
+    }
+
+    /// The signals `run` heard in its interrupt mode, in order: `INT` or
+    /// `TERM`.
+    var signalsHeard: [String] {
+        lines("signals")
+    }
+
+    /// The Mutation fixture's interrupted recording in the interrupt mode:
+    /// `run` waits for SIGTERM and ends as `ending` says, rather than
+    /// raising the signal itself.
+    static func interruptible(_ ending: Interrupt) throws -> Scenario {
+        var scenario = try recorded("interrupted")
+        scenario.signal = nil
+        scenario.status = 0
+        scenario.interrupt = ending
+        return scenario
     }
 
     /// The scenario of the Mutation fixture's recorded case `name`.
@@ -185,6 +240,13 @@ struct FakeMutator {
         files["results.jsonl"] = scenario.results
         files["report.json"] = scenario.report
         files["signal"] = scenario.signal.map { "\($0)" }
+        if let ending = scenario.interrupt, let results = scenario.results {
+            var lines = results.split(separator: "\n").map(String.init)
+            let end = lines.popLast() ?? ""
+            files["results.jsonl"] = lines.map { $0 + "\n" }.joined()
+            files["end.jsonl"] = end + "\n"
+            files["interrupt"] = ending == .raising ? "raise" : "exit"
+        }
         for (name, text) in files {
             try text.write(to: tools.appendingPathComponent(name), atomically: true, encoding: .utf8)
         }
@@ -217,6 +279,20 @@ struct FakeMutator {
     /// directory), `env` (`NO_COLOR`) or `stdin` (`empty` or `input`).
     func facts(_ fact: String, of tool: String) -> [String] {
         lines("\(tool)-\(fact).log")
+    }
+
+    /// The process identifier of `run` once, in its interrupt mode, it
+    /// waits to be stopped; nil when it doesn't within `timeout` seconds.
+    func waitingRun(within timeout: TimeInterval) -> pid_t? {
+        let ready = directory.appendingPathComponent("ready")
+        let deadline = Date().addingTimeInterval(timeout)
+        while FileManager.default.fileExists(atPath: ready.path) == false {
+            guard Date() < deadline else {
+                return nil
+            }
+            usleep(Self.pollInterval)
+        }
+        return lines("pid").first.flatMap { pid_t($0) }
     }
 
     /// Removes the tools.

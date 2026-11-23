@@ -35,7 +35,7 @@ struct ProcessTerminationTests {
             ],
             in: directory,
             environment: ProcessEnvironment(added: ["COLOR": "none"], removed: []),
-            appendingTo: log
+            logging: LoggedRun(log: log, stop: .standard)
         )
 
         #expect(termination == .exited(3))

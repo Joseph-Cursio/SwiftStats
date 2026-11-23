@@ -13,7 +13,9 @@
 //  the project, which holds one run folder since the copy is new, and is
 //  checked against the last `💾 … in <path>` line SwiftMutator printed.
 //  Reasons name the copy, its folder, the package and SwiftMutator's run
-//  folder by placeholders.
+//  folder by placeholders. An interruption stops SwiftMutator's commands
+//  by its own policy (SIGTERM, 35 seconds, SIGKILL; design §1.6) and the
+//  warm build by the standard one (`StopPolicy`).
 //
 
 import Foundation
@@ -165,7 +167,7 @@ struct MutationCommand {
     /// a failure with the build's last lines.
     func warmBuild() throws(MutationFailure) -> Int {
         let display = "swift build --build-tests"
-        let finished = try logged(swift, ["build", "--build-tests"], display: display)
+        let finished = try logged(swift, ["build", "--build-tests"], display: display, stop: .standard)
         guard finished.termination == .exited(0) else {
             let lines = lastLines(of: finished.output)
             let ending = Self.ended(finished.termination)
@@ -179,7 +181,7 @@ struct MutationCommand {
     /// Runs SwiftMutator with `arguments`: how it ended, its output and
     /// its milliseconds.
     func run(_ arguments: [String]) throws(MutationFailure) -> Finished {
-        try logged(mutator, arguments, display: "swift-mutator run")
+        try logged(mutator, arguments, display: "swift-mutator run", stop: .swiftMutator)
     }
 
     /// The results file the run that printed `output` left, after checking
@@ -218,7 +220,8 @@ struct MutationCommand {
     func report(of results: URL) -> Report {
         let output = copy.work.appendingPathComponent(Self.reportName)
         let arguments = ["report", results.path, "-f", "json", "-o", output.path]
-        guard let finished = try? logged(mutator, arguments, display: "swift-mutator report") else {
+        let display = "swift-mutator report"
+        guard let finished = try? logged(mutator, arguments, display: display, stop: .swiftMutator) else {
             return Self.unjudged("swift-mutator report could not be run")
         }
         guard case .exited(let status) = finished.termination, Self.reportStatuses.contains(status) else {
@@ -259,9 +262,14 @@ struct MutationCommand {
 
     /// Runs `tool` with `arguments` in the project, its output appended to
     /// the log between lines naming it as `display` and saying how it
-    /// ended: how it ended, its output and its milliseconds; a failure
-    /// when it can't start.
-    private func logged(_ tool: URL, _ arguments: [String], display: String) throws(MutationFailure) -> Finished {
+    /// ended, an interruption stopping it by `policy`: how it ended, its
+    /// output and its milliseconds; a failure when it can't start.
+    private func logged(
+        _ tool: URL,
+        _ arguments: [String],
+        display: String,
+        stop policy: StopPolicy
+    ) throws(MutationFailure) -> Finished {
         log.note(display)
         let start = log.offset()
         let outcome = Stopwatch.time {
@@ -274,7 +282,7 @@ struct MutationCommand {
                         added: Self.environment,
                         removed: MutationWorkCopy.repositoryVariables
                     ),
-                    appendingTo: log.url
+                    logging: LoggedRun(log: log.url, stop: policy)
                 )
             }
         }
