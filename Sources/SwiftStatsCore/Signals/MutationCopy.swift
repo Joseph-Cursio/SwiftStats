@@ -18,9 +18,7 @@ struct MutationCopy {
     let instance: CloneInstance
     /// Its mutants, by anchor, then key.
     let mutants: [Mutant]
-    /// Those mutants counted.
-    let counts: MutationCounts
-    /// What they come to.
+    /// What they come to, counted as a function's mutants are.
     let figures: MutationFigures
     /// The family naming it, by M4's copy-to-family rule; `<file>:<line>`
     /// when no family holds it.
@@ -70,8 +68,7 @@ struct MutationCopy {
         self.instance = instance
         self.mutants = mutants
         self.family = family
-        counts = MutationCounts(mutants)
-        figures = MutationFigures(counts)
+        figures = MutationFigures(MutationCounts(mutants))
     }
 
     /// Whether this copy lies inside `other`: the same file, within its

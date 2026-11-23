@@ -82,6 +82,27 @@ struct BestPropertyTargetTests {
         #expect(signal.rule.hasSuffix("; 1 partner added, 2 mutants counted by more than one item"))
     }
 
+    /// The mapper never resolves a partner to the suggestion's own function,
+    /// so a stored row is edited to carry one.
+    @Test("a stored suggestion naming its own function as partner adds no partner and counts no mutant twice")
+    func selfPartner() throws {
+        let directory = try SnapshotHarness.temporaryDirectory("PropertyTargetSelfPartner")
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let url = directory.appendingPathComponent("stats.sqlite")
+        let store = try SnapshotStore(at: url)
+        let stored = try Harness.stored(Samples.setup { $0.store = store })
+        let owner = Samples.doubled.replacingOccurrences(of: "'", with: "''")
+        try SnapshotHarness.sqlite(url, "UPDATE propertyCandidate SET partnerKey = '\(owner)' WHERE owner = '\(owner)'")
+        let reloaded = try store.load(id: stored.id)
+
+        #expect(reloaded.candidates.contains { $0.partnerKey == Samples.doubled })
+        let signal = try MutationSignalHarness.signal(.bestPropertyTarget, of: reloaded)
+        let item = try #require(signal.items.first { $0.subject == Samples.doubled })
+        #expect(item.propertyTarget?.partners.isEmpty == true)
+        #expect(item.score == 2)
+        #expect(signal.rule.hasSuffix("; 1 partner added, 2 mutants counted by more than one item"))
+    }
+
     @Test("items order by score, then their best suggestion's score with Verified's 50, then subject")
     func order() throws {
         let signal = try Self.signal(Samples.setup())

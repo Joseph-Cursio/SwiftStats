@@ -27,14 +27,17 @@ struct GenuinelyUnderTestedTests {
 
     @Test("""
         a barely covered, barely killed function is listed in the module whose ratio lies below the project's and \
-        counted in the other; items score by unkilled mutants and tie on the lower line coverage
+        counted in the other; items score by unkilled mutants, and a tie puts the lower line coverage first, though \
+        its subject sorts later
         """)
     func modules() throws {
         let snapshot = try Harness.stored(
             [Self.uncovered(3)],
             Harness.Setup(other: [
-                Self.uncovered(4),
+                // g0 (1 of 10 lines) and g1 (none of 4) tie on 4 unkilled:
+                // g1 comes first by line coverage, not by subject.
                 Self.function(1, of: 10, Harness.planted(3, .survived) + Harness.planted(1, .notCovered)),
+                Self.uncovered(4),
                 Self.function(1, of: 4, Harness.planted(3, .notCovered)),
                 Self.function(0, of: 4, Harness.planted(1, .killed) + Harness.planted(3, .notCovered)),
                 Self.uncovered(5)
@@ -44,7 +47,7 @@ struct GenuinelyUnderTestedTests {
 
         #expect(signal.leftOut == nil)
         #expect(signal.candidates == 6)
-        #expect(signal.items.map(\.subject) == [4, 0, 1].map(Harness.otherKey))
+        #expect(signal.items.map(\.subject) == [4, 1, 0].map(Harness.otherKey))
         #expect(signal.items.map(\.score) == [5, 4, 4])
         #expect(signal.rule == GenuinelyUnderTested.rule(thresholds: SignalThresholds()) + "; "
             + "2 production modules = 1 with low test code + 1 without; 1 = 0 with no test code + 1 below the "
@@ -118,6 +121,36 @@ struct GenuinelyUnderTestedTests {
         #expect(bare.rule.contains("1 production module = 1 with low test code + 0 without; 1 = 1 with no test code"))
         #expect(bare.rule.contains("one production module:") == false)
         for signal in [plain, configured, bare] {
+            #expect(Harness.unbalanced(signal.rule).isEmpty)
+        }
+    }
+
+    /// `Lib`'s one function has 4 production lines and its test 10 test
+    /// lines (2.5 per production line), so a ratio of 2.5 is met exactly.
+    @Test("""
+        with the ratio set, one production module at or above it lists nothing and the funnel doesn't say nothing \
+        can be listed: a module exactly at the ratio isn't below it
+        """)
+    func singleModuleWithRatio() throws {
+        let tested = try Harness.stored([Self.uncovered(3)])
+        let below = SignalThresholds(limits: ["genuinely-under-tested": ["ratio": 0.25]])
+        let equal = SignalThresholds(limits: ["genuinely-under-tested": ["ratio": 2.5]])
+
+        let above = try Harness.signal(.genuinelyUnderTested, of: tested, thresholds: below)
+        let exact = try Harness.signal(.genuinelyUnderTested, of: tested, thresholds: equal)
+
+        let lines = ModuleRatios(tested, ratio: nil).payload("Lib").moduleLines
+        #expect(lines == SignalItem.RatioLines(testLines: 10, productionLines: 4))
+        for (signal, ratio) in [(above, "0.25"), (exact, "2.5")] {
+            #expect(signal.items.isEmpty && signal.candidates == 1)
+            #expect(signal.rule.contains("one production module:") == false)
+            #expect(signal.rule.contains(
+                "; 1 production module = 0 with low test code + 1 without; 0 = 0 with no test code + 0 below the "
+                    + "project's ratio + 0 below \(ratio) test lines per production line alone; "
+            ))
+            #expect(signal.rule.hasSuffix(
+                "1 = 0 listed + 1 under 20% in a module whose test code isn't low + 0 not under 20%"
+            ))
             #expect(Harness.unbalanced(signal.rule).isEmpty)
         }
     }

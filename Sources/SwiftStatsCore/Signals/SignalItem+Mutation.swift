@@ -33,11 +33,21 @@ public extension SignalItem {
         /// didn't check, in the report's order.
         public let survivors: [UncheckedMutant]
         /// The suspect tests its suspect-only kills name, by name, then why,
-        /// then the reach figures (none first).
+        /// then the reach figures (none first), each distinct entry once.
+        /// A kill names its tests by name only, so every suspect test of
+        /// the run with that name is matched, a same-named test in another
+        /// file included; with no file in an entry, same-named tests
+        /// suspect for the same reason with the same figures show as one.
         public let suspects: [Suspect]
     }
 
-    /// A suspect test behind a suspect-only kill.
+    /// A suspect test behind a suspect-only kill, matched to the kill by
+    /// name alone: SwiftMutator judges suspects by name and file, but a
+    /// kill's `killedBy` keeps only names, so every same-named suspect is
+    /// matched rather than one guessed. An entry carries no file, so each
+    /// distinct mix of name, why and reach figures is listed once:
+    /// same-named tests in different files suspect for the same reason
+    /// show as one.
     struct Suspect: Codable, Hashable, Sendable {
         /// Its name, as SwiftMutator records it.
         public let name: String

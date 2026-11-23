@@ -161,8 +161,8 @@ struct MutationJudge {
 
     /// The suspect tests the suspect-only kills among `held` name, each
     /// judged by the run that made the kill, with why and, for reach, in
-    /// how many of the files with kills it failed; by name, then why, then
-    /// those figures (none first).
+    /// how many of the files with kills it failed, each distinct entry
+    /// once; by name, then why, then those figures (none first).
     private func suspects(behind held: [Mutant]) -> [SignalItem.Suspect] {
         var found: Set<SignalItem.Suspect> = []
         for mutant in held where mutant.suspectOnly?.value == true {
