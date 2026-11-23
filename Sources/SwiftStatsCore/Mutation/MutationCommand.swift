@@ -195,6 +195,13 @@ struct MutationCommand {
         Report(data: nil, suspects: .unjudged, warning: warning("\(why); \(unjudgedNote)"))
     }
 
+    /// Whether `warning` is one a failed or unread `swift-mutator report`
+    /// gives.
+    static func isUnjudgedWarning(_ warning: ScanWarning) -> Bool {
+        warning.file == nil && warning.message.hasPrefix(MutationAdapter.name + ": ")
+            && warning.message.hasSuffix("; " + unjudgedNote)
+    }
+
     /// Builds the copy's tests, so the `.build` SwiftMutator copies, and
     /// `build-cache/` after it, are current; the build's milliseconds, or
     /// a failure with the build's last lines.

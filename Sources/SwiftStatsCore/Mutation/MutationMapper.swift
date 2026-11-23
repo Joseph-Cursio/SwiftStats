@@ -60,6 +60,10 @@ struct MutationMapper {
     private static let currentDirectory = "./"
     /// What a Swift file's name ends with.
     static let swiftExtension = ".swift"
+    /// What the warning about kept files whose paths differ only in case
+    /// says after the paths.
+    private static let caseFoldedText = " differ only in case, which a case-insensitive volume can't tell "
+        + "apart, so their mutants may be mapped to the wrong one"
 
     /// Sorts the mutants' files.
     private let classifier: PackageFileClassifier
@@ -76,10 +80,7 @@ struct MutationMapper {
     /// paths differ only in case.
     var warnings: [ScanWarning] {
         caseFolded.map { paths in
-            MutationSession.warning(
-                paths.joined(separator: ", ") + " differ only in case, which a case-insensitive volume can't tell "
-                    + "apart, so their mutants may be mapped to the wrong one"
-            )
+            MutationSession.warning(paths.joined(separator: ", ") + Self.caseFoldedText)
         }
     }
 
@@ -104,6 +105,14 @@ struct MutationMapper {
     /// own report also looks paths up.
     static func normalized(_ path: String) -> String {
         path.precomposedStringWithCanonicalMapping
+    }
+
+    /// Whether `warning` is one the mapping gives (`warnings`), one of
+    /// those mutation results carried onto a rescan keep with them
+    /// (`MutationSession.describesResults`).
+    static func isMappingWarning(_ warning: ScanWarning) -> Bool {
+        warning.file == nil && warning.message.hasPrefix(MutationAdapter.name + ": ")
+            && warning.message.hasSuffix(caseFoldedText)
     }
 
     /// The record of the run that left `results`, the `ordinal`th of the

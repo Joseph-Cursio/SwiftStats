@@ -25,7 +25,7 @@ struct BackfillCommand: ParsableCommand {
         SwiftInferProperties and SwiftCloneDetector; git history is never read, nor coverage or mutation \
         results collected. A \
         commit that already has a snapshot is skipped; --rerun rescans those taken by another SwiftStats build, \
-        except snapshots holding history, coverage or tool results a backfill wouldn't collect.
+        except snapshots holding history, coverage, mutation or tool results a backfill wouldn't collect.
         """
     )
 

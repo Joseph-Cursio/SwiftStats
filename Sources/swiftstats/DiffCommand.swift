@@ -11,9 +11,9 @@ struct DiffCommand: ParsableCommand {
         Compares functions (added, removed, moved, renamed, changed) and metrics, for collectors that ran \
         in both snapshots with the same build and options. A commit with no snapshot is scanned first, \
         from a copy of its tracked files checked out into a temporary directory, and stored. A rescan keeps \
-        the coverage of the snapshot it replaces when the tree, the records and the mapping rule are the same, \
-        and otherwise stops; --drop-coverage replaces it without its coverage instead, and --drop-mutation \
-        without the mutation results it can't keep.
+        the coverage and mutation results of the snapshot it replaces when the tree, the records and the \
+        mapping rule are the same, and otherwise stops; --drop-coverage replaces it without its coverage \
+        instead, and --drop-mutation without the mutation results it can't keep.
         """
     )
 

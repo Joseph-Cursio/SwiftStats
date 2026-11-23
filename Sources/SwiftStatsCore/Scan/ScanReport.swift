@@ -78,7 +78,7 @@ public struct ScanReport: Codable, Hashable, Sendable {
     /// The report with `history` attached and the history collector's
     /// status replaced by `status`.
     func with(history: HistoryReport?, status: CollectorStatus) -> Self {
-        var report = replacing(status, rollups: rollups, coverage: coverage, warnings: warnings)
+        var report = replacing(status, rollups: rollups, coverage: coverage, mutation: mutation, warnings: warnings)
         report.history = history
         return report
     }
@@ -93,18 +93,36 @@ public struct ScanReport: Codable, Hashable, Sendable {
         let built = CoverageRollupBuilder(targets: targets, records: records, coverage: coverage).rollups(plain)
         let merged = (warnings + added.filter { warnings.contains($0) == false })
             .sorted(by: PackageScanner.warningOrder)
-        var report = replacing(status, rollups: built, coverage: coverage, warnings: merged)
+        var report = replacing(status, rollups: built, coverage: coverage, mutation: mutation, warnings: merged)
+        report.history = history
+        return report
+    }
+
+    /// The report with `mutation` attached, the SwiftMutator collector's
+    /// status replaced by `status`, the roll-ups' mutation results rebuilt
+    /// from it and `added` among its warnings, once each (M6, design §6.4):
+    /// how a scan that didn't run the SwiftMutator collector carries the
+    /// results an earlier scan of the same tree collected, with the
+    /// warnings mapping them gave.
+    func with(mutation: MutationReport, status: CollectorStatus, warnings added: [ScanWarning]) -> Self {
+        let plain = rollups.map { $0.with(mutation: nil) }
+        let built = MutationRollupBuilder(targets: targets, records: records, files: files, report: mutation)
+            .rollups(plain)
+        let merged = (warnings + added.filter { warnings.contains($0) == false })
+            .sorted(by: PackageScanner.warningOrder)
+        var report = replacing(status, rollups: built, coverage: coverage, mutation: mutation, warnings: merged)
         report.history = history
         return report
     }
 
     /// The report with `status` replacing its collector's status, and
-    /// `rollups`, `coverage` and `warnings` replacing its own, and no
-    /// history.
+    /// `rollups`, `coverage`, `mutation` and `warnings` replacing its own,
+    /// and no history.
     private func replacing(
         _ status: CollectorStatus,
         rollups: [Rollup],
         coverage: CoverageReport?,
+        mutation: MutationReport?,
         warnings: [ScanWarning]
     ) -> Self {
         Self(

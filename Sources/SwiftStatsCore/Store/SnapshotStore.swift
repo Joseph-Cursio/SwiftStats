@@ -267,6 +267,12 @@ public struct SnapshotStore: Sendable {
         try queue.read { database in try Self.holdsMutation(id: id, in: database) }
     }
 
+    /// The mutation results snapshot `id` holds, for a rescan that may
+    /// carry them (`SnapshotStore+Mutation`); nil when it holds none.
+    func heldMutation(id: Int64) throws -> HeldMutation? {
+        try queue.read { database in try Self.heldMutation(id: id, in: database) }
+    }
+
     /// The mutation results snapshot `id` holds, with its swiftmutator run,
     /// for a scan that merges with them (`SnapshotStore+Mutation`); nil
     /// when it holds none.

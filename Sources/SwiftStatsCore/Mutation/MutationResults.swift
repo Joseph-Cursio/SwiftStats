@@ -22,6 +22,10 @@ struct MutationResults: Equatable, Sendable {
 
     /// The most skipped line numbers a warning lists.
     static let listedSkippedLines = 10
+    /// What the warning about skipped lines says before the count.
+    private static let skippedLinesLead = MutationAdapter.name + ": skipped "
+    /// What it says between the count and the line numbers.
+    private static let skippedLinesText = " of the results file that didn't read ("
 
     /// Every mutant, tested or not covered, sorted by key.
     let mutants: [RecordedMutant]
@@ -75,6 +79,12 @@ struct MutationResults: Equatable, Sendable {
         let listed = skippedLines.prefix(Self.listedSkippedLines).map(String.init).joined(separator: ", ")
         let more = skippedLines.count > Self.listedSkippedLines ? ", …" : ""
         let count = skippedLines.count == 1 ? "1 line" : "\(skippedLines.count) lines"
-        return "swiftmutator: skipped \(count) of the results file that didn't read (\(listed)\(more))"
+        return Self.skippedLinesLead + count + Self.skippedLinesText + listed + more + ")"
+    }
+
+    /// Whether `warning` is one `skippedLinesWarning` gives.
+    static func isSkippedLinesWarning(_ warning: ScanWarning) -> Bool {
+        warning.file == nil && warning.message.hasPrefix(skippedLinesLead)
+            && warning.message.contains(skippedLinesText) && warning.message.hasSuffix(")")
     }
 }

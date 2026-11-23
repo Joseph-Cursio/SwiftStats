@@ -64,6 +64,20 @@ struct SinceHarness {
     /// added under `collectors.swiftmutator`, written to a file in `folder`
     /// of its own.
     static func workspace(root: URL, folder: URL, fake: FakeMutator, settings: String) throws -> SnapshotWorkspace {
+        try workspace(root: root, folder: folder, fake: fake, settings: settings, build: SnapshotHarness.build)
+    }
+
+    /// A workspace on the package at `root` scanning as `build`, its store
+    /// in `folder`, its configuration pointing the collectors at `fake`
+    /// with `settings` added under `collectors.swiftmutator`, written to a
+    /// file in `folder` of its own.
+    static func workspace(
+        root: URL,
+        folder: URL,
+        fake: FakeMutator,
+        settings: String,
+        build: SwiftStatsBuild
+    ) throws -> SnapshotWorkspace {
         let configuration = folder.appendingPathComponent("configuration-\(UUID().uuidString).yml")
         try (
             "collectors:\n  coverage:\n    path: \(fake.swift.path)\n"
@@ -74,7 +88,7 @@ struct SinceHarness {
             packageRoot: root,
             configurationFile: configuration,
             storeOverride: folder.appendingPathComponent("stats.sqlite").path,
-            build: SnapshotHarness.build,
+            build: build,
             describer: TreeDescriber(name: "Mutation", targets: MappingHarness.mutationTargets),
             tools: SnapshotHarness.noTools
         )
@@ -84,6 +98,12 @@ struct SinceHarness {
     /// added under `collectors.swiftmutator`.
     func workspace(adding settings: String) throws -> SnapshotWorkspace {
         try Self.workspace(root: root, folder: folder, fake: fake, settings: settings)
+    }
+
+    /// Another workspace on the same package and store, scanning as
+    /// `build`.
+    func workspace(build: SwiftStatsBuild) throws -> SnapshotWorkspace {
+        try Self.workspace(root: root, folder: folder, fake: fake, settings: "", build: build)
     }
 
     /// Checks out `branch` and scans it with `workspace`, the fake tools

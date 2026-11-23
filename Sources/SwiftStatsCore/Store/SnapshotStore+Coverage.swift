@@ -20,9 +20,9 @@ extension SnapshotStore {
         let warnings: [ScanWarning]
     }
 
-    /// The warnings mapping coverage gave among snapshot `id`'s report's
-    /// warnings, read in `database`, in the report's order.
-    private static func coverageWarnings(id: Int64, in database: Database) throws -> [ScanWarning] {
+    /// Snapshot `id`'s report's warnings, read in `database`, in the
+    /// report's order: a carry keeps those its mapping gave.
+    static func storedWarnings(id: Int64, in database: Database) throws -> [ScanWarning] {
         guard let row = try ReportRow.filter(Column("snapshotId") == id).fetchOne(database) else {
             throw StoreError.noSnapshot("id \(id)")
         }
@@ -31,7 +31,23 @@ extension SnapshotStore {
         }
         let json = try ReportCompression.inflate(row.data, length: row.uncompressedLength)
         return try JSONDecoder().decode(StoredWarnings.self, from: json).warnings
-            .filter(PackageScanner.coverageMappingWarnings.contains)
+    }
+
+    /// The span of each of snapshot `id`'s production records, by key,
+    /// read in `database`.
+    static func productionSpans(id: Int64, in database: Database) throws -> [String: HeldCoverage.Span] {
+        let spans = try Row.fetchAll(
+            database,
+            sql: "SELECT key, file, startLine, endLine FROM function WHERE snapshotId = ? AND role = ?",
+            arguments: [id, CodeRole.production.rawValue]
+        )
+        .map { row in
+            (
+                row["key"] as String,
+                HeldCoverage.Span(file: row["file"], startLine: row["startLine"], endLine: row["endLine"])
+            )
+        }
+        return Dictionary(spans) { first, _ in first }
     }
 
     /// Whether snapshot `id` holds coverage, read in `database`: a
@@ -61,23 +77,12 @@ extension SnapshotStore {
         guard let run = snapshot.collectors.first(where: { $0.name == CoverageAdapter.name }), run.state == .ran else {
             return nil
         }
-        let spans = try Row.fetchAll(
-            database,
-            sql: "SELECT key, file, startLine, endLine FROM function WHERE snapshotId = ? AND role = ?",
-            arguments: [id, CodeRole.production.rawValue]
-        )
-        .map { row in
-            (
-                row["key"] as String,
-                HeldCoverage.Span(file: row["file"], startLine: row["startLine"], endLine: row["endLine"])
-            )
-        }
         return HeldCoverage(
             git: snapshot.git,
             run: run,
             coverage: try rows.stored,
-            warnings: try coverageWarnings(id: id, in: database),
-            spans: Dictionary(spans) { first, _ in first }
+            warnings: try storedWarnings(id: id, in: database).filter(PackageScanner.coverageMappingWarnings.contains),
+            spans: try productionSpans(id: id, in: database)
         )
     }
 }

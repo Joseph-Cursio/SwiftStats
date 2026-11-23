@@ -32,7 +32,10 @@ struct ScanCommand: ParsableCommand {
         .swiftstats/mutation/swift-mutator.log. --since <rev> retests only the files changed since that commit's \
         snapshot and keeps its results for the rest; --resume continues an interrupted or failed run in its \
         kept copy while the tree and settings are those it started with, and a scan --mutation without it \
-        discards that run; --drop-mutation replaces a snapshot without mutation results it can't keep.
+        discards that run. A scan without --mutation, or whose mutation run fails, keeps the mutation results \
+        of the snapshot it replaces when the tree, the records they name, the files they test and the mapping \
+        rule are the same, and otherwise stops without storing anything; --drop-mutation replaces the snapshot \
+        without them instead.
         """
     )
 

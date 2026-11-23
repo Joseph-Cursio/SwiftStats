@@ -23,7 +23,7 @@
 /// Decides whether stored coverage carries onto a rescan, and carries it.
 enum CoverageCarry {
     /// The start of a carried run's reason, before the collection date.
-    static let carriedPrefix = "carried from the scan of "
+    static let carriedPrefix = CollectorRunInfo.carriedPrefix
 
     /// Skip reasons a coverage run gives when it wasn't asked for: a plain
     /// scan's, and a backfill's without tools.
@@ -110,45 +110,14 @@ enum CoverageCarry {
                 message: "coverage: \(what), so it keeps the coverage collected \(held.coverage.collectedAt)"
             )
         }
-        let original = held.run
-        let run = CollectorRunInfo(
-            name: original.name,
-            state: .ran,
-            reason: reason(of: original, collectedAt: held.coverage.collectedAt),
-            version: original.version,
-            identity: original.identity,
-            identityLabel: original.identityLabel,
-            options: original.options,
-            durationMilliseconds: original.durationMilliseconds
-        )
-        let status = CollectorStatus(
-            name: run.name,
-            state: run.state,
-            version: run.version,
-            reason: run.reason,
-            options: run.options
-        )
+        let run = held.run.carried(collectedAt: held.coverage.collectedAt)
         return ScannedSnapshot(
             info: snapshot.info.with(run: run),
             report: snapshot.report.with(
                 coverage: held.coverage.report,
-                status: status,
+                status: run.status,
                 warnings: held.warnings + [notice].compactMap(\.self)
             )
         )
-    }
-
-    /// A carried run's reason: when its coverage was collected, then the
-    /// reason the run that collected it gave (failing tests), which a run
-    /// carried before still holds after its own date.
-    private static func reason(of run: CollectorRunInfo, collectedAt: String) -> String {
-        let carried = carriedPrefix + collectedAt
-        let separator = "; "
-        var original = run.reason
-        if let reason = original, reason.hasPrefix(carried) {
-            let rest = reason.dropFirst(carried.count)
-            original = rest.hasPrefix(separator) ? String(rest.dropFirst(separator.count)) : nil
-        }
-        return original.map { carried + separator + $0 } ?? carried
     }
 }

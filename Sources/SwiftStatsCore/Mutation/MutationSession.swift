@@ -133,11 +133,6 @@ struct MutationSession {
         }
     }
 
-    /// A scan warning, from the collector, saying `text`.
-    static func warning(_ text: String) -> ScanWarning {
-        ScanWarning(file: nil, message: "\(MutationAdapter.name): \(text)")
-    }
-
     /// The step, with the lock held.
     private func locked() throws(MutationFailure) -> Outcome {
         let log = try MutationLog.started(at: directory.log)
@@ -251,18 +246,16 @@ struct MutationSession {
         if exit.state == .ran, let results, let refusal = job.base?.postRunRefusal(results.facts) {
             exit = MutationExit.failed(refusal)
         }
-        var warnings = (results?.skippedLinesWarning).map { [ScanWarning(file: nil, message: $0)] } ?? []
+        var warnings: [ScanWarning] = []
         var suspects = SuspectReport.unjudged
         var kept: String?
         if exit.state == .ran, let results, let file, let data {
             let report = command.report(of: file)
             suspects = report.suspects
-            warnings += [report.warning].compactMap(\.self)
+            warnings += [results.skippedLinesWarning.map { ScanWarning(file: nil, message: $0) }, report.warning]
+                .compactMap(\.self)
             if suspects.unreadableKeys > 0 {
-                warnings.append(Self.warning(
-                    "\(suspects.unreadableKeys) keys of swift-mutator report's JSON don't read, "
-                        + "so their kills aren't judged"
-                ))
+                warnings.append(Self.warning("\(suspects.unreadableKeys)" + Self.unreadableKeysText))
             }
             kept = try keep(data, report: report.data, sha256: results.sha256)
         }

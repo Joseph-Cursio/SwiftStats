@@ -4,8 +4,9 @@ import Testing
 
 /// What stops or weakens a SwiftMutator run before or after SwiftMutator
 /// itself (M6, design §1.2 to §1.4): another scan holding the lock, a
-/// failing warm build, a results path that disagrees with the log folder
-/// and a failing report; and which `swift` and build identity a run uses.
+/// failing warm build, a results path that disagrees with the log folder,
+/// a failing report and results lines that don't read; and which `swift`
+/// and build identity a run uses.
 @Suite("Mutation run failures")
 struct MutationRunFailureTests {
     /// The SwiftMutator build the recordings name.
@@ -101,6 +102,33 @@ struct MutationRunFailureTests {
             .appendingPathComponent("report.json")
         #expect(FileClone.exists(report) == false)
         #expect(try failingHarness.scan().warnings.map(\.message).contains(failed.warnings[0].message))
+    }
+
+    @Test("""
+        lines of the results file that don't read are warned about when the run ran and its results were kept, \
+        never when it failed and nothing of them was kept
+        """)
+    func skippedLinesOnlyWhenKept() throws {
+        let cutOff = #"{"kind":"mutant","sess"#
+        var ran = try FakeMutator.recorded("full")
+        ran.results = (ran.results ?? "") + cutOff + "\n"
+        var interrupted = try FakeMutator.recorded("interrupted")
+        interrupted.results = (interrupted.results ?? "") + cutOff + "\n"
+        let ranHarness = try MutationRunHarness(ran)
+        let failedHarness = try MutationRunHarness(interrupted)
+        defer {
+            ranHarness.remove()
+            failedHarness.remove()
+        }
+
+        let kept = ranHarness.run()
+        let failed = failedHarness.run()
+
+        let skipped = try #require(kept.warnings.first)
+        #expect(kept.status.state == .ran && MutationResults.isSkippedLinesWarning(skipped))
+        #expect(skipped.message.hasPrefix("swiftmutator: skipped 1 line of the results file that didn't read ("))
+        #expect(failed.status.state == .failed && failed.status.version != nil)
+        #expect(failed.warnings.contains(where: MutationResults.isSkippedLinesWarning) == false)
     }
 
     @Test("""
