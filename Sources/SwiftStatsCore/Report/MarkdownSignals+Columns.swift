@@ -77,10 +77,11 @@ extension MarkdownSignals {
         ]
     }
 
-    /// The input columns of M4's and M5's signal `signal`; none for M3's.
+    /// The input columns of M4's and M5's signal `signal`; none for M3's,
+    /// nor yet for M6's, whose tables show the score alone.
     static func m4Columns(for signal: SignalName) -> [Column] {
         switch signal {
-        case .bugProne, .hotspot, .safeToLeave, .testsNotKeepingUp, .unstableFixes:
+        case .bugProne, .genuinelyUnderTested, .hotspot, .safeToLeave, .testsNotKeepingUp, .unstableFixes, .weakTests:
             []
 
         case .cloneHotspot:

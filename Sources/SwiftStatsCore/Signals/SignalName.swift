@@ -14,6 +14,10 @@ public enum SignalName: String, CaseIterable, Codable, Hashable, Sendable {
     /// Clone classes where one copy changed since an earlier snapshot and
     /// another didn't: perhaps a fix made in one place only.
     case divergentClones = "divergent-clones"
+    /// Functions where coverage, mutation and the module's test code agree
+    /// the tests barely touch them: little run, few mutants killed, in a
+    /// module with little test code.
+    case genuinelyUnderTested = "genuinely-under-tested"
     /// Churn times complexity: complex code that keeps changing.
     case hotspot
     /// Pure, value-shaped functions with an algebraic shape and no
@@ -39,12 +43,15 @@ public enum SignalName: String, CaseIterable, Codable, Hashable, Sendable {
     case unstableFixes = "unstable-fixes"
     /// Strong or Verified suggestions no property test checks.
     case untestedProperty = "untested-property"
+    /// Functions the tests run but whose mutants they mostly don't kill, or
+    /// kill only through suspect tests.
+    case weakTests = "weak-tests"
 
     /// The order reports list signals in.
     public static let reportOrder: [Self] = [
         .hotspot, .bugProne, .unstableFixes, .testsNotKeepingUp, .safeToLeave,
         .untestedProperty, .toolDisagreement, .missingTemplate, .uncheckedLaws, .divergentClones, .cloneHotspot,
-        .riskyUntested, .unevenCloneTesting
+        .riskyUntested, .unevenCloneTesting, .weakTests, .genuinelyUnderTested
     ]
 
     /// The name a report heads the signal with.
@@ -58,6 +65,9 @@ public enum SignalName: String, CaseIterable, Codable, Hashable, Sendable {
 
         case .divergentClones:
             "Divergent clones"
+
+        case .genuinelyUnderTested:
+            "Genuinely under-tested"
 
         case .hotspot:
             "Hotspots"
@@ -88,6 +98,9 @@ public enum SignalName: String, CaseIterable, Codable, Hashable, Sendable {
 
         case .untestedProperty:
             "Untested properties"
+
+        case .weakTests:
+            "Weak tests"
         }
     }
 
@@ -102,8 +115,12 @@ public enum SignalName: String, CaseIterable, Codable, Hashable, Sendable {
     /// Divergent clones also needs an earlier snapshot with clone data,
     /// which the workspace looks for, and git's account of what changed.
     /// M5's signals list the M5 snapshot first, so a snapshot stored
-    /// before M5 says so rather than naming a collector it never had.
+    /// before M5 says so rather than naming a collector it never had; M6's
+    /// list the M6 snapshot first likewise, then SwiftMutator, then
+    /// coverage, and genuinely under-tested also needs results that list
+    /// code no test ran.
     var requirements: [SignalRequirement] {
+        let mutation = SignalRequirement.collector(MutationAdapter.name)
         let effects = SignalRequirement.collector(EffectCollector.name)
         let properties = SignalRequirement.collector(SwiftInferPropertiesAdapter.name)
         let coverage = SignalRequirement.collector(CoverageAdapter.name)
@@ -117,6 +134,9 @@ public enum SignalName: String, CaseIterable, Codable, Hashable, Sendable {
 
         case .divergentClones:
             [.history, .m4Snapshot]
+
+        case .genuinelyUnderTested:
+            [.m6Snapshot, mutation, coverage, .notCoveredListed]
 
         case .missingTemplate:
             [effects, properties]
@@ -135,6 +155,9 @@ public enum SignalName: String, CaseIterable, Codable, Hashable, Sendable {
 
         case .untestedProperty:
             [properties]
+
+        case .weakTests:
+            [.m6Snapshot, mutation, coverage]
         }
     }
 }

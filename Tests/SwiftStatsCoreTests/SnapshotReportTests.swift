@@ -71,7 +71,8 @@ struct SnapshotReportTests {
             "# Probe", "## Signals", "### Hotspots", "### Bug-prone", "### Unstable fixes",
             "### Tests not keeping up", "### Safe to leave", "### Untested properties", "### Tool disagreements",
             "### Missing templates", "### Unchecked laws", "### Divergent clones", "### Clone hotspots",
-            "### Risky + untested", "### Uneven clone testing", "## Collectors", "## Coverage", "## Project",
+            "### Risky + untested", "### Uneven clone testing", "### Weak tests", "### Genuinely under-tested",
+            "## Collectors", "## Coverage", "## Project",
             "### Findings by rule", "### Findings by kind", "## Side effects", "## Property candidates",
             "## Law checks", "## Clones", "## Modules"
         ]

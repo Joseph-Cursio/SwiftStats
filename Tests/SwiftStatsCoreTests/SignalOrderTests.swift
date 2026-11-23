@@ -174,10 +174,11 @@ struct SignalOrderTests {
         let signals = SignalEngine.signals(of: SignalInputs(snapshot: old), thresholds: SignalThresholds())
         #expect(signals.map(\.name) == SignalName.reportOrder)
         #expect(signals.allSatisfy { $0.items.isEmpty && $0.candidates == 0 })
-        // M3's signals keep history's reason; M4's and M5's say the
+        // M3's signals keep history's reason; M4's, M5's and M6's say the
         // snapshot predates their milestone.
         #expect(signals.map(\.leftOut) == signals.map { signal in
-            let milestone = signal.name.requirements.contains(.m5Snapshot) ? "M5" : "M4"
+            let requirements = signal.name.requirements
+            let milestone = requirements.contains(.m6Snapshot) ? "M6" : requirements.contains(.m5Snapshot) ? "M5" : "M4"
             return signal.name.requirements.contains(.history) ? history : "the snapshot predates \(milestone)"
         })
     }

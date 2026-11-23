@@ -21,7 +21,7 @@ enum CloneHotspot {
 
     /// The rule as reports state it, over `count` classes when given.
     static func rule(thresholds: SignalThresholds, count: Int?) -> String {
-        let percent = MarkdownNumber.value(thresholds.percent(for: SignalName.cloneHotspot.rawValue))
+        let percent = MarkdownNumber.exact(thresholds.percent(for: SignalName.cloneHotspot.rawValue))
         let classes = count.map { "\($0) classes" } ?? "classes"
         return "top \(percent)% of \(classes) by distinct non-sweep commits in the window changing their copies"
     }

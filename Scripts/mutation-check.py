@@ -115,6 +115,45 @@ base S_B, per path and per function, as the done-when reads them:
      SwiftMutator's timing (listed in `--confirmed-flips`) is listed and
      allowed; every flip is printed with the rerun command.
 
+`signals` mode re-derives M6's per-function signals (design section 7.1,
+7.2, section 9 step 4) from a store's rows by the rules, without SwiftStats'
+code, and compares them with `swiftstats report --format json` of that
+snapshot (the snapshot the report names, by package, path, commit and
+dirtiness):
+
+  s  each of weak tests and genuinely under-tested is computed, or left out
+     with the reason its inputs give: a scan before schema 8 or with no
+     swiftmutator run predates M6; a swiftmutator or coverage run that didn't
+     run is named with its state and reason; genuinely under-tested also
+     needs results that list code no test ran; then no mutation rows, then
+     no coverage rows.
+  r  each production module's and the project's test and production lines
+     stored in the roll-ups equal those re-derived from the report's scan
+     (the tests of test targets depending on the module directly, generated
+     tests left out, the module's files' stripped lines), and where each
+     module's test code stands: no test code, below the project's ratio
+     (cross-multiplied), below `genuinely-under-tested.ratio` when set, or not
+     low.
+  w  weak tests: the pool (production functions outside generated files with
+     a line tally mapping a line, in state scored or only not covered, with at
+     least `mutants` scored mutants, the function score's denominator), the
+     listed items (at least `coverage`% of lines covered, and the function
+     score below `score`% with a survived or timed-out mutant, or a
+     suspect-only kill), their scores (survived + timed out + suspect-only),
+     order (score, function score cross-multiplied, subject, file, line),
+     payloads (counts, both scores, killing tests, survivors, suspects,
+     coverage, ratio) and every number of the rule and its funnel, in order.
+  g  genuinely under-tested likewise: at most `coverage`% covered, function
+     score below `score`%, the module's test code low; scored by unkilled
+     mutants, ordered by score, then line coverage (cross-multiplied), subject,
+     file and line; the single-module sentence exactly when one production
+     module with tests is measured and no ratio is set.
+
+Shares are compared with the limits on integers (`killed × 100 < limit ×
+scored`). The limits are the design's defaults unless `--set` gives the ones
+the report's configuration sets. It trusts the stored coverage tallies and
+the report's scan for the ratio inputs.
+
 Inputs it trusts from SwiftStats, as M5's checker verified them against
 llvm-cov: the scan JSON's record and type ranges, roles, modules, the
 targets and their files, the parsed files and the generated marks. Top-level
@@ -128,6 +167,8 @@ Usage:
     Scripts/mutation-check.py since <package-dir> <scan.json> --store <stats.sqlite>
                               [--base-store <stats.sqlite>] [--dirty]
                               [--confirmed-flips <file>] [--all]
+    Scripts/mutation-check.py signals <report.json> --store <stats.sqlite>
+                              [--set <signal>.<limit>=<value> ...] [--all]
     Scripts/mutation-check.py base <package-dir> <scan.json>
                               [--results <results.jsonl>]
                               [--report <report.json> | --mutator <swift-mutator>]
@@ -152,6 +193,7 @@ import hashlib
 import importlib.util
 import json
 import os
+import re
 import shutil
 import sqlite3
 import subprocess
@@ -159,6 +201,7 @@ import sys
 import tempfile
 import unicodedata
 from collections import defaultdict
+from fractions import Fraction
 
 # Loading coverage-check.py below would otherwise write a `__pycache__` into
 # the repository's Scripts/ folder.
@@ -2052,6 +2095,442 @@ def since(arguments):
     return 0
 
 
+# --------------------------------------------------------------------------
+# signals mode: weak tests and genuinely under-tested re-derived from the store
+
+
+# The mutation signals' limits when none is set (design section 7).
+DEFAULT_LIMITS = {
+    "weak-tests": {"coverage": 80.0, "score": 50.0, "mutants": 3.0},
+    "genuinely-under-tested": {"coverage": 20.0, "score": 20.0, "mutants": 3.0},
+}
+WEAK_NOT_LISTED_NOTE = ("; the mutation results don't list code no test ran (a SwiftMutator build before 13f96a46), "
+                        "so functions no test ran aren't judged")
+NOT_LISTED_REASON = ("the mutation results don't list code no test ran (a SwiftMutator build before 13f96a46), "
+                     "so low scores can't be told from missing ones")
+FIRST_M6_SCHEMA = 8
+NAMED_KILLING_TESTS = 5
+NUMBER = re.compile(r"\d+(?:\.\d+)?")
+
+
+def share_key(part, whole):
+    """A share compared by cross-multiplying, as a sort key: the fraction itself, exact."""
+    return Fraction(part, whole)
+
+
+def nonnegative_lines(covered, total):
+    return {"covered": covered, "total": total} if covered is not None and total is not None else None
+
+
+class SignalStore:
+    """The rows the two signals read, straight from a store (no SwiftStats code)."""
+
+    def __init__(self, path, snapshot):
+        database = sqlite3.connect(f"file:{os.path.abspath(path)}?mode=ro", uri=True)
+        database.row_factory = sqlite3.Row
+        git = snapshot["git"]
+        self.id = snapshot_id(database, snapshot["package"], git.get("packagePath", ""), git.get("commit"),
+                              git.get("isDirty", False))
+        if self.id is None:
+            fail(f"no snapshot of {snapshot['package']} at {git.get('commit')} in {path}")
+
+        def rows(sql):
+            return [dict(row) for row in database.execute(sql, (self.id,))]
+        self.schema = rows("SELECT reportSchemaVersion FROM snapshot WHERE id = ?")[0]["reportSchemaVersion"]
+        self.collectors = {row["name"]: row for row in rows("SELECT * FROM collectorRun WHERE snapshotId = ?")}
+        scan = rows("SELECT * FROM mutationScan WHERE snapshotId = ?")
+        self.scan = scan[0] if scan else None
+        self.coverage_run = bool(rows("SELECT snapshotId FROM coverageRun WHERE snapshotId = ?"))
+        # Production rows outside generated files; a row whose generated column is null is left out.
+        self.functions = rows("SELECT key, module, file, startLine FROM function WHERE snapshotId = ? "
+                              "AND role = 'production' AND generated = 0 ORDER BY rowid")
+        self.coverage = {row["key"]: row for row in rows("SELECT * FROM functionCoverage WHERE snapshotId = ?")}
+        self.mutants = rows("SELECT * FROM mutant WHERE snapshotId = ? ORDER BY ordinal")
+        self.dispositions = {nfc(row["path"]): row["disposition"]
+                             for row in rows("SELECT path, disposition FROM mutationFile WHERE snapshotId = ?")}
+        self.suspects = defaultdict(list)
+        for row in rows("SELECT run, name, why, files, filesWithKills FROM mutationSuspect WHERE snapshotId = ?"):
+            self.suspects[(row["run"], row["name"])].append((row["why"], row["files"], row["filesWithKills"]))
+        self.rollups = rows("SELECT scope, name, metric, value FROM rollupMetric WHERE snapshotId = ?")
+        database.close()
+
+
+def record_counts(rows):
+    """A record's mutants counted as the scan counts them."""
+    counts = zero_counts()
+    for row in rows:
+        verdict = row["verdict"]
+        counts[verdict if verdict != "buildError" else "buildErrors"] += 1
+        if verdict == "killed" and row["outcome"] == "runtimeError":
+            counts["crashKills"] += 1
+        if row["suspectOnly"] == 1:
+            counts["suspectOnly"] += 1
+        if verdict == "killed" and row["outcome"] != "runtimeError" and row["suspectOnly"] is not None:
+            counts["judgedKills"] += 1
+    return counts
+
+
+def without_nulls(value):
+    """`value` as the report's JSON writes it: a null field is left out."""
+    if isinstance(value, dict):
+        return {key: without_nulls(item) for key, item in value.items() if item is not None}
+    if isinstance(value, list):
+        return [without_nulls(item) for item in value]
+    return value
+
+
+def score_of(killed, scored):
+    return {"killed": killed, "scored": scored, "percent": percent(killed, scored)}
+
+
+class SignalModel:
+    """Weak tests and genuinely under-tested, derived by the design's rules."""
+
+    def __init__(self, store, limits, scan):
+        self.store = store
+        self.limits = limits
+        held = defaultdict(list)
+        for row in store.mutants:
+            if row["place"] == "record":
+                held[row["owner"]].append(row)
+        self.held = held
+        self.ratios, self.modules, self.project = self.stored_ratios()
+        self.derived_ratios = self.derive_ratios(scan) if scan else None
+
+    # Ratios
+    def stored_ratios(self):
+        tests, production, modules, project = {}, {}, set(), {}
+        for row in self.store.rollups:
+            if row["scope"] == "module" and row["metric"] == "mutation.killed":
+                modules.add(row["name"])
+            elif row["metric"] in ("tests.lineRatio.testLines", "tests.lineRatio.productionLines"):
+                field = "testLines" if row["metric"].endswith("testLines") else "productionLines"
+                if row["scope"] == "module":
+                    (tests if field == "testLines" else production)[row["name"]] = int(row["value"])
+                elif row["name"] == "production":
+                    project[field] = int(row["value"])
+        ratios = {name: {"testLines": tests[name], "productionLines": production[name]}
+                  for name in tests if name in production}
+        return ratios, sorted(modules), (project if len(project) == 2 else None)
+
+    @staticmethod
+    def derive_ratios(scan):
+        """Each production module's and the project's lines from the scan's targets, tests, records and files
+        (PRD 7.8: a module counts the tests of the test targets that depend on it directly)."""
+        lines = {record["key"]: record["strippedLines"] for record in scan["records"]}
+        tests = [test for test in scan["tests"] if not test["generated"]]
+        test_targets = [target for target in scan["targets"] if target["isTest"]]
+        production = [target["name"] for target in scan["targets"] if not target["isTest"]]
+
+        def count(testing, modules):
+            return {"testLines": sum(lines.get(test["key"], 0) for test in tests if test["module"] in testing),
+                    "productionLines": sum(file["strippedLines"] for file in scan["files"]
+                                           if file["module"] in modules)}
+        derived = {}
+        for name in production:
+            dependents = {target["name"] for target in test_targets if name in target["dependencies"]}
+            derived[name] = count(dependents, {name})
+        project = count({target["name"] for target in test_targets}, set(production))
+        return derived, project
+
+    def standing(self, module):
+        own = self.ratios.get(module)
+        if own is None or own["testLines"] == 0:
+            return "noTestCode"
+        project = self.project
+        if project and own["testLines"] * project["productionLines"] < project["testLines"] * own["productionLines"]:
+            return "belowProject"
+        ratio = self.limits["genuinely-under-tested"].get("ratio")
+        if ratio is not None and own["testLines"] < ratio * own["productionLines"]:
+            return "belowRatio"
+        return "notLow"
+
+    # Functions
+    def state(self, function, counts):
+        disposition = self.store.dispositions.get(nfc(function["file"]))
+        if disposition == "unresolved":
+            return "noResults"
+        if disposition == "unlisted":
+            return "notListed"
+        if counts is None:
+            return "noMutant"
+        if counts["killed"] + counts["survived"] + counts["noCoverage"] + counts["timedOut"] > 0:
+            return "scored"
+        if counts["notCovered"] > 0:
+            return "notCoveredOnly"
+        if counts["buildErrors"] > 0:
+            return "buildErrorsOnly"
+        return "noMutant"
+
+    def lines(self, function):
+        row = self.store.coverage.get(function["key"])
+        if row is None or row["lineTotal"] is None or row["lineTotal"] == 0:
+            return None
+        return row["lineCovered"], row["lineTotal"]
+
+    def pool(self, minimum):
+        """The pool, and the funnel's counts down to it."""
+        counts = {"functions": len(self.store.functions), "withData": 0, "fewer": 0, "buildErrorsOnly": 0,
+                  "noMutant": 0, "noResults": 0, "notListed": 0}
+        candidates = []
+        for function in self.store.functions:
+            lines = self.lines(function)
+            if lines is None:
+                continue
+            counts["withData"] += 1
+            held = self.held.get(function["key"])
+            tally = record_counts(held) if held else None
+            state = self.state(function, tally)
+            if state in ("scored", "notCoveredOnly"):
+                scored = tally["killed"] + tally["survived"] + tally["noCoverage"] + tally["timedOut"] \
+                    + tally["notCovered"]
+                if scored >= minimum:
+                    candidates.append({"function": function, "counts": tally, "lines": lines, "scored": scored})
+                else:
+                    counts["fewer"] += 1
+            else:
+                counts[state] += 1
+        return candidates, counts
+
+    @staticmethod
+    def funnel_numbers(candidates, counts, minimum):
+        without = counts["noResults"] + counts["notListed"]
+        return [counts["functions"], counts["withData"], counts["functions"] - counts["withData"], counts["withData"],
+                len(candidates), minimum, counts["fewer"], counts["buildErrorsOnly"], counts["noMutant"], without,
+                counts["noResults"], counts["notListed"]]
+
+    def payload(self, candidate):
+        function = candidate["function"]
+        held = self.held[function["key"]]
+        tally = candidate["counts"]
+        killing = sorted({name for row in held if row["verdict"] == "killed" for name in json.loads(row["killedBy"])})
+        suspects = set()
+        for row in held:
+            if row["suspectOnly"] == 1:
+                for name in json.loads(row["killedBy"]):
+                    for why, files, with_kills in self.store.suspects.get((row["run"], name), []):
+                        suspects.add((name, why, files, with_kills))
+        coverage = self.store.coverage.get(function["key"]) or {}
+        tested = tally["killed"] + tally["survived"] + tally["noCoverage"] + tally["timedOut"]
+        return {
+            "mutation": {
+                "counts": tally,
+                "score": score_of(tally["killed"], tested),
+                "functionScore": score_of(tally["killed"], tested + tally["notCovered"]),
+                "killingTests": len(killing),
+                "firstKillingTests": killing[:NAMED_KILLING_TESTS],
+                "survivors": [{"operator": row["operator"], "line": row["line"], "column": row["column"],
+                               "before": row["before"], "after": row["after"], "verdict": row["verdict"]}
+                              for row in held if row["verdict"] in ("survived", "timedOut")],
+                "suspects": [{"name": name, "why": why, "files": files, "filesWithKills": with_kills}
+                             for name, why, files, with_kills in
+                             sorted(suspects, key=lambda entry: (entry[0], entry[1], -1 if entry[2] is None
+                                                                 else entry[2], -1 if entry[3] is None
+                                                                 else entry[3]))],
+            },
+            "coverage": {"lines": nonnegative_lines(coverage.get("lineCovered"), coverage.get("lineTotal")),
+                         "regions": nonnegative_lines(coverage.get("regionCovered"), coverage.get("regionTotal"))},
+            "ratio": {"module": function["module"], "moduleLines": self.ratios.get(function["module"]),
+                      "projectLines": self.project},
+        }
+
+    def weak_tests(self):
+        limits = self.limits["weak-tests"]
+        minimum = int(limits["mutants"])
+        candidates, counts = self.pool(minimum)
+        covered = [c for c in candidates if c["lines"][0] * 100 >= limits["coverage"] * c["lines"][1]]
+        by_score = by_suspects = unrun_only = judged = failed = 0
+        items = []
+        for candidate in covered:
+            tally = candidate["counts"]
+            judged += tally["judgedKills"]
+            failed += tally["killed"] - tally["crashKills"]
+            below = tally["killed"] * 100 < limits["score"] * candidate["scored"]
+            unchecked = tally["survived"] + tally["timedOut"]
+            score_arm = below and unchecked > 0
+            suspect_arm = tally["suspectOnly"] > 0
+            if score_arm:
+                by_score += 1
+            elif suspect_arm:
+                by_suspects += 1
+            elif below:
+                unrun_only += 1
+            if score_arm or suspect_arm:
+                function = candidate["function"]
+                items.append((-(unchecked + tally["suspectOnly"]), share_key(tally["killed"], candidate["scored"]),
+                              function["key"], function["file"], function["startLine"], unchecked
+                              + tally["suspectOnly"], candidate))
+        listed = by_score + by_suspects
+        numbers = [limits["coverage"], limits["score"], minimum]
+        numbers += self.funnel_numbers(candidates, counts, minimum)
+        numbers += [len(candidates), len(covered), limits["coverage"], len(candidates) - len(covered), len(covered),
+                    listed, unrun_only, limits["score"], len(covered) - listed - unrun_only, limits["score"], listed,
+                    by_score, by_suspects, judged, failed, len(covered), 10, 20]
+        return self.ordered(items), len(candidates), numbers
+
+    def genuinely_under_tested(self):
+        limits = self.limits["genuinely-under-tested"]
+        minimum = int(limits["mutants"])
+        ratio = limits.get("ratio")
+        candidates, counts = self.pool(minimum)
+        barely = [c for c in candidates if c["lines"][0] * 100 <= limits["coverage"] * c["lines"][1]]
+        not_low = not_below = 0
+        items = []
+        for candidate in barely:
+            tally = candidate["counts"]
+            function = candidate["function"]
+            if not tally["killed"] * 100 < limits["score"] * candidate["scored"]:
+                not_below += 1
+            elif self.standing(function["module"]) != "notLow":
+                unkilled = candidate["scored"] - tally["killed"]
+                items.append((-unkilled, share_key(*candidate["lines"]), function["key"], function["file"],
+                              function["startLine"], unkilled, candidate))
+            else:
+                not_low += 1
+        standings = [self.standing(module) for module in self.modules]
+        low = sum(1 for standing in standings if standing != "notLow")
+        numbers = [limits["coverage"], limits["score"], minimum] + ([ratio] if ratio is not None else [])
+        numbers += [len(self.modules), low, len(standings) - low, low, standings.count("noTestCode"),
+                    standings.count("belowProject")]
+        if ratio is not None:
+            numbers += [standings.count("belowRatio"), ratio]
+        numbers += self.funnel_numbers(candidates, counts, minimum)
+        numbers += [len(candidates), len(barely), limits["coverage"], len(candidates) - len(barely), len(barely),
+                    len(items), not_low, limits["score"], not_below, limits["score"]]
+        single = standings == ["notLow"] and ratio is None
+        return self.ordered(items), len(candidates), numbers, single
+
+    def ordered(self, items):
+        items.sort(key=lambda item: item[:5])
+        return [{"function": item[6]["function"], "score": item[5], "payload": without_nulls(self.payload(item[6]))}
+                for item in items]
+
+    # Requirements
+    def left_out(self, name):
+        if self.store.schema < FIRST_M6_SCHEMA or "swiftmutator" not in self.store.collectors:
+            return "the snapshot predates M6"
+        for collector in ("swiftmutator", "coverage"):
+            run = self.store.collectors.get(collector)
+            if run is None:
+                return "the snapshot predates M4"
+            if run["state"] != "ran":
+                return f"needs {collector}: {run['state']}" + (f", {run['reason']}" if run["reason"] else "")
+        if name == "genuinely-under-tested" and self.store.scan is not None and not self.store.scan["listsNotCovered"]:
+            return NOT_LISTED_REASON
+        if self.store.scan is None:
+            return "the snapshot holds no mutation rows"
+        if not self.store.coverage_run:
+            return "the snapshot holds no coverage rows"
+        return None
+
+
+class SignalChecks(Checker):
+    def requirements(self, model, signals):
+        self.section("s   requirements: each signal is computed, or left out with the reason its inputs give")
+        for name in ("weak-tests", "genuinely-under-tested"):
+            expected = model.left_out(name)
+            actual = signals[name].get("leftOut")
+            self.result(f"{name} left out", expected == actual, f"expected {expected!r}, got {actual!r}")
+
+    def ratios(self, model):
+        self.section("r   line ratios: the stored roll-ups' equal the scan's targets, tests and files")
+        if model.derived_ratios is None:
+            print("    (no scan in the report; skipped)")
+            return
+        derived, project = model.derived_ratios
+        differences = [f"{name}: stored {model.ratios.get(name)}, derived {derived[name]}"
+                       for name in sorted(derived) if model.ratios.get(name) != derived[name]]
+        if project != model.project:
+            differences.append(f"project: stored {model.project}, derived {project}")
+        self.result("module and project ratios", not differences, f"{len(derived)} modules")
+        self.listing(differences)
+        self.result("production modules", sorted(derived) == model.modules, f"{model.modules}")
+        for module in model.modules:
+            print(f"    {module}: {model.ratios.get(module)} ({model.standing(module)}); project {model.project}")
+
+    def signal(self, name, signal, expected, candidates, numbers):
+        self.section(f"{name.split('-')[0][0]}   {name}: items, scores, order, payloads and funnel by the rule")
+        items = signal.get("items", [])
+        self.result("candidates", signal.get("candidates") == candidates,
+                    f"expected {candidates}, got {signal.get('candidates')}")
+        rule = signal.get("rule", "")
+        if name == "weak-tests":
+            noted = rule.endswith(WEAK_NOT_LISTED_NOTE)
+            listed = bool(self.lists_not_covered)
+            self.result("note on results not listing code no test ran", noted != listed, f"listsNotCovered {listed}")
+            rule = rule.removesuffix(WEAK_NOT_LISTED_NOTE)
+        rule_numbers = [float(text) for text in NUMBER.findall(rule)]
+        self.result("rule and funnel numbers", rule_numbers == [float(number) for number in numbers],
+                    f"expected {numbers}, got {rule_numbers}")
+        listed = [(item["subject"], item["file"], item["line"]) for item in items]
+        wanted = [(entry["function"]["key"], entry["function"]["file"], entry["function"]["startLine"])
+                  for entry in expected]
+        self.result("listed items in order", listed == wanted, f"{len(wanted)} items")
+        if listed != wanted:
+            self.listing([f"expected {w}, got {g}" for w, g in zip(wanted, listed) if w != g]
+                         + [f"missing {w}" for w in wanted[len(listed):]] + [f"extra {g}" for g in listed[len(wanted):]])
+        differences = []
+        for rank, (item, entry) in enumerate(zip(items, expected), start=1):
+            label = f"#{rank} {item['subject']}"
+            if item.get("rank") != rank or not item.get("member"):
+                differences.append(f"{label}: rank {item.get('rank')} member {item.get('member')}")
+            if item.get("score") != entry["score"]:
+                differences.append(f"{label}: score {item.get('score')} != {entry['score']}")
+            for field, value in entry["payload"].items():
+                if item.get(field) != value:
+                    differences.append(f"{label}: {field} {json.dumps(item.get(field), sort_keys=True)} != "
+                                       f"{json.dumps(value, sort_keys=True)}")
+        self.result("scores, ranks and payloads", not differences, f"{len(expected)} items")
+        self.listing(differences)
+        for entry in expected[:LIMIT]:
+            payload = entry["payload"]["mutation"]
+            print(f"    {entry['score']:>4} {entry['function']['key']} ({entry['function']['file']}:"
+                  f"{entry['function']['startLine']}) killed {payload['functionScore']['killed']}/"
+                  f"{payload['functionScore']['scored']}, lines {entry['payload']['coverage']['lines']}")
+
+
+def signal_limits(settings):
+    limits = {name: dict(values) for name, values in DEFAULT_LIMITS.items()}
+    for setting in settings or []:
+        key, _, value = setting.partition("=")
+        signal, _, limit = key.rpartition(".")
+        if signal not in limits or limit not in ("coverage", "score", "mutants", "ratio") or not value:
+            fail(f"--set {setting}: expected <signal>.<limit>=<value> for weak-tests or genuinely-under-tested")
+        limits[signal][limit] = float(value)
+    return limits
+
+
+def signals(arguments):
+    with open(arguments.report) as handle:
+        report = json.load(handle)
+    by_name = {signal["name"]: signal for signal in report.get("signals", [])}
+    for name in ("weak-tests", "genuinely-under-tested"):
+        if name not in by_name:
+            fail(f"{arguments.report} lists no {name} signal")
+    store = SignalStore(arguments.store, report["snapshot"])
+    model = SignalModel(store, signal_limits(arguments.set), report.get("scan"))
+    checker = SignalChecks(arguments.all)
+    checker.lists_not_covered = store.scan["listsNotCovered"] if store.scan else None
+    print(f"snapshot {store.id} of {report['snapshot']['package']} at {report['snapshot']['git'].get('commit')}")
+    checker.requirements(model, by_name)
+    checker.ratios(model)
+    if model.left_out("weak-tests") is None:
+        items, candidates, numbers = model.weak_tests()
+        checker.signal("weak-tests", by_name["weak-tests"], items, candidates, numbers)
+    if model.left_out("genuinely-under-tested") is None:
+        items, candidates, numbers, single = model.genuinely_under_tested()
+        checker.signal("genuinely-under-tested", by_name["genuinely-under-tested"], items, candidates, numbers)
+        rule = by_name["genuinely-under-tested"].get("rule", "")
+        sentence = "one production module: its ratio is the project's, so no function can be listed"
+        checker.result("single-module sentence", (sentence in rule) == single, f"expected {single}")
+    print()
+    if checker.failures:
+        print(f"FAILED: {', '.join(checker.failures)}")
+        return 1
+    print("all checks passed")
+    return 0
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     modes = parser.add_subparsers(dest="mode", required=True)
@@ -2081,8 +2560,14 @@ def main():
     sincing.add_argument("--dirty", action="store_true", help="the --since snapshot is of a dirty tree")
     sincing.add_argument("--confirmed-flips", help="killed/timedOut flips a solo rerun confirmed, one key a line")
     sincing.add_argument("--all", action="store_true", help="list every difference")
+    signalling = modes.add_parser("signals", help="re-derive weak tests and genuinely under-tested from the store")
+    signalling.add_argument("report", help="`swiftstats report --format json` of the snapshot")
+    signalling.add_argument("--store", required=True, help="the store holding the snapshot")
+    signalling.add_argument("--set", action="append", metavar="SIGNAL.LIMIT=VALUE",
+                            help="a limit the report's configuration sets, such as weak-tests.score=40")
+    signalling.add_argument("--all", action="store_true", help="list every difference")
     arguments = parser.parse_args()
-    return {"base": base, "merge": merge, "since": since}[arguments.mode](arguments)
+    return {"base": base, "merge": merge, "since": since, "signals": signals}[arguments.mode](arguments)
 
 
 if __name__ == "__main__":

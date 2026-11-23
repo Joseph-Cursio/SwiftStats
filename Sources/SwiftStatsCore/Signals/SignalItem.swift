@@ -9,7 +9,8 @@
 //  and omits the rest. Report schema 3 and top schema 2 (M4) name the
 //  subject `subject` (it was `family`) and move M3's inputs into `history`;
 //  report schema 4 and top schema 3 (M5) add `markers`, `coverage` and a
-//  clone class's `coverage` (M5's payloads are in `SignalItem+Coverage.swift`).
+//  clone class's `coverage` (M5's payloads are in `SignalItem+Coverage.swift`);
+//  M6 adds `mutation` and `ratio` (in `SignalItem+Mutation.swift`).
 //
 
 /// An item's place in a signal.
@@ -174,6 +175,10 @@ public struct SignalItem: Codable, Hashable, Sendable {
         var markers: Markers?
         /// The subject's coverage.
         var coverage: Coverage?
+        /// The function's mutation results.
+        var mutation: Mutation?
+        /// The module's and the project's test-to-code line ratio.
+        var ratio: Ratio?
     }
 
     /// Its position, from 1.
@@ -204,6 +209,11 @@ public struct SignalItem: Codable, Hashable, Sendable {
     public let markers: Markers?
     /// The subject's coverage, for a signal reading it.
     public let coverage: Coverage?
+    /// The function's mutation results, for a signal reading them.
+    public let mutation: Mutation?
+    /// The module's and the project's test-to-code line ratio, for a
+    /// signal reading it.
+    public let ratio: Ratio?
 
     /// `draft` ranked at `rank` with `score`, a member or not.
     init(_ draft: Draft, rank: Int, score: Double, member: Bool) {
@@ -221,5 +231,7 @@ public struct SignalItem: Codable, Hashable, Sendable {
         clone = draft.clone
         markers = draft.markers
         coverage = draft.coverage
+        mutation = draft.mutation
+        ratio = draft.ratio
     }
 }

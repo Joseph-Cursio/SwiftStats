@@ -1,0 +1,123 @@
+import Foundation
+@testable import SwiftStatsCore
+import Testing
+
+/// The mutation signals' limits under `signals:` (M6, design §7): each of
+/// weak tests, genuinely under-tested and uneven clone mutation takes its
+/// own keys, percents from 0 to 100, a fewest number of mutants from 1 to a
+/// million, genuinely under-tested an optional ratio above 0 (unset by default),
+/// and uneven clone mutation's `high` above its `low`; anything else is an
+/// error naming the key.
+@Suite("Mutation signal configuration")
+struct MutationSignalConfigurationTests {
+    /// The error parsing `text`, or nil when it parses.
+    private static func error(_ text: String) -> ScanError? {
+        do {
+            _ = try SwiftStatsConfiguration.parse(text, path: "c.yml")
+            return nil
+        } catch {
+            return error as? ScanError
+        }
+    }
+
+    @Test("""
+        the limits default to the design's, set ones replace them one by one beside the ranked thresholds, and \
+        genuinely under-tested's ratio is unset unless set
+        """)
+    func limits() throws {
+        let text = """
+            signals:
+              hotspot:
+                threshold: 5
+              weak-tests:
+                coverage: 75
+                score: 49.5
+              genuinely-under-tested:
+                mutants: 1000000
+                ratio: 0.25
+              uneven-clone-mutation:
+                high: 90
+                low: 0
+                mutants: 1
+            """
+        let configuration = try SwiftStatsConfiguration.parse(text, path: "c.yml")
+        let defaults = SignalThresholds()
+        let signals = configuration.signals
+
+        #expect(defaults.limit("coverage", of: "weak-tests") == 80)
+        #expect(defaults.limit("score", of: "weak-tests") == 50)
+        #expect(defaults.limit("mutants", of: "weak-tests") == 3)
+        #expect(defaults.limit("coverage", of: "genuinely-under-tested") == 20)
+        #expect(defaults.limit("score", of: "genuinely-under-tested") == 20)
+        #expect(defaults.limit("mutants", of: "genuinely-under-tested") == 3)
+        #expect(defaults.limit("ratio", of: "genuinely-under-tested") == nil)
+        #expect(defaults.limit("high", of: "uneven-clone-mutation") == 80)
+        #expect(defaults.limit("low", of: "uneven-clone-mutation") == 20)
+        #expect(defaults.limit("mutants", of: "uneven-clone-mutation") == 2)
+        #expect(signals.percent(for: "hotspot") == 5)
+        #expect(signals.limits == [
+            "weak-tests": ["coverage": 75, "score": 49.5],
+            "genuinely-under-tested": ["mutants": 1_000_000, "ratio": 0.25],
+            "uneven-clone-mutation": ["high": 90, "low": 0, "mutants": 1]
+        ])
+        #expect(signals.limit("coverage", of: "weak-tests") == 75)
+        #expect(signals.limit("mutants", of: "weak-tests") == 3)
+        #expect(signals.limit("coverage", of: "genuinely-under-tested") == 20)
+        #expect(signals.limit("ratio", of: "genuinely-under-tested") == 0.25)
+        #expect(try SwiftStatsConfiguration.parse("signals:\n  weak-tests:\n", path: "c.yml").signals == defaults)
+    }
+
+    @Test(
+        "invalid limits, unknown keys and a high not above the low are errors naming the key",
+        arguments: [
+            (
+                "signals:\n  weak-tests:\n    coverage: 101\n",
+                "`signals.weak-tests.coverage` must be a percent from 0 to 100"
+            ),
+            ("signals:\n  weak-tests:\n    score: -1\n", "`signals.weak-tests.score` must be a percent from 0 to 100"),
+            (
+                "signals:\n  weak-tests:\n    score: half\n",
+                "`signals.weak-tests.score` must be a percent from 0 to 100"
+            ),
+            (
+                "signals:\n  weak-tests:\n    mutants: 0\n",
+                "`signals.weak-tests.mutants` must be a whole number from 1 to 1000000"
+            ),
+            (
+                "signals:\n  genuinely-under-tested:\n    mutants: 2.5\n",
+                "`signals.genuinely-under-tested.mutants` must be a whole number from 1 to 1000000"
+            ),
+            (
+                "signals:\n  weak-tests:\n    mutants: 1000001\n",
+                "`signals.weak-tests.mutants` must be a whole number from 1 to 1000000"
+            ),
+            (
+                "signals:\n  uneven-clone-mutation:\n    mutants: 9223372036854775807\n",
+                "`signals.uneven-clone-mutation.mutants` must be a whole number from 1 to 1000000"
+            ),
+            (
+                "signals:\n  genuinely-under-tested:\n    ratio: 0\n",
+                "`signals.genuinely-under-tested.ratio` must be a number above 0"
+            ),
+            (
+                "signals:\n  genuinely-under-tested:\n    ratio: .inf\n",
+                "`signals.genuinely-under-tested.ratio` must be a number above 0"
+            ),
+            ("signals:\n  weak-tests:\n    ratio: 0.5\n", "unknown key(s) under `signals.weak-tests`: ratio"),
+            ("signals:\n  weak-tests:\n    threshold: 5\n", "unknown key(s) under `signals.weak-tests`: threshold"),
+            ("signals:\n  weak-test:\n    score: 5\n", "unknown key(s) under `signals`: weak-test"),
+            ("signals:\n  weak-tests: 5\n", "`signals.weak-tests` must be a mapping"),
+            (
+                "signals:\n  uneven-clone-mutation:\n    low: 80\n",
+                "`signals.uneven-clone-mutation.high` must be above `signals.uneven-clone-mutation.low`"
+            ),
+            (
+                "signals:\n  uneven-clone-mutation:\n    high: 30\n    low: 40\n",
+                "`signals.uneven-clone-mutation.high` must be above `signals.uneven-clone-mutation.low`"
+            )
+        ]
+    )
+    func invalid(text: String, message: String) {
+        #expect(Self.error(text) == .configurationInvalid("c.yml", message))
+    }
+}

@@ -19,9 +19,20 @@ enum SignalRequirement: Hashable, Sendable {
     /// A snapshot holding M5's rows: stored from a scan of schema 7 or
     /// later, with a run of the coverage collector, whatever its state.
     case m5Snapshot
+    /// A snapshot holding M6's rows: stored from a scan of schema 8 or
+    /// later, with a run of the SwiftMutator collector, whatever its state.
+    case m6Snapshot
+    /// Mutation results that list the mutants of code no test ran
+    /// (`mutantsNotCovered`, SwiftMutator 13f96a46 or later), so a low
+    /// function score can be told from a missing one (design §7.2, the
+    /// PRD §8 note's low-score rule). Results that aren't stored leave the
+    /// signal to say so as a missing input.
+    case notCoveredListed
 
     /// The first scan schema whose snapshots hold M4's rows.
     static let firstM4Schema = 6
     /// The first scan schema whose snapshots hold M5's rows.
     static let firstM5Schema = 7
+    /// The first scan schema whose snapshots hold M6's rows.
+    static let firstM6Schema = 8
 }
