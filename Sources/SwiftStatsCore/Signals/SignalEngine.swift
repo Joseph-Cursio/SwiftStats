@@ -65,7 +65,7 @@ public enum SignalEngine {
         case .divergentClones:
             return DivergentClones.compute(inputs)
 
-        case .genuinelyUnderTested, .weakTests:
+        case .bestPropertyTarget, .genuinelyUnderTested, .weakTests:
             return mutationComputation(signal, snapshot: snapshot, thresholds: thresholds)
 
         case .missingTemplate:
@@ -194,29 +194,43 @@ public enum SignalEngine {
         )
     }
 
-    /// M6's per-function signal `signal`, weak tests or genuinely
-    /// under-tested, computed from `snapshot`.
+    /// M6's per-function signal `signal`, weak tests, genuinely
+    /// under-tested or best property-test target, computed from `snapshot`.
     private static func mutationComputation(
         _ signal: SignalName,
         snapshot: StoredSnapshot,
         thresholds: SignalThresholds
     ) -> SignalComputation? {
-        signal == .weakTests
-            ? WeakTests.compute(snapshot, thresholds: thresholds)
-            : GenuinelyUnderTested.compute(snapshot, thresholds: thresholds)
+        switch signal {
+        case .weakTests:
+            WeakTests.compute(snapshot, thresholds: thresholds)
+
+        case .genuinelyUnderTested:
+            GenuinelyUnderTested.compute(snapshot, thresholds: thresholds)
+
+        default:
+            BestPropertyTarget.compute(snapshot)
+        }
     }
 
     /// The rule M6's per-function signal `signal` states when left out.
     private static func mutationRule(_ signal: SignalName, thresholds: SignalThresholds) -> String {
-        signal == .weakTests
-            ? WeakTests.rule(thresholds: thresholds)
-            : GenuinelyUnderTested.rule(thresholds: thresholds)
+        switch signal {
+        case .weakTests:
+            WeakTests.rule(thresholds: thresholds)
+
+        case .genuinelyUnderTested:
+            GenuinelyUnderTested.rule(thresholds: thresholds)
+
+        default:
+            BestPropertyTarget.rule
+        }
     }
 
     /// Why `signal`'s computation found no input its requirements check:
     /// for a mutation signal, the mutation rows a run that ran leaves,
-    /// then the coverage rows; for a coverage signal, the coverage rows;
-    /// for the others, history.
+    /// then, for one needing coverage, the coverage rows; for a coverage
+    /// signal, the coverage rows; for the others, history.
     private static func missingInput(_ signal: SignalName, _ snapshot: StoredSnapshot) -> String {
         let noCoverage = "the snapshot holds no coverage rows"
         if signal.requirements.contains(.m6Snapshot) {
@@ -250,7 +264,7 @@ public enum SignalEngine {
         case .divergentClones:
             DivergentClones.rule
 
-        case .genuinelyUnderTested, .weakTests:
+        case .bestPropertyTarget, .genuinelyUnderTested, .weakTests:
             mutationRule(signal, thresholds: thresholds)
 
         case .missingTemplate:

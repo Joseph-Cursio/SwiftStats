@@ -116,17 +116,19 @@ base S_B, per path and per function, as the done-when reads them:
      allowed; every flip is printed with the rerun command.
 
 `signals` mode re-derives M6's per-function signals (design section 7.1,
-7.2, section 9 step 4) from a store's rows by the rules, without SwiftStats'
-code, and compares them with `swiftstats report --format json` of that
-snapshot (the snapshot the report names, by package, path, commit and
-dirtiness):
+7.2, 7.3, section 9 step 4) from a store's rows by the rules, without
+SwiftStats' code, and compares them with `swiftstats report --format json`
+of that snapshot (the snapshot the report names, by package, path, commit
+and dirtiness):
 
-  s  each of weak tests and genuinely under-tested is computed, or left out
-     with the reason its inputs give: a scan before schema 8 or with no
-     swiftmutator run predates M6; a swiftmutator or coverage run that didn't
-     run is named with its state and reason; genuinely under-tested also
-     needs results that list code no test ran; then no mutation rows, then
-     no coverage rows.
+  s  each of weak tests, genuinely under-tested and best property-test
+     target is computed, or left out with the reason its inputs give: a scan
+     before schema 8 or with no swiftmutator run predates M6; a required
+     collector (swiftmutator, then coverage, or for best property-test
+     target swiftinferproperties) that didn't run is named with its state and
+     reason; genuinely under-tested also needs results that list code no
+     test ran; then no mutation rows, then, for the two coverage signals, no
+     coverage rows.
   r  each production module's and the project's test and production lines
      stored in the roll-ups equal those re-derived from the report's scan
      (the tests of test targets depending on the module directly, generated
@@ -148,11 +150,27 @@ dirtiness):
      mutants, ordered by score, then line coverage (cross-multiplied), subject,
      file and line; the single-module sentence exactly when one production
      module with tests is measured and no ratio is set.
+  p  best property-test target: the suggestions it reads (algebraic, located
+     in production code, attached to a production function outside generated
+     files, of any tier, not disproven by fresh evidence, not rejected), the
+     functions carrying them by mutation state, the pool (scored or only not
+     covered), the listed items (an unkilled mutant of their own: survived,
+     timed out, no coverage or not covered), their scores (own unkilled
+     mutants plus each resolved partner's, a partner once per item), order
+     (score, best suggestion's score with Verified's 50, subject, file,
+     line), payloads (the function's mutation counts as weak tests', its
+     suggestions best first with their flags, its unkilled mutants, its
+     partners with their counts and unkilled mutants; no coverage, ratio or
+     single suggestion), and every number of its funnel in order, the
+     partners added and the mutants more than one item counts included.
 
 Shares are compared with the limits on integers (`killed × 100 < limit ×
 scored`). The limits are the design's defaults unless `--set` gives the ones
 the report's configuration sets. It trusts the stored coverage tallies and
-the report's scan for the ratio inputs.
+the report's scan for the ratio inputs, and, for best property-test target,
+the stored suggestion rows as the SwiftInferProperties collector joined them:
+each one's owner, `partnerKey`, decision, verify judgement (`verified`,
+`disproven`) and `testedBy`.
 
 Inputs it trusts from SwiftStats, as M5's checker verified them against
 llvm-cov: the scan JSON's record and type ranges, roles, modules, the
@@ -2096,7 +2114,7 @@ def since(arguments):
 
 
 # --------------------------------------------------------------------------
-# signals mode: weak tests and genuinely under-tested re-derived from the store
+# signals mode: weak tests, genuinely under-tested and best property-test target re-derived from the store
 
 
 # The mutation signals' limits when none is set (design section 7).
@@ -2110,6 +2128,14 @@ NOT_LISTED_REASON = ("the mutation results don't list code no test ran (a SwiftM
                      "so low scores can't be told from missing ones")
 FIRST_M6_SCHEMA = 8
 NAMED_KILLING_TESTS = 5
+VERIFIED_BONUS = 50
+UNKILLED = ("survived", "timedOut", "noCoverage", "notCovered")
+# Each M6 signal's required collectors, in order.
+SIGNAL_COLLECTORS = {
+    "weak-tests": ("swiftmutator", "coverage"),
+    "genuinely-under-tested": ("swiftmutator", "coverage"),
+    "best-property-target": ("swiftmutator", "swiftinferproperties"),
+}
 NUMBER = re.compile(r"\d+(?:\.\d+)?")
 
 
@@ -2123,7 +2149,7 @@ def nonnegative_lines(covered, total):
 
 
 class SignalStore:
-    """The rows the two signals read, straight from a store (no SwiftStats code)."""
+    """The rows the M6 signals read, straight from a store (no SwiftStats code)."""
 
     def __init__(self, path, snapshot):
         database = sqlite3.connect(f"file:{os.path.abspath(path)}?mode=ro", uri=True)
@@ -2152,6 +2178,7 @@ class SignalStore:
         for row in rows("SELECT run, name, why, files, filesWithKills FROM mutationSuspect WHERE snapshotId = ?"):
             self.suspects[(row["run"], row["name"])].append((row["why"], row["files"], row["filesWithKills"]))
         self.rollups = rows("SELECT scope, name, metric, value FROM rollupMetric WHERE snapshotId = ?")
+        self.candidates = rows("SELECT * FROM propertyCandidate WHERE snapshotId = ? ORDER BY ordinal")
         database.close()
 
 
@@ -2184,7 +2211,7 @@ def score_of(killed, scored):
 
 
 class SignalModel:
-    """Weak tests and genuinely under-tested, derived by the design's rules."""
+    """M6's per-function signals, derived by the design's rules."""
 
     def __init__(self, store, limits, scan):
         self.store = store
@@ -2400,6 +2427,80 @@ class SignalModel:
         single = standings == ["notLow"] and ratio is None
         return self.ordered(items), len(candidates), numbers, single
 
+    def unkilled(self, key):
+        return [{"operator": row["operator"], "line": row["line"], "column": row["column"], "before": row["before"],
+                 "after": row["after"], "verdict": row["verdict"]}
+                for row in self.held.get(key, []) if row["verdict"] in UNKILLED]
+
+    @staticmethod
+    def suggestion(row):
+        return without_nulls({"identity": row["identity"], "template": row["template"], "tier": row["tier"],
+                              "score": row["score"], "verified": row["verified"] == 1,
+                              "blocked": row["blocked"] == 1, "decision": row["decision"],
+                              "partner": row["partner"], "testedBy": row["testedBy"]})
+
+    @staticmethod
+    def weight(row):
+        """A suggestion's score with Verified's bonus, as untested property scores it."""
+        return row["score"] + (VERIFIED_BONUS if row["verified"] == 1 else 0)
+
+    def best_property_target(self):
+        keys = {function["key"] for function in self.store.functions}
+        pooled = [row for row in self.store.candidates
+                  if row["population"] == "algebraic" and row["site"] == "production"
+                  and row["attachedTo"] == "function" and row["owner"] in keys
+                  and row["disproven"] != 1 and row["decision"] != "rejected"]
+        by_owner = defaultdict(list)
+        for offset, row in enumerate(pooled):
+            by_owner[row["owner"]].append((offset, row))
+        counts = {"functions": 0, "withResults": 0, "buildErrorsOnly": 0, "noMutant": 0, "noResults": 0,
+                  "notListed": 0, "allKilled": 0, "partners": 0}
+        items, counting = [], defaultdict(int)
+        for function in self.store.functions:
+            held_suggestions = by_owner.get(function["key"])
+            if not held_suggestions:
+                continue
+            counts["functions"] += 1
+            held = self.held.get(function["key"])
+            tally = record_counts(held) if held else None
+            state = self.state(function, tally)
+            if state not in ("scored", "notCoveredOnly"):
+                counts[state] += 1
+                continue
+            counts["withResults"] += 1
+            own = self.unkilled(function["key"])
+            if not own:
+                counts["allKilled"] += 1
+                continue
+            weight = self.weight
+            ranked = sorted(held_suggestions, key=lambda entry: (-weight(entry[1]), entry[1]["identity"], entry[0]))
+            partner_keys = sorted({row["partnerKey"] for _, row in held_suggestions
+                                   if row["partnerKey"] is not None and row["partnerKey"] != function["key"]
+                                   and row["partnerKey"] in keys})
+            partners = []
+            for key in partner_keys:
+                rows = self.held.get(key)
+                partners.append(without_nulls({"key": key, "counts": record_counts(rows) if rows else None,
+                                               "unkilled": self.unkilled(key)}))
+            counts["partners"] += len(partners)
+            for key in [function["key"]] + partner_keys:
+                counting[key] += 1
+            score = len(own) + sum(len(partner["unkilled"]) for partner in partners)
+            payload = without_nulls(self.payload({"function": function, "counts": tally}))
+            payload = {"mutation": payload["mutation"],
+                       "propertyTarget": {"suggestions": [self.suggestion(row) for _, row in ranked],
+                                          "unkilled": own, "partners": partners},
+                       "coverage": None, "ratio": None, "property": None}
+            items.append(((-score, -weight(ranked[0][1]), function["key"], function["file"], function["startLine"]),
+                          {"function": function, "score": score, "payload": payload}))
+        items.sort(key=lambda item: item[0])
+        shared = sum(len(self.unkilled(key)) for key, number in counting.items() if number > 1)
+        without = counts["noResults"] + counts["notListed"]
+        numbers = [counts["functions"], len(pooled), counts["withResults"], counts["buildErrorsOnly"],
+                   counts["noMutant"], without, counts["noResults"], counts["notListed"], counts["withResults"],
+                   len(items), counts["allKilled"], counts["partners"], shared]
+        return [entry for _, entry in items], counts["withResults"], numbers
+
     def ordered(self, items):
         items.sort(key=lambda item: item[:5])
         return [{"function": item[6]["function"], "score": item[5], "payload": without_nulls(self.payload(item[6]))}
@@ -2409,7 +2510,7 @@ class SignalModel:
     def left_out(self, name):
         if self.store.schema < FIRST_M6_SCHEMA or "swiftmutator" not in self.store.collectors:
             return "the snapshot predates M6"
-        for collector in ("swiftmutator", "coverage"):
+        for collector in SIGNAL_COLLECTORS[name]:
             run = self.store.collectors.get(collector)
             if run is None:
                 return "the snapshot predates M4"
@@ -2419,7 +2520,7 @@ class SignalModel:
             return NOT_LISTED_REASON
         if self.store.scan is None:
             return "the snapshot holds no mutation rows"
-        if not self.store.coverage_run:
+        if "coverage" in SIGNAL_COLLECTORS[name] and not self.store.coverage_run:
             return "the snapshot holds no coverage rows"
         return None
 
@@ -2427,7 +2528,7 @@ class SignalModel:
 class SignalChecks(Checker):
     def requirements(self, model, signals):
         self.section("s   requirements: each signal is computed, or left out with the reason its inputs give")
-        for name in ("weak-tests", "genuinely-under-tested"):
+        for name in SIGNAL_COLLECTORS:
             expected = model.left_out(name)
             actual = signals[name].get("leftOut")
             self.result(f"{name} left out", expected == actual, f"expected {expected!r}, got {actual!r}")
@@ -2449,12 +2550,13 @@ class SignalChecks(Checker):
             print(f"    {module}: {model.ratios.get(module)} ({model.standing(module)}); project {model.project}")
 
     def signal(self, name, signal, expected, candidates, numbers):
-        self.section(f"{name.split('-')[0][0]}   {name}: items, scores, order, payloads and funnel by the rule")
+        letter = {"weak-tests": "w", "genuinely-under-tested": "g", "best-property-target": "p"}[name]
+        self.section(f"{letter}   {name}: items, scores, order, payloads and funnel by the rule")
         items = signal.get("items", [])
         self.result("candidates", signal.get("candidates") == candidates,
                     f"expected {candidates}, got {signal.get('candidates')}")
         rule = signal.get("rule", "")
-        if name == "weak-tests":
+        if name in ("weak-tests", "best-property-target"):
             noted = rule.endswith(WEAK_NOT_LISTED_NOTE)
             listed = bool(self.lists_not_covered)
             self.result("note on results not listing code no test ran", noted != listed, f"listsNotCovered {listed}")
@@ -2484,9 +2586,13 @@ class SignalChecks(Checker):
         self.listing(differences)
         for entry in expected[:LIMIT]:
             payload = entry["payload"]["mutation"]
+            target = entry["payload"].get("propertyTarget")
+            detail = (f"lines {entry['payload']['coverage']['lines']}" if target is None else
+                      f"{len(target['unkilled'])} unkilled, partners {[p['key'] for p in target['partners']]}, "
+                      f"suggestions {[(s['template'], s['tier']) for s in target['suggestions']]}")
             print(f"    {entry['score']:>4} {entry['function']['key']} ({entry['function']['file']}:"
                   f"{entry['function']['startLine']}) killed {payload['functionScore']['killed']}/"
-                  f"{payload['functionScore']['scored']}, lines {entry['payload']['coverage']['lines']}")
+                  f"{payload['functionScore']['scored']}, {detail}")
 
 
 def signal_limits(settings):
@@ -2504,7 +2610,7 @@ def signals(arguments):
     with open(arguments.report) as handle:
         report = json.load(handle)
     by_name = {signal["name"]: signal for signal in report.get("signals", [])}
-    for name in ("weak-tests", "genuinely-under-tested"):
+    for name in SIGNAL_COLLECTORS:
         if name not in by_name:
             fail(f"{arguments.report} lists no {name} signal")
     store = SignalStore(arguments.store, report["snapshot"])
@@ -2523,6 +2629,9 @@ def signals(arguments):
         rule = by_name["genuinely-under-tested"].get("rule", "")
         sentence = "one production module: its ratio is the project's, so no function can be listed"
         checker.result("single-module sentence", (sentence in rule) == single, f"expected {single}")
+    if model.left_out("best-property-target") is None:
+        items, candidates, numbers = model.best_property_target()
+        checker.signal("best-property-target", by_name["best-property-target"], items, candidates, numbers)
     print()
     if checker.failures:
         print(f"FAILED: {', '.join(checker.failures)}")
@@ -2560,7 +2669,7 @@ def main():
     sincing.add_argument("--dirty", action="store_true", help="the --since snapshot is of a dirty tree")
     sincing.add_argument("--confirmed-flips", help="killed/timedOut flips a solo rerun confirmed, one key a line")
     sincing.add_argument("--all", action="store_true", help="list every difference")
-    signalling = modes.add_parser("signals", help="re-derive weak tests and genuinely under-tested from the store")
+    signalling = modes.add_parser("signals", help="re-derive the M6 per-function signals from the store")
     signalling.add_argument("report", help="`swiftstats report --format json` of the snapshot")
     signalling.add_argument("--store", required=True, help="the store holding the snapshot")
     signalling.add_argument("--set", action="append", metavar="SIGNAL.LIMIT=VALUE",

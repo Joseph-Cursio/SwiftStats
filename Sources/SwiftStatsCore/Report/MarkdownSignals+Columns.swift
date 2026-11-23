@@ -81,7 +81,8 @@ extension MarkdownSignals {
     /// nor yet for M6's, whose tables show the score alone.
     static func m4Columns(for signal: SignalName) -> [Column] {
         switch signal {
-        case .bugProne, .genuinelyUnderTested, .hotspot, .safeToLeave, .testsNotKeepingUp, .unstableFixes, .weakTests:
+        case .bestPropertyTarget, .bugProne, .genuinelyUnderTested, .hotspot, .safeToLeave, .testsNotKeepingUp,
+            .unstableFixes, .weakTests:
             []
 
         case .cloneHotspot:

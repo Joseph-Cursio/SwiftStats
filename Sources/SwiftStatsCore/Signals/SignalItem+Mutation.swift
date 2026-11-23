@@ -6,9 +6,10 @@
 //  counted by verdict with both scores, its killing tests (a lower bound),
 //  the mutants its tests ran and didn't check, and the suspect tests behind
 //  its suspect-only kills with why (for reach, in how many of the files
-//  with kills each failed); and the test-to-code line ratio of its module
+//  with kills each failed); the test-to-code line ratio of its module
 //  and of the project, which weak tests shows as context and genuinely
-//  under-tested judges by.
+//  under-tested judges by; and, for best property-test target, the
+//  function's suggestions, its unkilled mutants and its resolved partners'.
 //
 
 public extension SignalItem {
@@ -63,5 +64,31 @@ public extension SignalItem {
         public let testLines: Int
         /// The code's production lines.
         public let productionLines: Int
+    }
+
+    /// What best property-test target lists for a function: its
+    /// suggestions, the mutants its tests don't kill, and the partners of
+    /// its two-function suggestions with theirs.
+    struct PropertyTarget: Codable, Hashable, Sendable {
+        /// Its suggestions in the pool, best first: score with Verified's
+        /// bonus, highest first, then identity.
+        public let suggestions: [Property]
+        /// Its survived, timed-out, no-coverage and not-covered mutants, in
+        /// the report's order.
+        public let unkilled: [UncheckedMutant]
+        /// The resolved partners of its two-function suggestions, by key.
+        public let partners: [Partner]
+    }
+
+    /// The partner of a two-function suggestion: a production function
+    /// the property runs too.
+    struct Partner: Codable, Hashable, Sendable {
+        /// Its record's key.
+        public let key: String
+        /// Its mutants counted; nil when it has none.
+        public let counts: MutationCounts?
+        /// Its survived, timed-out, no-coverage and not-covered mutants, in
+        /// the report's order.
+        public let unkilled: [UncheckedMutant]
     }
 }

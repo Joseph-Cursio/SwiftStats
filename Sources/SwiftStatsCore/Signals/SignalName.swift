@@ -7,6 +7,9 @@
 
 /// A derived signal.
 public enum SignalName: String, CaseIterable, Codable, Hashable, Sendable {
+    /// Functions with an algebraic suggestion whose mutants the tests don't
+    /// kill: where a property test may pay off most.
+    case bestPropertyTarget = "best-property-target"
     /// Fix commits weighted by age: past bugs predict future ones.
     case bugProne = "bug-prone"
     /// Cloned code that keeps changing, so each change is made in every copy.
@@ -51,12 +54,15 @@ public enum SignalName: String, CaseIterable, Codable, Hashable, Sendable {
     public static let reportOrder: [Self] = [
         .hotspot, .bugProne, .unstableFixes, .testsNotKeepingUp, .safeToLeave,
         .untestedProperty, .toolDisagreement, .missingTemplate, .uncheckedLaws, .divergentClones, .cloneHotspot,
-        .riskyUntested, .unevenCloneTesting, .weakTests, .genuinelyUnderTested
+        .riskyUntested, .unevenCloneTesting, .weakTests, .genuinelyUnderTested, .bestPropertyTarget
     ]
 
     /// The name a report heads the signal with.
     public var title: String {
         switch self {
+        case .bestPropertyTarget:
+            "Best property-test targets"
+
         case .bugProne:
             "Bug-prone"
 
@@ -117,8 +123,9 @@ public enum SignalName: String, CaseIterable, Codable, Hashable, Sendable {
     /// M5's signals list the M5 snapshot first, so a snapshot stored
     /// before M5 says so rather than naming a collector it never had; M6's
     /// list the M6 snapshot first likewise, then SwiftMutator, then
-    /// coverage, and genuinely under-tested also needs results that list
-    /// code no test ran.
+    /// coverage (best property-test target SwiftInferProperties instead),
+    /// and genuinely under-tested also needs results that list code no
+    /// test ran.
     var requirements: [SignalRequirement] {
         let mutation = SignalRequirement.collector(MutationAdapter.name)
         let effects = SignalRequirement.collector(EffectCollector.name)
@@ -126,6 +133,9 @@ public enum SignalName: String, CaseIterable, Codable, Hashable, Sendable {
         let coverage = SignalRequirement.collector(CoverageAdapter.name)
         let clones = SignalRequirement.collector(SwiftCloneDetectorAdapter.name)
         return switch self {
+        case .bestPropertyTarget:
+            [.m6Snapshot, mutation, properties]
+
         case .bugProne, .hotspot, .safeToLeave, .testsNotKeepingUp, .unstableFixes:
             [.history]
 

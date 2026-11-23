@@ -7,8 +7,10 @@
 //  its state (from those counts and its file's disposition, paths compared
 //  in NFC as the mapping compares them), its figures, the mutants its
 //  tests ran and didn't check, the suspect tests behind its suspect-only
-//  kills, and its line coverage. A function has coverage data when its
-//  line tally maps at least one line.
+//  kills, its unkilled mutants, and its line coverage. A function has
+//  coverage data when its line tally maps at least one line; a snapshot
+//  read without coverage (best property-test target needs none) gives
+//  none.
 //
 
 import Foundation
@@ -17,6 +19,8 @@ import Foundation
 struct MutationJudge {
     /// The verdicts of mutants the tests ran and didn't check.
     private static let unchecked: Set<MutationVerdict> = [.survived, .timedOut]
+    /// The verdicts of mutants the tests didn't kill.
+    private static let notKilled: Set<MutationVerdict> = [.survived, .timedOut, .noCoverage, .notCovered]
     /// The killing tests an item names.
     static let namedKillingTests = 5
 
@@ -35,8 +39,9 @@ struct MutationJudge {
     /// The suspect tests, by run, then name.
     private let suspects: [Int: [String: [MutationSuspectTest]]]
 
-    /// A judge of `snapshot`'s `mutation` results with its `coverage`.
-    init(_ snapshot: StoredSnapshot, mutation: MutationReport, coverage: CoverageReport) {
+    /// A judge of `snapshot`'s `mutation` results with its `coverage` (none
+    /// when nil).
+    init(_ snapshot: StoredSnapshot, mutation: MutationReport, coverage: CoverageReport?) {
         functions = ProductionFunctions(snapshot)
         counts = Dictionary(mutation.records.map { ($0.key, $0.counts) }) { first, _ in first }
         killingTests = Dictionary(mutation.records.map { ($0.key, $0.killingTests) }) { first, _ in first }
@@ -44,7 +49,7 @@ struct MutationJudge {
         dispositions = Dictionary(
             mutation.files.map { ($0.path.precomposedStringWithCanonicalMapping, $0.disposition) }
         ) { first, _ in first }
-        self.coverage = Dictionary(coverage.records.map { ($0.key, $0) }) { first, _ in first }
+        self.coverage = Dictionary((coverage?.records ?? []).map { ($0.key, $0) }) { first, _ in first }
         suspects = Dictionary(grouping: mutation.suspectTests, by: \.run).mapValues { tests in
             Dictionary(grouping: tests, by: \.name)
         }
@@ -53,6 +58,18 @@ struct MutationJudge {
     /// `row`'s mutants counted; nil when it has none.
     func counts(of row: FunctionRow) -> MutationCounts? {
         counts[row.key]
+    }
+
+    /// The mutants of the record keyed `key` counted; nil when it has none.
+    func counts(key: String) -> MutationCounts? {
+        counts[key]
+    }
+
+    /// The mutants of the record keyed `key` its tests didn't kill
+    /// (survived, timed out, no coverage, not covered), in the report's
+    /// order.
+    func unkilled(key: String) -> [UncheckedMutant] {
+        (mutants[key] ?? []).filter { Self.notKilled.contains($0.verdict) }.map(UncheckedMutant.init)
     }
 
     /// `row`'s mutation state.
@@ -89,16 +106,7 @@ struct MutationJudge {
             functionScore: figures.functionScore,
             killingTests: tests.count,
             firstKillingTests: Array(tests.prefix(Self.namedKillingTests)),
-            survivors: held.filter { Self.unchecked.contains($0.verdict) }.map { mutant in
-                UncheckedMutant(
-                    operatorID: mutant.operatorID,
-                    line: mutant.line,
-                    column: mutant.column,
-                    before: mutant.before,
-                    after: mutant.after,
-                    verdict: mutant.verdict.rawValue
-                )
-            },
+            survivors: held.filter { Self.unchecked.contains($0.verdict) }.map(UncheckedMutant.init),
             suspects: suspects(behind: held)
         )
     }
