@@ -109,9 +109,9 @@ struct PendingMutationRun: Codable, Equatable, Sendable {
     /// compared.
     static let ignoringChangedReason =
         "that run left other files out of the tree (scan --no-store, or the store moved); run scan --mutation"
-    /// Why a pending `--since` run is refused until resuming one is built
-    /// (M6 step 6 replaces it).
-    static let sinceNotBuiltReason = "resuming a --since run is not built yet; run scan --mutation"
+    /// Why the resume of a `--since` run is refused when the scan has no
+    /// base for it to merge with.
+    static let noBaseReason = "resuming a --since run merges with its base snapshot, and this scan has none"
     /// How `startedAt` is written.
     static let dateFormat = Date.ISO8601FormatStyle(timeZone: .gmt)
 
@@ -190,9 +190,6 @@ struct PendingMutationRun: Codable, Equatable, Sendable {
     /// read leaving out the files at `ignored`, under `settings`, which
     /// aren't compared when nil; nil when it isn't.
     func refusal(git: GitState, ignoring ignored: [String], settings current: Settings?) -> String? {
-        guard mode == .full else {
-            return Self.sinceNotBuiltReason
-        }
         guard ignored == ignoring else {
             return Self.ignoringChangedReason
         }

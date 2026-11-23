@@ -14,7 +14,11 @@
 //  written just before SwiftMutator starts, so an interrupted scan leaves
 //  it, then names the results file of a run a resume can continue, or is
 //  removed. A run discards a pending run it finds, with a warning; a
-//  resume continues it instead.
+//  resume continues it instead. A `--since` run (design §6.1) works out
+//  SwiftMutator's selection in the copy first, runs with `--since` and its
+//  base's full commit, records its mode and base in `pending.json`, and is
+//  failed, nothing of it kept, when its results header no longer matches
+//  the base (`MutationBase.postRunRefusal`).
 //
 
 import Foundation
@@ -43,6 +47,10 @@ struct MutationSession {
         let mutatorMilliseconds: Int
         /// Problems worth reporting that didn't fail the run.
         let warnings: [ScanWarning]
+        /// What a `--since` run's copy changed since the base, with the
+        /// copy's tree when the run left no results file; nil for a full
+        /// run.
+        let changes: MutationChanges?
 
         /// The outcome with `warning` added.
         func adding(_ warning: ScanWarning) -> Self {
@@ -59,7 +67,8 @@ struct MutationSession {
                 fixedFiles: fixedFiles,
                 warmBuildMilliseconds: warmBuildMilliseconds,
                 mutatorMilliseconds: mutatorMilliseconds,
-                warnings: warnings + added
+                warnings: warnings + added,
+                changes: changes
             )
         }
 
@@ -73,7 +82,8 @@ struct MutationSession {
                 fixedFiles: fixedFiles,
                 warmBuildMilliseconds: warmBuildMilliseconds,
                 mutatorMilliseconds: mutatorMilliseconds,
-                warnings: warnings
+                warnings: warnings,
+                changes: changes
             )
         }
     }
@@ -179,24 +189,27 @@ struct MutationSession {
     }
 
     /// Writes the configuration, warms the build, records the pending run,
-    /// runs SwiftMutator with `command` and reads what it left.
+    /// runs SwiftMutator with `command` and reads what it left. A
+    /// `--since` run first works out SwiftMutator's selection in the copy,
+    /// and runs with `--since` and the base's full commit.
     private func tested(with command: MutationCommand) throws(MutationFailure) -> Outcome {
         let settings = job.settings
         let configuration = directory.configuration
+        let changed = try changes(in: command.copy.project)
         try MutationConfigFile.write(swift: job.swift, arguments: settings?.arguments ?? [], to: configuration)
         let build = try command.warmBuild()
         let arguments = MutationCommand.runArguments(
             configuration: configuration,
             workers: settings?.workers,
             timeout: settings?.timeout
-        )
+        ) + (job.base.map { ["--since", $0.commit] } ?? [])
         let pending = PendingMutationRun(
             startedAt: Date().formatted(PendingMutationRun.dateFormat),
             commit: job.git.commit,
             dirtyHash: job.git.dirtyHash,
             packagePath: job.git.packagePath,
-            mode: .full,
-            base: nil,
+            mode: job.base == nil ? .full : .since,
+            base: job.base.map { PendingMutationRun.Base(commit: $0.commit, collectedAt: $0.report.collectedAt) },
             resultsFile: nil,
             project: MutationResume.path(of: command.copy.project, inside: command.copy.work) ?? "",
             command: arguments,
@@ -210,7 +223,7 @@ struct MutationSession {
         let file = try command.resultsFile(output: finished.output)
         let outcome = try judged(finished, file: file, command: command, warmBuild: build)
         try record(pending, after: outcome, file: file, work: command.copy.work)
-        return outcome
+        return try outcome.with(changes: withTree(changed, after: outcome, in: command.copy.project))
     }
 
     /// Reads `file`, what the run that ended as `finished` left (nil when
@@ -224,13 +237,20 @@ struct MutationSession {
         warmBuild build: Int?
     ) throws(MutationFailure) -> Outcome {
         let (data, contents) = Self.read(file)
-        let exit = MutationExit.judge(
+        var exit = MutationExit.judge(
             finished.termination,
             output: contents,
             log: finished.output,
-            tail: command.lastLines(of: finished.output)
+            tail: command.lastLines(of: finished.output),
+            since: job.base != nil
         )
         let results: MutationResults? = if case .results(let read) = contents { read } else { nil }
+        // A `--since` run's header must still match its base (a binary
+        // replaced during the run); otherwise nothing of it is merged or
+        // kept, and a resume would fail the same way.
+        if exit.state == .ran, let results, let refusal = job.base?.postRunRefusal(results.facts) {
+            exit = MutationExit.failed(refusal)
+        }
         var warnings = (results?.skippedLinesWarning).map { [ScanWarning(file: nil, message: $0)] } ?? []
         var suspects = SuspectReport.unjudged
         var kept: String?
@@ -254,8 +274,19 @@ struct MutationSession {
             fixedFiles: command.copy.fixedFiles,
             warmBuildMilliseconds: build,
             mutatorMilliseconds: finished.milliseconds,
-            warnings: warnings
+            warnings: warnings,
+            changes: nil
         )
+    }
+
+    /// Whether `outcome` failed because its results header no longer
+    /// matches the `--since` base: the failure `judged` makes of a run
+    /// that ran when `MutationBase.postRunRefusal` refuses it.
+    func refusedAfterRun(_ outcome: Outcome) -> Bool {
+        guard let results = outcome.results, let refusal = job.base?.postRunRefusal(results.facts) else {
+            return false
+        }
+        return outcome.exit == MutationExit.failed(refusal)
     }
 
     /// Records `pending` after its run ended as `outcome` with `file`, its

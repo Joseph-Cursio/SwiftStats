@@ -4,8 +4,8 @@ import Testing
 
 /// The SwiftMutator collector's place in a scan (M6, design §1): every
 /// scan lists its status, it runs only when the scan asks for it, a
-/// requested run is skipped for the usual reasons, `--since` and
-/// `--resume` are refused before anything runs until they are built,
+/// requested run is skipped for the usual reasons, `--resume` with no run
+/// pending is refused before anything runs,
 /// `--drop-mutation` lets no coverage go, and it compares only when
 /// SwiftStats' own build does.
 @Suite("Mutation collector")
@@ -139,8 +139,8 @@ struct MutationCollectorTests {
     }
 
     @Test("""
-        scan --mutation --since is refused until built, and --resume with no run pending, before anything is \
-        scanned or stored
+        scan --mutation --resume with no run pending is refused before anything is scanned or stored, and \
+        --since with no swift-mutator found chooses no base, so the collector is skipped for the tool
         """)
     func sinceAndResumeRefused() throws {
         let (package, workspace) = try Self.workspace([:])
@@ -152,18 +152,22 @@ struct MutationCollectorTests {
             encoding: .utf8
         )
 
-        let since = ScanError.mutationRefused("--since is not built yet; run scan --mutation for a full run")
         let resume = ScanError.mutationRefused("no interrupted or failed SwiftMutator run to resume")
-        #expect(throws: since) {
-            try workspace.scanWorkingTree(tiers: RequestedTiers(mutation: .since("HEAD~1")))
-        }
         #expect(throws: resume) {
             try workspace.scanWorkingTree(tiers: RequestedTiers(coverage: true, mutation: .resume))
         }
-        #expect(since.description == "scan --mutation: --since is not built yet; run scan --mutation for a full run")
         let latest = try #require(try workspace.store.latestSnapshotID(package: "Probe", packagePath: ""))
         #expect(latest == stored)
         #expect(try workspace.store.report(id: latest).records.count == 1)
+        let since = try workspace.scanWorkingTree(
+            history: .skipped("test"),
+            tiers: RequestedTiers(mutation: .since("HEAD~1"))
+        )
+
+        let run = since.snapshot.info.collectors.first { $0.name == MutationAdapter.name }
+        #expect(run?.state == .skipped)
+        #expect(run?.reason == "`swift-mutator` not found on PATH; set collectors.swiftmutator.path")
+        #expect(since.snapshot.report.records.count == 2)
     }
 
     @Test("--drop-mutation alone lets no coverage go: held coverage too damaged to read still stops the rescan")

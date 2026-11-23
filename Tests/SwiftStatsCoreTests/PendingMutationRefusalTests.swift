@@ -9,8 +9,9 @@ import Testing
 /// when an effective setting differs (the tools found,
 /// `collectors.swiftmutator.arguments`, `options.workers` and
 /// `options.timeout`), naming the first, when a file the run's scan
-/// parsed changed, was added or is gone, outside git too, and, until
-/// resuming one is built, when it is a `--since` run.
+/// parsed changed, was added or is gone, outside git too. A `--since`
+/// run's record refuses nothing more: its base is chosen again by `scan`
+/// (`MutationBase.resumed`).
 @Suite("Mutation resume refusals")
 struct PendingMutationRefusalTests {
     /// A row of the refusal table: what differs from the pending run, and
@@ -188,13 +189,7 @@ struct PendingMutationRefusalTests {
             reason: PendingMutationRun.ignoringChangedReason,
             ignoring: ["stats.sqlite"]
         ),
-        Refusal(
-            name: "a --since run",
-            git: git,
-            settings: settings,
-            mode: .since,
-            reason: "resuming a --since run is not built yet; run scan --mutation"
-        )
+        Refusal(name: "nothing, in a --since run", git: git, settings: settings, mode: .since, reason: nil)
     ]
 
     /// The pending run's tree with `commit`, `branch`, `dirtyHash` (clean
@@ -262,9 +257,9 @@ struct PendingMutationRefusalTests {
 
     @Test(
         """
-        a resume is refused when the files left out of the tree, its git state, a setting or the mode differs \
-        from the pending run's, naming the files left out first, then the tree, then the first setting that \
-        differs; the branch alone doesn't matter
+        a resume is refused when the files left out of the tree, its git state or a setting differs from the \
+        pending run's, naming the files left out first, then the tree, then the first setting that differs; the \
+        branch alone and the mode don't matter
         """,
         arguments: refusals
     )

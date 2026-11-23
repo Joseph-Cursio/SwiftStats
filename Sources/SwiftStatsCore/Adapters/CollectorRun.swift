@@ -131,8 +131,9 @@ enum CollectorRun {
     /// `collectors.swiftmutator` names the `swift-mutator` it runs and the
     /// coverage collector's `swift` is its test command's; `measured`'s
     /// files are what its copy is checked against. A resume continues the
-    /// pending run in its kept copy; `--since` is skipped until it is
-    /// built.
+    /// pending run in its kept copy; a `--since` run, which merges with
+    /// the base the scan chose before it started, is skipped without one
+    /// (a scan with no store).
     static func runMutation(
         root: URL,
         configuration: SwiftStatsConfiguration,
@@ -149,11 +150,12 @@ enum CollectorRun {
         case .skip(let reason):
             return MutationRun.skipped(reason)
         }
-        if case .since = scope.request {
-            return MutationRun.skipped(MutationAdapter.sinceNotBuiltReason)
+        if case .since = scope.request, scope.base == nil {
+            return MutationRun.skipped(MutationAdapter.sinceNeedsStoreReason)
         }
         return MutationAdapter.run(MutationJob(
             request: scope.request,
+            base: scope.base,
             mutator: mutator,
             swift: swift,
             root: root,

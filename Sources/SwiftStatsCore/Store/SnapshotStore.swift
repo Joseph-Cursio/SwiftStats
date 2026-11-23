@@ -261,6 +261,27 @@ public struct SnapshotStore: Sendable {
         try queue.read { database in try Self.heldCoverage(id: id, in: database) }
     }
 
+    /// Whether snapshot `id` holds mutation results a rescan would have to
+    /// carry or drop, read without reading them (`SnapshotStore+Mutation`).
+    func holdsMutation(id: Int64) throws -> Bool {
+        try queue.read { database in try Self.holdsMutation(id: id, in: database) }
+    }
+
+    /// The mutation results snapshot `id` holds, with its swiftmutator run,
+    /// for a scan that merges with them (`SnapshotStore+Mutation`); nil
+    /// when it holds none.
+    func mutationResults(id: Int64) throws -> (results: StoredMutation, run: CollectorRunInfo)? {
+        try queue.read { database in try Self.mutationResults(id: id, in: database) }
+    }
+
+    /// The commits of the clean snapshots of `package` at `packagePath`
+    /// that hold complete mutation results (`SnapshotStore+Mutation`).
+    func commitsHoldingMutation(package: String, packagePath: String) throws -> Set<String> {
+        try queue.read { database in
+            try Self.commitsHoldingMutation(package: package, packagePath: packagePath, in: database)
+        }
+    }
+
     /// Snapshot `id`'s scan report. One written with another report schema
     /// can't be read by this build, and the error says to rescan.
     public func report(id: Int64) throws -> ScanReport {

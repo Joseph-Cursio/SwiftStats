@@ -7,7 +7,9 @@
 //  an interrupted run by raising the signal again, so an interrupt reads
 //  as that signal, and `128 + n` is only its fallback. A results file that
 //  doesn't read fails the run whatever the exit. Exit 0 and 2 with results
-//  ran; exit 255 with SwiftMutator's "nothing to test" line ran with no
+//  ran, and so does exit 0 without a results file for a `--since` run,
+//  which had nothing left to test once its selection was filtered (design
+//  §6.1); exit 255 with SwiftMutator's "nothing to test" line ran with no
 //  results; everything else failed, with a reason that holds no path. A
 //  failed run whose results file has a readable header can be resumed, so
 //  its copy is kept.
@@ -84,6 +86,19 @@ struct MutationExit: Equatable, Sendable {
     /// The state after a run that ended by `termination`, left `output`,
     /// and printed `log`, of which `tail` is the last lines, cleaned.
     static func judge(_ termination: ProcessTermination, output: Output, log: String, tail: String) -> Self {
+        judge(termination, output: output, log: log, tail: tail, since: false)
+    }
+
+    /// The state after a run that ended by `termination`, left `output`,
+    /// and printed `log`, of which `tail` is the last lines, cleaned; a
+    /// `--since` run (`since`) that exits 0 without a results file ran.
+    static func judge(
+        _ termination: ProcessTermination,
+        output: Output,
+        log: String,
+        tail: String,
+        since: Bool
+    ) -> Self {
         if case .unreadable(let failure) = output {
             return failed(failure.description)
         }
@@ -94,13 +109,16 @@ struct MutationExit: Equatable, Sendable {
         case .exited(let status) where stoppingSignals.contains(status - signalBase):
             return interrupted(by: status - signalBase, output: output)
 
+        case .exited(0) where since && output == .noFile:
+            return Self(state: .ran, reason: nil, resumable: false)
+
         case .exited(let status):
             return exited(status, output: output, log: log, tail: tail)
         }
     }
 
     /// A failure for `reason`, not resumable.
-    private static func failed(_ reason: String) -> Self {
+    static func failed(_ reason: String) -> Self {
         Self(state: .failed, reason: reason, resumable: false)
     }
 

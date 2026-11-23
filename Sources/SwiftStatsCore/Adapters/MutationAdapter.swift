@@ -24,9 +24,9 @@ enum MutationAdapter {
     static let executableName = "swift-mutator"
     /// Why a scan that didn't ask for mutation testing skipped it.
     static let notRequestedReason = "not requested; scan --mutation runs it"
-    /// Why `scan --mutation --since` is refused while the merge isn't
-    /// built (M6 step 6 replaces it).
-    static let sinceNotBuiltReason = "--since is not built yet; run scan --mutation for a full run"
+    /// Why a `--since` run is skipped when the scan chose no base to merge
+    /// with: it wasn't given the store the base is read from.
+    static let sinceNeedsStoreReason = "--since merges with a stored snapshot, and this scan has no store"
     /// The first option: how SwiftMutator runs, as the package sees it.
     static let invocation = "swift-mutator run -c .swiftstats/mutation/muter.conf.yml --skip-update-check"
     /// The largest number of seconds written as a whole number.

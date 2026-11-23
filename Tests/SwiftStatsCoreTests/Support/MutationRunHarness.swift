@@ -101,6 +101,7 @@ struct MutationRunHarness {
     func run(_ request: MutationRequest, settings: CollectorSettings, scanned: [String: String]) -> MutationRun {
         MutationAdapter.run(MutationJob(
             request: request,
+            base: nil,
             mutator: fake.mutator,
             swift: fake.swift,
             root: package.root,

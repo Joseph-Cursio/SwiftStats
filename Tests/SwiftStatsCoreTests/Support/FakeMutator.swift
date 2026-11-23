@@ -33,8 +33,14 @@
 //  interrupt mode doesn't resume. `run` also keeps a copy of
 //  `pending.json` as it was when it started, from the mutation folder two
 //  levels above the project (the harness's packages are outside git, so
-//  the project is `work/<package>`). A test can make the tools act out
-//  another scenario between runs, keeping their paths.
+//  the project is `work/<package>`). The fake `swift --version` prints the
+//  recorded toolchain's version, as a `--since` run's settings check reads
+//  it (design §6.1). A scenario can name the fake `swift-mutator` itself as
+//  the build its results were made with, putting the script's own SHA-256
+//  in place of the recorded build's, and record the SDK environment this
+//  process gives it, as SwiftMutator records the one SwiftStats gives it,
+//  so a `--since` run's settings check passes. A test can make the tools
+//  act out another scenario between runs, keeping their paths.
 //
 
 import Foundation
@@ -76,8 +82,19 @@ struct FakeMutator {
         /// The lines `run --resume <file>` appends to that file; nil when
         /// it appends none.
         var appended: String?
+        /// What `swift --version` prints.
+        var swiftVersion = FakeMutator.recordedToolchain
+        /// Whether the results and report name the fake `swift-mutator`
+        /// itself as their build, by its script's SHA-256, rather than the
+        /// recorded build, and record this process's SDK environment.
+        var ownIdentity = false
     }
 
+    /// The recorded runs' toolchain, as `swift --version` printed it.
+    static let recordedToolchain =
+        "Apple Swift version 6.4.2 (swiftlang-6.4.2.1.9 clang-2100.4.1.1)\nTarget: arm64-apple-macosx27.2.0\n"
+    /// The SHA-256 of the SwiftMutator build the recordings were made with.
+    static let recordedBuild = "5138cbf1b810b127accddd8d4973bb2675195797cbae9b734bd09c0ae5a35ba8"
     /// The run folder's name the fake writes into.
     static let folder = "Nov 21, 2026 at 7:32 AM"
     /// The run folder's name a resume writes into.
@@ -85,7 +102,7 @@ struct FakeMutator {
     /// The files a scenario writes beside the tools.
     private static let scenarioFiles = [
         "log.txt", "err.txt", "status", "report-status", "build-status", "build-output.txt", "results.jsonl",
-        "report.json", "signal", "end.jsonl", "interrupt", "appended.jsonl"
+        "report.json", "signal", "end.jsonl", "interrupt", "appended.jsonl", "version.txt"
     ]
     /// The words of a `status.txt` line: `run: exit 0`.
     static let statusWords = 3
@@ -170,6 +187,10 @@ struct FakeMutator {
     private static let swiftScript = """
         #!/bin/sh
         \(record("swift"))
+        if [ "$1" = "--version" ]; then
+            cat "$here/version.txt"
+            exit 0
+        fi
         if [ "$1" = "build" ]; then
             sed -e "s|@ROOT@|$(pwd -P)|g" "$here/build-output.txt"
             mkdir -p .build
@@ -192,6 +213,12 @@ struct FakeMutator {
         directory.appendingPathComponent("swift")
     }
 
+    /// The fake `swift-mutator`'s build identity: `sha256:` and its
+    /// script's SHA-256.
+    var identity: String {
+        "sha256:" + (ContentHash.sha256(ofFileAt: mutator) ?? "")
+    }
+
     /// The configuration the last `run` was given, as it read it.
     var configuration: String? {
         try? String(contentsOf: directory.appendingPathComponent("muter.conf.yml"), encoding: .utf8)
@@ -209,79 +236,15 @@ struct FakeMutator {
         try? String(contentsOf: directory.appendingPathComponent("pending-at-run.json"), encoding: .utf8)
     }
 
-    /// The Mutation fixture's interrupted recording in the interrupt mode:
-    /// `run` waits for SIGTERM and ends as `ending` says, rather than
-    /// raising the signal itself.
-    static func interruptible(_ ending: Interrupt) throws -> Scenario {
-        var scenario = try recorded("interrupted")
-        scenario.signal = nil
-        scenario.status = 0
-        scenario.interrupt = ending
-        return scenario
-    }
-
-    /// The Mutation fixture's resumed recording as a resume acts it out:
-    /// `run --resume` appends the lines the resume added to the
-    /// interrupted run's file, prints the resume's log and exits as it did.
-    static func resuming() throws -> Scenario {
-        var scenario = try recorded("resumed")
-        let earlier = (try recorded("interrupted").results ?? "").split(separator: "\n").count
-        let lines = (scenario.results ?? "").split(separator: "\n", omittingEmptySubsequences: false)
-        scenario.appended = lines.dropFirst(earlier).joined(separator: "\n")
-        scenario.results = nil
-        return scenario
-    }
-
-    /// The scenario of the Mutation fixture's recorded case `name`.
-    static func recorded(_ name: String) throws -> Scenario {
-        try recorded(name, in: MutationFixture.directory)
-    }
-
-    /// The scenario of `fixture`'s recorded case `name`: its results file,
-    /// report, log tail (its log folder spelled `@NAME@_muter_logs` and its
-    /// run folder `@FOLDER@`) and how it ended.
-    static func recorded(_ name: String, in fixture: URL) throws -> Scenario {
-        let recording = MutationFixture.recorded(name, in: fixture)
-        let read = { (file: String) in
-            try? String(contentsOf: recording.appendingPathComponent(file), encoding: .utf8)
-        }
-        var scenario = Scenario()
-        scenario.results = read("results.jsonl")
-        scenario.report = read("report.json")
-        scenario.log = (read("log-tail.txt") ?? "")
-            .replacing(/@PARENT@\/[^\/\n]+_muter_logs\/[^\/\n]+\//, with: "@PARENT@/@NAME@_muter_logs/@FOLDER@/")
-        let status = try String(contentsOf: recording.appendingPathComponent("status.txt"), encoding: .utf8)
-        for line in status.split(separator: "\n") {
-            let words = line.split(separator: " ")
-            guard words.count == statusWords, let last = words.last, let number = Int32(last) else {
-                continue
-            }
-            switch (words[0], words[1]) {
-            case ("run:", "exit"):
-                scenario.status = number
-
-            case ("run:", "signal"):
-                scenario.signal = number
-
-            case ("report:", "exit"):
-                scenario.reportStatus = number
-
-            default:
-                break
-            }
-        }
-        return scenario
-    }
-
     /// New tools acting out `scenario`.
     static func make(_ scenario: Scenario) throws -> Self {
         let tools = FileManager.default.temporaryDirectory
             .appendingPathComponent("FakeMutator-\(UUID().uuidString)")
         try FileManager.default.createDirectory(at: tools, withIntermediateDirectories: true)
         let fake = Self(directory: tools)
-        try fake.act(scenario)
         try fake.script("swift-mutator", mutatorScript)
         try fake.script("swift", swiftScript)
+        try fake.act(scenario)
         return fake
     }
 
@@ -327,19 +290,28 @@ struct FakeMutator {
 
     /// Makes the tools act out `scenario` from their next call on.
     func act(_ scenario: Scenario) throws {
+        let build = String(identity.dropFirst("sha256:".count))
+        let environment = try Self.recordedEnvironment()
+        let named = { (text: String?) in
+            scenario.ownIdentity
+                ? text?.replacingOccurrences(of: Self.recordedBuild, with: build)
+                    .replacingOccurrences(of: #""environment":{}"#, with: environment)
+                : text
+        }
         var files = [
             "log.txt": scenario.log,
             "err.txt": scenario.errorText,
             "status": "\(scenario.status)",
             "report-status": "\(scenario.reportStatus)",
             "build-status": "\(scenario.buildStatus)",
-            "build-output.txt": scenario.buildOutput
+            "build-output.txt": scenario.buildOutput,
+            "version.txt": scenario.swiftVersion
         ]
-        files["results.jsonl"] = scenario.results
-        files["report.json"] = scenario.report
+        files["results.jsonl"] = named(scenario.results)
+        files["report.json"] = named(scenario.report)
         files["signal"] = scenario.signal.map { "\($0)" }
-        files["appended.jsonl"] = scenario.appended
-        if let ending = scenario.interrupt, let results = scenario.results {
+        files["appended.jsonl"] = named(scenario.appended)
+        if let ending = scenario.interrupt, let results = named(scenario.results) {
             var lines = results.split(separator: "\n").map(String.init)
             let end = lines.popLast() ?? ""
             files["results.jsonl"] = lines.map { $0 + "\n" }.joined()

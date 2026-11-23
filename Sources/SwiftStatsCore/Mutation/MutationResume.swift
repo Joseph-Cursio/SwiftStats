@@ -7,16 +7,17 @@
 //  file, named by the record or, when the scan that made it was
 //  interrupted before it could name it, the one results file in
 //  SwiftMutator's log folder beside the copy. A resume is refused, in this
-//  order, when no run is pending, when it is a `--since` run (until
-//  resuming one is built), when it leaves other files out of the tree
-//  than the run did, when the tree's git state differs from the run's,
+//  order, when no run is pending, when it leaves other files out of the
+//  tree than the run did, when the tree's git state differs from the run's,
 //  when the settings differ, when a file the run's scan parsed changed,
 //  was added or is gone, when the copy is gone, and when the results file
 //  is missing or has no readable header (a run that stopped before its
 //  first mutant). `scan` checks all of it before anything runs, reading
 //  the files the run's scan parsed from the package, and the mutation step
 //  again, under the package's mutation lock, against the files its scan
-//  parsed, before it touches the copy or the record.
+//  parsed, before it touches the copy or the record. A `--since` run's
+//  resume merges with the base its record names, which `scan` chooses
+//  again (`MutationBase.resumed`); the step refuses it without that base.
 //
 
 import Foundation

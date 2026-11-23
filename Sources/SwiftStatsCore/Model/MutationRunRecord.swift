@@ -140,4 +140,41 @@ public struct MutationRunRecord: Codable, Hashable, Sendable {
         self.testExecutableSHA256 = testExecutableSHA256
         self.sdkEnvironment = sdkEnvironment
     }
+
+    /// The record as the `ordinal`th run of another snapshot, carried from
+    /// `source` (nil for this scan's own run): a carry keeps the commit
+    /// it tested and names the snapshot it came from.
+    func renumbered(_ ordinal: Int, carriedFrom source: MutationSource?) -> Self {
+        Self(
+            ordinal: ordinal,
+            identity: identity,
+            version: version,
+            startedAt: startedAt,
+            endedAt: endedAt,
+            endReason: endReason,
+            commit: commit,
+            dirty: dirty,
+            mode: mode,
+            sessions: sessions,
+            since: since,
+            carriedFrom: source,
+            resultsFile: resultsFile,
+            resultsSHA256: resultsSHA256,
+            formatVersions: formatVersions,
+            operators: operators,
+            skipCoverage: skipCoverage,
+            listsNotCovered: listsNotCovered,
+            workers: workers,
+            timeoutSeconds: timeoutSeconds,
+            stopsAtFirstFailure: stopsAtFirstFailure,
+            suspectsJudged: suspectsJudged,
+            mutantsDiscovered: mutantsDiscovered,
+            mutantsDropped: mutantsDropped,
+            controlRuns: controlRuns,
+            controlFailures: controlFailures,
+            toolchain: toolchain,
+            testExecutableSHA256: testExecutableSHA256,
+            sdkEnvironment: sdkEnvironment
+        )
+    }
 }

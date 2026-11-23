@@ -115,7 +115,7 @@ extension PackageScanner {
         PendingRuns(
             properties: startProperties(root: root, targets: targets, configuration: configuration),
             coverage: startCoverage(root: root, configuration: configuration, requested: tiers.coverage),
-            mutation: tiers.mutation.map { MutationScope(request: $0, git: nil, ignoring: []) }
+            mutation: tiers.mutation.map { MutationScope(request: $0, base: tiers.base, git: nil, ignoring: []) }
         )
     }
 
@@ -151,7 +151,7 @@ extension PackageScanner {
         let cloneRun = cloneJob?.wait()
         let run = pending.properties?.wait()
         let coverage = pending.coverage.wait()
-        let mutation = runMutation(
+        let mutationRun = runMutation(
             root: root,
             configuration: configuration,
             scope: pending.mutation,
@@ -172,13 +172,14 @@ extension PackageScanner {
             root: root
         )
         let mappedMutation = Self.mutation(
-            of: mutation,
+            of: mutationRun,
             measured: measured,
             targets: targets,
             configuration: configuration
         )
         return ExternalScan(
-            timed: adapters + [run?.timed, cloneRun?.timed, coverage.timed, mutation.timed].compactMap(\.self),
+            timed: adapters + [run?.timed, cloneRun?.timed, coverage.timed, mappedMutation.run.timed]
+                .compactMap(\.self),
             findings: findings,
             tally: FindingTally(findings: findings, tools: Set(ran).union([MarkerCollector.tool])),
             properties: properties?.report,
@@ -186,7 +187,7 @@ extension PackageScanner {
             clones: cloneRun.flatMap { Self.clones(of: $0, measured: measured) },
             coverage: mapped.report,
             coverageWarnings: mapped.warnings,
-            mutation: mutation,
+            mutation: mappedMutation.run,
             mutationReport: mappedMutation.report,
             mutationWarnings: mappedMutation.warnings
         )

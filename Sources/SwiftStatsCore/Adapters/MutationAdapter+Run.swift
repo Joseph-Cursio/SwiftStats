@@ -21,7 +21,10 @@ extension MutationAdapter {
     /// by, which a carry checks.
     static let mapOption = "map: " + MutationMapper.rule
 
-    /// Runs SwiftMutator as `job` says and records how it went.
+    /// Runs SwiftMutator as `job` says and records how it went. A
+    /// `--since` run that ran without a results file reports the base's
+    /// build, version and header options, since it ran that build with
+    /// those settings and every result it holds comes from the base.
     static func run(_ job: MutationJob) -> MutationRun {
         let known = options(settings: job.settings, root: job.root)
         let (result, milliseconds) = Stopwatch.time { () -> Result<MutationSession.Outcome, MutationFailure> in
@@ -36,26 +39,32 @@ extension MutationAdapter {
             return failed(failure, job: job, options: known, milliseconds: milliseconds)
 
         case .success(let outcome):
+            let ran = outcome.exit.state == .ran
             let notes = reasonNotes(outcome)
+            let base = ran ? job.base : nil
+            let header = outcome.results.map { options(of: $0.facts) } ?? base?.recordedHeaderOptions ?? []
             return MutationRun(
                 status: CollectorStatus(
                     name: name,
                     state: outcome.exit.state,
-                    version: outcome.results?.facts.version,
+                    version: outcome.results?.facts.version ?? base?.version,
                     reason: notes.isEmpty ? nil : notes.joined(separator: "; "),
-                    options: known + (outcome.results.map { options(of: $0.facts) } ?? [])
-                        + (outcome.exit.state == .ran ? [mapOption] : [])
+                    options: known + header + (ran ? [mapOption] : [])
                 ),
                 executable: job.mutator,
-                identity: outcome.results.flatMap { identity(of: $0.facts) },
+                identity: outcome.results.flatMap { identity(of: $0.facts) } ?? base?.identity,
                 milliseconds: milliseconds,
-                results: outcome.exit.state == .ran ? outcome.results : nil,
+                results: ran ? outcome.results : nil,
                 suspects: outcome.suspects,
                 git: job.git,
                 resultsFile: outcome.resultsFile,
                 warmBuildMilliseconds: outcome.warmBuildMilliseconds,
                 mutatorMilliseconds: outcome.mutatorMilliseconds,
-                warnings: outcome.warnings
+                warnings: outcome.warnings,
+                base: job.base,
+                changes: outcome.changes,
+                exitReason: outcome.exit.reason,
+                fixedFiles: outcome.fixedFiles
             )
         }
     }
@@ -85,7 +94,11 @@ extension MutationAdapter {
             resultsFile: nil,
             warmBuildMilliseconds: nil,
             mutatorMilliseconds: nil,
-            warnings: []
+            warnings: [],
+            base: job.base,
+            changes: nil,
+            exitReason: failure.description,
+            fixedFiles: 0
         )
     }
 
@@ -94,22 +107,42 @@ extension MutationAdapter {
     /// results that don't list code no test ran, failed control runs and
     /// files the copy fixed.
     static func reasonNotes(_ outcome: MutationSession.Outcome) -> [String] {
-        var notes = [outcome.exit.reason].compactMap(\.self)
-        guard outcome.exit.state == .ran else {
+        reasonNotes(
+            exit: outcome.exit,
+            results: outcome.results,
+            listsNotCovered: outcome.results?.listsNotCovered ?? true,
+            merge: [],
+            fixedFiles: outcome.fixedFiles
+        )
+    }
+
+    /// The parts of the reason of a run that ended as `exit` says, with
+    /// `results` (nil when it left none): the exit's words, then, for a run
+    /// that ran, a merge's `merge` notes, an incomplete file's reason,
+    /// results that don't list code no test ran (`listsNotCovered` false),
+    /// failed control runs, and `fixedFiles`, the files the copy fixed.
+    static func reasonNotes(
+        exit: MutationExit,
+        results: MutationResults?,
+        listsNotCovered: Bool,
+        merge: [String],
+        fixedFiles: Int
+    ) -> [String] {
+        var notes = [exit.reason].compactMap(\.self)
+        guard exit.state == .ran else {
             return notes
         }
-        if let results = outcome.results {
-            notes += [results.incompleteReason].compactMap(\.self)
-            if results.listsNotCovered == false {
-                notes.append(notCoveredUnlistedNote)
-            }
-            if results.controlFailures > 0 {
-                let runs = results.controlFailures == 1 ? "1 control run" : "\(results.controlFailures) control runs"
-                notes.append("\(runs) failed (flaky tests)")
-            }
+        notes += merge
+        notes += [results?.incompleteReason].compactMap(\.self)
+        if listsNotCovered == false {
+            notes.append(notCoveredUnlistedNote)
         }
-        if outcome.fixedFiles > 0 {
-            let files = outcome.fixedFiles == 1 ? "1 file" : "\(outcome.fixedFiles) files"
+        if let failures = results?.controlFailures, failures > 0 {
+            let runs = failures == 1 ? "1 control run" : "\(failures) control runs"
+            notes.append("\(runs) failed (flaky tests)")
+        }
+        if fixedFiles > 0 {
+            let files = fixedFiles == 1 ? "1 file" : "\(fixedFiles) files"
             notes.append("copy fixed \(files) git checks out differently")
         }
         return notes

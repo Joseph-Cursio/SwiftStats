@@ -9,38 +9,69 @@
 //  compete for the CPU. The tools' skip reason covers a requested run.
 //  A run that ran with results is mapped onto the scan's records
 //  (`MutationMapper`) and passed through the store's rows
-//  (`MutationRows`), so the scan JSON is what a stored copy would give.
+//  (`MutationRows`), so the scan JSON is what a stored copy would give; a
+//  `--since` run is merged with its base first (`MutationMerge`).
 //
 
 import Foundation
 
 extension PackageScanner {
+    /// A SwiftMutator run's results mapped onto a scan.
+    struct MappedMutation {
+        /// The run, its reason with a merge's notes added.
+        let run: MutationRun
+        /// The results, as the store's rows hold them; nil unless the run
+        /// ran with results, or ran as a `--since` run.
+        let report: MutationReport?
+        /// The mapping's warnings.
+        let warnings: [ScanWarning]
+    }
+
     /// `run`'s results mapped onto `measured`, the package with `targets`
     /// and `configuration`, as the store's rows hold them; nil unless it
-    /// ran with results. The warnings are the mapping's.
+    /// ran with results, or ran as a `--since` run, whose results are
+    /// merged with its base's (`MutationMerge`), the merge's notes added
+    /// to the run's reason. The warnings are the mapping's.
     static func mutation(
         of run: MutationRun,
         measured: ScanMeasurements,
         targets: [TargetSummary],
         configuration: SwiftStatsConfiguration
-    ) -> (report: MutationReport?, warnings: [ScanWarning]) {
-        guard run.status.state == .ran, let results = run.results, let resultsFile = run.resultsFile else {
-            return (nil, [])
+    ) -> MappedMutation {
+        guard run.status.state == .ran else {
+            return MappedMutation(run: run, report: nil, warnings: [])
         }
         let mapper = MutationMapper(
             measured: measured,
             targets: targets,
             excluded: configuration.excluded.map(GlobPattern.init)
         )
-        let record = MutationMapper.run(
-            results,
-            ordinal: 0,
-            resultsFile: resultsFile,
-            git: run.git,
-            suspects: run.suspects
-        )
+        let record = run.results.flatMap { results in
+            run.resultsFile.map { file in
+                MutationMapper.run(results, ordinal: 0, resultsFile: file, git: run.git, suspects: run.suspects)
+            }
+        }
+        if let base = run.base {
+            let merged = MutationMerge(
+                base: base,
+                mapper: mapper,
+                changes: run.changes ?? MutationChanges(selection: [], tree: [:])
+            )
+            .merged(results: record == nil ? nil : run.results, run: record, suspects: run.suspects)
+            let notes = MutationAdapter.reasonNotes(
+                exit: MutationExit(state: run.status.state, reason: run.exitReason, resumable: false),
+                results: run.results,
+                listsNotCovered: merged.report.listsNotCovered,
+                merge: merged.notes,
+                fixedFiles: run.fixedFiles
+            )
+            return MappedMutation(run: run.with(reasonNotes: notes), report: merged.report, warnings: mapper.warnings)
+        }
+        guard let results = run.results, let record else {
+            return MappedMutation(run: run, report: nil, warnings: [])
+        }
         let report = mapper.report(of: results, run: record, suspects: run.suspects)
-        return (MutationRows.normalized(report), mapper.warnings)
+        return MappedMutation(run: run, report: MutationRows.normalized(report), warnings: mapper.warnings)
     }
 
     /// The SwiftMutator collector's run on the package at `root` under

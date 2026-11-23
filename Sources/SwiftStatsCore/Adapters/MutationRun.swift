@@ -3,7 +3,9 @@
 //  SwiftStatsCore
 //
 //  What the SwiftMutator collector's run gave the scan before its mutants
-//  are mapped to records (M6, design §1).
+//  are mapped to records (M6, design §1): for a `--since` run, also the
+//  base it merges with and what its copy changed (design §6.1), and the
+//  parts of its reason a merge adds its own notes among.
 //
 
 import Foundation
@@ -38,6 +40,16 @@ struct MutationRun: Sendable {
     let mutatorMilliseconds: Int?
     /// Problems worth reporting that didn't fail it.
     let warnings: [ScanWarning]
+    /// The stored snapshot a `--since` run merges with; nil for a full run.
+    let base: MutationBase?
+    /// What a `--since` run's copy changed since the base; nil otherwise.
+    let changes: MutationChanges?
+    /// The exit's own note, which a reason starts with; nil when it has
+    /// none.
+    let exitReason: String?
+    /// How many scanned files the copy took from the package because git
+    /// checked them out with other bytes.
+    let fixedFiles: Int
 
     /// The run as the other external collectors' runs are recorded.
     var timed: TimedAdapterResult {
@@ -62,7 +74,38 @@ struct MutationRun: Sendable {
             resultsFile: nil,
             warmBuildMilliseconds: nil,
             mutatorMilliseconds: nil,
-            warnings: []
+            warnings: [],
+            base: nil,
+            changes: nil,
+            exitReason: nil,
+            fixedFiles: 0
+        )
+    }
+
+    /// The run with its status's reason made of `notes` (none when empty).
+    func with(reasonNotes notes: [String]) -> Self {
+        Self(
+            status: CollectorStatus(
+                name: status.name,
+                state: status.state,
+                version: status.version,
+                reason: notes.isEmpty ? nil : notes.joined(separator: "; "),
+                options: status.options
+            ),
+            executable: executable,
+            identity: identity,
+            milliseconds: milliseconds,
+            results: results,
+            suspects: suspects,
+            git: git,
+            resultsFile: resultsFile,
+            warmBuildMilliseconds: warmBuildMilliseconds,
+            mutatorMilliseconds: mutatorMilliseconds,
+            warnings: warnings,
+            base: base,
+            changes: changes,
+            exitReason: exitReason,
+            fixedFiles: fixedFiles
         )
     }
 }

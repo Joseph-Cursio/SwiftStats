@@ -7,7 +7,9 @@
 //  that has none from an export into the invoking package's store, using the
 //  revision's own `.swiftstats.yml` unless a configuration file was given.
 //  A stored dirty snapshot stands for the working tree only while its hash
-//  of the changes matches the tree's.
+//  of the changes matches the tree's. Before `scan --mutation --since`, or
+//  the resume of such a run, it chooses the stored snapshot the run merges
+//  with (M6, `MutationBase`).
 //
 
 import Foundation
@@ -74,40 +76,82 @@ public struct SnapshotWorkspace {
     /// Scans the working tree, reading history from `history` and running
     /// the coverage and SwiftMutator collectors when `tiers` asks for them,
     /// stores the snapshot as `save(_:drop:)` does and returns what it
-    /// stored with its id. `--resume` is refused before anything runs
-    /// (`ScanError.mutationRefused`) when no run is pending, or when the
-    /// tree, the settings, the copy or the results file don't let it go on
-    /// (`MutationResume`); `--since` is refused until it is built.
+    /// stored with its id. Before anything runs, `--since` chooses the
+    /// stored snapshot it merges with and is refused when there is none it
+    /// can merge with (`StoreError.noMutationBase`, `MutationBase`), and
+    /// `--resume` is refused (`ScanError.mutationRefused`) when no run is
+    /// pending, or when the tree, the settings, the copy or the results
+    /// file don't let it go on (`MutationResume`); the resume of a
+    /// `--since` run chooses its base again. Neither is checked when the
+    /// collector's tools aren't found, which skips it.
     public func scanWorkingTree(
         history: HistorySource = .automatic,
         tiers: RequestedTiers = .syntaxOnly,
         drop: DropOptions = []
     ) throws -> (snapshot: ScannedSnapshot, id: Int64) {
-        switch tiers.mutation {
-        case .since:
-            throw ScanError.mutationRefused(MutationAdapter.sinceNotBuiltReason)
-
-        case .resume:
-            if let reason = MutationResume.refusal(
-                root: root,
-                configuration: configuration,
-                locator: scanner.scanner.tools,
-                ignoring: storeInPackage
-            ) {
-                throw ScanError.mutationRefused(reason)
-            }
-
-        case .full, nil:
-            break
-        }
+        let base = try mutationBase(tiers.mutation)
         let snapshot = try scanner.scan(
             packageAt: root,
             configurationFile: configurationFile ?? StoreLocation.localConfiguration(packageRoot: root),
             ignoring: storeInPackage,
             history: history,
-            tiers: tiers
+            tiers: tiers.merging(with: base)
         )
         return try save(snapshot, drop: drop)
+    }
+
+    /// The stored snapshot the SwiftMutator run `request` asks for merges
+    /// with: for `--since`, the one its revision names, checked against the
+    /// tools and settings; for the resume of a `--since` run, the one the
+    /// pending run recorded, chosen again. Nil for a full run, the resume
+    /// of one, and when the tools aren't found. It throws the refusal that
+    /// stops the scan before anything runs.
+    private func mutationBase(_ request: MutationRequest?) throws -> MutationBase? {
+        guard let request else {
+            return nil
+        }
+        if case .resume = request, let reason = MutationResume.refusal(
+            root: root,
+            configuration: configuration,
+            locator: scanner.scanner.tools,
+            ignoring: storeInPackage
+        ) {
+            throw ScanError.mutationRefused(reason)
+        }
+        guard case let .found(mutator, swift) = MutationTools.resolve(
+            root: root,
+            configuration: configuration,
+            locator: scanner.scanner.tools
+        ) else {
+            return nil
+        }
+        let lookup = MutationBase.Lookup(
+            store: store,
+            package: try describer.describePackage(at: root).name,
+            root: root,
+            git: GitReader.read(packageRoot: root, ignoring: storeInPackage)
+        )
+        switch request {
+        case .full:
+            return nil
+
+        case .resume:
+            let pending = try? PendingMutationRun.read(in: MutationDirectory(lookingIn: root))
+            return try pending?.base.map { recorded in try MutationBase.resumed(recorded, lookup: lookup) }
+
+        case .since(let revision):
+            let base = try MutationBase.select(revision: revision, lookup: lookup)
+            if let reason = base.settingsRefusal(
+                mutator: mutator,
+                settings: configuration.collectors[MutationAdapter.name],
+                toolchain: MutationBase.toolchainLine(swift: swift, root: root),
+                root: root,
+                environment: MutationBase.sdkEnvironment(of: ProcessInfo.processInfo.environment)
+            ) {
+                throw StoreError.noMutationBase(reason)
+            }
+            return base
+        }
     }
 
     /// The snapshot `report` shows: `revision`'s clean one when given; else

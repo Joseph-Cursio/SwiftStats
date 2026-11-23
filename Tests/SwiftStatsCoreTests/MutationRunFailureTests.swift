@@ -105,7 +105,7 @@ struct MutationRunFailureTests {
 
     @Test("""
         the test command's swift is collectors.coverage.path even with coverage disabled; with no swift the run is \
-        skipped, --since is skipped until built, and a resume with no run pending fails saying so
+        skipped, --since is skipped without the base a store gives, and a resume with no run pending fails saying so
         """)
     func testSwift() throws {
         let disabledCoverage = try MutationRunHarness(try FakeMutator.recorded("full")) { fake in
@@ -130,7 +130,8 @@ struct MutationRunFailureTests {
             == true)
         #expect(skipped?.state == .skipped)
         #expect(skipped?.reason == "`swift` not found on PATH; set collectors.coverage.path")
-        #expect(since?.reason == "--since is not built yet; run scan --mutation for a full run")
+        #expect(since?.state == .skipped)
+        #expect(since?.reason == "--since merges with a stored snapshot, and this scan has no store")
         #expect(resume?.state == .failed)
         #expect(resume?.reason == "no interrupted or failed SwiftMutator run to resume")
         #expect(noSwift.fake.calls(of: "swift-mutator").isEmpty)

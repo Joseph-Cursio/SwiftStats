@@ -6,7 +6,9 @@
 //  (`scan --coverage`) and mutation (`scan --mutation`, with `--since` or
 //  `--resume`). `backfill` and `diff`'s scans of other revisions ask for
 //  neither. The flags' combinations are checked here, so every front end
-//  refuses the same ones with the same words.
+//  refuses the same ones with the same words. A `--since` run, or the
+//  resume of one, also carries the stored snapshot it merges with, which
+//  the scan chooses before anything runs (M6, design §6.1).
 //
 
 /// Which of the opt-in collectors a scan runs.
@@ -33,11 +35,22 @@ public struct RequestedTiers: Hashable, Sendable {
     /// Which SwiftMutator run the scan asked for; nil when it didn't
     /// (`scan` without `--mutation`).
     public let mutation: MutationRequest?
+    /// The stored snapshot a `--since` run, or the resume of one, merges
+    /// with, chosen before the scan; nil until chosen, and for other runs.
+    let base: MutationBase?
 
     /// Tiers. Fields are documented on their properties.
     public init(coverage: Bool = false, mutation: MutationRequest? = nil) {
         self.coverage = coverage
         self.mutation = mutation
+        base = nil
+    }
+
+    /// Tiers asking for `coverage` and `mutation`, merging with `base`.
+    private init(coverage: Bool, mutation: MutationRequest?, base: MutationBase?) {
+        self.coverage = coverage
+        self.mutation = mutation
+        self.base = base
     }
 
     /// The tiers `scan`'s flags ask for: `--coverage`, `--mutation`,
@@ -78,5 +91,10 @@ public struct RequestedTiers: Hashable, Sendable {
             return Self(coverage: coverage, mutation: .resume)
         }
         return Self(coverage: coverage, mutation: since.map(MutationRequest.since) ?? .full)
+    }
+
+    /// The same tiers, the SwiftMutator run merging with `chosen`.
+    func merging(with chosen: MutationBase?) -> Self {
+        Self(coverage: coverage, mutation: mutation, base: chosen)
     }
 }

@@ -18,7 +18,8 @@
 //  (`PositionPlacement`): on the innermost production record holding it,
 //  else attached to the innermost type, else to the file. The report also
 //  lists the run's tree, every Swift path of its last header, each
-//  production path `tested` by the run and every other one `untested`.
+//  production path `tested` by the run and every other one `untested`
+//  (`MutationMapper+Report`, whose pieces a `--since` merge uses too).
 //
 
 import Foundation
@@ -58,7 +59,7 @@ struct MutationMapper {
     /// What a path relative to the root may start with.
     private static let currentDirectory = "./"
     /// What a Swift file's name ends with.
-    private static let swiftExtension = ".swift"
+    static let swiftExtension = ".swift"
 
     /// Sorts the mutants' files.
     private let classifier: PackageFileClassifier
@@ -151,7 +152,7 @@ struct MutationMapper {
 
     /// The mutant `recorded`, placed as `placed`, tested by run `ordinal`,
     /// whose kill `suspects` judged.
-    private static func mutant(
+    static func mutant(
         _ recorded: RecordedMutant,
         placed: Placed,
         run ordinal: Int,
@@ -238,60 +239,35 @@ struct MutationMapper {
         Placed(place: .unmapped, owner: nil, reason: reason, anchor: nil)
     }
 
-    /// The report of `results`, left by `run` (a full run), whose kills
-    /// `suspects` judged: every mutant placed, the run's tree, its suspect
-    /// tests, and the counts.
-    func report(of results: MutationResults, run: MutationRunRecord, suspects: SuspectReport) -> MutationReport {
-        var anchorings: [String: MutantAnchoring] = [:]
-        let mutants = results.mutants.map { recorded in
-            Self.mutant(
-                recorded,
-                placed: place(recorded, anchorings: &anchorings),
-                run: run.ordinal,
-                suspects: suspects
-            )
-        }
-        let suspectTests = suspects.suspectTests.map { test in
-            MutationSuspectTest(
-                name: test.name,
-                file: test.file,
-                run: run.ordinal,
-                why: test.reason,
-                files: test.files,
-                filesWithKills: test.filesWithKills
-            )
-        }
-        return MutationReport(
-            collectedAt: run.startedAt,
-            complete: results.complete,
-            listsNotCovered: results.listsNotCovered,
-            mode: run.mode,
-            base: nil,
-            files: files(of: results.tree, run: run.ordinal),
-            runs: [run],
-            suspectTests: suspectTests,
-            mutants: mutants
-        )
-    }
-
     /// Where `mutant` goes, anchored with `anchorings`, which gains each
     /// kept file's anchoring the first time one of its mutants needs it.
     func place(_ mutant: RecordedMutant, anchorings: inout [String: MutantAnchoring]) -> Placed {
-        let fileClass = classify(mutant.key.path)
+        place(mutant.key, fileSHA256: mutant.fileSHA256, after: mutant.after, anchorings: &anchorings)
+    }
+
+    /// Where the mutant at `key`, whose file hashed to `fileSHA256` and
+    /// which makes `after`, goes, anchored with `anchorings` as `place`
+    /// takes them.
+    func place(
+        _ key: MutantKey,
+        fileSHA256: String?,
+        after: String,
+        anchorings: inout [String: MutantAnchoring]
+    ) -> Placed {
+        let fileClass = classify(key.path)
         guard case .kept(let path, _) = fileClass, let file = parsed[path] else {
             return Self.notKept(fileClass)
         }
-        if let reason = Self.hashRefusal(mutant.fileSHA256, scanned: file.sha256) {
+        if let reason = Self.hashRefusal(fileSHA256, scanned: file.sha256) {
             return Self.unmapped(reason)
         }
         let anchoring = anchorings[path] ?? MutantAnchoring(file)
         anchorings[path] = anchoring
-        let key = mutant.key
         guard let anchor = anchoring.anchor(
             line: key.line,
             column: key.column,
             operatorID: key.operatorID,
-            after: mutant.after
+            after: after
         ) else {
             return Self.unmapped(Self.noSuchPosition)
         }
@@ -310,32 +286,11 @@ struct MutationMapper {
         }
     }
 
-    /// The Swift paths of `tree`, a run's last tree, each production path
-    /// tested by run `ordinal` and every other one untested.
-    private func files(of tree: [String: String], run ordinal: Int) -> [MutationFile] {
-        tree.keys.filter { $0.hasSuffix(Self.swiftExtension) }.sorted().map { path in
-            let isProduction = switch classify(path) {
-            case .kept, .unmapped:
-                true
-
-            case .build, .outsideRoot, .testFile, .otherLanguage, .otherPackage:
-                false
-            }
-            return MutationFile(
-                path: path,
-                sha256: tree[path],
-                disposition: isProduction ? .tested : .untested,
-                changedTest: false,
-                run: isProduction ? ordinal : nil
-            )
-        }
-    }
-
     /// The class of the file at `path`, relative to the project: a leading
     /// `./` taken off, under a `.build` folder at any depth a build product,
     /// else as `PackageFileClassifier` sorts it, spelled as the scan spells
     /// the parsed file of the same NFC spelling, if any.
-    private func classify(_ path: String) -> PackageFileClass {
+    func classify(_ path: String) -> PackageFileClass {
         var relative = path
         while relative.hasPrefix(Self.currentDirectory) {
             relative.removeFirst(Self.currentDirectory.count)

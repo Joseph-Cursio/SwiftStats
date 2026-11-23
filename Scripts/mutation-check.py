@@ -70,6 +70,51 @@ SwiftMutator's own JSON report, which this script makes itself with
 It also prints the mapped share of in-body mutants (section 9 step 3), for
 information.
 
+`merge` mode checks a snapshot made by a `--since` run merged with its base
+(design section 6.1, section 9 step 5), building the merged mutant set
+itself from the base's results file (the carried run's, a full run), the
+since run's results file (none when SwiftMutator wrote none) and C's tree
+(the since run's last header, or this script's hash of every Swift file in
+the package), with SwiftMutator's selection worked out by its own git
+command in the package:
+
+  m1 the merged keys, verdicts, recorded fields and carried flags equal the
+     scan's: a production path the run chose or has a mutant in takes the
+     run's rows; with no results file, a production path of the selection is
+     unlisted; any other path whose hash is the base's keeps the base's rows,
+     carried, as a run that tested the base's commit and names the base; a
+     base path gone from C's tree is deleted; a changed production path
+     neither retested nor unlisted, or holding a base row with no file hash,
+     is unresolved.
+  m2 every path's disposition, test-file mark and hash equal the scan's.
+  m3 mode, base, completeness (unresolved paths make it incomplete),
+     `listsNotCovered` (the AND over the runs) and the collection date.
+  d and e as in `base`, over the merged set, each mutant judged by its own
+     run's report (the base's kept `report.json` beside its results file for
+     carried mutants, the since run's for fresh ones), the roll-ups' carried
+     counts included; and g with `--store`.
+
+`since` mode checks the stored rows of the merged snapshot S_C against its
+base S_B, per path and per function, as the done-when reads them:
+
+  s1 every path whose hash is equal in S_B's and S_C's trees keeps S_B's rows
+     exactly (key, verdict, outcome, killedBy, suspectOnly, fileSHA256,
+     anchor, place, owner), carried, each naming a run that tested the base's
+     commit and was carried from it, with disposition carried.
+  s2 only retested paths hold fresh rows; the retested paths equal
+     SwiftMutator's selection (its own git command, Swift production files,
+     deletions dropped) and the since run's `since.files` less test files;
+     fresh rows name the since run.
+  s3 no S_B row of a retested or deleted path remains; a base path gone from
+     C's tree is deleted; the selection's test files are marked, and the
+     reason says carried verdicts weren't retested against them.
+  s4 every production function whose key and body hash are equal in both
+     keeps the same multiset of (operator, line from its first line, column,
+     occurrence, before, after, verdict): zero differences, but a
+     killed/timedOut flip that a solo rerun of that mutant confirmed as
+     SwiftMutator's timing (listed in `--confirmed-flips`) is listed and
+     allowed; every flip is printed with the rerun command.
+
 Inputs it trusts from SwiftStats, as M5's checker verified them against
 llvm-cov: the scan JSON's record and type ranges, roles, modules, the
 targets and their files, the parsed files and the generated marks. Top-level
@@ -77,6 +122,12 @@ statement lines come from `coverage-check.py`'s `statement_lines`, which this
 script imports. It reads the source and results bytes itself.
 
 Usage:
+    Scripts/mutation-check.py merge <package-dir> <scan.json> [--base-results <file>]
+                              [--base-report <file>] [--since-report <file>]
+                              [--store <stats.sqlite>] [--all]
+    Scripts/mutation-check.py since <package-dir> <scan.json> --store <stats.sqlite>
+                              [--base-store <stats.sqlite>] [--dirty]
+                              [--confirmed-flips <file>] [--all]
     Scripts/mutation-check.py base <package-dir> <scan.json>
                               [--results <results.jsonl>]
                               [--report <report.json> | --mutator <swift-mutator>]
@@ -798,6 +849,10 @@ class Report:
         self.summary = self.document.get("killingTestSummary")
         self.suspects_checked = None if self.summary is None else self.summary.get("suspectsChecked") is True
 
+    def checked(self, key):
+        """Whether the run that tested `key` judged reach (`suspectsChecked`)."""
+        return self.suspects_checked
+
 
 # --------------------------------------------------------------------------
 # Figures from the report's outcomes over this script's placement
@@ -824,9 +879,9 @@ class Figures:
     """Counts per record, attachment, module and project, from the report's
     outcomes (and the header's not-covered entries) over the placement."""
 
-    def __init__(self, package, results, report, placement):
-        self.records = defaultdict(lambda: {"counts": zero_counts(), "tests": set()})
-        self.attachments = defaultdict(lambda: {"counts": zero_counts(), "tests": set()})
+    def __init__(self, package, results, report, placement, carried=frozenset()):
+        self.records = defaultdict(lambda: {"counts": zero_counts(), "tests": set(), "carried": 0})
+        self.attachments = defaultdict(lambda: {"counts": zero_counts(), "tests": set(), "carried": 0})
         self.every = zero_counts()
         self.dropped = {name: 0 for name in DROPPED_CLASSES}
         self.unmapped = defaultdict(int)
@@ -846,7 +901,7 @@ class Figures:
                 flag = None
                 if outcome == "failed":
                     flag = True if entry.get("killedOnlyBySuspectTests") is True else (
-                        False if report.suspects_checked else None)
+                        False if report.checked(key) else None)
                 tests = [t["name"] for t in (entry.get("killingTests") or {}).get("tests", [])] \
                     if verdict == "killed" else []
             self.flags[key] = flag
@@ -861,6 +916,7 @@ class Figures:
             target = self.records[place["owner"]] if place["place"] == "record" \
                 else self.attachments[(place["place"], place["owner"])]
             add(target["counts"], verdict, crash, flag)
+            target["carried"] += key in carried
             target["tests"].update(tests)
         self.package = package
         self.results = results
@@ -883,6 +939,7 @@ class Figures:
                 file_modules.setdefault(path, target["name"])
         modules = {name: zero_counts() for name in production}
         project = zero_counts()
+        carried = defaultdict(int)
         for kind, table in (("record", self.records), ("attachment", self.attachments)):
             for owner, value in table.items():
                 if kind == "record":
@@ -894,6 +951,8 @@ class Figures:
                 for field in COUNT_FIELDS:
                     modules[module][field] += value["counts"][field]
                     project[field] += value["counts"][field]
+                carried[module] += value["carried"]
+                carried[None] += value["carried"]
         dispositions = {nfc(f["path"]): f["disposition"] for f in package.mutation.get("files", [])}
         generated = {path for path, f in package.files.items() if f.get("generated")}
         functions = {name: defaultdict(int) for name in modules}
@@ -908,8 +967,8 @@ class Figures:
         complete = self.results.complete
         out = {}
         for name, counts in modules.items():
-            out[("module", name)] = rollup(counts, functions[name], complete)
-        out[("project", "production")] = rollup(project, project_functions, complete)
+            out[("module", name)] = rollup(counts, functions[name], complete, carried[name])
+        out[("project", "production")] = rollup(project, project_functions, complete, carried[None])
         out[("project", "production")]["unmapped"] = sum(self.unmapped.values())
         out[("project", "production")]["dropped"] = sum(self.dropped.values())
         return out
@@ -931,14 +990,14 @@ def function_state(counts, disposition):
     return "noMutant"
 
 
-def rollup(counts, functions, complete):
+def rollup(counts, functions, complete, carried=0):
     scored = counts["killed"] + counts["survived"] + counts["noCoverage"] + counts["timedOut"]
     score = {"killed": counts["killed"], "scored": scored}
     value = percent(counts["killed"], scored)
     if value is not None and complete:
         score["percent"] = value
     item = dict(counts)
-    item["carried"] = 0
+    item["carried"] = carried
     item["score"] = score
     item["functions"] = {state: functions.get(state, 0) for state in
                          ("buildErrorsOnly", "noMutant", "noResults", "notCoveredOnly", "notListed", "scored")}
@@ -1326,13 +1385,16 @@ class Checker:
         self.section("g   stored rows equal the scan's mutation block")
         mutation = package.mutation
         # The scan's own commit is its fresh run's: in a merged result the
-        # carried runs name the base, so take the last run not carried.
+        # carried runs name the base, so take the last run not carried; a
+        # merge with no fresh run (SwiftMutator wrote no results file) is the
+        # package's HEAD as it is now.
         fresh = [entry for entry in mutation["runs"] if entry.get("carriedFrom") is None]
-        run = (fresh or mutation["runs"])[-1]
+        if fresh or mutation.get("mode") != "since":
+            run = (fresh or mutation["runs"])[-1]
+        else:
+            run = {"commit": head_commit(package.root), "dirty": is_dirty(package.root)}
         name = package.scan["package"]
-        prefix = subprocess.run(["git", "rev-parse", "--show-prefix"], cwd=package.root,
-                                capture_output=True, text=True).stdout.strip()
-        package_path = prefix[:-1] if prefix.endswith("/") else prefix
+        package_path = package_path_of(package.root)
         database = sqlite3.connect(f"file:{os.path.abspath(store_path)}?mode=ro", uri=True)
         database.row_factory = sqlite3.Row
         found = database.execute(
@@ -1461,6 +1523,23 @@ def mutant_key(mutant):
     return (mutant["path"], mutant["operator"], mutant["line"], mutant["column"], mutant["occurrence"])
 
 
+def package_path_of(root):
+    """The package's path from its repository's top level, as GitReader reads it."""
+    prefix = subprocess.run(["git", "rev-parse", "--show-prefix"], cwd=root, capture_output=True,
+                            text=True).stdout.strip()
+    return prefix[:-1] if prefix.endswith("/") else prefix
+
+
+def head_commit(root):
+    return subprocess.run(["git", "rev-parse", "HEAD"], cwd=root, capture_output=True, text=True).stdout.strip()
+
+
+def is_dirty(root):
+    """Whether the package's tree has changes git doesn't ignore (`.swiftstats/` ignores itself)."""
+    status = subprocess.run(["git", "status", "--porcelain", "--", "."], cwd=root, capture_output=True, text=True)
+    return bool(status.stdout.strip())
+
+
 # --------------------------------------------------------------------------
 
 
@@ -1519,6 +1598,460 @@ def check(arguments, package, results, results_path, report_path):
     return 0
 
 
+# --------------------------------------------------------------------------
+# `--since` merges (design section 6.1, section 9 step 5)
+
+PRUNED = {".build", ".git", ".swiftpm", "DerivedData", "xcuserdata", ".swiftstats"}
+
+
+def git_selection(root, commit):
+    """SwiftMutator's own selection in the package at `root` against `commit`:
+    `git diff --name-status -z --relative --find-renames --ignore-submodules=all
+    <commit> --` and the untracked files git doesn't ignore, Swift files only, a
+    rename or copy by its new path, deletions dropped."""
+    def run(command):
+        result = subprocess.run(["git", "--no-optional-locks"] + command, cwd=root, capture_output=True)
+        if result.returncode != 0:
+            fail(f"git {command[0]} failed in {root}: {result.stderr.decode('utf-8', 'replace').strip()}")
+        return [token.decode("utf-8") for token in result.stdout.split(b"\0") if token]
+    tokens = run(["diff", "--name-status", "-z", "--relative", "--find-renames", "--ignore-submodules=all",
+                  commit, "--"])
+    paths = []
+    index = 0
+    while index < len(tokens):
+        status = tokens[index]
+        count = 2 if status[:1] in ("R", "C") else 1
+        names = tokens[index + 1:index + 1 + count]
+        if status != "D" and names:
+            paths.append(names[-1])
+        index += 1 + count
+    paths += run(["ls-files", "--others", "--exclude-standard", "-z"])
+    return sorted({path for path in paths if path.endswith(".swift")})
+
+
+def swift_tree(root):
+    """Every Swift file below `root` SwiftMutator lists, hashed as it hashes them."""
+    tree = {}
+    for folder, folders, files in os.walk(root):
+        folders[:] = sorted(name for name in folders if name not in PRUNED
+                            and not os.path.exists(os.path.join(folder, name, ".git")))
+        for name in files:
+            if not name.endswith(".swift"):
+                continue
+            path = os.path.join(folder, name)
+            relative = os.path.relpath(path, root)
+            if os.path.islink(path):
+                tree[relative] = LINK_PREFIX + sha256(os.readlink(path).encode())
+            else:
+                with open(path, "rb") as handle:
+                    tree[relative] = sha256(handle.read())
+    return tree
+
+
+def is_production(package, path):
+    return package.classify(path)[0] in ("kept", "unmapped")
+
+
+class MergedReport:
+    """The base's report for carried keys, the since run's for fresh ones."""
+
+    def __init__(self, base, fresh, carried):
+        self.entries = {}
+        self.base = base
+        self.fresh = fresh
+        self.carried = carried
+        for key in carried:
+            if key in base.entries:
+                self.entries[key] = base.entries[key]
+        if fresh is not None:
+            for key, entry in fresh.entries.items():
+                if key not in carried:
+                    self.entries[key] = entry
+
+    def checked(self, key):
+        return self.base.suspects_checked if key in self.carried else (
+            self.fresh.suspects_checked if self.fresh is not None else None)
+
+
+class MergedResults:
+    """The not-covered keys of both runs that the merge keeps, and completeness."""
+
+    def __init__(self, not_covered, complete):
+        self.not_covered = not_covered
+        self.complete = complete
+
+
+class Merge:
+    """S_C's mutants built by this script from S_B's results file, the since
+    run's results file (or none) and C's tree, by the design's merge rules."""
+
+    def __init__(self, package, base_results, since_results, selection, base_commit):
+        self.package = package
+        base_tree = {nfc(p): (p, h) for p, h in base_results.last_tree.items() if p.endswith(".swift")}
+        if since_results is not None:
+            new_tree = {nfc(p): (p, h) for p, h in since_results.last_tree.items() if p.endswith(".swift")}
+        else:
+            new_tree = {nfc(p): (p, h) for p, h in swift_tree(package.root).items()}
+        base_expected = base_results.expected_mutants()
+        fresh_expected = since_results.expected_mutants() if since_results is not None else {}
+        base_rows = defaultdict(list)
+        for key in base_expected:
+            base_rows[nfc(key[0])].append(key)
+        fresh_paths = {nfc(key[0]) for key in fresh_expected}
+        chosen = {nfc(item["path"]) for item in (since_results.first.get("since", {}).get("files", [])
+                                                 if since_results is not None else [])}
+        selected = {nfc(path) for path in selection}
+        self.files = {}  # spelling -> {disposition, changedTest, sha256}
+        self.mutants = {}  # key -> fields, with "carried"
+        self.carried = set()
+        self.unresolved = []
+        for path in sorted(set(base_tree) | set(new_tree) | set(base_rows) | fresh_paths):
+            if path not in new_tree:
+                if path in base_tree:
+                    self.files[base_tree[path][0]] = {"disposition": "deleted", "changedTest": False, "sha256": None}
+                elif path not in fresh_paths:
+                    self.carry(path, base_rows, base_expected)  # rows of no tree are kept
+                continue
+            spelled, hash_value = new_tree[path]
+            production = is_production(package, spelled)
+            changed_test = package.classify(spelled)[0] == "testFiles" and path in selected
+            if path in fresh_paths or (production and path in chosen):
+                disposition = "tested" if production else "untested"
+            elif since_results is None and production and path in selected:
+                disposition = "unlisted"
+            elif path in base_tree and base_tree[path][1] == hash_value and all(
+                    base_expected[key]["fileSHA256"] is not None for key in base_rows[path]):
+                disposition = "carried" if production else "untested"
+                self.carry(path, base_rows, base_expected)
+            else:
+                disposition = "unresolved" if production else "untested"
+            if disposition == "unresolved":
+                self.unresolved.append(spelled)
+            self.files[spelled] = {"disposition": disposition, "changedTest": changed_test, "sha256": hash_value}
+        for key, fields in fresh_expected.items():
+            self.mutants[key] = dict(fields, carried=False)
+        self.complete = (since_results.complete if since_results is not None else True) and not self.unresolved
+        base_not_covered = [(key, entry) for key, entry in base_results.not_covered if key in self.carried]
+        fresh_not_covered = list(since_results.not_covered) if since_results is not None else []
+        self.results = MergedResults(base_not_covered + fresh_not_covered, self.complete)
+
+    def carry(self, path, base_rows, base_expected):
+        for key in base_rows[path]:
+            self.mutants[key] = dict(base_expected[key], carried=True)
+            self.carried.add(key)
+
+
+def snapshot_id(database, name, package_path, commit, dirty):
+    row = database.execute(
+        "SELECT id FROM snapshot WHERE package = ? AND packagePath = ? AND ifnull(commitHash, '') = ? "
+        "AND isDirty = ? ORDER BY id DESC LIMIT 1", (name, package_path, commit or "", 1 if dirty else 0)).fetchone()
+    return None if row is None else row[0]
+
+
+
+
+class StoredRows:
+    """A snapshot's mutation rows, production functions and swiftmutator run, read from a store."""
+
+    def __init__(self, path, name, root, commit, dirty):
+        database = sqlite3.connect(f"file:{os.path.abspath(path)}?mode=ro", uri=True)
+        database.row_factory = sqlite3.Row
+        self.id = snapshot_id(database, name, package_path_of(root), commit, dirty)
+        if self.id is None:
+            fail(f"no snapshot of {name} at {commit} (dirty {dirty}) in {path}")
+
+        def rows(sql):
+            return [dict(row) for row in database.execute(sql, (self.id,))]
+        self.scan = rows("SELECT * FROM mutationScan WHERE snapshotId = ?")
+        if not self.scan:
+            fail(f"snapshot {self.id} in {path} holds no mutation rows")
+        self.scan = self.scan[0]
+        self.runs = {row["ordinal"]: row for row in rows("SELECT * FROM mutationRun WHERE snapshotId = ?")}
+        self.files = {row["path"]: row for row in rows("SELECT * FROM mutationFile WHERE snapshotId = ?")}
+        self.mutants = rows("SELECT * FROM mutant WHERE snapshotId = ? ORDER BY ordinal")
+        self.functions = {row["key"]: row for row in rows(
+            "SELECT key, file, startLine, bodyHash FROM function WHERE snapshotId = ? AND role = 'production'")}
+        run = rows("SELECT * FROM collectorRun WHERE snapshotId = ? AND name = 'swiftmutator'")
+        self.collector = run[0] if run else {}
+        database.close()
+
+    def rows_of(self, path):
+        return [row for row in self.mutants if row["path"] == path]
+
+
+def compared(row):
+    """What a carry must keep of a stored mutant row."""
+    return (row["path"], row["operator"], row["line"], row["column"], row["occurrence"], row["verdict"], row["outcome"],
+            row["killedBy"], row["suspectOnly"], row["fileSHA256"], row["anchorLine"], row["anchorColumn"],
+            row["place"], row["owner"])
+
+
+def function_mutants(rows, functions):
+    """{function key: Counter of (operator, line from its first line, column, occurrence, before, after, verdict)}."""
+    out = defaultdict(lambda: defaultdict(int))
+    for row in rows:
+        if row["place"] != "record" or row["owner"] not in functions:
+            continue
+        start = functions[row["owner"]]["startLine"]
+        out[row["owner"]][(row["operator"], row["line"] - start, row["column"], row["occurrence"], row["before"],
+                           row["after"], row["verdict"])] += 1
+    return out
+
+
+class SinceChecks(Checker):
+    """Section 9 step 5's checks of a merged snapshot S_C against its base S_B."""
+
+    def since(self, package, base_rows, rows, since_results, selection, base_commit, confirmed):
+        mutation = package.mutation
+        fresh_runs = [run for run in mutation["runs"] if run.get("carriedFrom") is None]
+        print(f"    S_B snapshot {base_rows.id}, S_C snapshot {rows.id}; base {base_commit}")
+        base_tree = {p: f["sha256"] for p, f in base_rows.files.items() if f["sha256"] is not None}
+        new_tree = {p: f["sha256"] for p, f in rows.files.items() if f["sha256"] is not None}
+
+        self.section("s1  unchanged paths keep S_B's rows, carried from the base")
+        differences = []
+        unchanged = sorted(p for p in base_tree if new_tree.get(p) == base_tree[p])
+        carried_rows = 0
+        for path in unchanged:
+            mine = [compared(row) for row in base_rows.rows_of(path)]
+            theirs = [compared(row) for row in rows.rows_of(path)]
+            if mine != theirs:
+                differences.append(f"{path}: {len(mine)} rows in S_B, {len(theirs)} in S_C, or fields differ")
+            for row in rows.rows_of(path):
+                carried_rows += 1
+                run = rows.runs.get(row["run"], {})
+                if row["carried"] != 1 or run.get("commit") != base_commit or run.get("carriedFrom") != base_commit:
+                    differences.append(f"{path}:{row['line']}:{row['column']} {row['operator']}: carried "
+                                       f"{row['carried']}, run commit {run.get('commit')}, carriedFrom "
+                                       f"{run.get('carriedFrom')}")
+            wanted = "carried" if is_production(package, path) else "untested"
+            if base_rows.files[path]["disposition"] == "unlisted":
+                wanted = "unlisted"
+            if rows.files[path]["disposition"] != wanted:
+                differences.append(f"{path}: disposition {rows.files[path]['disposition']}, expected {wanted}")
+        self.result("carried paths", not differences, f"{len(unchanged)} unchanged paths, {carried_rows} rows")
+        self.listing(differences)
+
+        self.section("s2  only the retested paths have fresh rows, and they are SwiftMutator's selection")
+        tested = sorted(p for p, f in rows.files.items() if f["disposition"] == "tested")
+        unlisted = sorted(p for p, f in rows.files.items() if f["disposition"] == "unlisted"
+                          and base_rows.files.get(p, {}).get("disposition") != "unlisted")
+        fresh = sorted({row["path"] for row in rows.mutants if row["carried"] == 0})
+        selected = sorted(p for p in selection if is_production(package, p))
+        self.result("fresh rows in retested paths", set(fresh) <= set(tested), f"fresh rows in {fresh}")
+        if since_results is not None:
+            chosen = sorted(item["path"] for item in since_results.first.get("since", {}).get("files", [])
+                            if is_production(package, item["path"]))
+            self.result("retested = selection", tested == selected and not unlisted,
+                        f"retested {tested}, unlisted {unlisted}, selection {selected}")
+            self.result("retested = since.files less tests", tested == chosen, f"since.files {chosen}")
+        else:
+            # No results file: SwiftMutator tested nothing, so the selection's
+            # production paths are unlisted.
+            self.result("unlisted = selection (no results file)", unlisted == selected and not tested,
+                        f"retested {tested}, unlisted {unlisted}, selection {selected}")
+        fresh_runs = [run for run in rows.runs.values() if run.get("carriedFrom") is None]
+        self.result("fresh rows name the since run", all(
+            rows.runs.get(row["run"], {}).get("carriedFrom") is None for row in rows.mutants if row["carried"] == 0),
+            ", ".join(f"since run {run['ordinal']} at {run['commit']}" for run in fresh_runs) or "no since run")
+
+        self.section("s3  no S_B row of a retested or deleted path remains; test files and the reason")
+        differences = []
+        for path in tested:
+            if any(row["carried"] for row in rows.rows_of(path)):
+                differences.append(f"{path}: carried rows in a retested path")
+        deleted = sorted(p for p in base_tree if p not in new_tree)
+        for path in deleted:
+            if rows.files.get(path, {}).get("disposition") != "deleted":
+                differences.append(f"{path}: gone from C's tree but not deleted")
+            if rows.rows_of(path):
+                differences.append(f"{path}: rows remain at a deleted path")
+        tests = sorted(p for p in selection if package.classify(p)[0] == "testFiles")
+        marked = sorted(p for p, f in rows.files.items() if f["changedTest"])
+        if tests != marked:
+            differences.append(f"changed tests {marked}, selection's test files {tests}")
+        reason = rows.collector.get("reason") or ""
+        if tests and "carried verdicts weren't retested against" not in reason:
+            differences.append(f"the reason doesn't say carried verdicts weren't retested: {reason!r}")
+        self.result("retested and deleted paths", not differences,
+                    f"deleted {deleted}, changed tests {marked}; reason {reason!r}")
+        self.listing(differences)
+
+        self.section("s4  per function: unchanged functions keep their verdicts")
+        same = {key for key, row in rows.functions.items()
+                if key in base_rows.functions and base_rows.functions[key]["bodyHash"] == row["bodyHash"]}
+        mine = function_mutants(base_rows.mutants, {k: base_rows.functions[k] for k in same})
+        theirs = function_mutants(rows.mutants, {k: rows.functions[k] for k in same})
+        differences = []
+        flips = []
+        for key in sorted(same):
+            before, after = mine.get(key, {}), theirs.get(key, {})
+            if before == after:
+                continue
+            places = defaultdict(lambda: [[], []])
+            for side, table in ((0, before), (1, after)):
+                for item, count in table.items():
+                    places[item[:6]][side] += [item[6]] * count
+            for place, (old, new) in sorted(places.items()):
+                if sorted(old) == sorted(new):
+                    continue
+                if len(old) == len(new) == 1 and {old[0], new[0]} == {"killed", "timedOut"}:
+                    start = rows.functions[key]["startLine"]
+                    text = f"{rows.functions[key]['file']}:{start + place[1]}:{place[2]} {place[0]}"
+                    flips.append((text, old[0], new[0]))
+                else:
+                    differences.append(f"{key}: {place} {old} → {new}")
+        unconfirmed = [flip for flip in flips if flip[0] not in confirmed]
+        moved = sum(1 for key in same if rows.functions[key]["startLine"] != base_rows.functions[key]["startLine"])
+        self.result("verdicts", not differences and not unconfirmed,
+                    f"{len(same)} functions unchanged ({moved} moved), {sum(sum(t.values()) for t in theirs.values())} "
+                    f"mutants; {len(differences)} differences, {len(flips)} killed↔timedOut flips "
+                    f"({len(flips) - len(unconfirmed)} confirmed by a solo rerun)")
+        self.listing(differences)
+        for text, old, new in flips:
+            print(f"    flip {text}: S_B {old}, S_C {new}" + (" (confirmed)" if text in confirmed else
+                  f" — rerun alone: swift-mutator run --mutant '{text}'"))
+        changed = sorted(key for key in rows.functions if key in base_rows.functions and key not in same)
+        print(f"    {len(changed)} functions changed: {changed[:LIMIT]}")
+
+
+def merge_checks(checker, package, merge, scanned, base_commit):
+    """m1 to m3: the merged mutant set, tree and facts equal this script's own merge."""
+    mutation = package.mutation
+    checker.section("m1  the merged mutants equal this script's merge of both results files and C's tree")
+    missing = sorted(set(merge.mutants) - set(scanned))
+    extra = sorted(set(scanned) - set(merge.mutants))
+    checker.result("key set", not missing and not extra,
+                   f"{len(merge.mutants)} keys merged ({len(merge.carried)} carried), {len(scanned)} in the scan")
+    checker.listing([f"missing from the scan: {key_text(k)}" for k in missing]
+                    + [f"only in the scan: {key_text(k)}" for k in extra])
+    runs = {run["ordinal"]: run for run in mutation["runs"]}
+    differences = []
+    for key in sorted(set(merge.mutants) & set(scanned)):
+        mine, theirs = merge.mutants[key], scanned[key]
+        for field, value in mine.items():
+            if theirs.get(field) != value and not (field == "killedBy" and value == [] and field not in theirs):
+                differences.append(f"{key_text(key)}: {field} {value!r} / scan {theirs.get(field)!r}")
+        run = runs.get(theirs.get("run"), {})
+        carried_from = (run.get("carriedFrom") or {}).get("commit")
+        if mine["carried"] and (run.get("commit") != base_commit or carried_from != base_commit):
+            differences.append(f"{key_text(key)}: carried, but its run tested {run.get('commit')}, "
+                               f"carried from {carried_from}")
+        if not mine["carried"] and run.get("carriedFrom") is not None:
+            differences.append(f"{key_text(key)}: fresh, but its run is carried from {carried_from}")
+    checker.result("verdicts, fields and runs", not differences, f"{len(differences)} differences")
+    checker.listing(differences)
+
+    checker.section("m2  the merged tree's dispositions")
+    theirs = {f["path"]: {"disposition": f["disposition"], "changedTest": f["changedTest"], "sha256": f.get("sha256")}
+              for f in mutation["files"]}
+    differences = [f"{path}: scan {theirs.get(path)} / expected {merge.files.get(path)}"
+                   for path in sorted(set(theirs) | set(merge.files)) if theirs.get(path) != merge.files.get(path)]
+    counts = defaultdict(int)
+    for item in merge.files.values():
+        counts[item["disposition"]] += 1
+    checker.result("tree", not differences, f"{dict(sorted(counts.items()))}")
+    checker.listing(differences)
+
+    checker.section("m3  merged facts")
+    listed = all(run["listsNotCovered"] for run in mutation["runs"]) if mutation["runs"] else None
+    fresh = [run for run in mutation["runs"] if run.get("carriedFrom") is None]
+    wanted = {
+        "mode": (mutation["mode"], "since"),
+        "base commit": ((mutation.get("base") or {}).get("commit"), base_commit),
+        "complete": (mutation["complete"], merge.complete),
+        "listsNotCovered": (mutation["listsNotCovered"], listed),
+        "collectedAt": (mutation["collectedAt"], fresh[-1]["startedAt"] if fresh else
+                        (mutation.get("base") or {}).get("collectedAt")),
+        "unresolved": (sorted(p for p, f in theirs.items() if f["disposition"] == "unresolved"), sorted(merge.unresolved)),
+    }
+    problems = [f"{name}: scan {a!r} / expected {b!r}" for name, (a, b) in wanted.items() if a != b]
+    checker.result("facts", not problems, ", ".join(f"{name} {b!r}" for name, (_, b) in wanted.items()))
+    checker.listing(problems)
+
+
+def kept_beside(results_file, name):
+    path = os.path.join(os.path.dirname(results_file), name)
+    return path if os.path.isfile(path) else None
+
+
+def merge(arguments):
+    package = Package(arguments.package, arguments.scan)
+    mutation = package.mutation
+    if mutation.get("mode") != "since":
+        fail(f"{arguments.scan}'s mutation results aren't a --since merge")
+    base_commit = mutation["base"]["commit"]
+    carried_runs = [run for run in mutation["runs"] if run.get("carriedFrom") is not None]
+    fresh_runs = [run for run in mutation["runs"] if run.get("carriedFrom") is None]
+    base_results_path = arguments.base_results or (
+        os.path.join(package.root, carried_runs[0]["resultsFile"]) if carried_runs else None)
+    if base_results_path is None:
+        fail("no carried run names the base's results file; pass --base-results")
+    base_results = Results(base_results_path)
+    since_results_path = os.path.join(package.root, fresh_runs[0]["resultsFile"]) if fresh_runs else None
+    since_results = Results(since_results_path) if since_results_path else None
+    selection = git_selection(package.root, base_commit)
+    built = Merge(package, base_results, since_results, selection, base_commit)
+    base_report = Report(arguments.base_report or kept_beside(base_results_path, "report.json")
+                         or fail("no report.json beside the base's results file; pass --base-report"))
+    since_report = None
+    if since_results_path:
+        since_report = Report(arguments.since_report or kept_beside(since_results_path, "report.json")
+                              or fail("no report.json beside the since run's results file; pass --since-report"))
+    report = MergedReport(base_report, since_report, built.carried)
+    scanned = {mutant_key(m): m for m in mutation["mutants"]}
+    placement = Placement(package, built.mutants)
+    figures = Figures(package, built.results, report, placement, built.carried)
+    checker = Checker(arguments.all)
+    print(f"package {os.path.realpath(package.root)}: {len(package.records)} production records")
+    print(f"base results {os.path.realpath(base_results_path)}; since results "
+          f"{os.path.realpath(since_results_path) if since_results_path else 'none (no results file)'}")
+    print(f"SwiftMutator's selection since {base_commit[:10]}: {selection}")
+    merge_checks(checker, package, built, scanned, base_commit)
+    checker.placement(package, built.mutants, scanned, placement)
+    checker.figures(package, figures)
+    if arguments.store:
+        checker.stored(package, arguments.store)
+    print()
+    if checker.failures:
+        print(f"FAILED: {', '.join(checker.failures)}")
+        return 1
+    print("all checks passed")
+    return 0
+
+
+def since(arguments):
+    package = Package(arguments.package, arguments.scan)
+    mutation = package.mutation
+    if mutation.get("mode") != "since":
+        fail(f"{arguments.scan}'s mutation results aren't a --since merge")
+    base_commit = mutation["base"]["commit"]
+    fresh_runs = [run for run in mutation["runs"] if run.get("carriedFrom") is None]
+    run = (fresh_runs or mutation["runs"])[-1]
+    name = package.scan["package"]
+    if fresh_runs:
+        commit, dirty = run["commit"], run["dirty"]
+    else:
+        commit, dirty = head_commit(package.root), arguments.dirty or is_dirty(package.root)
+    rows = StoredRows(arguments.store, name, package.root, commit, dirty)
+    base_rows = StoredRows(arguments.base_store or arguments.store, name, package.root, base_commit, False)
+    since_results = Results(os.path.join(package.root, fresh_runs[0]["resultsFile"])) if fresh_runs else None
+    selection = git_selection(package.root, base_commit)
+    confirmed = set()
+    if arguments.confirmed_flips:
+        with open(arguments.confirmed_flips) as handle:
+            confirmed = {line.strip() for line in handle if line.strip()}
+    checker = SinceChecks(arguments.all)
+    print(f"package {os.path.realpath(package.root)} at {commit}; SwiftMutator's selection: {selection}")
+    checker.since(package, base_rows, rows, since_results, selection, base_commit, confirmed)
+    print()
+    if checker.failures:
+        print(f"FAILED: {', '.join(checker.failures)}")
+        return 1
+    print("all checks passed")
+    return 0
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     modes = parser.add_subparsers(dest="mode", required=True)
@@ -1532,8 +2065,24 @@ def main():
     checking.add_argument("--store", help="also compare the snapshot's stored rows in this store (store v5)")
     checking.add_argument("--all", action="store_true", help="list every difference")
     checking.add_argument("--dump", help="write this script's placement of every mutant here")
+    merging = modes.add_parser("merge", help="check a --since snapshot's merge of both results files")
+    merging.add_argument("package")
+    merging.add_argument("scan")
+    merging.add_argument("--base-results", help="the base's results file (default: the carried run's resultsFile)")
+    merging.add_argument("--base-report", help="its JSON report (default: report.json beside it)")
+    merging.add_argument("--since-report", help="the since run's JSON report (default: report.json beside it)")
+    merging.add_argument("--store", help="also compare the snapshot's stored rows in this store (store v5)")
+    merging.add_argument("--all", action="store_true", help="list every difference")
+    sincing = modes.add_parser("since", help="check a --since snapshot against its base in the store")
+    sincing.add_argument("package")
+    sincing.add_argument("scan")
+    sincing.add_argument("--store", required=True, help="the store holding the --since snapshot")
+    sincing.add_argument("--base-store", help="the store holding the base snapshot (default: --store)")
+    sincing.add_argument("--dirty", action="store_true", help="the --since snapshot is of a dirty tree")
+    sincing.add_argument("--confirmed-flips", help="killed/timedOut flips a solo rerun confirmed, one key a line")
+    sincing.add_argument("--all", action="store_true", help="list every difference")
     arguments = parser.parse_args()
-    return base(arguments)
+    return {"base": base, "merge": merge, "since": since}[arguments.mode](arguments)
 
 
 if __name__ == "__main__":
