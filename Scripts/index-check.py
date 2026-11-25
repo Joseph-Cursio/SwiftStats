@@ -12,7 +12,7 @@ grammar, and accounts for every line. Run it as `python3 -I -B Scripts/index-che
 writes no bytecode cache beside itself.
 
 Modes (later plan steps add `dead`, `signals` and `coverage-names`, and
-`usr`'s checks u7 and u8):
+`usr`'s check u8):
 
 `dump` writes the reader's values for a store as JSON: the recorded
 `reader.json` the unit tests read through `RecordedIndexSource`, and the
@@ -265,6 +265,101 @@ fixture's `reader.json`, its paths restored with `--root-spelling`,
 `--build-spelling` and `--spelling`); system units and the quarantine are
 then not checked.
 
+`usr` also reimplements design section 4 (check u7) over the same read and
+compares it with the index block's `records` (`witness`, `references`),
+`moduleEdges`, `types`, `familyReferences` and `familyTypeReferences` and the
+roll-ups `index.typeCycles`, `index.typesInCycles` and `index.moduleEdges`
+(`--without-u7` skips it):
+  u7  references: occurrences with the reference role, implicit included,
+      in scanned files whose bytes still have the scan's hash, each distinct
+      occurrence once. A reference's container, first that applies: the
+      symbol of its calledBy relation, else of its containedBy relation;
+      else of its baseOf or extendedBy relation; else by position: the
+      file's top-level code record on one of its statement lines, else the
+      innermost record of any role holding (line, UTF-8 column), else the
+      innermost type record, else the file. A container symbol that is a
+      record's primary or secondary USR is that record; any other symbol
+      stays a symbol, in the referencing file's target. A local variable
+      named as container stays a symbol (design 4.1 as written;
+      `--local-containers enclosing` follows its definition's childOf
+      chain to the enclosing declaration instead). A reference to a USR
+      counts for the record holding it as primary or secondary USR, and for
+      the accessor records whose definition's accessorOf names it, by role:
+      read for get, _read/read and unsafeAddress, write for set,
+      _modify/modify, unsafeMutableAddress, willSet and didSet, neither
+      role for all of them (both roles: both sets); a reference to a
+      protocol requirement (a USR some occurrence's overrideOf names, whose
+      package definition's childOf is a protocol, or whose `swift demangle
+      --tree-only` context is a protocol, or a `c:` USR with `(pl)`) also
+      counts, the same two ways, for each symbol of an occurrence carrying
+      that overrideOf relation, via `requirement` (`--requirements package`
+      keeps only requirements of protocols the package declares,
+      `--requirements all` takes every overridden USR, class methods too).
+      It doesn't count when the container is a record of the target
+      record's own family (PRD 6.6 families: a record and its nested
+      records, or a computed property's accessors, as FamilyIndex groups
+      them). Per record with a primary USR: distinct counted containers in
+      a test target (`tests`), in the record's own target (`sameModule`),
+      in another non-test target (`otherModules`), and `testReferrers`: the
+      test containers' names (record keys, symbol names, a type record's
+      name, a path), sorted, the first five, one per container. Null for a
+      record without a primary USR (zeros or false are accepted and
+      counted). `witness`: the record's primary or secondary USR, or an
+      accessor's accessorOf property, is the symbol of an occurrence (any
+      role, implicit included) that has an overrideOf relation.
+      Module edges: `package` edges from a target to another package target
+      with `references` (distinct (file, line, column, USR, roles) of
+      references in the first whose USR has a definition, any kind, in a
+      read unit of the second) and `files` (distinct main files of the
+      first's kept and variant units whose non-system unit dependencies
+      name the second's C99 module), present when either is non-zero;
+      `dependency` edges to a non-system module that is no package target
+      (its C99 name), `references` null, `files` as above.
+      Types: definitions (not implicit) of struct, class, enum and protocol
+      symbols in read units, in scanned unchanged files, placed on the
+      innermost type record holding them when its kind is compatible (actor
+      with class); identity (module, typePath, typeFile), typeFile the file
+      for a private or fileprivate type (or one nested in one, or in a
+      private extension), '' otherwise, local types included. Ownership: a
+      package type owns itself; an extension is owned by the package type
+      its head reference (the occurrence carrying an extendedBy relation
+      naming it) names, by none for an external type; any other symbol by
+      what its definition's childOf chain reaches first. A container's
+      owner: its record's USR's (a record without one: the innermost type
+      record holding it), its symbol's, or the type record's. Per
+      production type (not in a test target): its USR; `tests` distinct
+      test containers referencing it or a member (a USR it owns);
+      `sameModule`/`otherModules` distinct referring types (the container's
+      owner) or, without an owner, containers, outside test targets, by
+      whether the container's target is the type's, the type itself left
+      out. Cycles: an edge A -> B when a container outside test targets
+      owned by production type A references production type B or a member,
+      A != B, neither nested in the other (same module, the inner typePath
+      the outer's plus `.`, the outer's typeFile '' or the inner's: a
+      private type nested in a plain one is file-scoped alone); Tarjan's
+      strongly connected components of two or more, numbered from 1 by
+      size, largest first, then by their first member's identity (a scan numbering them smallest first is named in
+      the output; membership is compared apart).
+      Family references: (from, to, via) for counted references whose
+      container record's family and target record's family are both
+      production families (every member's role production) and differ, via
+      `direct` or `requirement` as above. Family-type references: (family,
+      module, typePath, typeFile) for every reference (family exclusion not
+      applied) from a record of a production family to a package type or a
+      member of it.
+      Roll-ups, as this check reads them: a module scope counts the cycles
+      with a member there, its types in cycles and the edges from it;
+      project production all cycles, all types in cycles and the edges from
+      non-test targets; project tests no cycles and the edges from test
+      targets.
+  Also checked: the index collector's options hold `references:` and
+  `types:` (text differing from design 4's is printed, not failed).
+  Failed: a package type definition no compatible type record holds.
+  Printed, not failed: the reading in force, how many references a local
+  container, a requirement of a protocol the package doesn't declare, or a
+  position decided, and identities several types share (a design gap:
+  local types of one name).
+
 Inputs `usr` trusts:
   - libIndexStore.dylib's C API (as for `dump`), the library being the
     package toolchain's (`swift -print-target-info` in the package:
@@ -282,7 +377,13 @@ Inputs `usr` trusts:
     runs right after the scan);
   - `<build>/swiftstats-build.log` (or `--log`) for the `-module-name`
     evidence of `target not built`;
-  - the toolchain's `swift-demangle` (or `--demangle`).
+  - the toolchain's `swift-demangle` (or `--demangle`), also for u7's
+    protocol-requirement test;
+  - for u7: the scan JSON's `types` (`module`, `name`, `kind`, `range`,
+    `isLocal`, `file`) and records' `role` and `accessorKind` as T0 wrote
+    them, and the sources' top-level statement lines and private or
+    fileprivate types, read by the small tokenizer copied from
+    Scripts/coverage-check.py.
 Not the scan JSON's `index` block or `index.*` roll-ups, which it checks.
 
 Usage:
@@ -311,6 +412,9 @@ Usage:
                                           [--spelling <token>=<path>]...]
                                          [--log <file>] [--own-only]
                                          [--dump <path>] [--all]
+                                         [--without-u7]
+                                         [--local-containers symbol|enclosing]
+                                         [--requirements protocol|package|all]
 
 For `dump`, <store> is the directory holding `v5/units` (for the T1 build,
 `<package>/.swiftstats/index-build/out`). The JSON goes to standard output,
@@ -2866,18 +2970,21 @@ class UnitReader:
             self.units.append(self.read_unit(self.store, name, "store"))
         self.read_quarantine()
 
-    def unit_entry(self, unit, main, records, location):
+    def unit_entry(self, unit, main, records, location, modules=None):
+        # moduleDependencies: the unit's dependencies of kind unit (module,
+        # isSystem), for u7's module edges.
         return {"name": unit["name"], "module": unit["module"], "mainFile": main, "triple": unit["target"],
                 "isSystem": unit["isSystem"], "modified": (unit["modified"]["seconds"], unit["modified"]["nanoseconds"]),
-                "records": records, "location": location}
+                "records": records, "location": location,
+                "moduleDependencies": modules if modules is not None else unit.get("moduleDependencies", [])}
 
     def read_unit(self, store, name, location):
-        unit, records, _ = store.unit(name)
+        unit, records, modules = store.unit(name)
         main = real_path(unit["mainFile"], f"unit {name}'s main file") if not unit["isSystem"] else unit["mainFile"]
         paths = []
         for record, path in records:
             paths.append((record, real_path(path, f"record {record}'s file") if path and not unit["isSystem"] else path))
-        return self.unit_entry(unit, main, paths, location)
+        return self.unit_entry(unit, main, paths, location, modules)
 
     def read_quarantine(self):
         """The units the scan moved out of the store (design 2.3), read
@@ -3627,6 +3734,919 @@ def own_usr_figures(join):
     }
 
 
+# --------------------------------------------------------------------------
+# u7: references, referrers, witnesses, module edges, type ownership, type
+# fan-in, USR type cycles, family references (design section 4)
+#
+# Written from design sections 4.1-4.4, 9.1 and 9.2 and the research's
+# measured facts (indexstore.md sections 5-7, scope-signals.md sections 2-3),
+# not from SwiftStats' code: the container rule, the role routing, the
+# witness and requirement reading, ownership, the type graph and Tarjan's
+# algorithm are this script's own. It reads the same occurrences u1-u6 read
+# (kept and variant units' records, each record once per file).
+
+ROLE_REFERENCE = 1 << 2
+ROLE_READ = 1 << 3
+ROLE_WRITE = 1 << 4
+RELATION_BASE_OF = 1 << 10
+RELATION_OVERRIDE_OF = 1 << 11
+RELATION_CALLED_BY = 1 << 13
+RELATION_EXTENDED_BY = 1 << 14
+RELATION_CONTAINED_BY = 1 << 16
+PROPERTY_LOCAL = 1 << 7
+KIND_ENUM = 5
+KIND_STRUCT = 6
+KIND_CLASS = 7
+KIND_EXTENSION = 9
+NOMINAL_KINDS = {KIND_ENUM, KIND_STRUCT, KIND_CLASS, KIND_PROTOCOL}
+# A TypeRecord's kind and the index kinds it is compatible with (actors are
+# classes in the index, design 4.3).
+TYPE_RECORD_KINDS = {"struct": {KIND_STRUCT}, "class": {KIND_CLASS}, "actor": {KIND_CLASS}, "enum": {KIND_ENUM},
+                     "protocol": {KIND_PROTOCOL}}
+# Design 4.1: which accessors a read and a write reference count for.
+READING_ACCESSORS = {"get", "_read", "read", "unsafeAddress"}
+WRITING_ACCESSORS = {"set", "_modify", "modify", "unsafeMutableAddress", "willSet", "didSet"}
+DESIGN_REFERENCES_RULE = (
+    "distinct containers (calledBy or containedBy; else baseOf or extendedBy; else by position: top-level "
+    "statement lines, innermost record, type, file) of non-family references, implicit included; a property's read "
+    "references count for its reading accessors and write references for its writing ones; a requirement's "
+    "references count for its witnesses (any occurrence with overrideOf); split by the container's target: same "
+    "production target, other production targets, test targets")
+DESIGN_TYPES_RULE = (
+    "package-declared nominal types by USR; an extension's members belong to the package type its head extends, "
+    "none for an external type; fan-in by distinct referring types or free functions per target; cycles over "
+    "production types without type-to-nested-type edges")
+TEST_REFERRERS_KEPT = 5
+
+
+def accessor_owner_key(record):
+    """A property accessor's key without its ` { <accessor> }` part (as the
+    family rule of PRD 6.6 names a computed property's family)."""
+    accessor = record.get("accessorKind")
+    key = record["key"]
+    if accessor:
+        marker = f" {{ {accessor} }}"
+        index = key.rfind(marker)
+        if index >= 0:
+            return key[:index] + key[index + len(marker):]
+    return key
+
+
+def families_of(records):
+    """{record key: family id}: a record with its nested records (followed
+    through parent keys), or a computed property's accessors (an accessor
+    record with no parent, grouped by its key without the accessor part and
+    its file); the id is the root's key, or that property key (PRD 6.6's
+    families, as the existing FamilyIndex names them)."""
+    first = {}
+    for index, record in enumerate(records):
+        first.setdefault(record["key"], index)
+
+    def property_accessor(record):
+        return record["kind"] == "accessor" and not record.get("parentKey")
+
+    groups = defaultdict(list)
+    for index in range(len(records)):
+        current = index
+        seen = {index}
+        while True:
+            parent = records[current].get("parentKey")
+            parent_index = first.get(parent) if parent else None
+            if parent_index is None or parent_index in seen:
+                break
+            seen.add(parent_index)
+            current = parent_index
+        top = records[current]
+        group = ("property", accessor_owner_key(top), top["file"]) if property_accessor(top) else ("record", current)
+        groups[group].append(index)
+    family = {}
+    for indices in groups.values():
+        members = sorted(indices, key=lambda i: (records[i]["key"], range_of(records[i])[0][0]))
+        root = next((i for i in members if not records[i].get("parentKey") and not property_accessor(records[i])), None)
+        identifier = records[root]["key"] if root is not None else accessor_owner_key(records[members[0]])
+        for index in indices:
+            family.setdefault(records[index]["key"], identifier)
+    return family
+
+
+def tarjan(nodes, edges):
+    """Strongly connected components of a directed graph (iterative Tarjan)."""
+    index_of = {}
+    low = {}
+    on_stack = set()
+    stack = []
+    components = []
+    counter = 0
+    for start in nodes:
+        if start in index_of:
+            continue
+        work = [(start, iter(sorted(edges.get(start, ()))))]
+        index_of[start] = low[start] = counter
+        counter += 1
+        stack.append(start)
+        on_stack.add(start)
+        while work:
+            node, successors = work[-1]
+            advanced = False
+            for successor in successors:
+                if successor not in index_of:
+                    index_of[successor] = low[successor] = counter
+                    counter += 1
+                    stack.append(successor)
+                    on_stack.add(successor)
+                    work.append((successor, iter(sorted(edges.get(successor, ())))))
+                    advanced = True
+                    break
+                if successor in on_stack:
+                    low[node] = min(low[node], index_of[successor])
+            if advanced:
+                continue
+            work.pop()
+            if work:
+                low[work[-1][0]] = min(low[work[-1][0]], low[node])
+            if low[node] == index_of[node]:
+                component = []
+                while True:
+                    member = stack.pop()
+                    on_stack.discard(member)
+                    component.append(member)
+                    if member == node:
+                        break
+                components.append(component)
+    return components
+
+
+def requirement_context(tree):
+    """Whether a demangled USR's entity is declared in a protocol (a
+    requirement), through `Static` and accessor nodes."""
+    if tree is None or not tree["children"]:
+        return False
+    entity = tree["children"][0]
+    while entity["kind"] in ("Static",) or entity["kind"] in ACCESSOR_NODES:
+        if not entity["children"]:
+            return False
+        entity = entity["children"][0]
+    return bool(entity["children"]) and entity["children"][0]["kind"] == "Protocol"
+
+
+class Coupling:
+    """Design section 4 reimplemented over the join's read (check u7)."""
+
+    def __init__(self, join, demangler, local_containers="symbol", requirements="protocol"):
+        self.join = join
+        self.package = join.package
+        self.described = join.described
+        self.local_containers = local_containers
+        self.requirement_reading = requirements
+        self.demangler = demangler
+        self.records = self.package.records
+        self.family = families_of(self.records)
+        self.types_t0 = self.package.scan.get("types", [])
+        self.types_by_file = defaultdict(list)
+        for record in self.types_t0:
+            self.types_by_file[record["file"]].append(record)
+        self.notes = Counter()
+        self.file_targets()
+        self.collect()
+        self.place_types()
+        self.index_records()
+        self.find_requirements()
+        self.references()
+        self.edges()
+        self.cycles()
+
+    # ---- targets and files
+
+    def file_targets(self):
+        """Each read unit's main file -> its target name (C99 module -> describe)."""
+        self.target_of_file = {}
+        for unit in self.join.read_units:
+            relative = self.package.relative(unit["mainFile"])
+            target = self.described.by_module.get(unit["module"])
+            if relative is not None and target is not None:
+                self.target_of_file.setdefault(relative, target["name"])
+
+    def target_type(self, target):
+        entry = self.described.targets.get(target) or {}
+        scan_target = self.package.scan_targets.get(target) or {}
+        return entry.get("type") or scan_target.get("type")
+
+    def is_test_target(self, target):
+        return self.target_type(target) == "test"
+
+    # ---- one pass over the occurrences
+
+    def collect(self):
+        package = self.package
+        self.child_of = {}              # usr -> the childOf relation of its definition
+        self.definition_targets = defaultdict(set)
+        self.type_definitions = []      # (path, line, column, usr, kind)
+        self.extension_definitions = {}  # extension usr -> (path, line, column)
+        self.overriding = defaultdict(set)   # overridden usr -> symbols of occurrences overriding it
+        self.overriding_symbols = set()
+        self.extended = {}              # extension usr -> the usr its head names
+        self.reference_list = []        # (path, occurrence), distinct, in unchanged scanned files
+        seen = set()
+        for path in sorted(self.join.occurrences_by_file):
+            target = self.target_of_file.get(path)
+            for occurrence in self.join.occurrences_by_file[path]:
+                identity = (path, occurrence["line"], occurrence["column"], occurrence["usr"], occurrence["roles"],
+                            occurrence["kind"], occurrence["subkind"],
+                            tuple((r["roles"], r["usr"]) for r in occurrence["relations"]))
+                if identity in seen:
+                    continue  # the same occurrence read through another unit's record
+                seen.add(identity)
+                roles = occurrence["roles"]
+                usr = occurrence["usr"]
+                for relation in occurrence["relations"]:
+                    if relation["roles"] & RELATION_OVERRIDE_OF:
+                        self.overriding[relation["usr"]].add(usr)
+                        self.overriding_symbols.add(usr)
+                    if relation["roles"] & RELATION_EXTENDED_BY and roles & ROLE_REFERENCE:
+                        self.extended.setdefault(relation["usr"], usr)
+                if roles & ROLE_DEFINITION:
+                    if target is not None:
+                        self.definition_targets[usr].add(target)
+                    parent = next((r for r in occurrence["relations"] if r["roles"] & RELATION_CHILD_OF), None)
+                    if parent is not None and (usr not in self.child_of or not roles & ROLE_IMPLICIT):
+                        self.child_of[usr] = parent
+                    unchanged = path in package.files and path not in package.changed
+                    if unchanged and occurrence["kind"] in NOMINAL_KINDS and not roles & ROLE_IMPLICIT:
+                        self.type_definitions.append((path, occurrence["line"], occurrence["column"], usr,
+                                                      occurrence["kind"]))
+                    if occurrence["kind"] == KIND_EXTENSION:
+                        self.extension_definitions.setdefault(usr, (path, occurrence["line"], occurrence["column"]))
+                if roles & ROLE_REFERENCE:
+                    if path not in package.files:
+                        self.notes["references in unscanned files (skipped)"] += 1
+                    elif path in package.changed:
+                        self.notes["references in files changed during the scan (skipped)"] += 1
+                    else:
+                        self.reference_list.append((path, occurrence))
+
+    # ---- types (design 4.3)
+
+    def scoped_paths(self, path):
+        if not hasattr(self, "_scoped"):
+            self._scoped = {}
+        if path not in self._scoped:
+            with open(os.path.join(self.package.root, path), encoding="utf-8", errors="replace") as handle:
+                source = handle.read()
+            self._scoped[path] = file_scoped_paths(self.types_by_file[path], source)
+        return self._scoped[path]
+
+    def type_identity(self, record):
+        """(module, typePath, typeFile): typeFile the file for a file-scoped
+        (private or fileprivate) type, '' otherwise (local types included)."""
+        if record.get("isLocal"):
+            return (record["module"], record["name"], "")
+        scoped = scoped_by(record["name"], self.scoped_paths(record["file"]))
+        return (record["module"], record["name"], record["file"] if scoped else "")
+
+    def innermost_type_record(self, path, line, column, kinds=None):
+        holding = [t for t in self.types_by_file.get(path, []) if holds(t, line, column)
+                   and (kinds is None or t["kind"] in kinds)]
+        if not holding:
+            return None
+        return min(holding, key=lambda t: ((-range_of(t)[0][0], -range_of(t)[0][1]), range_of(t)[1], t["name"]))
+
+    def place_types(self):
+        """Package nominal types by USR, placed on the innermost type record
+        holding the definition when its kind is compatible; extensions on the
+        innermost extension record holding theirs."""
+        self.types = {}                 # usr -> {"identity", "record", "production"}
+        self.type_of_record = {}        # id(type record) -> type usr
+        self.extension_of_record = {}   # id(extension record) -> extension usr
+        self.unplaced_types = []
+        for path, line, column, usr, kind in sorted(self.type_definitions):
+            if usr in self.types:
+                continue
+            record = self.innermost_type_record(path, line, column)
+            if record is None or kind not in TYPE_RECORD_KINDS.get(record["kind"], set()):
+                self.unplaced_types.append(f"{path}:{line}:{column} {usr} (innermost type record: "
+                                           f"{record['kind'] + ' ' + record['name'] if record else 'none'})")
+                continue
+            target = record["module"]
+            self.types[usr] = {"identity": self.type_identity(record), "record": record,
+                               "production": not self.is_test_target(target)}
+            self.type_of_record.setdefault(id(record), usr)
+        for usr, (path, line, column) in sorted(self.extension_definitions.items()):
+            if path not in self.package.files or path in self.package.changed:
+                continue
+            record = self.innermost_type_record(path, line, column, {"extension"})
+            if record is not None:
+                self.extension_of_record.setdefault(id(record), usr)
+        self.by_identity = defaultdict(list)
+        for usr, entry in self.types.items():
+            self.by_identity[entry["identity"]].append(usr)
+        self.identity_collisions = {identity: usrs for identity, usrs in self.by_identity.items() if len(usrs) > 1}
+        self.owner_memo = {}
+
+    def owner(self, usr):
+        """A declaration's owning package type (design 4.3): itself for a
+        package nominal type; for an extension, the package type its head
+        names (none for an external type); otherwise its definition's childOf
+        chain followed to the first of those; none at the end of the chain."""
+        if usr in self.owner_memo:
+            return self.owner_memo[usr]
+        chain = []
+        current = usr
+        result = None
+        while current is not None and current not in chain:
+            if current in self.owner_memo:
+                result = self.owner_memo[current]
+                break
+            chain.append(current)
+            if current in self.types:
+                result = current
+                break
+            if current in self.extension_definitions:
+                head = self.extended.get(current)
+                result = head if head in self.types else None
+                break
+            parent = self.child_of.get(current)
+            current = parent["usr"] if parent else None
+        for item in chain:
+            self.owner_memo[item] = result
+        return result
+
+    def type_record_owner(self, record):
+        """The owning type of a type record: the type placed on it, or for an
+        extension record its extension's owner."""
+        if record is None:
+            return None
+        if record["kind"] == "extension":
+            extension = self.extension_of_record.get(id(record))
+            return self.owner(extension) if extension else None
+        return self.type_of_record.get(id(record))
+
+    def nested(self, first, second):
+        """Whether one type is nested in the other, either way: same target,
+        the inner typePath the outer's plus '.', and the outer's typeFile ''
+        or the inner's (design 4.3: a private type nested in a plain one is
+        file-scoped while the outer type isn't)."""
+        def inside(inner, outer):
+            module_i, path_i, file_i = inner
+            module_o, path_o, file_o = outer
+            return (module_i == module_o and file_o in ("", file_i)
+                    and path_i.startswith(path_o + "."))
+        identity_a = self.types[first]["identity"]
+        identity_b = self.types[second]["identity"]
+        return inside(identity_a, identity_b) or inside(identity_b, identity_a)
+
+    # ---- records by USR, accessors, witnesses, requirements (design 4.1)
+
+    def index_records(self):
+        join = self.join
+        self.record_by_usr = {}
+        for key, usr in join.primary.items():
+            self.record_by_usr.setdefault(usr, key)
+        for key, usr in join.secondary.items():
+            self.record_by_usr.setdefault(usr, key)
+        self.accessors_of = defaultdict(list)   # property usr -> [(accessor record key, accessor kind)]
+        self.property_of = {}
+        for record in self.records:
+            key = record["key"]
+            if record["kind"] != "accessor" or key not in join.primary_definitions:
+                continue
+            for relation in join.primary_definitions[key]["relations"]:
+                if relation["roles"] & RELATION_ACCESSOR_OF:
+                    self.accessors_of[relation["usr"]].append((key, record.get("accessorKind") or "get"))
+                    self.property_of.setdefault(key, relation["usr"])
+        self.witness = {}
+        for record in self.records:
+            key = record["key"]
+            if key not in join.primary:
+                self.witness[key] = None
+                continue
+            usrs = {join.primary[key], join.secondary.get(key), self.property_of.get(key)} - {None}
+            self.witness[key] = bool(usrs & self.overriding_symbols)
+
+    def find_requirements(self):
+        """Protocol requirements among the USRs some occurrence overrides: a
+        package definition whose childOf is a protocol, an `s:` USR whose
+        demangled context is a protocol, a `c:` USR naming one with `(pl)`
+        (design 4.1 as written: `--requirements protocol`). `--requirements
+        package` keeps only requirements of protocols the package declares
+        (defined in a read unit); `--requirements all` takes every overridden
+        USR, class methods included."""
+        self.requirements = set()
+        to_demangle = []
+        for usr in sorted(self.overriding):
+            parent = self.child_of.get(usr)
+            if self.requirement_reading == "all" or (parent is not None and parent["kind"] == KIND_PROTOCOL):
+                self.requirements.add(usr)
+            elif self.requirement_reading == "package":
+                continue
+            elif usr.startswith("c:"):
+                if "(pl)" in usr:
+                    self.requirements.add(usr)
+            elif usr.startswith("s:"):
+                to_demangle.append(usr)
+        if to_demangle:
+            trees = parse_trees(demangle_all(to_demangle, self.demangler, "--tree-only"))
+            for usr in to_demangle:
+                if requirement_context(trees.get("$s" + usr[2:])):
+                    self.requirements.add(usr)
+        self.overridden_not_requirements = set(self.overriding) - self.requirements
+
+    # ---- containers and targets
+
+    def statement_lines(self, path):
+        if not hasattr(self, "_statements"):
+            self._statements = {}
+        if path not in self._statements:
+            with open(os.path.join(self.package.root, path), encoding="utf-8", errors="replace") as handle:
+                self._statements[path] = statement_lines(handle.read())
+        return self._statements[path]
+
+    def container(self, path, occurrence):
+        """Design 4.1's container, first that applies: calledBy, else
+        containedBy; else baseOf or extendedBy; else by position. Returns
+        (identity, name, target, owner, record key or None)."""
+        relations = occurrence["relations"]
+        symbol = next((r for r in relations if r["roles"] & RELATION_CALLED_BY), None)
+        symbol = symbol or next((r for r in relations if r["roles"] & RELATION_CONTAINED_BY), None)
+        if symbol is None:
+            symbol = next((r for r in relations if r["roles"] & (RELATION_BASE_OF | RELATION_EXTENDED_BY)), None)
+        file_target = self.target_of_file.get(path)
+        if symbol is not None:
+            usr, name, properties = symbol["usr"], symbol["name"], symbol["properties"]
+            if self.local_containers == "enclosing":
+                walked = set()
+                while usr not in self.record_by_usr and properties & PROPERTY_LOCAL and usr not in walked:
+                    walked.add(usr)
+                    parent = self.child_of.get(usr)
+                    if parent is None:
+                        break
+                    usr, name, properties = parent["usr"], parent["name"], parent["properties"]
+            elif usr not in self.record_by_usr and properties & PROPERTY_LOCAL:
+                self.notes["references whose container is a local symbol that isn't a record (kept as a symbol)"] += 1
+            key = self.record_by_usr.get(usr)
+            if key is not None:
+                return self.record_container(key)
+            return ("symbol", usr), name, file_target, self.owner(usr), None
+        line, column = occurrence["line"], occurrence["column"]
+        holding = []
+        for record in self.package.records_by_file.get(path, []):
+            if holds(record, line, column):
+                if record["kind"] == "topLevel" and line not in self.statement_lines(path):
+                    continue
+                holding.append(record)
+        top_level = [r for r in holding if r["kind"] == "topLevel"]
+        if top_level:
+            self.notes["references placed by position: top-level code"] += 1
+            return self.record_container(innermost(top_level)["key"])
+        if holding:
+            self.notes["references placed by position: innermost record"] += 1
+            return self.record_container(innermost(holding)["key"])
+        record = self.innermost_type_record(path, line, column)
+        if record is not None:
+            self.notes["references placed by position: innermost type"] += 1
+            identity = self.type_identity(record)
+            return ("type",) + identity, record["name"], file_target, self.type_record_owner(record), None
+        self.notes["references placed by position: file"] += 1
+        return ("file", path), path, file_target, None, None
+
+    def record_container(self, key):
+        record = self.package.by_key[key]
+        usr = self.join.primary.get(key)
+        if usr is not None:
+            owner = self.owner(usr)
+        else:
+            start = range_of(record)[0]
+            owner = self.type_record_owner(self.innermost_type_record(record["file"], start[0], start[1]))
+        return ("record", key), key, record.get("module"), owner, key
+
+    def targets(self, usr, roles):
+        """(record key, via) pairs a reference to `usr` counts for (design
+        4.1): the record holding it as primary or secondary USR; a
+        property's accessor records by role; a protocol requirement's
+        witnesses (the same two ways, via `requirement`)."""
+        out = set()
+
+        def direct(symbol, via):
+            key = self.record_by_usr.get(symbol)
+            if key is not None:
+                out.add((key, via))
+            read, write = roles & ROLE_READ, roles & ROLE_WRITE
+            for accessor_key, accessor in self.accessors_of.get(symbol, []):
+                if (not read and not write) or (read and accessor in READING_ACCESSORS) \
+                        or (write and accessor in WRITING_ACCESSORS):
+                    out.add((accessor_key, via))
+
+        direct(usr, "direct")
+        if usr in self.requirements:
+            for witness in sorted(self.overriding[usr]):
+                direct(witness, "requirement")
+        return out
+
+    # ---- the pass over references
+
+    def references(self):
+        join = self.join
+        self.referrers = defaultdict(lambda: {"sameModule": set(), "otherModules": set(), "tests": set()})
+        self.test_names = defaultdict(dict)
+        self.family_references = set()
+        self.family_type_references = set()
+        self.type_referrers = defaultdict(lambda: {"sameModule": set(), "otherModules": set(), "tests": set()})
+        self.type_edges = defaultdict(set)
+        self.class_override_references = 0
+        production_family = {}
+        for record in self.records:
+            role_production = record.get("role") == "production"
+            family = self.family[record["key"]]
+            production_family[family] = production_family.get(family, True) and role_production
+        self.production_family = production_family
+        for path, occurrence in self.reference_list:
+            usr = occurrence["usr"]
+            identity, name, target, owner, container_key = self.container(path, occurrence)
+            container_test = self.is_test_target(target) if target else False
+            if usr in self.overridden_not_requirements:
+                self.class_override_references += 1
+            # Referrers and family references.
+            for key, via in self.targets(usr, occurrence["roles"]):
+                if container_key is not None and self.family[container_key] == self.family[key]:
+                    continue
+                record = self.package.by_key[key]
+                if container_test:
+                    bucket = "tests"
+                    self.test_names[key][identity] = name
+                elif target == record.get("module"):
+                    bucket = "sameModule"
+                else:
+                    bucket = "otherModules"
+                self.referrers[key][bucket].add(identity)
+                if container_key is not None:
+                    source, destination = self.family[container_key], self.family[key]
+                    if production_family.get(source) and production_family.get(destination):
+                        self.family_references.add((source, destination, via))
+            # Types: fan-in, edges, family-type references.
+            referenced = usr if usr in self.types else self.owner(usr)
+            if referenced is None:
+                continue
+            entry = self.types[referenced]
+            if container_key is not None and production_family.get(self.family[container_key]):
+                self.family_type_references.add((self.family[container_key],) + entry["identity"])
+            if entry["production"]:
+                if container_test:
+                    self.type_referrers[referenced]["tests"].add(identity)
+                elif owner != referenced:
+                    referrer = ("type", owner) if owner is not None else identity
+                    bucket = "sameModule" if target == entry["record"]["module"] else "otherModules"
+                    self.type_referrers[referenced][bucket].add(referrer)
+            if (owner is not None and owner != referenced and not container_test and owner in self.types
+                    and self.types[owner]["production"] and entry["production"]
+                    and not self.nested(owner, referenced)):
+                self.type_edges[owner].add(referenced)
+
+    # ---- module edges (design 4.2)
+
+    def edges(self):
+        package_modules = self.described.by_module
+        references = defaultdict(set)
+        for path, occurrence in self.reference_list:
+            source = self.target_of_file.get(path)
+            if source is None:
+                continue
+            for destination in self.definition_targets.get(occurrence["usr"], ()):
+                if destination != source:
+                    references[(source, destination)].add((path, occurrence["line"], occurrence["column"],
+                                                           occurrence["usr"], occurrence["roles"]))
+        files = defaultdict(set)
+        for unit in self.join.read_units:
+            target = package_modules.get(unit["module"])
+            relative = self.package.relative(unit["mainFile"])
+            if target is None or relative is None:
+                continue
+            for dependency in unit.get("moduleDependencies", []):
+                if dependency.get("isSystem"):
+                    continue
+                module = dependency["module"]
+                other = package_modules.get(module)
+                destination = ("package", other["name"]) if other else ("dependency", module)
+                if destination[1] != target["name"]:
+                    files[(target["name"],) + destination].add(relative)
+        self.module_edges = {}
+        for (source, destination), found in references.items():
+            self.module_edges[(source, destination)] = {"kind": "package", "references": len(found), "files": 0}
+        for (source, kind, destination), found in files.items():
+            if kind == "package":
+                edge = self.module_edges.setdefault((source, destination),
+                                                    {"kind": "package", "references": 0, "files": 0})
+                edge["files"] = len(found)
+            else:
+                self.module_edges[(source, destination)] = {"kind": "dependency", "references": None,
+                                                            "files": len(found)}
+
+    # ---- cycles (design 4.3)
+
+    def cycles(self):
+        production = sorted((u for u, e in self.types.items() if e["production"]),
+                            key=lambda u: self.types[u]["identity"])
+        components = [c for c in tarjan(production, self.type_edges) if len(c) >= 2]
+        ordered = []
+        for component in components:
+            members = sorted(self.types[u]["identity"] for u in component)
+            ordered.append(members)
+        ordered.sort(key=lambda members: (-len(members), members[0]))
+        self.cycle_members = ordered
+        self.cycle_of = {}
+        for number, members in enumerate(ordered, start=1):
+            for identity in members:
+                self.cycle_of[identity] = number
+        ascending = sorted(ordered, key=lambda members: (len(members), members[0]))
+        self.cycle_of_ascending = {identity: number for number, members in enumerate(ascending, start=1)
+                                   for identity in members}
+
+    # ---- figures
+
+    def record_figures(self, key):
+        if self.join.primary.get(key) is None:
+            return None
+        found = self.referrers.get(key) or {"sameModule": set(), "otherModules": set(), "tests": set()}
+        names = sorted(self.test_names.get(key, {}).values())
+        return {"sameModule": len(found["sameModule"]), "otherModules": len(found["otherModules"]),
+                "tests": len(found["tests"]), "testReferrers": names[:TEST_REFERRERS_KEPT]}
+
+    def type_rows(self, ascending=False):
+        """{identity: [row, ...]} for production types: one row each, several
+        only where types share an identity (local types of one name)."""
+        numbers = self.cycle_of_ascending if ascending else self.cycle_of
+        rows = defaultdict(list)
+        for usr, entry in self.types.items():
+            if not entry["production"]:
+                continue
+            found = self.type_referrers.get(usr) or {"sameModule": set(), "otherModules": set(), "tests": set()}
+            rows[entry["identity"]].append({"usr": usr, "sameModule": len(found["sameModule"]),
+                                            "otherModules": len(found["otherModules"]), "tests": len(found["tests"]),
+                                            "cycle": numbers.get(entry["identity"])})
+        return {identity: sorted(found, key=lambda row: str(sorted(row.items()))) for identity, found in rows.items()}
+
+    def scope_rollups(self):
+        """index.typeCycles, index.typesInCycles and index.moduleEdges per T0
+        scope, as this check reads them: a module scope counts the cycles with
+        a member in it, its types in cycles and the edges from it; project
+        production all cycles, all types in cycles and the edges from
+        production targets; project tests no cycles and the edges from test
+        targets."""
+        modules = ({r.get("module") for r in self.records} | {t["module"] for t in self.types_t0}
+                   | {source for (source, _) in self.module_edges})
+        out = {}
+        for module in modules:
+            members = [i for c in self.cycle_members for i in c if i[0] == module]
+            cycles = sum(1 for c in self.cycle_members if any(i[0] == module for i in c))
+            edges = sum(1 for (source, _) in self.module_edges if source == module)
+            out[("module", module)] = {"typeCycles": cycles, "typesInCycles": len(members), "moduleEdges": edges}
+        production_edges = sum(1 for (source, _) in self.module_edges if not self.is_test_target(source))
+        test_edges = sum(1 for (source, _) in self.module_edges if self.is_test_target(source))
+        out[("project", "production")] = {"typeCycles": len(self.cycle_members),
+                                          "typesInCycles": sum(len(c) for c in self.cycle_members),
+                                          "moduleEdges": production_edges}
+        out[("project", "tests")] = {"typeCycles": 0, "typesInCycles": 0, "moduleEdges": test_edges}
+        return out
+
+    def figures(self):
+        return {
+            "records": [{"key": r["key"], "witness": self.witness[r["key"]],
+                         "references": self.record_figures(r["key"])}
+                        for r in sorted(self.records, key=lambda r: r["key"])],
+            "moduleEdges": [{"from": s, "to": d, **e} for (s, d), e in sorted(self.module_edges.items())],
+            "types": [{"module": i[0], "typePath": i[1], "typeFile": i[2], **row}
+                      for i, found in sorted(self.type_rows().items()) for row in found],
+            "cycles": [[{"module": i[0], "typePath": i[1], "typeFile": i[2]} for i in members]
+                       for members in self.cycle_members],
+            "familyReferences": [{"from": s, "to": d, "via": v} for s, d, v in sorted(self.family_references)],
+            "familyTypeReferences": [{"family": f, "module": m, "typePath": p, "typeFile": t}
+                                     for f, m, p, t in sorted(self.family_type_references)],
+            "rollups": [{"scope": s, "name": n, "index": v}
+                        for (s, n), v in sorted(self.scope_rollups().items(), key=lambda pair: str(pair[0]))],
+            "notes": dict(sorted(self.notes.items())),
+        }
+
+
+def report_coupling_own(verdict, coupling):
+    verdict.section("u7 references, types, cycles and family references, by this check's own rules (design 4)")
+    verdict.info(f"reading: local containers {coupling.local_containers!r}; requirements "
+                 f"{coupling.requirement_reading!r} ("
+                 + {"protocol": "every protocol requirement expands to its witnesses, design 4.1 as written",
+                    "package": "only requirements of package-declared protocols expand",
+                    "all": "every overridden USR expands, class methods included"}[coupling.requirement_reading]
+                 + ")")
+    external = sorted(u for u in coupling.requirements if u not in coupling.child_of)
+    expanded = Counter(occurrence["usr"] for _, occurrence in coupling.reference_list
+                       if occurrence["usr"] in coupling.requirements)
+    verdict.info(f"requirements referenced: {sum(expanded.values())} references to {len(expanded)} requirements, "
+                 f"{sum(v for u, v in expanded.items() if u in external)} of them to {sum(1 for u in expanded if u in external)} "
+                 f"requirements of protocols the package doesn't declare")
+    verdict.info(f"references {len(coupling.reference_list)} (distinct, unchanged scanned files); "
+                 + ", ".join(f"{k} {v}" for k, v in sorted(coupling.notes.items())))
+    with_usr = [r for r in coupling.records if coupling.join.primary.get(r["key"])]
+    sums = Counter()
+    for record in with_usr:
+        figures = coupling.record_figures(record["key"])
+        for name in ("sameModule", "otherModules", "tests"):
+            sums[name] += bool(figures[name])
+    verdict.info(f"records with a USR {len(with_usr)}: with same-module referrers {sums['sameModule']}, "
+                 f"other-module {sums['otherModules']}, test {sums['tests']}; witnesses "
+                 f"{sum(1 for v in coupling.witness.values() if v)}")
+    verdict.info(f"overridden USRs {len(coupling.overriding)}: expanded as requirements {len(coupling.requirements)}, "
+                 f"not expanded {len(coupling.overridden_not_requirements)} (referenced "
+                 f"{coupling.class_override_references} times)")
+    production = [usr for usr, e in coupling.types.items() if e["production"]]
+    verdict.info(f"package types {len(coupling.types)} ({len(production)} production); extensions placed "
+                 f"{len(coupling.extension_of_record)}; owned extensions "
+                 f"{sum(1 for e in coupling.extension_definitions if coupling.owner(e))} of "
+                 f"{len(coupling.extension_definitions)}")
+    verdict.result("every package nominal type definition is placed on a compatible type record",
+                   not coupling.unplaced_types, f"{len(coupling.unplaced_types)} unplaced")
+    verdict.listing(coupling.unplaced_types)
+    if coupling.identity_collisions:
+        production = sum(1 for usrs in coupling.identity_collisions.values() if coupling.types[usrs[0]]["production"])
+        verdict.info(f"DESIGN GAP: {len(coupling.identity_collisions)} (module, typePath, typeFile) identities name "
+                     f"several package types ({production} in production targets): local types of one name in "
+                     "different functions, which design 4.3 and 9.1's typeIndex key can't tell apart; compared "
+                     "below as several rows under one identity")
+        verdict.listing(f"{identity}: {len(usrs)} types" for identity, usrs in sorted(coupling.identity_collisions.items()))
+    else:
+        verdict.info("no two package types share (module, typePath, typeFile)")
+    verdict.info("module edges: " + ("; ".join(
+        f"{s} -> {d} ({e['kind']}, references {e['references']}, files {e['files']})"
+        for (s, d), e in sorted(coupling.module_edges.items())) or "none"))
+    edges = sum(len(v) for v in coupling.type_edges.values())
+    verdict.info(f"type graph: {edges} edges over production types; cycles {len(coupling.cycle_members)}"
+                 + (": " + "; ".join(f"{n}: " + ", ".join(i[1] + (f' @ {i[2]}' if i[2] else '') for i in members)
+                                     for n, members in enumerate(coupling.cycle_members, start=1))
+                    if coupling.cycle_members else ""))
+    verdict.info(f"family references {len(coupling.family_references)} (direct "
+                 f"{sum(1 for r in coupling.family_references if r[2] == 'direct')}, requirement "
+                 f"{sum(1 for r in coupling.family_references if r[2] == 'requirement')}); family-type references "
+                 f"{len(coupling.family_type_references)}")
+
+
+def compare_coupling(verdict, coupling):
+    package = coupling.package
+    block = package.block
+    if not isinstance(block, dict):
+        verdict.section("u7 comparison skipped: the scan JSON has no index block")
+        verdict.result("the scan JSON has an index block (u7)", False, "absent")
+        return
+    run = next((c for c in package.scan.get("collectors", []) if c.get("name") == "index"), None)
+    verdict.section("u7 the index collector's rule options")
+    options = run.get("options", []) if run else []
+    for name, text in (("references", DESIGN_REFERENCES_RULE), ("types", DESIGN_TYPES_RULE)):
+        given = next((o[len(name) + 2:] for o in options if isinstance(o, str) and o.startswith(name + ": ")), None)
+        verdict.result(f"the index collector's options hold `{name}:`", given is not None,
+                       "absent" if given is None else "")
+        if given is not None and " ".join(given.split()) != " ".join(text.split()):
+            verdict.info(f"`{name}:` differs from design 4's text (a deviation the step should explain): {given!r}")
+
+    verdict.section("u7 referrers and witness per record")
+    rows = lookup(block, "records")
+    theirs = {r.get("key"): r for r in rows} if isinstance(rows, list) else {}
+    differences = []
+    lenient = []
+    for record in sorted(coupling.records, key=lambda r: r["key"]):
+        key = record["key"]
+        row = theirs.get(key)
+        mine = coupling.record_figures(key)
+        witness = coupling.witness[key]
+        if row is None:
+            differences.append(f"{key}: not listed by the scan")
+            continue
+        their_witness = row.get("witness", MISSING)
+        references = row.get("references", MISSING)
+        if not isinstance(references, dict):
+            flat = {name: row.get(column, MISSING) for name, column in (
+                ("sameModule", "referrersSameModule"), ("otherModules", "referrersOtherModules"),
+                ("tests", "referrersTests"), ("testReferrers", "testReferrers"))}
+            references = flat if any(v is not MISSING for v in flat.values()) else references
+        if mine is None:
+            # No primary USR: nothing to count references to. Null (not
+            # collected) is expected; zeros or false are listed apart.
+            empty = references in (MISSING, None) or (isinstance(references, dict) and all(
+                v in (MISSING, None, 0, []) for v in references.values()))
+            if not empty or their_witness not in (MISSING, None, False):
+                differences.append(f"{key} (no USR): scan witness {their_witness if their_witness is not MISSING else 'absent'}, "
+                                   f"references {references if references is not MISSING else 'absent'}; mine none")
+            elif references not in (MISSING, None) or their_witness not in (MISSING, None):
+                lenient.append(key)
+            continue
+        if their_witness is MISSING or bool(their_witness) != witness or their_witness is None:
+            differences.append(f"{key}: witness scan {their_witness if their_witness is not MISSING else 'absent'}, "
+                               f"mine {witness}")
+        if not isinstance(references, dict):
+            differences.append(f"{key}: no references in the scan (mine {mine})")
+            continue
+        given = {name: references.get(name, MISSING) for name in mine}
+        if isinstance(given["testReferrers"], list):
+            given["testReferrers"] = list(given["testReferrers"])
+        if given != mine:
+            differences.append(f"{key}: scan {{" + ", ".join(
+                f"{k}: {'absent' if v is MISSING else v}" for k, v in given.items()) + f"}}, mine {mine}")
+    verdict.result("referrers (same module, other modules, tests, first five test referrers) and witness of every "
+                   "record", rows is not MISSING and not differences,
+                   f"{len(theirs)} listed; {len(differences)} differ" if rows is not MISSING else "absent")
+    verdict.listing(differences)
+    if lenient:
+        verdict.info(f"{len(lenient)} records without a USR carry zeros or false rather than null (accepted, noted)")
+
+    verdict.section("u7 module edges")
+    rows = lookup(block, "moduleEdges", "edges")
+    mine = {(s, d): (e["kind"], e["references"], e["files"]) for (s, d), e in coupling.module_edges.items()}
+    their_edges = {}
+    for row in flattened(rows) if isinstance(rows, list) else []:
+        source = row.get("from", row.get("fromModule"))
+        destination = row.get("to", row.get("toModule"))
+        their_edges[(source, destination)] = (row.get("kind"), row.get("references"), row.get("files"))
+    verdict.result("module edges (from, to, kind, references, importing files)",
+                   rows is not MISSING and mine == their_edges,
+                   f"{len(mine)} mine, {len(their_edges)} scan" if rows is not MISSING else "absent")
+    verdict.listing(f"{edge}: scan {their_edges.get(edge, 'absent')}, mine {mine.get(edge, 'absent')}"
+                    for edge in sorted(set(mine) | set(their_edges), key=str) if mine.get(edge) != their_edges.get(edge))
+
+    verdict.section("u7 types: USR, fan-in, cycles")
+    rows = lookup(block, "types", "typeIndex")
+    mine = coupling.type_rows()
+    their_types = defaultdict(list)
+    for row in rows if isinstance(rows, list) else []:
+        identity = (row.get("module"), row.get("typePath", row.get("name")), row.get("typeFile") or "")
+        references = row.get("references") if isinstance(row.get("references"), dict) else row.get("referrers")
+        references = references if isinstance(references, dict) else {}
+        their_types[identity].append({
+            "usr": row.get("usr"),
+            "sameModule": references.get("sameModule", row.get("referrersSameModule")),
+            "otherModules": references.get("otherModules", row.get("referrersOtherModules")),
+            "tests": references.get("tests", row.get("referrersTests")),
+            "cycle": row.get("cycle")})
+    their_types = {identity: sorted(found, key=lambda row: str(sorted(row.items())))
+                   for identity, found in their_types.items()}
+    differences = []
+    for identity in sorted(set(mine) | set(their_types)):
+        own, given = mine.get(identity), their_types.get(identity)
+        if own != given:
+            differences.append(f"{identity}: scan {given if given else 'absent'}, mine {own if own else 'absent'}")
+    verdict.result("production types (identity, USR, same-module, other-module and test referrers, cycle number)",
+                   rows is not MISSING and not differences,
+                   f"{len(mine)} mine, {len(their_types)} scan" if rows is not MISSING else "absent")
+    verdict.listing(differences)
+    if differences and their_types:
+        if coupling.type_rows(ascending=True) == their_types:
+            verdict.info("the scan's types match if cycles are numbered by ascending size (design: by size, then "
+                         "first member; this check numbers the largest first)")
+        partition_mine = sorted(tuple(members) for members in coupling.cycle_members)
+        groups = defaultdict(list)
+        for identity, found in their_types.items():
+            for row in found:
+                if row.get("cycle") is not None:
+                    groups[row["cycle"]].append(identity)
+        partition_theirs = sorted(tuple(sorted(members)) for members in groups.values())
+        verdict.info("cycle membership (ignoring numbers) "
+                     + ("agrees" if partition_mine == partition_theirs else
+                        f"differs: mine {partition_mine}, scan {partition_theirs}"))
+
+    verdict.section("u7 family references and family-type references")
+    rows = lookup(block, "familyReferences")
+    their_families = {(r.get("from", r.get("fromFamily")), r.get("to", r.get("toFamily")), r.get("via"))
+                      for r in flattened(rows)} if isinstance(rows, list) else set()
+    mine = coupling.family_references
+    verdict.result("family references (from, to, via)", rows is not MISSING and mine == their_families,
+                   f"{len(mine)} mine, {len(their_families)} scan" if rows is not MISSING else "absent")
+    verdict.listing(f"only mine: {item}" for item in sorted(mine - their_families, key=str))
+    verdict.listing(f"only the scan's: {item}" for item in sorted(their_families - mine, key=str))
+    rows = lookup(block, "familyTypeReferences")
+    their_type_refs = {(r.get("family"), r.get("module"), r.get("typePath", r.get("name")), r.get("typeFile") or "")
+                       for r in flattened(rows)} if isinstance(rows, list) else set()
+    mine = coupling.family_type_references
+    verdict.result("family-type references (family, module, typePath, typeFile)",
+                   rows is not MISSING and mine == their_type_refs,
+                   f"{len(mine)} mine, {len(their_type_refs)} scan" if rows is not MISSING else "absent")
+    verdict.listing(f"only mine: {item}" for item in sorted(mine - their_type_refs, key=str))
+    verdict.listing(f"only the scan's: {item}" for item in sorted(their_type_refs - mine, key=str))
+
+    verdict.section("u7 roll-ups index.typeCycles, index.typesInCycles, index.moduleEdges")
+    own_rollups = coupling.scope_rollups()
+    differences = []
+    lacking = []
+    for entry in package.scan.get("rollups", []):
+        scope = (entry.get("scope"), entry.get("name"))
+        index = entry.get("index")
+        if not isinstance(index, dict) or not all(name in index for name in ("typeCycles", "typesInCycles",
+                                                                             "moduleEdges")):
+            lacking.append(f"{scope[0]} {scope[1]}")
+            continue
+        own = own_rollups.get(scope, {"typeCycles": 0, "typesInCycles": 0, "moduleEdges": 0})
+        given = {name: index[name] for name in own}
+        if given != own:
+            differences.append(f"{scope[0]} {scope[1]}: scan {given}, mine {own}")
+    verdict.result("every roll-up scope has index.typeCycles, index.typesInCycles and index.moduleEdges",
+                   not lacking, f"lacking in {', '.join(lacking)}" if lacking else "")
+    verdict.result("roll-ups equal this check's reading (module: cycles with a member there, its types in cycles, "
+                   "edges from it; project production: all; project tests: edges from test targets)",
+                   not differences, f"{len(package.scan.get('rollups', []))} scopes")
+    verdict.listing(differences)
+
+
 def usr_mode(arguments):
     try:
         package = UsrPackage(arguments)
@@ -3692,12 +4712,21 @@ def usr_mode(arguments):
             if problem:
                 problems_u6.append(f"{key}{' (secondary)' if secondary else ''}: {problem} [{demangled[usr]}]")
     report_own(verdict, join, problems_u3, problems_u6, objc_skipped, len(checked))
+    coupling = None
+    if not arguments.without_u7:
+        coupling = Coupling(join, demangler, arguments.local_containers, arguments.requirements)
+        report_coupling_own(verdict, coupling)
     if arguments.dump:
-        write_json(arguments.dump, own_usr_figures(join))
+        figures = own_usr_figures(join)
+        if coupling is not None:
+            figures["coupling"] = coupling.figures()
+        write_json(arguments.dump, figures)
     if arguments.own_only:
         verdict.section("comparison with the scan JSON skipped (--own-only)")
     else:
         compare_index(verdict, join, problems_u3, problems_u6)
+        if coupling is not None:
+            compare_coupling(verdict, coupling)
     print("\nRESULT: " + ("FAIL" if verdict.failed else "PASS"))
     return 1 if verdict.failed else 0
 
@@ -3736,7 +4765,7 @@ def main():
                           help="print this check's figures without comparing them with the scan JSON")
     building.add_argument("--dump", help="write this check's figures as JSON")
     building.add_argument("--all", action="store_true", help="list every difference and unaccounted line")
-    joining = modes.add_parser("usr", help="check the scan's units, USRs, reasons and lists (u1-u6)")
+    joining = modes.add_parser("usr", help="check the scan's units, USRs, reasons, lists and coupling (u1-u7)")
     joining.add_argument("package", help="the scanned package (its .swiftstats/index-build holds the store)")
     joining.add_argument("scan", help="`swiftstats scan --index --format json` of <package>")
     joining.add_argument("--swift", default="swift",
@@ -3755,6 +4784,15 @@ def main():
                          help="print this check's figures and u3-u6 without comparing with the scan JSON")
     joining.add_argument("--dump", help="write this check's figures as JSON")
     joining.add_argument("--all", action="store_true", help="list every difference")
+    joining.add_argument("--without-u7", action="store_true",
+                         help="skip u7 (references, edges, types, cycles, family references)")
+    joining.add_argument("--local-containers", choices=("symbol", "enclosing"), default="symbol",
+                         help="u7: a local variable named as a reference's container is kept as a symbol (design "
+                              "4.1 as written, the default) or replaced by its enclosing declaration")
+    joining.add_argument("--requirements", choices=("protocol", "package", "all"), default="protocol",
+                         help="u7: which overridden USRs' references count for their witnesses: protocol "
+                              "requirements (design 4.1 as written, the default), only those of protocols the "
+                              "package declares, or every overridden USR (class methods too)")
     arguments = parser.parse_args()
     return {"dump": dump_mode, "build-lines": build_lines_mode, "build": build_mode,
             "usr": usr_mode}[arguments.mode](arguments)

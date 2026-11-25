@@ -108,11 +108,15 @@ struct USRJoin {
     let joinedCount: Int
     /// How many distinct implicit function-like definitions were skipped.
     let implicitCount: Int
+    /// Each unit-read file's occurrences, as `occurrences(in:)` files
+    /// them, kept for the coupling so it doesn't file them again.
+    let filedOccurrences: [String: [IndexOccurrenceFact]]
 
     /// The join of `snapshot`'s definitions to `records`, those of `files`
     /// (the scanned files) that aren't among `changedFiles`.
     init(snapshot: IndexSnapshot, records: [FunctionRecord], files: Set<String>, changedFiles: Set<String>) {
-        var assignments = Self.assignments(of: snapshot, to: records, files: files.subtracting(changedFiles))
+        filedOccurrences = Self.occurrences(in: snapshot)
+        var assignments = Self.assignments(of: filedOccurrences, to: records, files: files.subtracting(changedFiles))
         let settled = Self.settled(assignments.primaries)
         primary = settled.primary
         primaryDefinitions = settled.definitions
@@ -153,18 +157,19 @@ struct USRJoin {
         return occurrences
     }
 
-    /// What `snapshot`'s definitions give `records`: each definition met
+    /// What the definitions among `filed` (each file's occurrences, as
+    /// `occurrences(in:)` files them) give `records`: each definition met
     /// once (variant units can repeat one), its position noted, and the
     /// function-like ones in `joinable` files (scanned, unchanged)
     /// assigned or set aside.
     private static func assignments(
-        of snapshot: IndexSnapshot,
+        of filed: [String: [IndexOccurrenceFact]],
         to records: [FunctionRecord],
         files joinable: Set<String>
     ) -> Assignments {
         let byFile = Dictionary(grouping: records, by: \.file)
         var assignments = Assignments()
-        for (file, occurrences) in occurrences(in: snapshot).sorted(by: { $0.key < $1.key }) {
+        for (file, occurrences) in filed.sorted(by: { $0.key < $1.key }) {
             var seen: Set<[String]> = []
             for occurrence in occurrences where occurrence.roles & IndexSymbolKind.Role.definition != 0 {
                 let identity = [
@@ -253,7 +258,7 @@ struct USRJoin {
 
     /// The innermost of `records` whose range holds `position`: the one
     /// starting last, then ending first, then first by key.
-    private static func innermost(of records: [FunctionRecord], holding position: SourcePosition) -> FunctionRecord? {
+    static func innermost(of records: [FunctionRecord], holding position: SourcePosition) -> FunctionRecord? {
         records.filter { $0.range.contains(position) }.min { lhs, rhs in
             if lhs.range.start != rhs.range.start {
                 return rhs.range.start < lhs.range.start

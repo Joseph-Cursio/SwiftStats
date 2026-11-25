@@ -7,8 +7,11 @@
 //  the listed units, the library-product targets it compiled, every
 //  record's USRs or the reason it has none, the definitions the join
 //  counted, the disagreements, the definitions with no record, the
-//  collisions the USR tells apart, and every scanned file hashed after the
-//  build. Absent when the collector didn't run.
+//  collisions the USR tells apart, the coupling the references give
+//  (design §4: module edges, production types with their fan-in and USR
+//  cycles, family references and family-type references), and every
+//  scanned file hashed after the build. Absent when the collector didn't
+//  run.
 //
 
 /// A snapshot's index results, mapped to records.
@@ -28,6 +31,16 @@ public struct IndexReport: Codable, Hashable, Sendable {
     public let withoutRecord: [USRListing]
     /// The records of key collisions their USRs tell apart, by key.
     public let collisions: [USRListing]
+    /// The package targets' module edges, by source, then destination.
+    public let moduleEdges: [IndexModuleEdge]
+    /// The production types, by module, type path, file, then USR.
+    public let types: [IndexTypeRow]
+    /// The production families' references to each other, by source,
+    /// destination, then how.
+    public let familyReferences: [IndexFamilyReference]
+    /// The production families' references to package types, by family,
+    /// then the type's module, path and file.
+    public let familyTypeReferences: [IndexFamilyTypeReference]
     /// Every scanned file, hashed after the build, by path.
     public let files: [IndexFileHash]
 
@@ -40,6 +53,10 @@ public struct IndexReport: Codable, Hashable, Sendable {
         disagreements: [USRListing],
         withoutRecord: [USRListing],
         collisions: [USRListing],
+        moduleEdges: [IndexModuleEdge],
+        types: [IndexTypeRow],
+        familyReferences: [IndexFamilyReference],
+        familyTypeReferences: [IndexFamilyTypeReference],
         files: [IndexFileHash]
     ) {
         self.store = store
@@ -49,6 +66,10 @@ public struct IndexReport: Codable, Hashable, Sendable {
         self.disagreements = disagreements
         self.withoutRecord = withoutRecord
         self.collisions = collisions
+        self.moduleEdges = moduleEdges
+        self.types = types
+        self.familyReferences = familyReferences
+        self.familyTypeReferences = familyTypeReferences
         self.files = files
     }
 }

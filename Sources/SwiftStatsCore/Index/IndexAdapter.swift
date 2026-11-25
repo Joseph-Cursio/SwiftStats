@@ -10,9 +10,10 @@
 //  `libIndexStore.dylib` and the store, opens it through the scanner's
 //  factory, walks it (`IndexWalk`, classing units with `UnitFilter`),
 //  moves stale and other-module units out of the store, joins the
-//  definitions to the records (`USRJoin`), and gives each record without a
-//  USR its reason (`USRReason`). Nothing is partial: anything that doesn't
-//  read fails the collector, its reason free of absolute paths.
+//  definitions to the records (`USRJoin`), gives each record without a
+//  USR its reason (`USRReason`), and counts the references, module edges,
+//  types and cycles (`IndexCoupling`). Nothing is partial: anything that
+//  doesn't read fails the collector, its reason free of absolute paths.
 //
 
 import Foundation
@@ -33,8 +34,17 @@ enum IndexAdapter {
         let root: URL
         /// The scan's records, in its record order.
         let records: [FunctionRecord]
+        /// The scan's type records.
+        let types: [TypeRecord]
         /// The scanned files.
         let files: [FileRecord]
+        /// The scanned targets.
+        let targets: [TargetSummary]
+        /// Each file's top-level statement lines, by path.
+        let topLevelLines: [String: Set<Int>]
+        /// Each file's `private` and `fileprivate` types, as dotted paths,
+        /// by path.
+        let fileScopedTypes: [String: Set<String>]
         /// The scan's warnings, which name its key collisions.
         let warnings: [ScanWarning]
     }
@@ -53,7 +63,9 @@ enum IndexAdapter {
         "reader: indexstore-db IndexStore " + IndexStoreReader.pinned.prefix(shortPinLength),
         "libIndexStore: toolchain",
         "units: " + UnitFilter.rule,
-        "usr: " + USRJoin.rule
+        "usr: " + USRJoin.rule,
+        "references: " + ReferenceGraph.rule,
+        "types: " + TypeOwnership.rule
     ]
     /// Why the collector fails when the store holds none of the package's
     /// units while the scan has records in targets the build compiles.
@@ -137,6 +149,13 @@ enum IndexAdapter {
         let changed = Set(products.changedFiles)
         let files = Set(scan.files.map(\.path))
         let join = USRJoin(snapshot: snapshot, records: scan.records, files: files, changedFiles: changed)
+        let coupling = IndexCoupling(
+            snapshot: snapshot,
+            join: join,
+            scan: scan,
+            joinable: files.subtracting(changed),
+            packageTargets: Set(filter.modules.values)
+        )
         let evidence = USRReason.Evidence(
             pluginTargets: plugins,
             changedFiles: changed,
@@ -149,24 +168,45 @@ enum IndexAdapter {
         return IndexReport(
             store: summary(of: snapshot, quarantined: quarantined.count),
             libraryModules: libraryModules(products.package, snapshot: snapshot),
-            records: scan.records.map { record in
-                IndexRecordUSR(
-                    key: record.key,
-                    usr: join.primary[record.key],
-                    usrAccessor: join.secondary[record.key],
-                    reason: join.primary[record.key] == nil ? USRReason.first(for: record, evidence: evidence) : nil
-                )
-            },
-            definitions: IndexDefinitions(
-                joined: join.joinedCount,
-                implicit: join.implicitCount,
-                secondary: join.secondary.count,
-                objc: join.primary.values.count { $0.hasPrefix(objcPrefix) }
-            ),
+            records: recordUSRs(scan.records, join: join, coupling: coupling, evidence: evidence),
+            definitions: definitions(of: join),
             disagreements: join.disagreements,
             withoutRecord: join.withoutRecord,
             collisions: join.collisions(records: scan.records, warnings: scan.warnings),
+            moduleEdges: coupling.moduleEdges,
+            types: coupling.types,
+            familyReferences: coupling.familyReferences,
+            familyTypeReferences: coupling.familyTypeReferences,
             files: scan.files.map(\.path).sorted().map { IndexFileHash(path: $0, sha256: products.hashes[$0]) }
+        )
+    }
+
+    /// Each of `records`' USRs from `join`, or the reason from `evidence`
+    /// that it has none, with its coupling from `coupling`.
+    private static func recordUSRs(
+        _ records: [FunctionRecord],
+        join: USRJoin,
+        coupling: IndexCoupling,
+        evidence: USRReason.Evidence
+    ) -> [IndexRecordUSR] {
+        records.map { record in
+            IndexRecordUSR(
+                key: record.key,
+                usr: join.primary[record.key],
+                usrAccessor: join.secondary[record.key],
+                reason: join.primary[record.key] == nil ? USRReason.first(for: record, evidence: evidence) : nil,
+                coupling: coupling.records[record.key]
+            )
+        }
+    }
+
+    /// What `join` counted.
+    private static func definitions(of join: USRJoin) -> IndexDefinitions {
+        IndexDefinitions(
+            joined: join.joinedCount,
+            implicit: join.implicitCount,
+            secondary: join.secondary.count,
+            objc: join.primary.values.count { $0.hasPrefix(objcPrefix) }
         )
     }
 

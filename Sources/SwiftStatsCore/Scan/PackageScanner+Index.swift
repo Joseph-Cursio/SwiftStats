@@ -14,9 +14,10 @@
 //  findings (`BuildReport`). A collector reading the build is skipped
 //  `needs the build: …` when the build didn't run, and fails when the
 //  build wrote no index store. Once the build ran, the `index` collector
-//  reads its store and joins its definitions to the records
-//  (`IndexAdapter`); until the outskirts collector is built, `periphery`
-//  gives its placeholder once its own settings let it run (design §13).
+//  reads its store, joins its definitions to the records and counts its
+//  references and coupling (`IndexAdapter`); until the outskirts
+//  collector is built, `periphery` gives its placeholder once its own
+//  settings let it run (design §13).
 //
 
 import Foundation
@@ -244,7 +245,11 @@ extension PackageScanner {
                 scan: IndexAdapter.Scan(
                     root: root,
                     records: measured.records.sorted(by: Self.recordOrder),
+                    types: measured.types,
                     files: measured.files,
+                    targets: targets,
+                    topLevelLines: measured.topLevelLines,
+                    fileScopedTypes: measured.fileScopedTypes,
                     warnings: measured.warnings
                 )
             )

@@ -23,8 +23,9 @@ public struct ScanReport: Codable, Hashable, Sendable {
     /// scan lists and whose results are mapped to records (M6); 9 adds the
     /// T1 group's collectors, `build`, `index` and `periphery`, whose
     /// statuses every scan lists, the build's type-check timings mapped to
-    /// records and its warnings as `swiftc` findings, and the index's USRs
-    /// on records, rolled up for every scope (M7).
+    /// records and its warnings as `swiftc` findings, and the index's USRs,
+    /// referrers and coupling (module edges, types, USR type cycles, family
+    /// references), rolled up for every scope (M7).
     public static let currentSchemaVersion = 9
 
     /// The output format version (`currentSchemaVersion` when written).
@@ -83,8 +84,10 @@ public struct ScanReport: Codable, Hashable, Sendable {
     public internal(set) var build: BuildReport?
     /// The `index` collector's results from the T1 build's index store:
     /// its units, the records' USRs and the reasons some have none, the
-    /// USR lists and the files hashed after the build; absent when the
-    /// collector didn't run (M7, design §2, §3, §9.2).
+    /// USR lists, the records' referrers, the module edges, the types with
+    /// their fan-in and cycles, the family references and the files hashed
+    /// after the build; absent when the collector didn't run (M7, design
+    /// §2–§4, §9.2).
     public internal(set) var index: IndexReport?
     /// What the history collector found; absent when it didn't run (PRD §7.13).
     public internal(set) var history: HistoryReport?
