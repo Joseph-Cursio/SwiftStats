@@ -2,7 +2,11 @@
 //  MarkdownSignals+Index.swift
 //  SwiftStatsCore
 //
-//  The input columns of M7's signal tables (design §8, §10.1): for dead
+//  The input columns of M7's signal tables (design §8, §10.1): for hidden
+//  coupling, after the pair's first family and its score (its support),
+//  the partner family and where it is, each family's changes in the
+//  window, the confidence (support of the less-changed family's changes)
+//  and whether the two share a file or a module; for dead
 //  but tested, after the function and its score (its mutants that ran),
 //  its mutants killed of scored, with its run's coverage setting when off,
 //  its killing tests, the declaration outskirts reports unused that covers
@@ -10,9 +14,8 @@
 //  test-only production code, after the function and its score, how many
 //  test containers reference it with the first three named, then its
 //  lines covered and function score, a dash when the snapshot holds no
-//  coverage or the function has no mutants. Hidden coupling has none
-//  until its plan step adds them. A cell whose payload is absent shows a
-//  dash.
+//  coverage or the function has no mutants. A cell whose payload is
+//  absent shows a dash.
 //
 
 extension MarkdownSignals {
@@ -26,6 +29,17 @@ extension MarkdownSignals {
             ("Test referrers", references(referrers)),
             ("Lines covered", coverage { tally($0.lines) }),
             ("Function score", mutation { functionScore($0.functionScore) })
+        ]
+    }
+
+    /// Hidden coupling: the partner, each family's changes, the confidence
+    /// and whether the families share a file or a module.
+    static var hiddenCouplingColumns: [Column] {
+        [
+            ("Partner", coupling { display($0.partner, file: $0.partnerFile) }),
+            ("Changes", coupling { "\($0.changesA)/\($0.changesB)" }),
+            ("Confidence", coupling(confidence)),
+            ("Same file / module", coupling { "\($0.sameFile ? "yes" : "no") / \($0.sameModule ? "yes" : "no")" })
         ]
     }
 
@@ -44,15 +58,28 @@ extension MarkdownSignals {
     /// The input columns of M7's signal `signal`.
     static func indexColumns(for signal: SignalName) -> [Column] {
         switch signal {
+        case .hiddenCoupling:
+            hiddenCouplingColumns
+
         case .deadButTested:
             deadButTestedColumns
 
-        case .testOnlyProduction:
-            testOnlyColumns
-
         default:
-            []
+            testOnlyColumns
         }
+    }
+
+    /// A pair's support of the less-changed family's changes, with the
+    /// percentage.
+    private static func confidence(_ coupling: SignalItem.Coupling) -> String {
+        let shares = coupling.confidence
+        let percent = CoverageRollup.Share.percent(covered: shares.support, total: shares.smaller)
+        return "\(shares.support)/\(shares.smaller)" + (percent.map { " (\(MarkdownNumber.value($0))%)" } ?? "")
+    }
+
+    /// A cell reading an item's coupling pair with `cell`.
+    private static func coupling(_ cell: @escaping (SignalItem.Coupling) -> String) -> (SignalItem) -> String {
+        { item in item.coupling.map(cell) ?? "—" }
     }
 
     /// A function's mutants killed of scored (its function score), with

@@ -7,9 +7,11 @@
 //  counted as distinct test containers with the first five named, and its
 //  module; for dead but tested, the unused declaration outskirts' run with
 //  tests not counted as roots reports covering the function, by which
-//  rule, and whether the run with tests as roots covers it too; and the
+//  rule, and whether the run with tests as roots covers it too; the
 //  coverage setting of the mutation run a dead but tested function's
-//  mutants come from.
+//  mutants come from; and for hidden coupling, the pair's partner family,
+//  how often each family and both changed in the window, and whether the
+//  two share a file or a module.
 //
 
 public extension SignalItem {
@@ -47,6 +49,39 @@ public extension SignalItem {
         /// Whether the `roots` run covers the function too: no test
         /// references it statically either, so tests reach it dynamically.
         public let deadWithTestsAsRoots: Bool
+    }
+
+    /// A pair of families changed together, for hidden coupling: the
+    /// item's subject is the pair's first family, in key order, and this
+    /// names its partner.
+    struct Coupling: Codable, Hashable, Sendable {
+        /// The partner family's key.
+        public let partner: String
+        /// Its file.
+        public let partnerFile: String
+        /// Commits in the window changing both families.
+        public let support: Int
+        /// Commits in the window changing the subject's family.
+        public let changesA: Int
+        /// Commits in the window changing the partner's.
+        public let changesB: Int
+        /// Support of the less-changed family's changes.
+        public let confidence: CouplingConfidence
+        /// The two families' targets, the subject's first.
+        public let modules: [String]
+        /// Whether the two families are in one file.
+        public let sameFile: Bool
+        /// Whether they are in one target.
+        public let sameModule: Bool
+    }
+
+    /// A coupling pair's confidence as its two integers, so a reader can
+    /// divide: support of the less-changed family's changes.
+    struct CouplingConfidence: Codable, Hashable, Sendable {
+        /// Commits in the window changing both families.
+        public let support: Int
+        /// Commits in the window changing the less-changed family.
+        public let smaller: Int
     }
 
     /// Whether a function's mutation run had coverage on: SwiftMutator

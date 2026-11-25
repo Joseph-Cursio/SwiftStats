@@ -9,7 +9,8 @@
 //  `.swiftstats/index-build` and `@DEP@` for an IndexDep beside it. The
 //  toolchain holds an empty `libIndexStore.dylib`, which only the locator
 //  looks for. A scan can change the build's scenario, the copy before the
-//  scan and the recorded source the factory gives. A test can also run
+//  scan, the recorded source the factory gives and where history is read
+//  (skipped unless a test gives a source). A test can also run
 //  the T1 group alone, as a scan would, to read what a snapshot doesn't
 //  keep (step 6a). The scan runs on a thread of its own (`ThreadRun`), so
 //  a test awaiting it holds no pool thread for its seconds of work.
@@ -37,6 +38,8 @@ struct IndexFixtureScan {
     /// The source the index reads, made from the recorded dump with the
     /// copy's paths put back.
     var source: @Sendable (RecordedIndexSource) throws -> any IndexStoreSource = \.self
+    /// Where the scan reads history in the copy, after `prepare`.
+    var history: @Sendable (BuildFixture) throws -> HistorySource = { _ in .skipped("test") }
 
     /// A scan of the recorded build and dump.
     init() throws {
@@ -157,7 +160,7 @@ struct IndexFixtureScan {
                 git: SnapshotHarness.git(commit: "c1"),
                 toolchain: SnapshotHarness.toolchain,
                 date: SnapshotHarness.date,
-                history: .skipped("test"),
+                history: try history(fixture),
                 tiers: RequestedTiers(index: true)
             )
         return IndexGroupHarness.Outcome(snapshot: snapshot, toolchain: toolchain, root: root)

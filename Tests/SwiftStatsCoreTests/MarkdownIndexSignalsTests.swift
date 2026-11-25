@@ -10,7 +10,10 @@
 //  tested shows the mutants killed of scored (the run's coverage setting
 //  when off), the killing tests, the covering declaration with its rule
 //  and whether tests as roots leave the function dead too, on hand-made
-//  items.
+//  items. Hidden coupling shows, after the pair's first family and its
+//  support, the partner with its place, both families' changes, the
+//  confidence with its percentage and whether the two share a file and a
+//  module, on hand-made items.
 //
 
 import Foundation
@@ -179,5 +182,40 @@ struct MarkdownIndexSignalsTests {
             == "| 1 | \(place) | 2 | 2 | — | — |")
         #expect(try Self.row(score: 2, references: unnamed, coverage: SignalItem.Coverage(lines: nil, regions: nil))
             == "| 1 | \(place) | 2 | 2 | — | — |")
+    }
+
+    @Test("""
+        hidden coupling heads its subject column Family and shows the partner, both families' changes, the \
+        confidence with its percentage, and whether the two share a file and a module; a dash without a payload
+        """)
+    func hiddenCoupling() {
+        let coupling = SignalItem.Coupling(
+            partner: "Other::func g() -> Int",
+            partnerFile: "Sources/Other/G.swift",
+            support: 3,
+            changesA: 4,
+            changesB: 9,
+            confidence: SignalItem.CouplingConfidence(support: 3, smaller: 4),
+            modules: ["Lib", "Other"],
+            sameFile: false,
+            sameModule: false
+        )
+        let rows = [coupling, nil].map { payload in
+            SignalItem(
+                SignalItem.Draft(subject: Self.subject, file: Self.file, line: 3, coupling: payload),
+                rank: 1,
+                score: 3,
+                member: true
+            )
+        }
+        let lines = Self.table(SignalResult(name: .hiddenCoupling, leftOut: nil, rule: "", candidates: 2, items: rows))
+        let place = "`func f(_: Int) -> Int` (Sources/Lib/F.swift:3)"
+
+        #expect(lines == [
+            "| # | Family | Score | Partner | Changes | Confidence | Same file / module |",
+            "| --- | --- | --- | --- | --- | --- | --- |",
+            "| 1 | \(place) | 3 | `func g() -> Int` (Sources/Other/G.swift) | 4/9 | 3/4 (75%) | no / no |",
+            "| 1 | \(place) | 3 | — | — | — | — |"
+        ])
     }
 }

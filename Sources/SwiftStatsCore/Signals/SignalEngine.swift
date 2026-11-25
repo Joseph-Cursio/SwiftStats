@@ -24,7 +24,6 @@ public enum SignalEngine {
         var results: [SignalResult] = []
         for name in SignalName.reportOrder {
             let reason = leftOut(name.requirements, in: snapshot) ?? leftOut(name, comparing: inputs)
-                ?? unbuilt(name)
             let computed = reason == nil
                 ? computation(name, inputs: inputs, thresholds: thresholds) { families }
                 : nil
@@ -74,7 +73,7 @@ public enum SignalEngine {
             return snapshotComputation(signal, snapshot: snapshot)
 
         case .deadButTested, .hiddenCoupling, .testOnlyProduction:
-            return indexComputation(signal, inputs: inputs)
+            return indexComputation(signal, inputs: inputs, thresholds: thresholds)
         }
     }
 

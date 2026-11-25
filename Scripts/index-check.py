@@ -11,8 +11,7 @@ script reads them with its own line patterns, not design section 6.1's
 grammar, and accounts for every line. Run it as `python3 -I -B Scripts/index-check.py <mode> ...`, so it
 writes no bytecode cache beside itself.
 
-Modes (a later plan step adds `coverage-names`; plan step 9c extends
-`signals`):
+Modes (a later plan step adds `coverage-names`):
 
 `dump` writes the reader's values for a store as JSON: the recorded
 `reader.json` the unit tests read through `RecordedIndexSource`, and the
@@ -646,8 +645,8 @@ Not the scan JSON's `deadCode` block, `deadLines`, `deadCodeExcluded` or
 `swiftstats report --format json` of that snapshot (the snapshot the report
 names, by package, path, commit and dirtiness; `--snapshot` names another,
 the newest without a report). Plan step 9a writes its test-only part and
-the groundwork the three signals share, 9b its dead-but-tested part; 9c
-adds hidden coupling:
+the groundwork the three signals share, 9b its dead-but-tested part, 9c its
+hidden-coupling part:
   t  thresholds: the report's `thresholds.limits` lists `hidden-coupling`
      with exactly the limits this check uses (support 3 and confidence 50
      unless `--config`'s `signals.hidden-coupling` or `--set` say otherwise;
@@ -658,8 +657,75 @@ adds hidden coupling:
      schema is printed (5 before plan step 10 bumps it to 6), not failed.
   n  names: the report's last three signals are hidden-coupling,
      dead-but-tested and test-only-production, in that order, each once,
-     right after uneven-clone-mutation. Hidden coupling's left-out reason is
-     printed (9c checks it).
+     right after uneven-clone-mutation.
+  h  hidden coupling (design 8.1; plan step 9c):
+     pairs: the snapshot's `couplingPair` rows (M3's pairs, written with
+     history from M7 on), in ordinal order; they must equal the stored
+     scan's `history.coupling` pairs in order (design 9.1: the blob keeps
+     them too), when both exist.
+     left out, first that applies: history missing (no `historyRun` row),
+     worded as M3's signals word it: `history was not collected
+     (the snapshot predates M3)` without a history collectorRun row, else
+     `history was not collected: <state>[, <reason>]`; then as for o: `the
+     snapshot predates M7`, `needs index: <state>[, <reason>]`, `the
+     snapshot holds no index rows`. A left-out signal lists nothing, has 0
+     candidates and states design 8.1's rule text with the limits in force
+     (the funnel optional).
+     families (PRD 6.6), from every `function` row (any role): a record
+     joins the family of its topmost ancestor by `parentKey` (a missing or
+     circular parent ends the climb); the family is named by that root's
+     key, or, when the topmost record is a computed property's accessor
+     (kind accessor, no parent), by the accessor's key without its
+     ` { <accessor> }` part, grouping the property's accessors in one file.
+     A pair's family is the one with its key (in the pair's file when
+     several share it; `--family-match key-and-file` also requires the
+     file).
+     each pair, first that applies: U a family not found; G a family with
+     a member whose file is generated; T a family whose root (or first
+     member) isn't of role production; else P. Of P: W a family with no
+     member holding a primary USR (`usr`; a secondary `usrAccessor` alone
+     doesn't count, printed); else K judged, then, first that holds: R a
+     `familyReference` with via direct, either way; Q one with via
+     requirement, either way; Y both roots' owning types known and equal,
+     or one nested in the other (same target and type file, one type path
+     the other's followed by `.`); X a `familyTypeReference` from one
+     family to the other root's owning type (module, typePath, typeFile);
+     else C, which is L listed when support >= the support limit and
+     support * 100 >= confidence * min(changesA, changesB) (exact
+     arithmetic), else B. A root's owning type (design 4.3: package-declared
+     types only): none for a root without a typePath (free functions, local
+     functions); else, by default (`--owners package`, design 4.3: an
+     extension's members belong to the package type its head extends, which
+     the USR's context names), for a root whose `usr` is a Swift one (`s:`)
+     the `typeIndex` type whose `usr` is the longest proper prefix of it
+     (none when no type's is: extensions of types the package doesn't
+     declare, such as `Array` or another module's type of a name a target
+     declares too); for any other root the `typeIndex` type at its (module,
+     typePath, typeFile or ''), else none. `--owners own-module` takes the
+     latter for every root (printed difference only).
+     The rule: design 8.1's text with the support and confidence limits
+     (numbers compared by value), then "; " and the funnel in its words
+     (`N pairs = U with a family not in this snapshot + G ... + T ... + P
+     with both families in production code; P = K judged + W ...; K = R
+     referencing each other + Q ... + Y ... + X ... + C without a static
+     dependency; C = L listed + B below the limits`), every number equal to
+     this check's and adding up as stated, then `; pairs exist only at or
+     above history.coupling.min_support (<m>)` exactly when the support
+     limit is below m, where m is the configuration's
+     `history.coupling.min_support` (default 3) or the history run's stored
+     option `coupling.min_support` (either reading is accepted; which one
+     is printed); other text after the funnel is printed. `candidates` is N, P, K or C
+     (the design names none for this signal), and which is printed.
+     items: the L pairs, ordered by support descending, confidence
+     (support / min(changesA, changesB), exact) descending, then subject
+     (familyA), file (fileA), line, partner (familyB) and partner file
+     (fileB); each with rank (from 1), member true, score = support, line
+     = the root's start line (for a computed property's family, its first
+     accessor by key then line; the lowest member line or `familyHistory`'s
+     line are accepted and printed), and the payload `coupling` exactly:
+     {partner, partnerFile, support, changesA, changesB, confidence
+     {support, smaller = min(changesA, changesB)}, modules [A's, B's
+     module], sameFile (fileA == fileB), sameModule}; no other payload.
   o  test-only production code (design 8.3):
      left out, first that applies: `the snapshot predates M7` (the
      snapshot's reportSchemaVersion below 9, or no collectorRun row for
@@ -768,7 +834,8 @@ adds hidden coupling:
      payload.
 `--own-only` prints the figures without a report; `--dump` writes them as
 JSON (the signals in the report's shape, the funnels, the exclusions and
-members, each production entry's term, the notes).
+members, each production entry's term, each coupling pair's term, the
+notes).
 
 Inputs `signals` trusts:
   - the store's rows, opened read-only, as design section 9.1 names them:
@@ -789,7 +856,19 @@ Inputs `signals` trusts:
     `mutant` (owner, place, verdict, killedBy, run) as M6 stores them;
   - Scripts/mutation-check.py (the M6 checker) for M6's `mutation` and
     `coverage` payload shapes, loaded without writing bytecode;
-  - the configuration file's `signals.hidden-coupling` keys, or `--set`.
+  - for hidden coupling (h): `historyRun` (present or not), the history
+    collectorRun's options (`coupling.min_support`), `couplingPair`
+    (ordinal, familyA, fileA, familyB, fileB, support, changesA, changesB:
+    M3's pairs, trusted as history computed them), `familyHistory`
+    (family, file, line; only for the accepted line), the `function`
+    columns parentKey, accessorKind, typePath and typeFile of every row,
+    `familyReference` (fromFamily, toFamily, via), `familyTypeReference`
+    (family, module, typePath, typeFile) and `typeIndex` (module, typePath,
+    typeFile) as the index collector stored them (checked against the scan
+    by `usr`'s u7 and u8), and the stored report's `targets` dependencies
+    and `history.coupling`;
+  - the configuration file's `signals.hidden-coupling` and
+    `history.coupling.min_support` keys, or `--set`.
 Not the report's signals or thresholds, which it checks.
 
 Usage:
@@ -845,6 +924,8 @@ Usage:
                                          [--set <signal>.<limit>=<value>]...
                                          [--snapshot <id>] [--own-only]
                                          [--dump <path>] [--all]
+                                         [--family-match key|key-and-file]
+                                         [--owners package|own-module]
 
 For `dump`, <store> is the directory holding `v5/units` (for the T1 build,
 `<package>/.swiftstats/index-build/out`). The JSON goes to standard output,
@@ -6983,6 +7064,38 @@ DEAD_DECLARATION_TERMS = (("X", "unused production declarations"), ("FE", "funct
                           ("E", "extension entries"), ("V", "property entries with accessor records"),
                           ("O", "others"), ("DD", "D: the distinct records F, T, E and V cover"))
 
+# Hidden coupling (design 8.1). History's coupling cut: its default and the smallest value the configuration
+# accepts (history.coupling.min_support).
+DEFAULT_MIN_SUPPORT = 3
+LOWEST_MIN_SUPPORT = 2
+HIDDEN_COUPLING_PAYLOADS = ("coupling",)
+COUPLING_VIA = ("direct", "requirement")
+# Design 8.1's rule text, before the funnel, with the limits as {support} and {confidence} (a left-out signal
+# states it alone, with the limits it would use).
+HIDDEN_COUPLING_PROSE = (
+    "pairs of production families changed together by at least {support} commits in the window (confidence at "
+    "least {confidence}%: support ÷ the less-changed family's changes) with no static dependency: neither "
+    "references the other (index: calls, reads, writes, directly or through a protocol requirement the other "
+    "witnesses), they don't share or nest a package type, and neither references the other's type or its members; "
+    "same file or module isn't a dependency; candidates for an explicit abstraction")
+# Design 8.1's funnel with its numbers as groups (`P2`, `K2`, `C2` the restated P, K and C), and its note.
+HIDDEN_COUPLING_FUNNEL = re.compile(
+    r"(?P<N>\d+) pairs = (?P<U>\d+) with a family not in this snapshot \+ (?P<G>\d+) with a generated family \+ "
+    r"(?P<T>\d+) with a test or helper family \+ (?P<P>\d+) with both families in production code; "
+    r"(?P<P2>\d+) = (?P<K>\d+) judged \+ (?P<W>\d+) with a family the index didn't see; "
+    r"(?P<K2>\d+) = (?P<R>\d+) referencing each other \+ (?P<Q>\d+) calling through a protocol the other "
+    r"implements \+ (?P<Y>\d+) sharing or nesting a type \+ (?P<X>\d+) referencing the other's type or members \+ "
+    r"(?P<C>\d+) without a static dependency; (?P<C2>\d+) = (?P<L>\d+) listed \+ (?P<B>\d+) below the limits")
+MIN_SUPPORT_NOTE = re.compile(r"pairs exist only at or above history\.coupling\.min_support \((?P<m>\d+)\)")
+HIDDEN_COUPLING_TERMS = (("N", "pairs"), ("U", "with a family not in this snapshot"),
+                         ("G", "with a generated family"), ("T", "with a test or helper family"),
+                         ("P", "with both families in production code"), ("P2", "P restated"), ("K", "judged"),
+                         ("W", "with a family the index didn't see"), ("K2", "K restated"),
+                         ("R", "referencing each other"), ("Q", "calling through a protocol the other implements"),
+                         ("Y", "sharing or nesting a type"), ("X", "referencing the other's type or members"),
+                         ("C", "without a static dependency"), ("C2", "C restated"), ("L", "listed"),
+                         ("B", "below the limits"))
+
 
 def blind(text):
     """Text compared case- and punctuation-blind (reasons as a rule may spell them)."""
@@ -7018,9 +7131,16 @@ def store_uri(path):
 
 
 def read_limit_file(path):
-    """`signals.hidden-coupling.*` of a `.swiftstats.yml`: a small reader of the YAML subset the configuration uses
-    (block mappings by indentation, `# comments`, scalars, and one-line `{key: value, ...}` mappings). Other keys
-    are ignored; `signals.hidden-coupling`'s own keys are returned as written."""
+    """`signals.hidden-coupling.*` of a `.swiftstats.yml`, as written (see read_config_mapping)."""
+    return read_config_mapping(path, ("signals", HIDDEN_COUPLING))
+
+
+def read_config_mapping(path, mapping_names):
+    """The keys of one mapping of a `.swiftstats.yml` (`mapping_names`, such as ("signals", "hidden-coupling") or
+    ("history", "coupling")): a small reader of the YAML subset the configuration uses (block mappings by
+    indentation, `# comments`, scalars, and one-line `{key: value, ...}` mappings). Other keys are ignored; the
+    mapping's own keys are returned as written."""
+    target = list(mapping_names)
     try:
         with open(path, encoding="utf-8") as handle:
             lines = handle.read().splitlines()
@@ -7055,11 +7175,11 @@ def read_limit_file(path):
             path_stack.pop()
         key = scalar(key)
         names = [name for _, name in path_stack] + [key]
-        if names == ["signals", HIDDEN_COUPLING]:
+        if names == target:
             found = {} if found is None else found
             if value.strip().startswith("{"):
                 found.update(inline(value))
-        elif names[:2] == ["signals", HIDDEN_COUPLING] and len(names) == 3:
+        elif names[:len(target)] == target and len(names) == len(target) + 1:
             found = {} if found is None else found
             found[key] = scalar(value)
         if not value.strip():
@@ -7094,6 +7214,20 @@ def hidden_coupling_limits(config_path, settings):
             fail(f"signals.{HIDDEN_COUPLING}.{name}: {text!r} isn't {kind} from {lowest} to {highest:,}")
         limits[name] = int(value) if value == int(value) else value
     return limits
+
+
+def configured_min_support(config_path):
+    """`history.coupling.min_support` of the configuration (default 3): the support below which history keeps no
+    pair (design 8: a hidden-coupling support limit below it changes nothing, and the rule says so). A value
+    SwiftStats refuses (not a whole number, below 2) is bad input here."""
+    written = read_config_mapping(config_path, ("history", "coupling")) if config_path else {}
+    text = written.get("min_support")
+    if text is None:
+        return DEFAULT_MIN_SUPPORT
+    if not re.fullmatch(r"\d+", str(text).strip()) or int(text) < LOWEST_MIN_SUPPORT:
+        fail(f"history.coupling.min_support: {text!r} isn't a whole number from {LOWEST_MIN_SUPPORT}; SwiftStats "
+             "refuses such a configuration")
+    return int(text)
 
 
 class SignalRows:
@@ -7150,7 +7284,8 @@ class SignalRows:
             columns = {row[1] for row in database.execute("PRAGMA table_info(function)")}
             wanted = ("key", "module", "kind", "name", "file", "startLine", "role", "generated", "access",
                       "typePath", "parameterCount", "usr", "usrAccessor", "usrReason", "witness",
-                      "referrersSameModule", "referrersOtherModules", "referrersTests", "testReferrers")
+                      "referrersSameModule", "referrersOtherModules", "referrersTests", "testReferrers",
+                      "parentKey", "accessorKind", "typeFile")
             selected = ", ".join(name if name in columns else f"NULL AS {name}" for name in wanted)
             every = rows(f"SELECT {selected} FROM function WHERE snapshotId = ? ORDER BY rowid")
             self.unknown_generated = sum(1 for row in every if row["role"] == "production" and row["generated"] is None)
@@ -7183,11 +7318,33 @@ class SignalRows:
                             "WHERE snapshotId = ? ORDER BY ordinal", "mutant"):
                 if row["place"] == "record" and row["owner"] is not None:
                     self.record_mutants[row["owner"]].append(row)
-            blob = database.execute("SELECT encoding, data FROM report WHERE snapshotId = ?", (self.id,)).fetchone()
+            # Hidden coupling (design 8.1): history's run and pairs (couplingPair, M3's pairs as a table), the
+            # index's family and family-type references, the package-declared types, and history's family lines.
+            history_runs = rows("SELECT * FROM historyRun WHERE snapshotId = ?", "historyRun")
+            self.history_run = history_runs[0] if history_runs else None
+            self.coupling_table_held = "couplingPair" in self.tables
+            self.coupling_pairs = rows("SELECT ordinal, familyA, fileA, familyB, fileB, support, changesA, changesB "
+                                       "FROM couplingPair WHERE snapshotId = ? ORDER BY ordinal", "couplingPair")
+            self.family_references = {(row["fromFamily"], row["toFamily"], row["via"]) for row in rows(
+                "SELECT fromFamily, toFamily, via FROM familyReference WHERE snapshotId = ?", "familyReference")}
+            self.family_type_references = {(row["family"], row["module"], row["typePath"], row["typeFile"])
+                                           for row in rows("SELECT family, module, typePath, typeFile FROM "
+                                                           "familyTypeReference WHERE snapshotId = ?",
+                                                           "familyTypeReference")}
+            type_rows = rows("SELECT module, typePath, typeFile, usr FROM typeIndex WHERE snapshotId = ? "
+                             "ORDER BY module, typePath, typeFile, usr", "typeIndex")
+            self.package_types = {(row["module"], row["typePath"], row["typeFile"]) for row in type_rows}
+            self.package_type_usrs = {}   # usr -> (module, typePath, typeFile), the first by identity
+            for row in type_rows:
+                self.package_type_usrs.setdefault(row["usr"], (row["module"], row["typePath"], row["typeFile"]))
+            self.family_history_lines = {(row["family"], row["file"]): row["line"] for row in rows(
+                "SELECT family, file, line FROM familyHistory WHERE snapshotId = ?", "familyHistory")}
+            blob =database.execute("SELECT encoding, data FROM report WHERE snapshotId = ?", (self.id,)).fetchone()
             database.close()
         except sqlite3.Error as error:
             fail(f"{path} doesn't read: {error}")
         self.targets = {}
+        self.stored_coupling = None   # the stored scan's history.coupling (the blob keeps the pairs too, design 9.1)
         if blob is not None:
             try:
                 data = zlib.decompress(blob["data"], -15) if blob["encoding"] == "deflate" else None
@@ -7197,7 +7354,9 @@ class SignalRows:
                 fail(f"the stored report of snapshot {self.id} has encoding {blob['encoding']!r}, not deflate")
             scan = json.loads(data)
             self.targets = {target["name"]: target for target in scan.get("targets", [])}
-        self.state = {"package": self.snapshot["package"],
+            if isinstance(scan.get("history"), dict):
+                self.stored_coupling = scan["history"].get("coupling")
+        self.state ={"package": self.snapshot["package"],
                       "git": {"packagePath": self.snapshot["packagePath"], "commit": self.snapshot["commitHash"],
                               "isDirty": bool(self.snapshot["isDirty"])}}
 
@@ -7213,6 +7372,30 @@ class SignalRows:
             return f"needs {collector}: {run['state']}" + (f", {run['reason']}" if run["reason"] else "")
         if missing == "indexScan" and self.index_scan is None:
             return "the snapshot holds no index rows"
+        return None
+
+    def left_out_history(self):
+        """Why the snapshot has no history (no `historyRun` row), as M3's signals say it: from the history
+        collector's run, or that the snapshot predates M3 when there is none; nil when it has history."""
+        if self.history_run is not None:
+            return None
+        run = self.collectors.get("history")
+        if run is None:
+            return "history was not collected (the snapshot predates M3)"
+        return f"history was not collected: {run['state']}" + (f", {run['reason']}" if run["reason"] else "")
+
+    def stored_min_support(self):
+        """`coupling.min_support` from the history collector's stored options (the scan's own cut); nil when
+        absent."""
+        run = self.collectors.get("history")
+        try:
+            options = json.loads(run["options"]) if run is not None and run["options"] else []
+        except ValueError:
+            return None
+        for option in options if isinstance(options, list) else []:
+            found = re.fullmatch(r"coupling\.min_support: (\d+)", str(option))
+            if found:
+                return int(found.group(1))
         return None
 
     def left_out_dead(self):
@@ -8018,6 +8201,450 @@ def compare_dead_but_tested(verdict, model, signal, expected):
         verdict.info(f"accepted: {note} ({count})")
 
 
+# ---- hidden coupling (design 8.1; plan step 9c)
+
+
+def number_text(value):
+    """A limit as the rule writes it: whole numbers without a fraction."""
+    return str(int(value)) if float(value) == int(value) else str(value)
+
+
+def number_pattern():
+    return r"(\d+(?:\.\d+)?)"
+
+
+def hidden_coupling_prose_pattern():
+    """Design 8.1's text with each limit read back as a number (a fractional confidence may be spelled either
+    way); groups 1 and 2 are the support and the confidence."""
+    support, confidence = "\u0000S\u0000", "\u0000C\u0000"
+    text = re.escape(HIDDEN_COUPLING_PROSE.format(support=support, confidence=confidence))
+    return text.replace(re.escape(support), number_pattern()).replace(re.escape(confidence), number_pattern())
+
+
+def property_owner_key(row):
+    """A computed property accessor's key without its ` { <accessor> }` part (the last occurrence), as PRD 6.6's
+    property families are named."""
+    token = f" {{ {row['accessorKind']} }}" if row["accessorKind"] else None
+    key = row["key"]
+    if token is None or token not in key:
+        return key
+    at = key.rfind(token)
+    return key[:at] + key[at + len(token):]
+
+
+class CouplingFamily:
+    """One function family of the snapshot (PRD 6.6): a root record with its nested functions and accessors,
+    or a computed property's accessors."""
+
+    def __init__(self, members):
+        self.members = sorted(members, key=lambda row: (row["key"], row["startLine"]))
+        roots = [row for row in self.members if row["parentKey"] is None and not self.is_property_accessor(row)]
+        self.root = roots[0] if roots else None
+        first = self.root or self.members[0]
+        self.identifier = self.root["key"] if self.root is not None else property_owner_key(self.members[0])
+        self.file = first["file"]
+        self.line = first["startLine"]
+        self.lowest_line = min(row["startLine"] for row in self.members)
+        self.module = self.members[0]["module"]
+        self.role = first["role"]
+        self.generated = any(row["generated"] for row in self.members)
+        self.unknown_generated = any(row["generated"] is None for row in self.members)
+        self.with_usr = any(row["usr"] is not None for row in self.members)
+        self.accessor_usr_only = not self.with_usr and any(row["usrAccessor"] is not None for row in self.members)
+
+    @staticmethod
+    def is_property_accessor(row):
+        return row["kind"] == "accessor" and row["parentKey"] is None
+
+
+def coupling_families(rows):
+    """The families of every function row (any role): each record joins the family of its topmost ancestor by
+    `parentKey` (a missing or circular parent ends the climb); a topmost computed property accessor (kind
+    accessor, no parent) groups with the property's other accessors in its file."""
+    first_index = {}
+    for index, row in enumerate(rows):
+        first_index.setdefault(row["key"], index)
+    groups = defaultdict(list)
+    for index, row in enumerate(rows):
+        current, seen = index, {index}
+        while rows[current]["parentKey"] is not None:
+            parent = first_index.get(rows[current]["parentKey"])
+            if parent is None or parent in seen:
+                break
+            seen.add(parent)
+            current = parent
+        top = rows[current]
+        if CouplingFamily.is_property_accessor(top):
+            group = ("property", property_owner_key(top), top["file"])
+        else:
+            group = ("record", current)
+        groups[group].append(row)
+    families = defaultdict(list)
+    for members in groups.values():
+        family = CouplingFamily(members)
+        families[family.identifier].append(family)
+    return families
+
+
+class HiddenCoupling:
+    """Design 8.1, by its words, over SignalRows."""
+
+    def __init__(self, rows, limits, min_support, family_match="key", owners="package"):
+        from fractions import Fraction
+        self.rows = rows
+        self.limits = limits
+        self.min_support = min_support                 # the configuration's history.coupling.min_support
+        self.stored_min_support = rows.stored_min_support()
+        self.family_match = family_match
+        self.owner_rule = owners
+        self.left_out = rows.left_out_history() or rows.left_out_m7("index", "indexScan")
+        self.counts = Counter()
+        self.terms = []                                # (pair, term) in couplingPair order
+        self.members = defaultdict(list)               # term -> pair labels
+        self.notes = []
+        self.items = []
+        self.owner_notes = Counter()
+        if self.left_out is not None:
+            return
+        self.families = coupling_families(rows.all_functions)
+        support_limit = Fraction(str(limits["support"]))
+        confidence_limit = Fraction(str(limits["confidence"]))
+        vias = sorted({via for _, _, via in rows.family_references if via not in COUPLING_VIA})
+        if vias:
+            self.notes.append(f"familyReference rows with via {vias}, which design 4.4 doesn't name (not counted)")
+        for pair in rows.coupling_pairs:
+            first, second = self.family(pair["familyA"], pair["fileA"]), self.family(pair["familyB"], pair["fileB"])
+            term = self.classify(pair, first, second, support_limit, confidence_limit)
+            self.counts["N"] += 1
+            self.counts[term] += 1
+            if term in ("R", "Q", "Y", "X", "C", "L", "B"):
+                self.counts["P"] += 1
+                self.counts["K"] += 1
+                if term in ("C", "L", "B"):
+                    self.counts["C"] += 1
+            elif term == "W":
+                self.counts["P"] += 1
+            self.terms.append((pair, term))
+            self.members[term].append(self.label(pair))
+            if term == "L":
+                smaller = min(pair["changesA"], pair["changesB"])
+                self.items.append({"pair": pair, "first": first, "second": second, "smaller": smaller,
+                                   "confidence": Fraction(pair["support"], smaller) if smaller else Fraction(0)})
+        self.items.sort(key=lambda item: (-item["pair"]["support"], -item["confidence"], item["pair"]["familyA"],
+                                          item["pair"]["fileA"], item["first"].line, item["pair"]["familyB"],
+                                          item["pair"]["fileB"]))
+        for note, count in sorted(self.owner_notes.items()):
+            self.notes.append(f"{note} ({count})")
+
+    @staticmethod
+    def label(pair):
+        return f"{pair['familyA']} ~ {pair['familyB']} (support {pair['support']}, " \
+               f"{pair['changesA']}/{pair['changesB']})"
+
+    def family(self, identifier, file):
+        """The snapshot's family a pair names (design 8.1: family roots by key, as M3's pairs name them); the
+        one in the pair's file when several share the key. `--family-match key-and-file` also asks for the
+        file."""
+        candidates = self.families.get(identifier, [])
+        for family in candidates:
+            if family.file == file:
+                return family
+        if candidates and self.family_match == "key":
+            self.notes.append(f"{identifier}: matched by key, but its family is in {candidates[0].file}, "
+                              f"not the pair's {file}")
+            return candidates[0]
+        return None
+
+    def classify(self, pair, first, second, support_limit, confidence_limit):
+        """Design 8.1, first that applies: U, G, T; of P, W; of K, R, Q, Y, X; of C, L or B."""
+        if first is None or second is None:
+            return "U"
+        for family in (first, second):
+            if family.unknown_generated:
+                self.notes.append(f"{family.identifier}: a member's `generated` is null (read as not generated)")
+        if first.generated or second.generated:
+            return "G"
+        if first.role != "production" or second.role != "production":
+            return "T"
+        if not (first.with_usr and second.with_usr):
+            for family in (first, second):
+                if family.accessor_usr_only:
+                    self.notes.append(f"{family.identifier}: only a secondary accessor USR (read as no USR)")
+            return "W"
+        references = self.rows.family_references
+        names = (first.identifier, second.identifier)
+        if (names[0], names[1], "direct") in references or (names[1], names[0], "direct") in references:
+            return "R"
+        if (names[0], names[1], "requirement") in references or (names[1], names[0], "requirement") in references:
+            return "Q"
+        owner_first, owner_second = self.owner(first), self.owner(second)
+        if owner_first is not None and owner_second is not None and \
+                (owner_first == owner_second or self.nested(owner_first, owner_second)):
+            return "Y"
+        type_references = self.rows.family_type_references
+        if (owner_second is not None and (names[0],) + owner_second in type_references) or \
+                (owner_first is not None and (names[1],) + owner_first in type_references):
+            return "X"
+        smaller = min(pair["changesA"], pair["changesB"])
+        listed = pair["support"] >= support_limit and pair["support"] * 100 >= confidence_limit * smaller
+        return "L" if listed else "B"
+
+    def owner(self, family):
+        """The owning type of a family's root (design 4.3, package-declared types only), as (target, type path,
+        type file or ''): none without a typePath; under `--owners package` (design 4.3: an extension's members
+        belong to the package type its head extends, the type the USR's context mangles), for a Swift `usr` the
+        `typeIndex` type whose `usr` is its longest proper prefix, else none (an extension of a type the package
+        doesn't declare); for a root without a Swift `usr`, or under `--owners own-module`, the `typeIndex` type
+        at the root's own (module, typePath, typeFile), else none."""
+        row = family.root or family.members[0]
+        path = row["typePath"]
+        if not path:
+            return None
+        own = (row["module"], path, row["typeFile"] or "")
+        usr = row["usr"] or ""
+        if self.owner_rule != "package" or not usr.startswith("s:"):
+            return own if own in self.rows.package_types else None
+        best = None
+        for type_usr, identity in self.rows.package_type_usrs.items():
+            if len(type_usr) < len(usr) and usr.startswith(type_usr) and (best is None or len(type_usr) > len(best)):
+                best, chosen = type_usr, identity
+        if best is None:
+            if own in self.rows.package_types:
+                self.owner_notes["a root whose own target declares its type path but whose USR names no package "
+                                 "type (no owner)"] += 1
+            return None
+        if chosen != own:
+            self.owner_notes["a root owned by the package type its USR names, not its own (module, typePath, "
+                             "typeFile): an extension of another target's type, or a qualified or typealias "
+                             "head"] += 1
+        return chosen
+
+    @staticmethod
+    def nested(first, second):
+        """One type nested in the other: same target and type file, one type path a prefix of the other's
+        followed by `.` (design 8.1's Y)."""
+        if first[0] != second[0] or first[2] != second[2]:
+            return False
+        return first[1].startswith(second[1] + ".") or second[1].startswith(first[1] + ".")
+
+    def note_applies(self, min_support):
+        return min_support is not None and float(self.limits["support"]) < min_support
+
+    def funnel(self):
+        counts = self.counts
+        return (f"{counts['N']} pairs = {counts['U']} with a family not in this snapshot + {counts['G']} with a "
+                f"generated family + {counts['T']} with a test or helper family + {counts['P']} with both families "
+                f"in production code; {counts['P']} = {counts['K']} judged + {counts['W']} with a family the index "
+                f"didn't see; {counts['K']} = {counts['R']} referencing each other + {counts['Q']} calling through "
+                f"a protocol the other implements + {counts['Y']} sharing or nesting a type + {counts['X']} "
+                f"referencing the other's type or members + {counts['C']} without a static dependency; "
+                f"{counts['C']} = {counts['L']} listed + {counts['B']} below the limits")
+
+    def prose(self):
+        return HIDDEN_COUPLING_PROSE.format(support=number_text(self.limits["support"]),
+                                            confidence=number_text(self.limits["confidence"]))
+
+    def rule(self):
+        if self.left_out is not None:
+            return self.prose()
+        text = self.prose() + "; " + self.funnel()
+        if self.note_applies(self.min_support):
+            text += f"; pairs exist only at or above history.coupling.min_support ({self.min_support})"
+        return text
+
+    def expected_numbers(self):
+        numbers = {term: self.counts[term] for term, _ in HIDDEN_COUPLING_TERMS if term not in ("P2", "K2", "C2")}
+        numbers["P2"], numbers["K2"], numbers["C2"] = numbers["P"], numbers["K"], numbers["C"]
+        return numbers
+
+    @staticmethod
+    def payload(item):
+        pair, first, second = item["pair"], item["first"], item["second"]
+        return {"coupling": {"partner": pair["familyB"], "partnerFile": pair["fileB"], "support": pair["support"],
+                             "changesA": pair["changesA"], "changesB": pair["changesB"],
+                             "confidence": {"support": pair["support"], "smaller": item["smaller"]},
+                             "modules": [first.module, second.module], "sameFile": pair["fileA"] == pair["fileB"],
+                             "sameModule": first.module == second.module}}
+
+
+def hidden_expected_items(model):
+    expected = []
+    for rank, item in enumerate(model.items, start=1):
+        pair, first = item["pair"], item["first"]
+        lines = [first.line]
+        for other in (first.lowest_line, model.rows.family_history_lines.get((pair["familyA"], pair["fileA"]))):
+            if other is not None and other not in lines:
+                lines.append(other)
+        expected.append({"rank": rank, "subject": pair["familyA"], "file": pair["fileA"], "line": first.line,
+                         "lines": lines, "score": pair["support"], "member": True, "payloads": model.payload(item)})
+    return expected
+
+
+def report_hidden_own(verdict, model, show_all):
+    verdict.section(f"{HIDDEN_COUPLING}: this check's figures (design 8.1)")
+    rows = model.rows
+    verdict.info(f"limits: support {model.limits['support']}, confidence {model.limits['confidence']}%; "
+                 f"history.coupling.min_support: configuration {model.min_support}, the history run's stored "
+                 f"options {model.stored_min_support}")
+    if model.left_out is not None:
+        verdict.info(f"left out: {model.left_out}")
+        return
+    run = rows.history_run
+    verdict.info(f"history: commit {run['commitHash'][:10]}, window {run['windowDays']} days, "
+                 f"{run['windowCommits']} of {run['commits']} commits in the window; couplingPair rows "
+                 f"{len(rows.coupling_pairs)}" + ("" if rows.coupling_table_held else " (no couplingPair table)"))
+    verdict.info(f"index rows: familyReference {len(rows.family_references)} ("
+                 + ", ".join(f"{via} {count}" for via, count in sorted(Counter(
+                     via for _, _, via in rows.family_references).items())) + f"), familyTypeReference "
+                 f"{len(rows.family_type_references)}, typeIndex types {len(rows.package_types)}; owners rule "
+                 f"{model.owner_rule}, family match {model.family_match}")
+    verdict.info("funnel: " + model.funnel())
+    for term in ("U", "G", "T", "W", "R", "Q", "Y", "X", "B"):
+        if model.members[term]:
+            shown = model.members[term] if show_all else model.members[term][:5]
+            more = len(model.members[term]) - len(shown)
+            verdict.info(f"{term}: " + "; ".join(shown) + (f" ... and {more} more" if more else ""))
+    if model.items:
+        verdict.info(f"listed ({len(model.items)}), in order:")
+        for rank, item in enumerate(model.items if show_all else model.items[:LISTED], start=1):
+            pair = item["pair"]
+            verdict.info(f"  #{rank} {pair['support']} {pair['familyA']} ({pair['fileA']}:{item['first'].line}) "
+                         f"~ {pair['familyB']} ({pair['fileB']}) changes {pair['changesA']}/{pair['changesB']}")
+        if not show_all and len(model.items) > LISTED:
+            verdict.info(f"  ... and {len(model.items) - LISTED} more (--all lists them)")
+    else:
+        verdict.info("listed: none")
+    for note in model.notes if show_all else model.notes[:20]:
+        verdict.info(f"note: {note}")
+    if not show_all and len(model.notes) > 20:
+        verdict.info(f"... and {len(model.notes) - 20} more notes (--all lists them)")
+
+
+def compare_coupling_source(verdict, rows):
+    """The couplingPair rows against the stored scan's history block (design 9.1: the pairs leave the report blob
+    for a table, and the blob keeps them too)."""
+    if rows.stored_coupling is None or not rows.coupling_table_held:
+        verdict.info("couplingPair rows not compared with the stored history block (" +
+                     ("no couplingPair table" if not rows.coupling_table_held else "the stored scan has no history")
+                     + ")")
+        return
+    fields = ("familyA", "fileA", "familyB", "fileB", "support", "changesA", "changesB")
+    table = [tuple(row[field] for field in fields) for row in rows.coupling_pairs]
+    stored = [tuple(pair.get(field) for field in fields) for pair in rows.stored_coupling]
+    ordinals = [row["ordinal"] for row in rows.coupling_pairs]
+    verdict.result("couplingPair rows equal the stored history block's pairs, in order", table == stored,
+                   f"{len(table)} rows, {len(stored)} pairs in the block")
+    if table != stored:
+        verdict.listing([f"#{index}: table {mine}, block {theirs}" for index, (mine, theirs)
+                         in enumerate(zip(table, stored)) if mine != theirs]
+                        + [f"only in the table: {mine}" for mine in table[len(stored):]]
+                        + [f"only in the block: {theirs}" for theirs in stored[len(table):]])
+    if ordinals != list(range(len(ordinals))) and ordinals != list(range(1, len(ordinals) + 1)):
+        verdict.info(f"couplingPair ordinals aren't consecutive: {ordinals[:10]}")
+
+
+def compare_hidden_coupling(verdict, model, signal, expected):
+    verdict.section(f"h   {HIDDEN_COUPLING}: left-out reason, rule, funnel, candidates, items, order and payloads")
+    compare_coupling_source(verdict, model.rows)
+    actual_left = signal.get("leftOut")
+    verdict.result("left out", actual_left == model.left_out, f"expected {model.left_out!r}, got {actual_left!r}")
+    rule = signal.get("rule", "")
+    prose = re.compile(hidden_coupling_prose_pattern())
+    found = prose.match(rule)
+    limits_stated = found is not None and float(found.group(1)) == float(model.limits["support"]) \
+        and float(found.group(2)) == float(model.limits["confidence"])
+    verdict.result("rule states design 8.1's text with the limits in force", limits_stated,
+                   ("" if found is None else f"support {found.group(1)}, confidence {found.group(2)}; ")
+                   + f"expected {model.prose()!r}" if not limits_stated else "")
+    if model.left_out is not None:
+        verdict.result("left out: the text alone, or followed by '; '", found is not None and (
+            found.end() == len(rule) or rule[found.end():].startswith("; ")), f"got {rule!r}")
+        verdict.result("no items, no candidates", not signal.get("items") and signal.get("candidates", 0) == 0,
+                       f"{len(signal.get('items') or [])} items, candidates {signal.get('candidates')}")
+        return
+    rest = rule[found.end():] if found is not None else rule
+    verdict.result("the funnel follows the text after '; '", found is not None and rest.startswith("; "),
+                   f"got {rest[:120]!r}")
+    funnel_text = rest[2:] if rest.startswith("; ") else rest
+    match = HIDDEN_COUPLING_FUNNEL.search(funnel_text)
+    verdict.result("funnel in design 8.1's words", match is not None, "" if match else f"got {funnel_text[:500]!r}")
+    if match is not None:
+        if match.start() != 0:
+            verdict.info(f"text between the rule and the funnel: {funnel_text[:match.start()]!r}")
+        wanted = model.expected_numbers()
+        differences = [f"{term} ({name}): expected {wanted[term]}, got {match.group(term)}"
+                       for term, name in HIDDEN_COUPLING_TERMS if int(match.group(term)) != wanted[term]]
+        verdict.result("every funnel number", not differences, model.funnel() if differences else "")
+        verdict.listing(differences)
+        value = {term: int(match.group(term)) for term, _ in HIDDEN_COUPLING_TERMS}
+        sums = value["N"] == value["U"] + value["G"] + value["T"] + value["P"] \
+            and value["P"] == value["K"] + value["W"] \
+            and value["K"] == value["R"] + value["Q"] + value["Y"] + value["X"] + value["C"] \
+            and value["C"] == value["L"] + value["B"] \
+            and value["P2"] == value["P"] and value["K2"] == value["K"] and value["C2"] == value["C"]
+        verdict.result("the funnel's parts add up as stated", sums)
+        tail = funnel_text[match.end():]
+        note = MIN_SUPPORT_NOTE.match(tail[2:]) if tail.startswith("; ") else None
+        stated = int(note.group("m")) if note is not None else None
+        readings = []   # (where m comes from, m) readings that agree with the rule
+        for source, minimum in (("the configuration", model.min_support),
+                                ("the history run's stored options", model.stored_min_support)):
+            if minimum is None:
+                continue
+            if model.note_applies(minimum) and stated == minimum:
+                readings.append(f"note with {source}'s min_support {minimum}")
+            elif not model.note_applies(minimum) and note is None:
+                readings.append(f"no note: the support limit isn't below {source}'s min_support {minimum}")
+        verdict.result("the min_support note exactly when the support limit is below it", bool(readings),
+                       "; ".join(readings) if readings else
+                       f"note {'(' + str(stated) + ')' if note else 'absent'}, "
+                       f"support limit {model.limits['support']}, "
+                       f"min_support: configuration {model.min_support}, stored {model.stored_min_support}")
+        leftover = tail[2 + note.end():] if note is not None else tail
+        if leftover:
+            verdict.info(f"text after the funnel: {leftover!r}")
+    candidates = signal.get("candidates")
+    named = [name for name, term in (("N, every pair", "N"), ("P, production pairs", "P"), ("K, judged", "K"),
+                                     ("C, without a static dependency", "C")) if candidates == model.counts[term]]
+    verdict.result("candidates", bool(named), f"{candidates}: " + " or ".join(named) if named else
+                   f"expected N {model.counts['N']}, P {model.counts['P']}, K {model.counts['K']} or C "
+                   f"{model.counts['C']}, got {candidates}")
+    items = signal.get("items") or []
+    listed = [(item.get("subject"), item.get("file"), (item.get("coupling") or {}).get("partner"),
+               (item.get("coupling") or {}).get("partnerFile")) for item in items]
+    wanted = [(entry["subject"], entry["file"], entry["payloads"]["coupling"]["partner"],
+               entry["payloads"]["coupling"]["partnerFile"]) for entry in expected]
+    verdict.result("listed pairs in order", listed == wanted, f"{len(wanted)} items")
+    if listed != wanted:
+        verdict.listing([f"#{rank}: expected {mine}, got {theirs}" for rank, (mine, theirs)
+                         in enumerate(zip(wanted, listed), start=1) if mine != theirs]
+                        + [f"missing {mine}" for mine in wanted[len(listed):]]
+                        + [f"extra {theirs}" for theirs in listed[len(wanted):]])
+    differences, notes = [], Counter()
+    for item, entry in zip(items, expected):
+        label = f"#{entry['rank']} {entry['subject']}"
+        if item.get("rank") != entry["rank"] or item.get("member") is not True:
+            differences.append(f"{label}: rank {item.get('rank')} member {item.get('member')}")
+        if not isinstance(item.get("score"), (int, float)) or float(item["score"]) != entry["score"]:
+            differences.append(f"{label}: score {item.get('score')} != {entry['score']}")
+        if item.get("line") != entry["line"]:
+            if item.get("line") in entry["lines"][1:]:
+                notes[f"line {item.get('line')} for a family whose root (or first member) starts at "
+                      f"{entry['line']}"] += 1
+            else:
+                differences.append(f"{label}: line {item.get('line')} != {entry['line']}")
+        extra = sorted(key for key in item if key not in ITEM_KEYS and key not in HIDDEN_COUPLING_PAYLOADS)
+        if extra:
+            differences.append(f"{label}: payloads hidden coupling doesn't fill: {extra}")
+        if item.get("coupling") != entry["payloads"]["coupling"]:
+            differences.append(f"{label}: coupling {json.dumps(item.get('coupling'), sort_keys=True)} != "
+                               f"{json.dumps(entry['payloads']['coupling'], sort_keys=True)}")
+    verdict.result("ranks, members, scores, lines and payloads", not differences, f"{len(expected)} items")
+    verdict.listing(differences)
+    for note, count in sorted(notes.items()):
+        verdict.info(f"accepted: {note} ({count})")
+
+
 def signals_mode(arguments):
     report = None
     if arguments.report:
@@ -8029,14 +8656,18 @@ def signals_mode(arguments):
     elif not arguments.own_only:
         fail("give --report (`swiftstats report --format json` of the snapshot), or --own-only")
     limits = hidden_coupling_limits(arguments.config, arguments.set)
+    min_support = configured_min_support(arguments.config)
     rows = SignalRows(arguments.store, arguments.snapshot, None if report is None else report.get("snapshot"))
     verdict = Verdict(arguments.all)
+    hidden = HiddenCoupling(rows, limits, min_support, arguments.family_match, arguments.owners)
+    hidden_expected = hidden_expected_items(hidden) if hidden.left_out is None else []
     model = TestOnlyProduction(rows)
     dead = DeadButTested(rows)
     computed = model.left_out is None or dead.left_out is None
     mutation_model, mutation_check = mutation_payload_model(rows) if computed else (None, None)
     expected = test_only_expected_items(model, mutation_model, mutation_check) if model.left_out is None else []
     dead_expected = dead_expected_items(dead, mutation_model, mutation_check) if dead.left_out is None else []
+    report_hidden_own(verdict, hidden, arguments.all)
     report_test_only_own(verdict, model, arguments.all)
     report_dead_own(verdict, dead, arguments.all)
     verdict.info(f"hidden-coupling limits in force: {limits}")
@@ -8049,7 +8680,11 @@ def signals_mode(arguments):
             dead_items.append(item)
         write_json(arguments.dump, {
             "snapshot": rows.state, "snapshotId": rows.id, "limits": {HIDDEN_COUPLING: limits},
-            "signals": [{"name": DEAD_BUT_TESTED, "leftOut": dead.left_out, "rule": dead.rule(),
+            "signals": [{"name": HIDDEN_COUPLING, "leftOut": hidden.left_out, "rule": hidden.rule(),
+                         "candidates": hidden.counts["N"] if hidden.left_out is None else 0,
+                         "items": [dict({key: entry[key] for key in ITEM_KEYS}, **entry["payloads"])
+                                   for entry in hidden_expected]},
+                        {"name": DEAD_BUT_TESTED, "leftOut": dead.left_out, "rule": dead.rule(),
                          "candidates": dead.counts["N"] if dead.left_out is None else 0, "items": dead_items},
                         {"name": TEST_ONLY, "leftOut": model.left_out, "rule": model.rule(),
                          "candidates": model.counts["N"] if model.left_out is None else 0,
@@ -8061,7 +8696,12 @@ def signals_mode(arguments):
                                                                         dead.members.items()},
                               "entryTerms": {} if dead.production is None else
                               {str(ordinal): term for ordinal, term in sorted(dead.production.terms.items())},
-                              "notes": dead.notes}})
+                              "notes": dead.notes},
+            "hiddenCoupling": {"funnel": dict(hidden.counts), "minSupport": {"configuration": hidden.min_support,
+                                                                              "stored": hidden.stored_min_support},
+                               "pairs": [{"ordinal": pair["ordinal"], "familyA": pair["familyA"],
+                                          "familyB": pair["familyB"], "term": term} for pair, term in hidden.terms],
+                               "notes": hidden.notes}})
     if report is None:
         print("\nRESULT: own figures only (nothing compared)")
         return 0
@@ -8080,9 +8720,10 @@ def signals_mode(arguments):
         and names[-len(M7_SIGNALS) - 1] == LAST_M6_SIGNAL and all(names.count(name) == 1 for name in M7_SIGNALS)
     verdict.result("report order", in_order, f"last four: {names[-len(M7_SIGNALS) - 1:]}")
     by_name = {signal.get("name"): signal for signal in report.get("signals", [])}
-    if HIDDEN_COUPLING in by_name:
-        verdict.info(f"{HIDDEN_COUPLING}: left out {by_name[HIDDEN_COUPLING].get('leftOut')!r} (not checked here "
-                     "before plan step 9c)")
+    if HIDDEN_COUPLING not in by_name:
+        verdict.result(f"{HIDDEN_COUPLING} listed", False, "the report has no such signal")
+    else:
+        compare_hidden_coupling(verdict, hidden, by_name[HIDDEN_COUPLING], hidden_expected)
     if DEAD_BUT_TESTED not in by_name:
         verdict.result(f"{DEAD_BUT_TESTED} listed", False, "the report has no such signal")
     else:
@@ -8197,8 +8838,9 @@ def main():
                            "hint unused)")
     dead.add_argument("--ordinal-base", type=int, choices=(0, 1),
                       help="the first entry's ordinal (default: the scan's lowest declaration ordinal, else 1)")
-    signalling = modes.add_parser("signals", help="re-derive M7's signals from a store's rows (plan steps 9a "
-                                                  "and 9b: test-only production, dead but tested)")
+    signalling = modes.add_parser("signals", help="re-derive M7's signals from a store's rows (plan steps 9a, "
+                                                  "9b and 9c: test-only production, dead but tested, hidden "
+                                                  "coupling)")
     signalling.add_argument("store", help="the store holding the snapshot (store v6)")
     signalling.add_argument("--report", help="`swiftstats report --format json` of the snapshot, compared")
     signalling.add_argument("--config", help="the configuration the report was made with (its signals: limits)")
@@ -8210,6 +8852,15 @@ def main():
                             help="print this check's figures without a report to compare")
     signalling.add_argument("--dump", help="write this check's signal, funnel and exclusions as JSON")
     signalling.add_argument("--all", action="store_true", help="list every difference and every item")
+    signalling.add_argument("--family-match", choices=("key", "key-and-file"), default="key",
+                            help="hidden coupling: a pair's family is the snapshot's family with its key (design "
+                                 "8.1: family roots by key, as M3's pairs name them; the default), or with its key "
+                                 "and the pair's file")
+    signalling.add_argument("--owners", choices=("package", "own-module"), default="package",
+                            help="hidden coupling: a root's owning type is (package, design 4.3, the default) the "
+                                 "package type whose USR is the longest proper prefix of the root's Swift USR, else "
+                                 "the package type at its own target, type path and type file; own-module takes the "
+                                 "latter for every root")
     arguments = parser.parse_args()
     return {"dump": dump_mode, "build-lines": build_lines_mode, "build": build_mode,
             "usr": usr_mode, "dead": dead_mode, "signals": signals_mode}[arguments.mode](arguments)

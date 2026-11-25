@@ -140,9 +140,6 @@ struct TestOnlyProductionTests {
         #expect(DeadButTested.rule.hasPrefix("production functions no production code uses (outskirts with test "
             + "targets not counted as roots; "))
         #expect(DeadButTested.rule.hasSuffix("; types and properties aren't judged"))
-        #expect([HiddenCoupling.rule(thresholds: tuned), DeadButTested.rule].allSatisfy { rule in
-            rule.contains(SignalEngine.notBuilt) == false
-        })
     }
 
     @Test("an empty pool states the funnel with every part zero")
@@ -215,8 +212,8 @@ struct TestOnlyProductionTests {
 
     @Test("""
         M7's three signals come last in report order with their titles and requirements; hidden coupling is \
-        left out for its requirements first, then as not built yet, and dead but tested for its requirements, \
-        then for the mutation rows it reads, each stating its own rule either way
+        computed once its requirements hold, and dead but tested is left out for its requirements, then for the \
+        mutation rows it reads, stating its own rule
         """)
     func names() throws {
         let made = try TemporaryStore("TestOnly")
@@ -240,7 +237,6 @@ struct TestOnlyProductionTests {
                 signals.first { $0.name == name }?.rule
             }
         }
-        let notBuilt = "the signal is not built yet"
 
         #expect(SignalName.reportOrder.suffix(4) == [
             .unevenCloneMutation, .hiddenCoupling, .deadButTested, .testOnlyProduction
@@ -255,12 +251,14 @@ struct TestOnlyProductionTests {
             .m7Snapshot, .collector(PeripheryAdapter.name), .collector(MutationAdapter.name)
         ])
         #expect(SignalName.testOnlyProduction.requirements == [.m7Snapshot, .collector(IndexAdapter.name)])
-        #expect(try reasons() == [notBuilt, "needs swiftmutator: skipped, not requested; scan --mutation runs it"])
-        #expect(try rules() == [HiddenCoupling.rule(thresholds: SignalThresholds()), DeadButTested.rule])
+        let computed = HiddenCoupling.rule(thresholds: SignalThresholds()) + "; "
+        #expect(try reasons() == [nil, "needs swiftmutator: skipped, not requested; scan --mutation runs it"])
+        #expect(try rules()[0]?.hasPrefix(computed) == true)
+        #expect(try rules()[1] == DeadButTested.rule)
         try SnapshotHarness.sqlite(made.url, "UPDATE collectorRun SET state = 'ran', reason = NULL WHERE name = "
             + "'swiftmutator'")
-        #expect(try reasons() == [notBuilt, "the snapshot holds no mutation rows"])
-        #expect(try rules() == [HiddenCoupling.rule(thresholds: SignalThresholds()), DeadButTested.rule])
+        #expect(try reasons() == [nil, "the snapshot holds no mutation rows"])
+        #expect(try rules()[1] == DeadButTested.rule)
         try SnapshotHarness.sqlite(made.url, "UPDATE snapshot SET reportSchemaVersion = 8")
         #expect(try reasons() == ["the snapshot predates M7", "the snapshot predates M7"])
         #expect(SignalName(rawValue: "test-only-production") == .testOnlyProduction)
