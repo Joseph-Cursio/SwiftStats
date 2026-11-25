@@ -13,13 +13,15 @@
 //  (by the `index` collector, or here when it didn't get that far),
 //  writes the empty configuration file, then runs outskirts twice in the
 //  package root (`PeripheryCommand`), standard input empty, each run's
-//  standard output kept in the build directory, and reads both
-//  (`PeripheryOutput`). A run that exits other than 0 fails the collector
-//  with its last standard-error lines (outskirts' two routine warnings
-//  dropped; its kept standard output's when that leaves nothing), as does
-//  one warning that a retained module wasn't scanned: that module would
-//  retain nothing and its tested API would read as dead. Nothing partial
-//  is kept; reasons are free of absolute paths.
+//  standard output kept in the build directory, reads both
+//  (`PeripheryOutput`) and maps their entries onto the records
+//  (`DeadCodeMapper`), by the index's facts when it ran, else by
+//  position. A run that exits other than 0 fails the collector with its
+//  last standard-error lines (outskirts' two routine warnings dropped; its
+//  kept standard output's when that leaves nothing), as does one warning
+//  that a retained module wasn't scanned: that module would retain nothing
+//  and its tested API would read as dead. Nothing partial is kept; reasons
+//  are free of absolute paths.
 //
 
 import Foundation
@@ -97,7 +99,8 @@ enum PeripheryAdapter {
                 identity: nil,
                 milliseconds: milliseconds
             ),
-            output: try? outcome.get()
+            output: try? outcome.get(),
+            report: (try? outcome.get()).map(DeadCodeMapper(scan: job.scan, index: job.index.deadCode).report)
         )
     }
 
@@ -127,6 +130,7 @@ enum PeripheryAdapter {
         let retained = units.retained.compactMap { c99[$0] }.sorted(by: CodePointOrder.precedes)
         options = PeripheryCommand.Run.ordered.map { PeripheryCommand.option($0, retained: retained) }
             + [PeripheryCommand.retainOption(targets: units.retained), "classes: " + PeripheryOutput.rule]
+            + ["map: " + DeadCodeMapper.rule]
         let configuration = products.scratch.appendingPathComponent(PeripheryCommand.configurationName)
         do {
             try Data().write(to: configuration)

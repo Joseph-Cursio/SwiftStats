@@ -45,7 +45,8 @@ struct PeripheryAdapterTests {
             "roots: " + line,
             "production: " + line + " --exclude-tests",
             "retain-public-modules: " + targets,
-            "classes: " + PeripheryOutput.rule
+            "classes: " + PeripheryOutput.rule,
+            "map: " + DeadCodeMapper.rule
         ]
     }
 

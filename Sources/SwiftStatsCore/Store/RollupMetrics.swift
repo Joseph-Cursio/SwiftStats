@@ -37,6 +37,12 @@ enum RollupMetrics {
     private static let mutationField = "mutation"
     /// The roll-up field whose numbers come from the `index` collector.
     private static let indexField = "index"
+    /// The roll-up field whose numbers come from the `periphery` collector.
+    private static let deadCodeField = "deadCode"
+    /// The line ratio's dead lines, which come from the `periphery`
+    /// collector, though the rest of the ratio is SwiftStats' own (M7,
+    /// design §7).
+    private static let deadLinesPath = "tests.lineRatio.deadLines"
     /// The collector of each finding tool that isn't named after its
     /// collector: the compiler's warnings come from the T1 build (M7,
     /// design §6.4).
@@ -76,6 +82,9 @@ enum RollupMetrics {
         }
         if path.first == indexField {
             return IndexAdapter.name
+        }
+        if path.first == deadCodeField || path.joined(separator: ".") == deadLinesPath {
+            return PeripheryAdapter.name
         }
         return SwiftStatsCollector.name
     }

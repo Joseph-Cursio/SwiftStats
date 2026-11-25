@@ -9,7 +9,8 @@
 //  the scan JSON's `index` block writes them: each record's witness flag
 //  and referrers (records with a primary USR only), the edges, the
 //  production types with their fan-in and cycle number, and the family
-//  references, each list in a fixed order.
+//  references, each list in a fixed order; and the facts the dead-code
+//  mapping reads from the same join and ownership (`DeadCodeIndex`).
 //
 
 /// The coupling the T1 build's index gives a scan.
@@ -30,6 +31,9 @@ struct IndexCoupling {
     /// The production families' references to package types, by family,
     /// then type.
     let familyTypeReferences: [IndexFamilyTypeReference]
+    /// What the dead-code mapping reads from the index: the records by
+    /// USR, the properties' accessor records and the types' ownership.
+    let deadCode: DeadCodeIndex
 
     /// The coupling of `snapshot` for `scan`, its records joined by
     /// `join`, references and types read only from `joinable` files
@@ -43,6 +47,7 @@ struct IndexCoupling {
     ) {
         let input = Self.input(snapshot: snapshot, join: join, scan: scan, joinable: joinable)
         let graph = ReferenceGraph(input)
+        deadCode = DeadCodeIndex(join: join, records: scan.records, ownership: input.ownership)
         records = Self.records(graph, join: join)
         moduleEdges = ModuleEdges.edges(
             of: snapshot,

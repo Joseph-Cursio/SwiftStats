@@ -12,7 +12,7 @@
 //
 
 /// The class of an outskirts entry.
-enum PeripheryEntryClass: String, CaseIterable, Sendable {
+public enum PeripheryEntryClass: String, CaseIterable, Sendable {
     /// Under the build directory (none expected, given the exclude).
     case build
     /// In a file that changed during the scan.
@@ -29,5 +29,5 @@ enum PeripheryEntryClass: String, CaseIterable, Sendable {
     case unscanned
 
     /// The classes in the order they apply.
-    static let ordered: [Self] = [.build, .outsideRoot, .test, .unscanned, .fileChanged, .local, .production]
+    public static let ordered: [Self] = [.build, .outsideRoot, .test, .unscanned, .fileChanged, .local, .production]
 }

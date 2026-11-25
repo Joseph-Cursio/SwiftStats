@@ -50,6 +50,33 @@ enum TestSummaryBuilder {
         return Set(named).intersection(keys).count
     }
 
+    /// The modules the line ratio of a roll-up of `modules` at `scope`
+    /// measures, as `LineRatio` describes: the test modules whose tests it
+    /// counts and the production modules whose files it measures against.
+    static func ratioModules(
+        scope: RollupScope,
+        modules: Set<String>,
+        targets: [TargetSummary]
+    ) -> (testing: Set<String>, production: Set<String>) {
+        let testModules = Set(targets.filter(\.isTest).map(\.name))
+        let productionModules = Set(targets.filter { $0.isTest == false }.map(\.name))
+        switch scope {
+        case .project:
+            return (testModules, productionModules)
+
+        case .module where modules.isSubset(of: testModules):
+            let production = Set(targets.filter { modules.contains($0.name) }.flatMap(\.dependencies))
+                .intersection(productionModules)
+            return (modules, production)
+
+        case .module:
+            let dependents = targets.filter { target in
+                target.isTest && target.dependencies.contains { modules.contains($0) }
+            }
+            return (Set(dependents.map(\.name)), modules)
+        }
+    }
+
     /// The line ratio's counts for a roll-up of `modules` at `scope`.
     private static func lineRatio(
         scope: RollupScope,
@@ -57,27 +84,7 @@ enum TestSummaryBuilder {
         targets: [TargetSummary],
         scan: RollupInput
     ) -> LineRatio {
-        let testModules = Set(targets.filter(\.isTest).map(\.name))
-        let productionModules = Set(targets.filter { $0.isTest == false }.map(\.name))
-        let testing: Set<String>
-        let production: Set<String>
-        switch scope {
-        case .project:
-            testing = testModules
-            production = productionModules
-
-        case .module where modules.isSubset(of: testModules):
-            testing = modules
-            production = Set(targets.filter { modules.contains($0.name) }.flatMap(\.dependencies))
-                .intersection(productionModules)
-
-        case .module:
-            let dependents = targets.filter { target in
-                target.isTest && target.dependencies.contains { modules.contains($0) }
-            }
-            testing = Set(dependents.map(\.name))
-            production = modules
-        }
+        let (testing, production) = ratioModules(scope: scope, modules: modules, targets: targets)
         let tests = scan.tests.filter { testing.contains($0.module) && $0.generated == false }
         let lines = Dictionary(scan.records.map { ($0.key, $0.strippedLines) }) { first, _ in first }
         return LineRatio(
@@ -86,7 +93,8 @@ enum TestSummaryBuilder {
                 counts[test.kind.rawValue, default: 0] += lines[test.key] ?? 0
             },
             productionLines: scan.files.filter { production.contains($0.module) }.map(\.strippedLines).reduce(0, +),
-            deadCodeExcluded: false
+            deadCodeExcluded: false,
+            deadLines: nil
         )
     }
 }

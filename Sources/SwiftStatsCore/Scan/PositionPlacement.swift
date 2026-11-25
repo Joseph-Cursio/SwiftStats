@@ -5,7 +5,8 @@
 //  Where something at a position of a kept file goes (M5, M6, M7): coverage
 //  places an export entry by the start of its first region, mutation a
 //  mutant by its anchor, the build a type-check timing entry by its
-//  declaration's name. The position, compared by (line, column), goes to
+//  declaration's name, the dead-code mapping an outskirts entry by its
+//  name, for listing. The position, compared by (line, column), goes to
 //  the innermost record holding it (the latest start, then the earliest
 //  end, then the key; a file's top-level-code record only on its statement
 //  lines), else to the innermost type holding it, else to its file. Which
@@ -61,11 +62,30 @@ struct PositionPlacement {
 
     /// A placement over `measured`'s records of `roles` and its types.
     init(measured: ScanMeasurements, roles: Roles) {
-        let records = roles == .every ? measured.records : measured.records.filter { $0.role == .production }
-        recordsByFile = Dictionary(grouping: records, by: \.file)
-        typesByFile = Dictionary(grouping: measured.types, by: \.file)
-        topLevelLines = measured.topLevelLines
-        fileScopedTypes = measured.fileScopedTypes
+        self.init(
+            records: measured.records,
+            types: measured.types,
+            topLevelLines: measured.topLevelLines,
+            fileScopedTypes: measured.fileScopedTypes,
+            roles: roles
+        )
+    }
+
+    /// A placement over `records` of `roles` and `types`, each file's
+    /// top-level statement lines in `topLevelLines` and its file-scoped
+    /// types in `fileScopedTypes`, as the scan measured them.
+    init(
+        records: [FunctionRecord],
+        types: [TypeRecord],
+        topLevelLines: [String: Set<Int>],
+        fileScopedTypes: [String: Set<String>],
+        roles: Roles
+    ) {
+        let placed = roles == .every ? records : records.filter { $0.role == .production }
+        recordsByFile = Dictionary(grouping: placed, by: \.file)
+        typesByFile = Dictionary(grouping: types, by: \.file)
+        self.topLevelLines = topLevelLines
+        self.fileScopedTypes = fileScopedTypes
     }
 
     /// Of `elements` whose ranges hold the position, the one starting last,

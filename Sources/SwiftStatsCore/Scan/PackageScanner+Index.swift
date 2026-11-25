@@ -17,9 +17,10 @@
 //  reads its store, joins its definitions to the records and counts its
 //  references and coupling (`IndexAdapter`); then, once its own settings
 //  let it run, the `periphery` collector runs outskirts twice over the
-//  same store and reads its entries (`PeripheryAdapter`), after the index
-//  has moved stale units out of the store or, when the index didn't run,
-//  moving them itself.
+//  same store, reads its entries and maps them onto the records
+//  (`PeripheryAdapter`, `DeadCodeMapper`), after the index has moved stale
+//  units out of the store or, when the index didn't run, moving them
+//  itself.
 //
 
 import Foundation
@@ -44,10 +45,18 @@ extension PackageScanner {
         /// outskirts' entries, read and classed; nil unless the
         /// `periphery` collector ran.
         let peripheryOutput: PeripheryOutput?
+        /// outskirts' entries mapped onto the scan; nil unless the
+        /// `periphery` collector ran.
+        let deadCodeReport: DeadCodeReport?
 
         /// The `index` collector's status.
         var indexStatus: CollectorStatus {
             readers[0].result.status
+        }
+
+        /// The `periphery` collector's status.
+        var peripheryStatus: CollectorStatus {
+            readers[1].result.status
         }
 
         /// The three runs, `build`, `index` and `periphery`.
@@ -77,7 +86,8 @@ extension PackageScanner {
                 report: nil,
                 findings: [],
                 indexReport: nil,
-                peripheryOutput: nil
+                peripheryOutput: nil,
+                deadCodeReport: nil
             )
         }
     }
@@ -196,7 +206,8 @@ extension PackageScanner {
         }
         return PeripheryRun(
             timed: TimedAdapterResult(result: result, executable: nil, identity: nil, milliseconds: 0),
-            output: nil
+            output: nil,
+            report: nil
         )
     }
 
@@ -221,7 +232,8 @@ extension PackageScanner {
                 timed: TimedAdapterResult(result: result, executable: nil, identity: nil, milliseconds: 0),
                 report: nil,
                 localUSRs: [],
-                quarantineRan: false
+                quarantineRan: false,
+                deadCode: nil
             )
         }
         return IndexAdapter.run(products: products, scan: scan, opening: indexSource)
@@ -284,7 +296,8 @@ extension PackageScanner {
                 report: mapped.report,
                 findings: mapped.findings,
                 indexReport: index.report,
-                peripheryOutput: periphery.output
+                peripheryOutput: periphery.output,
+                deadCodeReport: periphery.report
             )
         }
     }

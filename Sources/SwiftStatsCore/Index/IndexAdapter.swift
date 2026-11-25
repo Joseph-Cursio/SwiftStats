@@ -34,6 +34,9 @@ enum IndexAdapter {
         /// out of the store; true even when it failed after that, so the
         /// `periphery` collector leaves the quarantine folder as it is.
         let quarantineRan: Bool
+        /// What the dead-code mapping reads from the index (design §5.4);
+        /// nil unless it ran.
+        let deadCode: DeadCodeIndex?
     }
 
     /// What a read of the store gave.
@@ -42,6 +45,8 @@ enum IndexAdapter {
         let report: IndexReport
         /// The USRs defined local.
         let localUSRs: Set<String>
+        /// What the dead-code mapping reads.
+        let deadCode: DeadCodeIndex
     }
 
     /// What a read of the store needs from the scan.
@@ -141,7 +146,8 @@ enum IndexAdapter {
             timed: TimedAdapterResult(result: result, executable: nil, identity: nil, milliseconds: milliseconds),
             report: read?.report,
             localUSRs: read?.localUSRs ?? [],
-            quarantineRan: quarantineRan
+            quarantineRan: quarantineRan,
+            deadCode: read?.deadCode
         )
     }
 
@@ -202,7 +208,7 @@ enum IndexAdapter {
             familyTypeReferences: coupling.familyTypeReferences,
             files: scan.files.map(\.path).sorted().map { IndexFileHash(path: $0, sha256: products.hashes[$0]) }
         )
-        return Read(report: report, localUSRs: localUSRs(in: snapshot))
+        return Read(report: report, localUSRs: localUSRs(in: snapshot), deadCode: coupling.deadCode)
     }
 
     /// The library-product targets of `package` among `read`, the targets

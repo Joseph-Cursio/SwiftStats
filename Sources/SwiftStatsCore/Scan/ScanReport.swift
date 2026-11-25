@@ -23,9 +23,10 @@ public struct ScanReport: Codable, Hashable, Sendable {
     /// scan lists and whose results are mapped to records (M6); 9 adds the
     /// T1 group's collectors, `build`, `index` and `periphery`, whose
     /// statuses every scan lists, the build's type-check timings mapped to
-    /// records and its warnings as `swiftc` findings, and the index's USRs,
+    /// records and its warnings as `swiftc` findings, the index's USRs,
     /// referrers and coupling (module edges, types, USR type cycles, family
-    /// references), rolled up for every scope (M7).
+    /// references), rolled up for every scope, and outskirts' dead code
+    /// mapped to records, with each line ratio's dead lines (M7).
     public static let currentSchemaVersion = 9
 
     /// The output format version (`currentSchemaVersion` when written).
@@ -89,6 +90,11 @@ public struct ScanReport: Codable, Hashable, Sendable {
     /// after the build; absent when the collector didn't run (M7, design
     /// §2–§4, §9.2).
     public internal(set) var index: IndexReport?
+    /// The `periphery` collector's results: outskirts' two runs, every
+    /// entry with its class and place, the records the unused production
+    /// entries cover and each run's dead lines per module; absent when the
+    /// collector didn't run (M7, design §5, §9.2).
+    public internal(set) var deadCode: DeadCodeReport?
     /// What the history collector found; absent when it didn't run (PRD §7.13).
     public internal(set) var history: HistoryReport?
 
@@ -111,11 +117,36 @@ public struct ScanReport: Codable, Hashable, Sendable {
         return report
     }
 
-    /// The report with the T1 `group`'s build and index results attached
-    /// and their collectors' statuses replaced.
+    /// The report with the T1 `group`'s build, index and dead-code results
+    /// attached and their collectors' statuses replaced.
     func with(_ group: PackageScanner.IndexGroup) -> Self {
         with(build: group.report, status: group.build.result.status)
             .with(index: group.indexReport, status: group.indexStatus)
+            .with(deadCode: group.deadCodeReport, status: group.peripheryStatus)
+    }
+
+    /// The report with `deadCode` attached, the `periphery` collector's
+    /// status replaced by `status`, and the roll-ups' dead-code counts and
+    /// line ratios' dead lines rebuilt from it (M7, design §7): how a scan
+    /// attaches its dead-code results, so a fresh scan and a carried one
+    /// roll them up alike. A nil `deadCode` leaves every roll-up without
+    /// dead-code counts and every line ratio without dead lines, dead code
+    /// not excluded.
+    func with(deadCode: DeadCodeReport?, status: CollectorStatus) -> Self {
+        let plain = rollups.map { $0.with(deadCode: nil).with(deadLines: nil) }
+        let built = deadCode.map { report in
+            DeadCodeRollupBuilder(targets: targets, records: records, report: report).rollups(plain)
+        }
+        var report = replacing(
+            status,
+            rollups: built ?? plain,
+            coverage: coverage,
+            mutation: mutation,
+            warnings: warnings
+        )
+        report.deadCode = deadCode
+        report.history = history
+        return report
     }
 
     /// The report with `index` attached, the `index` collector's status
@@ -172,7 +203,7 @@ public struct ScanReport: Codable, Hashable, Sendable {
 
     /// The report with `status` replacing its collector's status, and
     /// `rollups`, `coverage`, `mutation` and `warnings` replacing its own,
-    /// its build and index results kept, and no history.
+    /// its build, index and dead-code results kept, and no history.
     private func replacing(
         _ status: CollectorStatus,
         rollups: [Rollup],
@@ -206,6 +237,7 @@ public struct ScanReport: Codable, Hashable, Sendable {
         )
         report.build = build
         report.index = index
+        report.deadCode = deadCode
         return report
     }
 }

@@ -22,16 +22,8 @@ import Foundation
 
 /// outskirts' command lines and the files they read and write.
 enum PeripheryCommand {
-    /// One of the two runs.
-    enum Run: String, CaseIterable, Sendable {
-        /// Tests excluded from the roots: production-dead code.
-        case production
-        /// Test targets as roots: anything a test reaches is used.
-        case roots
-
-        /// The runs in the order SwiftStats makes them.
-        static let ordered: [Self] = [.roots, .production]
-    }
+    /// One of the two runs, as the dead-code results name it.
+    typealias Run = DeadCodeRun
 
     /// The configuration file outskirts reads, empty, in the build
     /// directory.

@@ -11,8 +11,8 @@ script reads them with its own line patterns, not design section 6.1's
 grammar, and accounts for every line. Run it as `python3 -I -B Scripts/index-check.py <mode> ...`, so it
 writes no bytecode cache beside itself.
 
-Modes (later plan steps add `dead`'s mapping part, `signals` and
-`coverage-names`, and `usr`'s check u8):
+Modes (later plan steps add `signals` and `coverage-names`, and `usr`'s
+check u8):
 
 `dump` writes the reader's values for a store as JSON: the recorded
 `reader.json` the unit tests read through `RecordedIndexSource`, and the
@@ -478,6 +478,137 @@ Inputs `dead` (run part) trusts:
     checked, and its `deadCode` block and the store's rows likewise.
 Nothing from SwiftStats' code.
 
+`dead`'s mapping part (plan step 6b) reimplements design sections 5.3 and
+5.4 over the same two runs' entries, in outskirts' order (ordinal k = the
+k-th entry, counted from the scan's lowest declaration ordinal, 0 or 1,
+else 1), and design 7's ratio fields, and compares them with the scan
+JSON's `deadCode` block (design 9.2), its roll-ups and, with --store, the
+`deadDeclaration` and `deadRecord` rows (design 9.1):
+  classes  every entry of both runs, first that applies: `build` (under
+           <build>); `outsideRoot`; `test` (its file under a test target's
+           directory in the describe, or every `modules` entry a test
+           target); `unscanned` (in the root, not among the scan's files);
+           `fileChanged` (a scanned file whose bytes no longer have the
+           scan's hash: the check runs right after the scan); `local`;
+           else `production`. `local` (the default `--local-rule plan`,
+           step 6a's adopted reading): a variable kind (`var.*`) other than
+           `var.parameter` whose `ids` hold a USR some definition in a read
+           unit has with the `local` property (only when the index is
+           used), or that lies inside a record (any role) other than
+           top-level code. `--local-rule literal` reads design 5.3 word for
+           word instead: the index rule for any kind (it then drops unused
+           local functions, which design 13's 6b tests map) and the position
+           rule for every variable kind, parameters included. Each
+           declaration's class is compared by ordinal (as a multiset with
+           the decoded fields when no ordinals are given), and the dropped
+           counts per class and run (every class but production);
+  mapping  each production entry (every hint, design 5.4's words; `--map-
+           hints unused` maps only hint unused) covers records, first rule
+           that applies:
+             usr       (index used) an `ids` USR is a record's primary or
+                       secondary USR (my own u2 join) -> those records;
+             property  (index used) a `var.*` entry whose `ids` USR some
+                       accessor record's definition names through accessorOf
+                       -> those accessor records (every accessor kind);
+             type      class, struct, enum or protocol: with the index the
+                       package type (u7's placement) whose USR is an `ids`
+                       entry, without it the innermost type record of a
+                       compatible kind (class with class or actor) holding
+                       (line, UTF-8 column) -> every function record (all but
+                       top-level code) whose owning type is that type or a
+                       type nested in it, in any file: by u7's ownership of
+                       the record's primary USR with the index (a record
+                       without one falls back to the next rule's T0 reading),
+                       else by T0: same target, typePath equal or the type's
+                       path plus `.`, and the type's typeFile '' or the
+                       record's (typeFile: the file when the path is private
+                       or fileprivate there, by the tokenizer copied from
+                       Scripts/coverage-check.py). The type's extension
+                       records: with the index those whose extension u7's
+                       ownership gives the type, without it extension records
+                       of the same target naming the type's path (in its file
+                       for a file-scoped type);
+             extension extension.* kinds -> the innermost extension type
+                       record holding the position -> every function record
+                       of that file whose range lies in its range;
+             location  a function.* entry when the index isn't used -> the
+                       innermost record holding the position whose kind
+                       design 3.2's table allows for outskirts' kind
+                       (function.free/method/operator: func; constructor:
+                       init; destructor: deinit; subscript: subscript;
+                       function.accessor.*: the accessor of that kind). With
+                       the index used, a function entry whose USRs match no
+                       record covers nothing (the "function entries matching
+                       no record" of design 8.2's funnel) and is noted;
+             none      anything else (parameters, imports, enum elements,
+                       stored properties, typealiases, ...).
+           deadRecord rows: each covered record once per run, with the
+           lower ordinal's entry and its via; compared as sets of (run, key,
+           declaration ordinal, via), and every via must be one of the five
+           names. A record is dead in a run when a production entry with
+           hint unused covers it;
+  lines    the covered units of a run (production entries with hint unused):
+           type entries (the type record and its extension records),
+           extension entries (the extension record) and every function
+           record those entries cover. A unit is maximal unless another
+           holds it: a function record below a covered record by parentKey,
+           a nested type (design 4.3's identity nesting) or the type's own
+           extension record inside a covered type, or a unit whose range
+           lies in a covered type's type or extension record range, or in a
+           covered extension's or record's range, in the same file. Dead
+           lines per module = the strippedLines of the maximal units' parts
+           (a type record's and each extension record's lines to its own
+           target). Compared per module and run; a self-check recomputes
+           them, and the deadRecord rows, over the entries reversed and
+           shuffled;
+  ratio    every roll-up's `tests.lineRatio`: `deadCodeExcluded` true exactly
+           when the scan's periphery collector ran, and `deadLines` the
+           roots run's dead lines of the production modules the ratio
+           measures against (LineRatio's doc comment: a production module's
+           own; a test target's production dependencies; the project's
+           every production target; this reading is printed when its
+           production lines differ from the scan's `productionLines`), absent
+           or null when periphery didn't run;
+  options  the periphery collector's options hold one `classes:` and one
+           `map:` rule (design 1.8; text other than design 5.3's and 5.4's
+           rule strings is printed, not failed);
+  rollups  in each roll-up's `deadCode` block, where present (keys printed):
+           `records` (records dead in the roots run) and `productionRecords`
+           (production-dead records), by the record's module, project scopes
+           by role production or not; `unsized` (unused production entries
+           of the roots run with no line count: no record, type or extension
+           covered) and `unused` (those entries by design 10.1's kind:
+           function, type, extension, property, enumCase, parameter, import,
+           other), by the entry file's module.
+Printed, not failed: each entry's class, rule, covered records and line
+count, the units (maximal or held), the notes (entries that cover nothing,
+records judged by the T0 fallback), and each declaration's `place` and
+`owner` (the innermost record holding its position, else the innermost type
+record, named `<module>::<type path>` plus ` @ <file>` when file-scoped,
+else the file) and `strippedLines` against the scan's, since design 5.4
+lists them for listing only. `--index-mode auto` (the default) uses the
+index exactly when the scan's index collector ran; `index` and `position`
+force either; `--without-mapping` runs the run part alone.
+
+Inputs `dead` (mapping part) trusts, besides the run part's:
+  - with the index, this script's own read of the store and `usr`'s join
+    (u2) and type placement and ownership (u7: childOf chains, extendedBy
+    heads, accessorOf relations, local properties), as checked in plan
+    steps 5a and 5b;
+  - the scan JSON's `records` (`key`, `file`, `kind`, `accessorKind`,
+    `range`, `parentKey`, `module`, `role`, `typePath`, `strippedLines`),
+    `types` (`module`, `name`, `kind`, `range`, `isLocal`, `file`,
+    `strippedLines`), `files` (`path`, `sha256`, `module`, `strippedLines`),
+    `targets` (`name`, `isTest`, `dependencies`), the `index` collector's
+    state and the roll-ups' scopes and `productionLines`, as T0 and the
+    index collector wrote them;
+  - the package's sources on disk (private and fileprivate types, by the
+    tokenizer copied from Scripts/coverage-check.py; current hashes);
+  - LineRatio's doc comment (Model/LineRatio.swift, before M7) for the
+    ratio's scopes.
+Not the scan JSON's `deadCode` block, `deadLines`, `deadCodeExcluded` or
+`deadCode.*` roll-ups, which it checks.
+
 Usage:
     python3 -I -B Scripts/index-check.py dump <store> <libIndexStore.dylib>
                                          <describe.json> <root>
@@ -518,6 +649,12 @@ Usage:
                                          [--use-scan-inputs]
                                          [--output-dir <dir>]
                                          [--own-only] [--dump <path>] [--all]
+                                         [--demangle <swift-demangle>]
+                                         [--without-mapping]
+                                         [--index-mode auto|index|position]
+                                         [--local-rule plan|literal]
+                                         [--map-hints all|unused]
+                                         [--ordinal-base 0|1]
 
 For `dump`, <store> is the directory holding `v5/units` (for the T1 build,
 `<package>/.swiftstats/index-build/out`). The JSON goes to standard output,
@@ -5369,6 +5506,831 @@ def report_runs_own(verdict, runs, version, outskirts_real, library_targets, wit
                      + (", ".join(f"{k} {v}" for k, v in sorted(figures["production"].items())) or "none"))
 
 
+# --------------------------------------------------------------------------
+# dead, mapping part: classes, the records each entry covers, dead lines and
+# the line ratio (design sections 5.3, 5.4, 7, 9.1, 9.2 and 11; plan step 6b)
+
+ENTRY_CLASSES = ("build", "outsideRoot", "test", "unscanned", "fileChanged", "local", "production")
+DROPPED_CLASSES = ENTRY_CLASSES[:-1]
+# outskirts' nominal kinds and the TypeRecord kinds each is compatible with
+# (actors are classes in the index and in outskirts).
+NOMINAL_ENTRY_KINDS = {"class": {"class", "actor"}, "struct": {"struct"}, "enum": {"enum"},
+                       "protocol": {"protocol"}}
+VIA_NAMES = ("usr", "property", "type", "extension", "location")
+# outskirts' accessor kinds and the record accessor kinds they stand for.
+OUTSKIRTS_ACCESSORS = {
+    "function.accessor.getter": {"get"}, "function.accessor.setter": {"set"},
+    "function.accessor.willset": {"willSet"}, "function.accessor.didset": {"didSet"},
+    "function.accessor.read": {"_read", "read"}, "function.accessor.modify": {"_modify", "modify"},
+    "function.accessor.address": {"unsafeAddress"},
+    "function.accessor.mutableaddress": {"unsafeMutableAddress"}, "function.accessor.init": {"init"},
+}
+# Design 10.1's kinds for unused production declarations.
+KIND_GROUPS = ("function", "type", "extension", "property", "enumCase", "parameter", "import", "other")
+DESIGN_CLASSES_RULE = ("build, outside the root, test targets, unscanned, files changed during the scan, local "
+                       "declarations (index local property, or a variable inside a function record), else production")
+DESIGN_MAP_RULE = ("outermost unused declarations: by USR to the record (a property's accessor records by role-free "
+                   "accessorOf), a type to every record it owns in any file (extensions folded, as outskirts folds "
+                   "them), an extension to the records in its range, else a function by its name position; others "
+                   "attached for listing")
+
+
+def kind_group(kind):
+    """Design 10.1's kind for an outskirts kind."""
+    if kind.startswith("function"):
+        return "function"
+    if kind in NOMINAL_ENTRY_KINDS:
+        return "type"
+    if kind.startswith("extension"):
+        return "extension"
+    if kind == "var.parameter":
+        return "parameter"
+    if kind.startswith("var."):
+        return "property"
+    if kind == "enumelement":
+        return "enumCase"
+    if kind == "module":
+        return "import"
+    return "other"
+
+
+def function_record_for(kind, record):
+    """Design 3.2's table read by outskirts' function kind (rule 5)."""
+    if record["kind"] == "topLevel":
+        return False
+    if kind in OUTSKIRTS_ACCESSORS:
+        return record["kind"] == "accessor" and (record.get("accessorKind") or "get") in OUTSKIRTS_ACCESSORS[kind]
+    if kind == "function.constructor":
+        return record["kind"] == "init"
+    if kind == "function.destructor":
+        return record["kind"] == "deinit"
+    if kind == "function.subscript":
+        return record["kind"] == "subscript"
+    return kind.startswith("function.") and record["kind"] == "func"
+
+
+def within(inner, outer):
+    """Whether range `inner` lies in range `outer` (both ((l, c), (l, c)))."""
+    return outer[0] <= inner[0] and inner[1] <= outer[1]
+
+
+def nested_identity(inner, outer):
+    """Design 4.3's nesting of type identities (module, typePath, typeFile):
+    same module, the inner path the outer's plus '.', the outer's typeFile ''
+    or the inner's."""
+    return inner[0] == outer[0] and outer[2] in ("", inner[2]) and inner[1].startswith(outer[1] + ".")
+
+
+def normalized_name(text):
+    return re.sub(r"[^a-z0-9]", "", str(text).lower())
+
+
+class SourceTypes:
+    """T0's type records with design 4.3's identities, and the records'
+    identities by T0's typePath (the mapping without the index)."""
+
+    def __init__(self, package):
+        self.package = package
+        self.types = package.scan.get("types", [])
+        self.by_file = defaultdict(list)
+        for record in self.types:
+            self.by_file[record["file"]].append(record)
+        self.scoped_cache = {}
+
+    def scoped(self, path):
+        if path not in self.scoped_cache:
+            try:
+                with open(os.path.join(self.package.root, path), encoding="utf-8", errors="replace") as handle:
+                    source = handle.read()
+            except OSError:
+                source = ""
+            self.scoped_cache[path] = file_scoped_paths(self.by_file.get(path, []), source)
+        return self.scoped_cache[path]
+
+    def identity(self, record):
+        """(module, typePath, typeFile) of a type record; typeFile the file
+        for a private or fileprivate type (or one nested in one), else ''."""
+        if record.get("isLocal"):
+            return (record["module"], record["name"], "")
+        return (record["module"], record["name"], record["file"] if scoped_by(record["name"], self.scoped(record["file"]))
+                else "")
+
+    def record_identity(self, record):
+        """A function record's owning type by T0: (module, typePath, typeFile), None without a typePath."""
+        path = record.get("typePath")
+        if not path:
+            return None
+        return (record["module"], path, record["file"] if scoped_by(path, self.scoped(record["file"])) else "")
+
+    def innermost(self, path, line, column, kinds):
+        holding = [t for t in self.by_file.get(path, []) if t["kind"] in kinds and holds(t, line, column)]
+        if not holding:
+            return None
+        return min(holding, key=lambda t: ((-range_of(t)[0][0], -range_of(t)[0][1]), range_of(t)[1], t["name"]))
+
+    def type_name(self, record):
+        identity = self.identity(record)
+        return f"{identity[0]}::{identity[1]}" + (f" @ {identity[2]}" if identity[2] else "")
+
+
+class DeadMapping:
+    """Design 5.3's classes and 5.4's mapping and dead lines, over this
+    script's own runs (and, when the scan's index ran, its own join and type
+    ownership, `usr`'s u2 and u7 read)."""
+
+    def __init__(self, package, describe, described, runs, join, coupling, local_rule, map_hints, base):
+        self.package = package
+        self.described = described
+        self.runs = runs
+        self.join = join
+        self.coupling = coupling
+        self.with_index = join is not None
+        self.local_rule = local_rule
+        self.map_hints = map_hints
+        self.base = base
+        self.types = SourceTypes(package)
+        self.records = [r for r in package.records]
+        self.function_records = [r for r in self.records if r["kind"] != "topLevel"]
+        self.notes = Counter()
+        self.test_targets = {name for name, target in described.targets.items() if target["type"] == "test"}
+        self.test_directories = []
+        for target in describe.get("targets", []):
+            if target.get("type") != "test" or not target.get("path"):
+                continue
+            location = os.path.normpath(os.path.join(package.root, target["path"]))
+            try:
+                location = real_path(location, "a test target's directory")
+            except ReadError:
+                pass
+            relative = package.relative(unicodedata.normalize("NFC", location))
+            if relative is not None:
+                self.test_directories.append(relative)
+        self.local_usrs = set()
+        self.record_by_usr = {}
+        if self.with_index:
+            for occurrences in join.occurrences_by_file.values():
+                for occurrence in occurrences:
+                    if occurrence["roles"] & ROLE_DEFINITION and occurrence["properties"] & PROPERTY_LOCAL:
+                        self.local_usrs.add(occurrence["usr"])
+            for key, usr in join.primary.items():
+                self.record_by_usr.setdefault(usr, set()).add(key)
+            for key, usr in join.secondary.items():
+                self.record_by_usr.setdefault(usr, set()).add(key)
+        self.parents = {}
+        for record in self.records:
+            if record.get("parentKey"):
+                self.parents[record["key"]] = record["parentKey"]
+        self.entries = {}       # run -> [entry dict], in outskirts' order
+        for run in DEAD_RUNS:
+            self.entries[run] = [self.entry(run, index, raw) for index, raw in enumerate(runs.entries.get(run) or [])]
+        self.rows = {run: self.dead_records(self.entries[run]) for run in DEAD_RUNS}
+        self.dead = {run: self.dead_set(self.entries[run]) for run in DEAD_RUNS}
+        self.lines = {run: self.dead_lines(self.entries[run]) for run in DEAD_RUNS}
+
+    # ---- classes (design 5.3)
+
+    def in_record(self, path, line, column):
+        return any(r["kind"] != "topLevel" and holds(r, line, column) for r in self.package.records_by_file.get(path, []))
+
+    def entry_class(self, decoded):
+        run, hint, text, kind, name, accessibility, attributes, modifiers, ids, modules, file, line, column = decoded
+        if file == BUILD_FILE:
+            return "build"
+        if file is None:
+            return "outsideRoot"
+        if any(file.startswith(directory + "/") for directory in self.test_directories) \
+                or (modules and all(module in self.test_targets for module in modules)):
+            return "test"
+        if file not in self.package.files:
+            return "unscanned"
+        if file in self.package.changed:
+            return "fileChanged"
+        variable = kind.startswith("var.")
+        if self.local_rule == "literal":
+            index_rule = self.with_index and any(usr in self.local_usrs for usr in ids)
+            position_rule = variable and self.in_record(file, line, column)
+        else:
+            eligible = variable and kind != "var.parameter"
+            index_rule = eligible and self.with_index and any(usr in self.local_usrs for usr in ids)
+            position_rule = eligible and self.in_record(file, line, column)
+        if index_rule or position_rule:
+            return "local"
+        return "production"
+
+    # ---- mapping (design 5.4)
+
+    def entry(self, run, index, raw):
+        decoded = self.runs.decoded(raw, run)
+        entry = {"run": run, "ordinal": index + self.base, "decoded": decoded, "hint": decoded[1],
+                 "kind": decoded[3], "name": decoded[4], "ids": decoded[8], "file": decoded[10],
+                 "line": decoded[11], "column": decoded[12], "class": self.entry_class(decoded),
+                 "via": None, "covers": [], "unit": None, "lines": None, "mapped": False}
+        entry["place"], entry["owner"] = self.place(entry)
+        if entry["class"] == "production" and (self.map_hints == "all" or entry["hint"] == "unused"):
+            entry["mapped"] = True
+            self.map_entry(entry)
+        return entry
+
+    def place(self, entry):
+        """Where an entry is listed: the innermost record holding its
+        position, else the innermost type record, else the file."""
+        if entry["file"] in (None, BUILD_FILE) or entry["file"] not in self.package.files:
+            return None, None
+        path, line, column = entry["file"], entry["line"], entry["column"]
+        holding = [r for r in self.package.records_by_file.get(path, []) if holds(r, line, column)]
+        if holding:
+            return "function", innermost(holding)["key"]
+        record = self.types.innermost(path, line, column, {"struct", "class", "actor", "enum", "protocol",
+                                                           "extension"})
+        if record is not None:
+            return "type", self.types.type_name(record)
+        return "file", path
+
+    def map_entry(self, entry):
+        kind, ids = entry["kind"], entry["ids"]
+        path, line, column = entry["file"], entry["line"], entry["column"]
+        if self.with_index:
+            keys = set()
+            for usr in ids:
+                keys |= self.record_by_usr.get(usr, set())
+            if keys:
+                return self.cover(entry, "usr", sorted(keys))
+            if kind.startswith("var."):
+                accessors = []
+                for usr in ids:
+                    accessors += [key for key, _ in self.coupling.accessors_of.get(usr, [])]
+                if accessors:
+                    return self.cover(entry, "property", sorted(set(accessors)))
+        if kind in NOMINAL_ENTRY_KINDS:
+            if self.with_index:
+                usr = next((usr for usr in ids if usr in self.coupling.types), None)
+                if usr is None:
+                    self.notes["type entries naming no package type by USR (cover nothing)"] += 1
+                    return None
+                return self.cover_type(entry, self.coupling.types[usr]["record"], usr)
+            record = self.types.innermost(path, line, column, NOMINAL_ENTRY_KINDS[kind])
+            if record is None:
+                self.notes["type entries with no compatible type record at their position (cover nothing)"] += 1
+                return None
+            return self.cover_type(entry, record, None)
+        if kind.startswith("extension"):
+            record = self.types.innermost(path, line, column, {"extension"})
+            if record is None:
+                self.notes["extension entries with no extension record at their position (cover nothing)"] += 1
+                return None
+            inside = [r["key"] for r in self.package.records_by_file.get(path, [])
+                      if r["kind"] != "topLevel" and within(range_of(r), range_of(record))]
+            entry["unit"] = ("extension", record["file"], range_of(record))
+            entry["unit_record"] = record
+            entry["lines"] = record.get("strippedLines")
+            return self.cover(entry, "extension", sorted(inside), lines_from_records=False)
+        if kind.startswith("function"):
+            if self.with_index:
+                self.notes["function entries matching no record by USR (index ran: no position fallback)"] += 1
+                entry["unmatched_function"] = True
+                return None
+            holding = [r for r in self.package.records_by_file.get(path, [])
+                       if function_record_for(kind, r) and holds(r, line, column)]
+            if holding:
+                return self.cover(entry, "location", [innermost(holding)["key"]])
+            entry["unmatched_function"] = True
+            self.notes["function entries with no compatible record at their position"] += 1
+        return None
+
+    def cover(self, entry, via, keys, lines_from_records=True):
+        entry["via"] = via
+        entry["covers"] = keys
+        if lines_from_records and keys:
+            entry["lines"] = sum(self.package.by_key[key].get("strippedLines") or 0 for key in keys)
+        return keys
+
+    def type_extensions(self, record, usr):
+        """A covered type's extension records: with the index, those whose
+        extension the type's USR owns (design 4.3); without it, extension
+        records of the same target naming the type's path (in its file, for a
+        file-scoped type)."""
+        identity = self.types.identity(record)
+        out = []
+        for candidate in self.types.types:
+            if candidate["kind"] != "extension":
+                continue
+            if usr is not None:
+                extension = self.coupling.extension_of_record.get(id(candidate))
+                if extension is not None and self.coupling.owner(extension) == usr:
+                    out.append(candidate)
+            elif candidate["module"] == identity[0] and candidate["name"] == identity[1] \
+                    and identity[2] in ("", candidate["file"]):
+                out.append(candidate)
+        return out
+
+    def owned(self, record, type_usr, identity):
+        """Whether a function record's owning type is the covered type or a
+        type nested in it: by the record's USR with the index (a record
+        without a primary USR, such as one in an inactive #if branch, falls
+        back to T0's typePath), else by T0's typePath, target and typeFile."""
+        if type_usr is not None and record["key"] in self.join.primary:
+            owner = self.coupling.owner(self.join.primary[record["key"]])
+            if owner is None:
+                return False
+            if owner == type_usr:
+                return True
+            entry = self.coupling.types.get(owner)
+            return entry is not None and nested_identity(entry["identity"], identity)
+        owner = self.types.record_identity(record)
+        result = owner is not None and (owner == identity or nested_identity(owner, identity))
+        if result and type_usr is not None:
+            self.notes["records without a primary USR covered by a type through T0's typePath"] += 1
+        return result
+
+    def cover_type(self, entry, record, usr):
+        identity = self.types.identity(record)
+        extensions = self.type_extensions(record, usr)
+        keys = [r["key"] for r in self.function_records if self.owned(r, usr, identity)]
+        entry["unit"] = ("type",) + identity
+        entry["unit_record"] = record
+        entry["unit_extensions"] = extensions
+        entry["lines"] = (record.get("strippedLines") or 0) + sum(e.get("strippedLines") or 0 for e in extensions)
+        return self.cover(entry, "type", sorted(keys), lines_from_records=False)
+
+    # ---- per run
+
+    def dead_records(self, entries):
+        """deadRecord rows: each covered record once, the lower ordinal winning."""
+        rows = {}
+        for entry in sorted(entries, key=lambda e: e["ordinal"]):
+            for key in entry["covers"]:
+                rows.setdefault(key, (entry["ordinal"], entry["via"]))
+        return rows
+
+    def dead_set(self, entries):
+        """Records dead in a run: covered by a production entry with hint unused."""
+        return {key for entry in entries if entry["class"] == "production" and entry["hint"] == "unused"
+                for key in entry["covers"]}
+
+    def units(self, entries):
+        """Design 5.4's covered units of a run: type entries (the type and its
+        extension records), extension entries and function records covered
+        with hint unused, each once."""
+        units = {}
+        for entry in entries:
+            if entry["class"] != "production" or entry["hint"] != "unused":
+                continue
+            unit = entry.get("unit")
+            if unit is not None and unit not in units:
+                record = entry["unit_record"]
+                if unit[0] == "type":
+                    parts = [record] + entry["unit_extensions"]
+                    units[unit] = {"kind": "type", "identity": unit[1:], "record": record,
+                                   "regions": [(p["file"], range_of(p)) for p in parts],
+                                   "extensions": {(p["file"], range_of(p)) for p in entry["unit_extensions"]},
+                                   "parts": [(p["module"], p.get("strippedLines") or 0) for p in parts]}
+                else:
+                    units[unit] = {"kind": "extension", "record": record, "regions": [(record["file"], range_of(record))],
+                                   "parts": [(record["module"], record.get("strippedLines") or 0)]}
+            for key in entry["covers"]:
+                if ("record", key) not in units:
+                    record = self.package.by_key[key]
+                    units[("record", key)] = {"kind": "record", "key": key, "record": record,
+                                              "regions": [(record["file"], range_of(record))],
+                                              "parts": [(record["module"], record.get("strippedLines") or 0)]}
+        return units
+
+    def ancestors(self, key):
+        seen = []
+        current = self.parents.get(key)
+        while current is not None and current not in seen:
+            seen.append(current)
+            current = self.parents.get(current)
+        return seen
+
+    def contains(self, outer, inner):
+        """Whether covered unit `outer` holds covered unit `inner` (design 5.4:
+        a function record inside a covered type's body or one of its
+        extensions, or below a covered ancestor record; a nested type inside a
+        covered type; an extension of a covered type; and anything lying in a
+        covered extension's or record's range)."""
+        main = inner["regions"][0]
+        if outer["kind"] == "record" and inner["kind"] == "record":
+            return outer["key"] in self.ancestors(inner["key"])
+        if outer["kind"] == "type":
+            if inner["kind"] == "type" and nested_identity(inner["identity"], outer["identity"]):
+                return True
+            if inner["kind"] == "extension" and main in outer["extensions"]:
+                return True
+        return any(main[0] == region[0] and within(main[1], region[1]) and main != region
+                   for region in outer["regions"])
+
+    def maximal(self, units):
+        keys = sorted(units, key=str)
+        out = []
+        for key in keys:
+            unit = units[key]
+            held = False
+            for other_key in keys:
+                if other_key == key:
+                    continue
+                other = units[other_key]
+                if self.contains(other, unit):
+                    if self.contains(unit, other) and str(key) < str(other_key):
+                        continue
+                    held = True
+                    break
+            if not held:
+                out.append(key)
+        return out
+
+    def dead_lines(self, entries):
+        """{module: dead lines} over the maximal covered units."""
+        units = self.units(entries)
+        lines = Counter()
+        for key in self.maximal(units):
+            for module, count in units[key]["parts"]:
+                lines[module] += count
+        return dict(lines)
+
+    def unit_listing(self, run):
+        units = self.units(self.entries[run])
+        maximal = set(self.maximal(units))
+        out = []
+        for key in sorted(units, key=str):
+            unit = units[key]
+            label = (f"type {unit['identity'][0]}::{unit['identity'][1]}" if unit["kind"] == "type"
+                     else f"extension {unit['record']['name']} @ {unit['record']['file']}:{range_of(unit['record'])[0][0]}"
+                     if unit["kind"] == "extension" else f"record {unit['key']}")
+            out.append(f"{'maximal' if key in maximal else 'held   '} {label}: "
+                       + "+".join(str(count) for _, count in unit["parts"]) + " lines")
+        return out
+
+    def order_independent(self):
+        """Dead lines recomputed over the entries reversed and shuffled
+        (ordinals kept) equal the original (design 5.4)."""
+        import random
+
+        problems = []
+        for run in DEAD_RUNS:
+            original = self.lines[run]
+            reversed_entries = list(reversed(self.entries[run]))
+            shuffled = list(self.entries[run])
+            random.Random(7).shuffle(shuffled)
+            for name, entries in (("reversed", reversed_entries), ("shuffled", shuffled)):
+                if self.dead_lines(entries) != original or self.dead_records(entries) != self.rows[run]:
+                    problems.append(f"{run}: {name} order gives {self.dead_lines(entries)} instead of {original}")
+        return problems
+
+    # ---- figures
+
+    def class_counts(self, run):
+        counts = Counter(entry["class"] for entry in self.entries[run])
+        return {name: counts.get(name, 0) for name in ENTRY_CLASSES}
+
+    def unsized(self, run):
+        """Unused production entries without a line count (design 5.4: properties
+        without accessors, enum cases, parameters, imports, and entries that
+        cover nothing): `deadCode.unsized`."""
+        return [entry for entry in self.entries[run]
+                if entry["class"] == "production" and entry["hint"] == "unused" and entry["lines"] is None]
+
+    def entry_module(self, entry):
+        info = self.package.files.get(entry["file"]) if entry["file"] else None
+        return info.get("module") if info else None
+
+    def figures(self):
+        return {run: {"classes": self.class_counts(run),
+                      "records": [{"key": key, "declaration": ordinal, "via": via}
+                                  for key, (ordinal, via) in sorted(self.rows[run].items())],
+                      "dead": sorted(self.dead[run]),
+                      "deadLines": dict(sorted(self.lines[run].items())),
+                      "unsized": len(self.unsized(run)),
+                      "entries": [{"ordinal": e["ordinal"], "hint": e["hint"], "kind": e["kind"], "name": e["name"],
+                                   "file": e["file"], "line": e["line"], "class": e["class"], "via": e["via"],
+                                   "covers": e["covers"], "lines": e["lines"], "place": e["place"],
+                                   "owner": e["owner"]} for e in self.entries[run]]}
+                for run in DEAD_RUNS}
+
+
+def ordinal_base(scan, arguments):
+    """The first entry's ordinal: `--ordinal-base`, else the lowest ordinal
+    the scan's declarations carry (0 or 1), else 1."""
+    if arguments.ordinal_base is not None:
+        return arguments.ordinal_base
+    block = scan.get("deadCode")
+    ordinals = [item.get("ordinal") for item in (block or {}).get("declarations") or []
+                if isinstance(item, dict) and isinstance(item.get("ordinal"), int)]
+    return min(ordinals) if ordinals and min(ordinals) in (0, 1) else 1
+
+
+def ratio_modules(rollup, targets):
+    """The production modules a roll-up's line ratio measures against
+    (LineRatio's doc comment): a production module its own; a test target
+    the production targets it depends on; the project every production
+    target."""
+    production = {t["name"] for t in targets if not t.get("isTest")}
+    tests = {t["name"] for t in targets if t.get("isTest")}
+    if rollup.get("scope") == "project":
+        return production
+    name = rollup.get("name")
+    if name in tests:
+        target = next(t for t in targets if t["name"] == name)
+        return set(target.get("dependencies") or []) & production
+    return {name}
+
+
+def report_mapping_own(verdict, mapping):
+    verdict.section("my classes and mapping (design 5.3 and 5.4)")
+    how = ("with the index (my own join and type ownership, as usr u2 and u7 read them)" if mapping.with_index
+           else "by position (--index-mode position, or the scan's index collector didn't run)")
+    verdict.info(f"mapping {how}"
+                 f"; local rule {mapping.local_rule}; hints mapped: {mapping.map_hints}; ordinals from {mapping.base}")
+    for run in DEAD_RUNS:
+        counts = mapping.class_counts(run)
+        verdict.info(f"{run}: classes " + ", ".join(f"{name} {counts[name]}" for name in ENTRY_CLASSES))
+        for entry in mapping.entries[run]:
+            target = (f"{entry['via']} -> {len(entry['covers'])} record(s)" if entry["via"] else
+                      ("not mapped" if entry["mapped"] else "-"))
+            verdict.info(f"  {run} #{entry['ordinal']} {entry['class']:<11} {entry['hint']} {entry['kind']} "
+                         f"{entry['name']} {entry['file']}:{entry['line']}  {target}; lines {entry['lines']}")
+            if entry["via"] and len(entry["covers"]) <= 8:
+                for key in entry["covers"]:
+                    verdict.info(f"      covers {key}")
+        verdict.info(f"{run}: deadRecord rows {len(mapping.rows[run])}; records dead {len(mapping.dead[run])}; "
+                     f"dead lines " + (", ".join(f"{m} {n}" for m, n in sorted(mapping.lines[run].items())) or "none")
+                     + f"; unsized {len(mapping.unsized(run))}")
+        verdict.listing(f"unit {line}" for line in mapping.unit_listing(run))
+    for note, count in sorted(mapping.notes.items()):
+        verdict.info(f"note: {note}: {count}")
+    problems = mapping.order_independent()
+    verdict.result("dead lines and deadRecord rows don't depend on entry order (reversed, shuffled)", not problems)
+    verdict.listing(problems)
+
+
+def block_counts(value, name_keys, count_keys):
+    """{run: {name: count}} from a block's per-run counts in any of the
+    shapes {run: {name: n}}, {name: {run: n}}, {run: [{name, n}]} or
+    [{run, name, n}]; None when it doesn't read."""
+    def item_pair(item):
+        name = next((item[key] for key in name_keys if key in item), MISSING)
+        count = next((item[key] for key in count_keys if key in item), MISSING)
+        return name, count
+
+    result = defaultdict(dict)
+    if isinstance(value, dict):
+        if set(value) & set(DEAD_RUNS):
+            for run, inner in value.items():
+                if isinstance(inner, dict):
+                    result[run].update(inner)
+                elif isinstance(inner, list):
+                    for item in inner:
+                        if not isinstance(item, dict):
+                            return None
+                        name, count = item_pair(item)
+                        if name is MISSING or count is MISSING:
+                            return None
+                        result[run][name] = count
+                else:
+                    return None
+        else:
+            for name, inner in value.items():
+                if not isinstance(inner, dict):
+                    return None
+                for run, count in inner.items():
+                    result[run][name] = count
+    elif isinstance(value, list):
+        for item in value:
+            if not isinstance(item, dict) or "run" not in item:
+                return None
+            name, count = item_pair(item)
+            if name is MISSING or count is MISSING:
+                return None
+            result[item["run"]][name] = count
+    else:
+        return None
+    return result
+
+
+def compare_counts(verdict, name, mine, theirs):
+    """Per-run count dictionaries, a missing name read as 0 on either side."""
+    for run in DEAD_RUNS:
+        own = {k: v for k, v in mine.get(run, {}).items() if v}
+        other = {k: v for k, v in (theirs.get(run) or {}).items() if v}
+        verdict.result(f"{name}: {run}", own == other,
+                       f"mine {dict(sorted(own.items()))}, the scan's {dict(sorted(other.items()))}")
+
+
+def declaration_ordinal(value):
+    if isinstance(value, bool):
+        return None
+    if isinstance(value, int):
+        return value
+    if isinstance(value, dict):
+        found = value.get("ordinal", value.get("declaration"))
+        return found if isinstance(found, int) and not isinstance(found, bool) else None
+    return None
+
+
+def compare_mapping_rows(verdict, mapping, where, declarations, records):
+    """Classes per declaration and deadRecord rows per run."""
+    for run in DEAD_RUNS:
+        mine_entries = mapping.entries[run]
+        theirs = [item for item in declarations if item["run"] == run]
+        with_ordinals = [item for item in theirs if item["ordinal"] is not None]
+        if with_ordinals and len(with_ordinals) == len(theirs):
+            by_ordinal = {item["ordinal"]: item for item in theirs}
+            differing = []
+            for entry in mine_entries:
+                item = by_ordinal.get(entry["ordinal"])
+                if item is None or normalized_name(item["class"]) != normalized_name(entry["class"]):
+                    differing.append(f"#{entry['ordinal']} {entry['kind']} {entry['name']} {entry['file']}:"
+                                     f"{entry['line']}: mine {entry['class']}, {where}'s "
+                                     f"{item['class'] if item else 'absent'}")
+            verdict.result(f"{where}: {run}: each declaration's class (design 5.3)", not differing,
+                           f"{len(mine_entries)} compared")
+            verdict.listing(differing)
+            listing = []
+            for entry in mine_entries:
+                item = by_ordinal.get(entry["ordinal"])
+                if item is None:
+                    continue
+                for field in ("place", "owner"):
+                    if item.get(field) is not MISSING and item.get(field) is not None \
+                            and normalized_name(item[field]) != normalized_name(entry[field]):
+                        listing.append(f"#{entry['ordinal']} {field}: mine {entry[field]}, {where}'s {item[field]}")
+                if item.get("strippedLines") not in (MISSING, None) and item["strippedLines"] != entry["lines"]:
+                    listing.append(f"#{entry['ordinal']} strippedLines: mine {entry['lines']}, "
+                                   f"{where}'s {item['strippedLines']}")
+            verdict.info(f"{where}: {run}: place, owner and strippedLines (listing only, printed, not failed): "
+                         + (f"{len(listing)} differ" if listing else "agree where given"))
+            verdict.listing(listing)
+        else:
+            mine = [(entry["decoded"], entry["class"]) for entry in mine_entries]
+            other = [(item["decoded"], item["class"]) for item in theirs]
+            compare_multisets(verdict, f"{where}: {run}: declarations with their class (no ordinals given)",
+                              [str(item) for item in mine], [str(item) for item in other], where)
+        mine_rows = {(run, key, ordinal, via) for key, (ordinal, via) in mapping.rows[run].items()}
+        their_rows = {(run, item["key"], item["declaration"], item["via"]) for item in records if item["run"] == run}
+        if any(row[2] is None for row in their_rows):
+            mine_rows = {(r, k, None, v) for r, k, _, v in mine_rows}
+            verdict.info(f"{where}: {run}: declaration references not read as ordinals: rows compared without them")
+        only_mine = sorted(mine_rows - their_rows, key=str)
+        only_theirs = sorted(their_rows - mine_rows, key=str)
+        verdict.result(f"{where}: {run}: deadRecord rows (key, declaration, via)", not only_mine and not only_theirs,
+                       f"{len(mine_rows)} mine, {len(their_rows)} {where}'s")
+        verdict.listing(f"only mine: {row}" for row in only_mine)
+        verdict.listing(f"only {where}'s: {row}" for row in only_theirs)
+
+
+def scan_declaration(item):
+    ordinal = item.get("ordinal")
+    return {"run": item.get("run"), "ordinal": ordinal if isinstance(ordinal, int) and not isinstance(ordinal, bool)
+            else None, "class": item.get("class", item.get("entryClass")), "place": item.get("place", MISSING),
+            "owner": item.get("owner", MISSING), "strippedLines": item.get("strippedLines", MISSING),
+            "decoded": stored_tuple(item)}
+
+
+def compare_rule_options(verdict, scan):
+    """The periphery collector's `classes:` and `map:` options (design 1.8):
+    present, each once; text other than design 5.3's and 5.4's is printed."""
+    options = [o for o in (periphery_collector(scan) or {}).get("options") or [] if isinstance(o, str)]
+    for name, design in (("classes", DESIGN_CLASSES_RULE), ("map", DESIGN_MAP_RULE)):
+        found = [o.split(":", 1)[1].strip() for o in options if o.startswith(name + ":")]
+        verdict.result(f"the periphery collector's options hold one `{name}:` rule", len(found) == 1,
+                       f"{len(found)} found")
+        if len(found) == 1 and found[0] != design:
+            verdict.info(f"its `{name}:` text differs from design's (printed, not failed): {found[0]}")
+
+
+def compare_mapping_block(verdict, mapping, scan):
+    verdict.section("my mapping against the scan JSON's deadCode block (design 9.2)")
+    compare_rule_options(verdict, scan)
+    block = scan.get("deadCode")
+    if not isinstance(block, dict):
+        state = (periphery_collector(scan) or {}).get("state")
+        verdict.result("the scan JSON has a deadCode block (the periphery collector " + str(state) + ")",
+                       state != "ran", "absent")
+        return
+    declarations = [scan_declaration(item) for item in block.get("declarations") or [] if isinstance(item, dict)]
+    records = []
+    for item in block.get("records") or []:
+        if isinstance(item, dict):
+            records.append({"run": item.get("run"), "key": item.get("key"),
+                            "declaration": declaration_ordinal(item.get("declaration")), "via": item.get("via")})
+    unknown_via = sorted({str(item["via"]) for item in records if item["via"] not in VIA_NAMES})
+    verdict.result("every record's via is one of " + ", ".join(VIA_NAMES), not unknown_via, ", ".join(unknown_via))
+    compare_mapping_rows(verdict, mapping, "the scan JSON", declarations, records)
+    dropped = block_counts(block.get("dropped"), ("class", "name"), ("count", "results", "entries", "value"))
+    if dropped is None:
+        verdict.result("deadCode.dropped reads as counts per class and run", False,
+                       json.dumps(block.get("dropped"))[:300])
+    else:
+        mine = {run: {name: count for name, count in mapping.class_counts(run).items() if name in DROPPED_CLASSES}
+                for run in DEAD_RUNS}
+        theirs = {run: {next((c for c in DROPPED_CLASSES if normalized_name(c) == normalized_name(k)), k): v
+                        for k, v in inner.items()} for run, inner in dropped.items()}
+        compare_counts(verdict, "dropped entries per class (design 5.3)", mine, theirs)
+    lines = block_counts(block.get("deadLines"), ("module", "name", "target"),
+                         ("lines", "deadLines", "count", "value"))
+    if lines is None:
+        verdict.result("deadCode.deadLines reads as lines per module and run", False,
+                       json.dumps(block.get("deadLines"))[:300])
+    else:
+        compare_counts(verdict, "dead lines per module, maximal units (design 5.4)", mapping.lines, lines)
+
+
+def compare_mapping_rollups(verdict, mapping, scan, ran):
+    """LineRatio.deadLines and deadCodeExcluded (design 7) and the deadCode.*
+    roll-ups design 10.3 names, per roll-up scope."""
+    verdict.section("roll-ups: tests.lineRatio.deadLines and deadCodeExcluded (design 7), deadCode.* (10.3)")
+    targets = scan.get("targets", [])
+    files = scan.get("files", [])
+    roots = mapping.lines["roots"]
+    unused_by_scope = defaultdict(Counter)
+    unsized_by_scope = Counter()
+    test_targets = {t["name"] for t in targets if t.get("isTest")}
+    for entry in mapping.entries["roots"]:
+        if entry["class"] != "production" or entry["hint"] != "unused":
+            continue
+        module = mapping.entry_module(entry)
+        scopes = [("module", module), ("project", "tests" if module in test_targets else "production")]
+        for scope in scopes:
+            unused_by_scope[scope][kind_group(entry["kind"])] += 1
+            if entry["lines"] is None:
+                unsized_by_scope[scope] += 1
+    records_by_scope = {run: Counter() for run in DEAD_RUNS}
+    for run in DEAD_RUNS:
+        for key in mapping.dead[run]:
+            record = mapping.package.by_key[key]
+            records_by_scope[run][("module", record.get("module"))] += 1
+            records_by_scope[run][("project", "production" if record.get("role") == "production" else "tests")] += 1
+    present = Counter()
+    for rollup in scan.get("rollups", []):
+        label = f"{rollup.get('scope')} {rollup.get('name')}" + (f" {rollup['part']}" if rollup.get("part") else "")
+        ratio = (rollup.get("tests") or {}).get("lineRatio")
+        if isinstance(ratio, dict):
+            modules = ratio_modules(rollup, targets)
+            production_lines = sum(f.get("strippedLines") or 0 for f in files if f.get("module") in modules)
+            same_scope = production_lines == ratio.get("productionLines")
+            excluded = ratio.get("deadCodeExcluded")
+            verdict.result(f"{label}: deadCodeExcluded is {ran} exactly as the periphery collector ran", excluded is ran,
+                           f"the scan's {excluded}")
+            theirs = ratio.get("deadLines", MISSING)
+            mine = sum(roots.get(module, 0) for module in modules) if ran else None
+            if not same_scope:
+                verdict.info(f"{label}: my reading of the ratio's production modules gives {production_lines} "
+                             f"production lines, the scan's {ratio.get('productionLines')}: deadLines compared anyway")
+            if ran:
+                verdict.result(f"{label}: tests.lineRatio.deadLines = the roots run's dead lines of "
+                               + (", ".join(sorted(modules)) or "no module"),
+                               theirs == mine, f"mine {mine}, the scan's {'absent' if theirs is MISSING else theirs}")
+            else:
+                verdict.result(f"{label}: tests.lineRatio.deadLines absent or null (periphery didn't run)",
+                               theirs is MISSING or theirs is None, f"the scan's {theirs}")
+        dead = rollup.get("deadCode")
+        if not isinstance(dead, dict):
+            continue
+        present["deadCode"] += 1
+        key = ("module", rollup.get("name")) if rollup.get("scope") == "module" else ("project", rollup.get("name"))
+        for name, mine in (("records", records_by_scope["roots"].get(key, 0)),
+                           ("productionRecords", records_by_scope["production"].get(key, 0)),
+                           ("unsized", unsized_by_scope.get(key, 0))):
+            if name in dead:
+                verdict.result(f"{label}: deadCode.{name}", dead[name] == mine, f"mine {mine}, the scan's {dead[name]}")
+            else:
+                verdict.info(f"{label}: deadCode.{name} not in the roll-up (printed, not failed)")
+        unused = dead.get("unused")
+        if isinstance(unused, dict):
+            theirs = {next((g for g in KIND_GROUPS if normalized_name(g) == normalized_name(k)), k): v
+                      for k, v in unused.items() if v}
+            mine = {k: v for k, v in unused_by_scope.get(key, Counter()).items() if v}
+            verdict.result(f"{label}: deadCode.unused by kind (roots run)", theirs == mine,
+                           f"mine {dict(sorted(mine.items()))}, the scan's {dict(sorted(theirs.items()))}")
+        verdict.info(f"{label}: deadCode keys {', '.join(sorted(dead))}")
+    if not present["deadCode"]:
+        verdict.info("no roll-up holds a deadCode block: deadCode.* not compared (printed, not failed)")
+
+
+def compare_mapping_store(verdict, mapping, store_path, snapshot):
+    import sqlite3
+
+    verdict.section(f"my mapping against the store ({store_path})")
+    connection = sqlite3.connect(f"file:{store_path}?mode=ro", uri=True)
+    try:
+        if snapshot is None:
+            snapshot = connection.execute("SELECT max(id) FROM snapshot").fetchone()[0]
+        tables = {name for (name,) in connection.execute("SELECT name FROM sqlite_master WHERE type = 'table'")}
+        if not {"deadDeclaration", "deadRecord"} <= tables:
+            verdict.info("the store has no deadDeclaration and deadRecord tables: rows not compared "
+                         "(printed, not failed)")
+            return
+        connection.row_factory = sqlite3.Row
+        declarations = [scan_declaration(dict(row)) for row in
+                        connection.execute("SELECT * FROM deadDeclaration WHERE snapshotId = ?", (snapshot,))]
+        records = [{"run": row["run"], "key": row["key"], "declaration": declaration_ordinal(row["declaration"]),
+                    "via": row["via"]}
+                   for row in connection.execute("SELECT * FROM deadRecord WHERE snapshotId = ?", (snapshot,))]
+        compare_mapping_rows(verdict, mapping, "the store", declarations, records)
+    finally:
+        connection.close()
+
+
 def dead_mode(arguments):
     arguments.reader = None
     arguments.root_spelling = None
@@ -5390,11 +6352,17 @@ def dead_mode(arguments):
     if result.returncode != 0:
         fail(f"{outskirts} version exited {result.returncode}: {result.stderr.strip()[:300]}")
     version = result.stdout.strip()
+    index_state = next((c.get("state") for c in package.scan.get("collectors", []) if c.get("name") == "index"), None)
+    use_index = not arguments.without_mapping and (
+        arguments.index_mode == "index" or (arguments.index_mode == "auto" and index_state == "ran"))
     resource = None
-    if arguments.library is None or (arguments.describe is None and not arguments.use_scan_inputs):
+    if arguments.library is None or (arguments.describe is None and not arguments.use_scan_inputs) \
+            or (use_index and arguments.demangle is None):
         resource = toolchain_of(package.root, arguments.swift)
     if arguments.library is None:
         arguments.library = os.path.join(os.path.dirname(resource), "libIndexStore.dylib")
+    demangler = arguments.demangle or (os.path.join(os.path.dirname(os.path.dirname(resource)), "bin", "swift-demangle")
+                                       if resource else None)
     verdict = Verdict(arguments.all)
     temporary = tempfile.mkdtemp(prefix="index-check-dead-")
     try:
@@ -5421,10 +6389,17 @@ def dead_mode(arguments):
                 or real_path(described_path, "describe's path") != package.root:
             fail(f"the describe JSON describes {described_path!r}, not {package.root}")
         described = Described(describe, package)
+        join = coupling = None
         try:
             reader = UnitReader(package, arguments)
             try:
                 classes = classify_units(reader.units, package, described)
+                if use_index:
+                    # The mapping's USRs and type ownership, as `usr` reads
+                    # them (u2's join, u7's ownership; neither reading option
+                    # of u7 changes ownership or accessorOf).
+                    join = UsrJoin(package, described, reader, None)
+                    coupling = Coupling(join, demangler, "enclosing", "package")
             finally:
                 reader.close()
         except ReadError as error:
@@ -5443,13 +6418,22 @@ def dead_mode(arguments):
               f"index read from {reader.store_path} with {arguments.library}\nruns given {inputs}")
         runs.run_all()
         report_runs_own(verdict, runs, version, outskirts_real, library_targets, with_data)
+        mapping = None
+        if not arguments.without_mapping:
+            mapping = DeadMapping(package, describe, described, runs, join, coupling, arguments.local_rule,
+                                  arguments.map_hints, ordinal_base(package.scan, arguments))
+            print(f"mapping: the scan's index collector {index_state or 'absent'}; index mode {arguments.index_mode}")
+            report_mapping_own(verdict, mapping)
         if arguments.dump:
-            write_json(arguments.dump, {
+            figures = {
                 "version": version, "retainedModules": runs.retained, "retainedTargets": runs.retained_targets,
                 "runs": {run: {"exit": runs.exits[run], "seconds": round(runs.seconds[run], 3),
                                "entries": runs.entries.get(run),
                                "decoded": [list(runs.decoded(e, run)) for e in runs.entries.get(run) or []]}
-                         for run in DEAD_RUNS}})
+                         for run in DEAD_RUNS}}
+            if mapping is not None:
+                figures["mapping"] = mapping.figures()
+            write_json(arguments.dump, figures)
         if arguments.own_only:
             verdict.section("comparison with the collector's output skipped (--own-only)")
         else:
@@ -5458,6 +6442,12 @@ def dead_mode(arguments):
             compare_scan_block(verdict, runs, package.scan)
             if arguments.store:
                 compare_store_rows(verdict, runs, arguments.store, arguments.snapshot, outskirts_real, version)
+            if mapping is not None:
+                ran = (periphery_collector(package.scan) or {}).get("state") == "ran"
+                compare_mapping_block(verdict, mapping, package.scan)
+                compare_mapping_rollups(verdict, mapping, package.scan, ran)
+                if arguments.store:
+                    compare_mapping_store(verdict, mapping, arguments.store, arguments.snapshot)
     finally:
         shutil.rmtree(temporary, ignore_errors=True)
     print("\nRESULT: " + ("FAIL" if verdict.failed else "PASS"))
@@ -5546,8 +6536,24 @@ def main():
     dead.add_argument("--output-dir", help="keep each run's stdout and stderr here")
     dead.add_argument("--own-only", action="store_true",
                       help="run outskirts and print this check's figures without comparing")
-    dead.add_argument("--dump", help="write this check's runs and decoded entries as JSON")
+    dead.add_argument("--dump", help="write this check's runs, decoded entries and mapping as JSON")
     dead.add_argument("--all", action="store_true", help="list every difference")
+    dead.add_argument("--demangle", help="swift-demangle for the mapping's own join (default: the package toolchain's)")
+    dead.add_argument("--without-mapping", action="store_true",
+                      help="the run part only: no classes, mapping, dead lines or ratio (plan step 6a)")
+    dead.add_argument("--index-mode", choices=("auto", "index", "position"), default="auto",
+                      help="map with my own join and type ownership (index) or by position: auto follows the scan's "
+                           "index collector (ran: index)")
+    dead.add_argument("--local-rule", choices=("plan", "literal"), default="plan",
+                      help="class local: variables other than parameters, by the index's local property or a "
+                           "position inside a function record (plan: step 6a's adopted reading, which design 13's "
+                           "6b tests need), or design 5.3 word for word (any kind by the index, any variable by "
+                           "position)")
+    dead.add_argument("--map-hints", choices=("all", "unused"), default="all",
+                      help="which production entries are mapped to records (design 5.4: every entry; unused: only "
+                           "hint unused)")
+    dead.add_argument("--ordinal-base", type=int, choices=(0, 1),
+                      help="the first entry's ordinal (default: the scan's lowest declaration ordinal, else 1)")
     arguments = parser.parse_args()
     return {"dump": dump_mode, "build-lines": build_lines_mode, "build": build_mode,
             "usr": usr_mode, "dead": dead_mode}[arguments.mode](arguments)
