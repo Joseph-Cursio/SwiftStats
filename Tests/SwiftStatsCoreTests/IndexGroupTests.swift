@@ -5,8 +5,10 @@ import Testing
 /// The T1 group run by a scan (M7, design §1.5, §1.8): the build runs with
 /// the coverage collector's `swift`'s toolchain and is recorded with its
 /// version as identity; the index and outskirts are skipped needing the
-/// build when it didn't run, fail when it wrote no index store, and give
-/// their placeholders when it ran. `IndexGroupOutputTests` reads a
+/// build when it didn't run and fail when it wrote no index store; when it
+/// ran, the index reads its store (here failing for a toolchain without
+/// `libIndexStore.dylib`; `USRJoinTests` reads a recorded one) and
+/// outskirts gives its placeholder. `IndexGroupOutputTests` reads a
 /// recorded build. A fake toolchain acts out every build.
 @Suite("Index group")
 struct IndexGroupTests {
@@ -27,8 +29,8 @@ struct IndexGroupTests {
 
     @Test("""
         asked for with a swift and an outskirts found, the build runs with the coverage collector's swift's \
-        toolchain whatever coverage's enabled says, and the index and periphery give their placeholders, \
-        outskirts never run
+        toolchain whatever coverage's enabled says, the index reads its store, failing for a toolchain without \
+        libIndexStore.dylib, and periphery gives its placeholder, outskirts never run
         """)
     func buildRuns() throws {
         let outskirts = try IndexGroupHarness.outskirts()
@@ -46,9 +48,11 @@ struct IndexGroupTests {
             #expect(build.reason == nil)
             #expect(build.version == "Apple Swift version 9.9 (fake)")
             #expect(build.options == Self.ranOptions)
-            #expect(outcome.statuses["index"]?.reason == "the index reader is not built yet")
+            #expect(outcome.statuses["index"]?.reason
+                == "the toolchain has no libIndexStore.dylib (<toolchain>/usr/lib)")
             #expect(outcome.statuses["periphery"]?.reason == "the outskirts collector is not built yet")
-            #expect(outcome.statuses["index"]?.state == .skipped && outcome.statuses["periphery"]?.state == .skipped)
+            #expect(outcome.statuses["index"]?.state == .failed && outcome.statuses["periphery"]?.state == .skipped)
+            #expect(outcome.report.index == nil)
             #expect(outcome.built)
             #expect(outcome.toolchain.calls(of: "proxy") == ["-print-target-info"])
             #expect(outcome.report.collectors.first { $0.name == "coverage" }?.reason
@@ -64,7 +68,7 @@ struct IndexGroupTests {
 
     @Test("""
         the build's run is recorded with the toolchain's swift version as its identity, its options as it ran, \
-        and no identity for the index or outskirts, which didn't run
+        the index with the reader's pinned revision, and no identity for outskirts, which didn't run
         """)
     func identities() throws {
         try IndexGroupHarness.scanSmall(
@@ -79,7 +83,7 @@ struct IndexGroupTests {
             #expect(build.version == "Apple Swift version 9.9 (fake)")
             #expect(build.options == Self.ranOptions)
             #expect(build.state == .ran)
-            #expect(outcome.run("index")?.identity == nil)
+            #expect(outcome.run("index")?.identity == "git:64aa0b26913249c4e7c21d351a215fba02702003")
             #expect(outcome.run("periphery")?.identity == nil)
         }
     }

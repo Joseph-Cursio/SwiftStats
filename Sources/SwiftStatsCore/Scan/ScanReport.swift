@@ -23,7 +23,8 @@ public struct ScanReport: Codable, Hashable, Sendable {
     /// scan lists and whose results are mapped to records (M6); 9 adds the
     /// T1 group's collectors, `build`, `index` and `periphery`, whose
     /// statuses every scan lists, the build's type-check timings mapped to
-    /// records and its warnings as `swiftc` findings (M7).
+    /// records and its warnings as `swiftc` findings, and the index's USRs
+    /// on records, rolled up for every scope (M7).
     public static let currentSchemaVersion = 9
 
     /// The output format version (`currentSchemaVersion` when written).
@@ -80,6 +81,11 @@ public struct ScanReport: Codable, Hashable, Sendable {
     /// didn't run (M7, design §6, §9.2). Its warnings are `swiftc`
     /// findings.
     public internal(set) var build: BuildReport?
+    /// The `index` collector's results from the T1 build's index store:
+    /// its units, the records' USRs and the reasons some have none, the
+    /// USR lists and the files hashed after the build; absent when the
+    /// collector didn't run (M7, design §2, §3, §9.2).
+    public internal(set) var index: IndexReport?
     /// What the history collector found; absent when it didn't run (PRD §7.13).
     public internal(set) var history: HistoryReport?
 
@@ -98,6 +104,33 @@ public struct ScanReport: Codable, Hashable, Sendable {
     func with(build: BuildReport?, status: CollectorStatus) -> Self {
         var report = replacing(status, rollups: rollups, coverage: coverage, mutation: mutation, warnings: warnings)
         report.build = build
+        report.history = history
+        return report
+    }
+
+    /// The report with the T1 `group`'s build and index results attached
+    /// and their collectors' statuses replaced.
+    func with(_ group: PackageScanner.IndexGroup) -> Self {
+        with(build: group.report, status: group.build.result.status)
+            .with(index: group.indexReport, status: group.indexStatus)
+    }
+
+    /// The report with `index` attached, the `index` collector's status
+    /// replaced by `status` and the roll-ups' USR counts rebuilt from it
+    /// (M7): how a scan attaches its index results, so a fresh scan and a
+    /// carried one roll them up alike. A nil `index` leaves every roll-up
+    /// without USR counts.
+    func with(index: IndexReport?, status: CollectorStatus) -> Self {
+        let plain = rollups.map { $0.with(index: nil) }
+        let built = index.map { IndexRollupBuilder(targets: targets, records: records, report: $0).rollups(plain) }
+        var report = replacing(
+            status,
+            rollups: built ?? plain,
+            coverage: coverage,
+            mutation: mutation,
+            warnings: warnings
+        )
+        report.index = index
         report.history = history
         return report
     }
@@ -136,7 +169,7 @@ public struct ScanReport: Codable, Hashable, Sendable {
 
     /// The report with `status` replacing its collector's status, and
     /// `rollups`, `coverage`, `mutation` and `warnings` replacing its own,
-    /// its build results kept, and no history.
+    /// its build and index results kept, and no history.
     private func replacing(
         _ status: CollectorStatus,
         rollups: [Rollup],
@@ -169,6 +202,7 @@ public struct ScanReport: Codable, Hashable, Sendable {
             mutation: mutation
         )
         report.build = build
+        report.index = index
         return report
     }
 }

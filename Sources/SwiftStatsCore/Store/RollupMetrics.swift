@@ -35,6 +35,8 @@ enum RollupMetrics {
     private static let coverageField = "coverage"
     /// The roll-up field whose numbers come from the SwiftMutator collector.
     private static let mutationField = "mutation"
+    /// The roll-up field whose numbers come from the `index` collector.
+    private static let indexField = "index"
     /// The collector of each finding tool that isn't named after its
     /// collector: the compiler's warnings come from the T1 build (M7,
     /// design §6.4).
@@ -71,6 +73,9 @@ enum RollupMetrics {
         }
         if path.first == mutationField {
             return MutationAdapter.name
+        }
+        if path.first == indexField {
+            return IndexAdapter.name
         }
         return SwiftStatsCollector.name
     }

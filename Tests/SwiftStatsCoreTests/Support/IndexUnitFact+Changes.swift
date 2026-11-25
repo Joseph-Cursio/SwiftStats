@@ -3,8 +3,8 @@
 //  SwiftStatsCoreTests
 //
 //  Copies of a recorded unit with one field changed, for injecting units
-//  beside a recording in the unit filter's and the index walk's tests (M7,
-//  design §2.3).
+//  beside a recording in the unit filter's, the index walk's and the USR
+//  join's tests (M7, design §2.3, §3.1).
 //
 
 @testable import SwiftStatsCore
@@ -33,6 +33,21 @@ extension IndexUnitFact {
     /// This unit modified at `modified`.
     func modifiedAt(_ modified: ModificationDate) -> Self {
         changing(name: name, module: module, mainFile: mainFile, triple: target, modified: modified)
+    }
+
+    /// This unit naming the records `names` (sorted, as the store lists
+    /// them).
+    func writing(_ names: [String]) -> Self {
+        IndexUnitFact(
+            name: name,
+            module: module,
+            mainFile: mainFile,
+            target: target,
+            isSystem: isSystem,
+            modified: modified,
+            records: names.sorted(),
+            moduleDependencies: moduleDependencies
+        )
     }
 
     /// This unit with the fields given, its system flag, records and module

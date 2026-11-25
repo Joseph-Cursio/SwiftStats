@@ -134,7 +134,7 @@ extension PackageScanner {
             laws: measured.laws.with(kitDependency: KitProtocols.isDependency(in: dependencies.report)),
             coverage: external.coverage,
             mutation: external.mutationReport
-        ).with(build: external.index.report, status: external.index.build.result.status)
+        ).with(external.index)
         return ScanOutcome(
             report: report,
             configuration: configuration,

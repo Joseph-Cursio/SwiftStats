@@ -11,8 +11,8 @@ script reads them with its own line patterns, not design section 6.1's
 grammar, and accounts for every line. Run it as `python3 -I -B Scripts/index-check.py <mode> ...`, so it
 writes no bytecode cache beside itself.
 
-Modes (later plan steps add `usr`, `dead`, `signals` and
-`coverage-names`):
+Modes (later plan steps add `dead`, `signals` and `coverage-names`, and
+`usr`'s checks u7 and u8):
 
 `dump` writes the reader's values for a store as JSON: the recorded
 `reader.json` the unit tests read through `RecordedIndexSource`, and the
@@ -180,6 +180,111 @@ Inputs `build` trusts, besides those:
   - with `--store`, the store's tables as design section 9.1 names them.
 Not the scan JSON's `build` block, findings or roll-ups, which it checks.
 
+`usr` reimplements design sections 2.3 and 3 (the unit filter, the USR join,
+the reasons and the lists) over this script's own read of the store, and
+compares the result with the scan JSON's `index` block (design 9.2) and the
+`index.*` roll-ups (checks u1 to u6 of design section 11; u0 is
+`IndexStoreReaderLiveTests` against `dump`'s output):
+  u1  units: every unit of `<build>/out` and of
+      `<build>/swiftstats-quarantined-units/` (read through a temporary
+      store view holding those unit files and the store's records) gets a
+      class, first that applies: `system`; `otherPackage` (no main file, or
+      one outside the root, under the build directory, under a first path
+      component `.build` or `.swiftstats`, or in a local path dependency's
+      folder: step 4a's adopted deviation); `otherModule` (its module is no
+      target's C99 name in this script's own describe); `stale` (main file
+      missing, or not a source of the target its module names); `duplicate`
+      (an older unit of the same module, main file and triple: full-precision
+      date, then the larger unit name, kept); `variant` (every unit of a
+      module and main file read with more than one triple); else `kept`. The
+      scan's unit list (name, target, main file, triple, class) must equal
+      these for every unit it lists, list every kept and variant unit, and
+      list every unit of a class it lists any of (design 2.3 lists kept and
+      variant units, 9.1 also duplicate, stale and otherModule ones); the
+      counts per class and quarantined must equal; no stale or otherModule
+      unit may remain in `out/v5/units`, and the quarantine must hold
+      exactly this script's stale and otherModule units and the scan's;
+  u2  every record's primary USR and secondary accessor USR, from the
+      records of kept and variant units (each record once, its occurrences
+      filed under the file each unit's record dependency names): a
+      non-implicit function-like definition (a function or method kind, a
+      constructor, a destructor, a property kind of subkind subscript) in a
+      scanned file whose bytes still have the scan's hash goes to the
+      innermost record holding its (line, UTF-8 column) (latest start,
+      earliest end, key) when design 3.2's kind table allows it (an accessor
+      record takes a function or method kind of its accessor's subkind,
+      1016 for `init`; the function kind is allowed for global and local
+      computed variables' accessors); a getter whose innermost record is a
+      subscript record with no accessor records, whose accessorOf relation
+      names that record's primary USR, becomes its secondary USR; a record
+      with several USRs, or a USR on several records, keeps none. The
+      definition counts compared: joined (distinct definitions assigned,
+      primary before disagreements are removed, or secondary), implicit
+      (implicit function-like definitions in those files), secondary and
+      objc (records with a `c:` primary USR);
+  u3  the source bytes at each joined definition begin with its name token:
+      the base name (or it in backticks), `init`, `deinit`, `subscript`, the
+      accessor keyword, the operator, or `{` for a shorthand getter (a
+      keyword or name must end there);
+  u4  the reason of every record without a primary USR, first that applies
+      (design 3.4): top-level code; plugin target; inactive #if branch (an
+      `ifConfig` and no definition of any kind, implicit included, in its
+      range); file changed during the scan; target not built (no unit of any
+      class names the target's module and the build's -v log holds no
+      `-module-name <module>`); file not indexed (the target has kept or
+      variant units, none for the file); disagreement; unexplained. Target
+      not built, file not indexed, file changed, disagreement and
+      unexplained must be 0 (criterion 1), whatever the scan says;
+  u5  the disagreements (severalUSRs and sharedUSR rows: kind, key, USR, and
+      the definition's place when the scan gives one), the definitions with
+      no record (requirement when no record holds it and a childOf relation
+      names a protocol, incompatibleKind naming the innermost record,
+      outsideRecords) and the collisions the USR separates (records whose
+      keys a collision suffix tells apart, as the scan's warnings name the
+      collided keys, with differing USRs) equal the scan's; incompatibleKind
+      and outsideRecords must be 0;
+  u6  `swift demangle --tree-only` of `$s` + each `s:` USR (primary and
+      secondary) agrees with its record's key: type path (T0's `typePath`
+      when the record has one, else the type part of the key's last
+      segment; local types start the path), base name, argument labels
+      (operands counted only, for operators) and accessor kind (the
+      secondary one a subscript getter). `c:` USRs are skipped and counted.
+Also compared: `index.files` (every scanned file, each hash the file's bytes
+now), the records read and occurrences when the scan gives them,
+`libraryModules` when present, and each roll-up scope's `index.withUSR`,
+`index.withoutUSR.<reason>` and `index.disagreements` (records whose reason
+is disagreement), with the T0 scopes (module by the record's module;
+project production by role production, tests by the other roles). The
+roll-ups' collector attribution isn't in the JSON and isn't checked.
+The scan's block is read by design 9.2's names with a few alternative
+spellings (reasons compared case- and punctuation-blind); a value it lacks
+is a failure that names it. `--own-only` prints this script's figures and
+the checks that need no scan block (u3, u4's zeros, u5's zeros, u6).
+`--reader` reads a recorded `dump` JSON instead of the store (the Index
+fixture's `reader.json`, its paths restored with `--root-spelling`,
+`--build-spelling` and `--spelling`); system units and the quarantine are
+then not checked.
+
+Inputs `usr` trusts:
+  - libIndexStore.dylib's C API (as for `dump`), the library being the
+    package toolchain's (`swift -print-target-info` in the package:
+    `<runtimeResourcePath>/../libIndexStore.dylib`), or `--library`;
+  - its own `swift package --scratch-path <tmp> describe --type json` run in
+    the package by that toolchain's swift (Package.resolved's bytes or
+    absence put back afterwards), or `--describe`: target names, C99 names
+    (computed when absent), paths, sources, types, library products, path
+    dependencies;
+  - the scan JSON's `records` (`key`, `file`, `kind`, `accessorKind`,
+    `range`, `parentKey`, `module`, `ifConfig`, `role`, `typePath`),
+    `files` (`path`, `sha256`), `targets` (`name`, `type`) and `warnings`
+    (the collided keys), and the T0 roll-up scopes, as T0 wrote them;
+  - the package's sources on disk (bytes for u3; hashes now, since the check
+    runs right after the scan);
+  - `<build>/swiftstats-build.log` (or `--log`) for the `-module-name`
+    evidence of `target not built`;
+  - the toolchain's `swift-demangle` (or `--demangle`).
+Not the scan JSON's `index` block or `index.*` roll-ups, which it checks.
+
 Usage:
     python3 -I -B Scripts/index-check.py dump <store> <libIndexStore.dylib>
                                          <describe.json> <root>
@@ -195,6 +300,17 @@ Usage:
                                          [--root-spelling <text>]
                                          [--build-spelling <text>]
                                          [--own-only] [--dump <path>] [--all]
+    python3 -I -B Scripts/index-check.py usr <package> <scan.json>
+                                         [--swift <swift>] [--library <dylib>]
+                                         [--demangle <swift-demangle>]
+                                         [--describe <describe.json>]
+                                         [--index-store <dir>]
+                                         [--reader <dump.json>
+                                          --root-spelling <text>
+                                          --build-spelling <text>
+                                          [--spelling <token>=<path>]...]
+                                         [--log <file>] [--own-only]
+                                         [--dump <path>] [--all]
 
 For `dump`, <store> is the directory holding `v5/units` (for the T1 build,
 `<package>/.swiftstats/index-build/out`). The JSON goes to standard output,
@@ -202,8 +318,8 @@ or to `--output`; a summary (unit, record and occurrence counts) goes to
 standard error.
 
 Exit status: `dump` 0 when the dump is written, 2 on bad input or a store
-that doesn't read; `build-lines` and `build` 0 when every check passes, 1
-when one fails, 2 on bad input.
+that doesn't read; `build-lines`, `build` and `usr` 0 when every check
+passes, 1 when one fails, 2 on bad input or a store that doesn't read.
 """
 
 import argparse
@@ -213,7 +329,10 @@ import hashlib
 import json
 import os
 import re
+import shutil
+import subprocess
 import sys
+import tempfile
 import unicodedata
 from collections import Counter, defaultdict
 
@@ -2185,6 +2304,1405 @@ def build_mode(arguments):
 
 
 # --------------------------------------------------------------------------
+# usr: the unit filter, the USR join, reasons and lists (design sections 2.3
+# and 3; checks u1-u6 of section 11)
+#
+# Written from the design's words and the research's measured facts, not from
+# SwiftStats' code: the unit classes, the join, the reasons, the name-token
+# test and the reading of `swift demangle`'s output are this script's own.
+
+# indexstore_symbol_kind_t, _subkind_t, _property_t and _role_t, as
+# indexstore_functions.h at indexstore-db 64aa0b2 numbers them, plus the
+# `init` accessor's raw subkind 1016, which the header lacks (design 2.2).
+KIND_PROTOCOL = 8
+KIND_FUNCTION = 12
+KIND_INSTANCE_METHOD = 16
+KIND_CLASS_METHOD = 17
+KIND_STATIC_METHOD = 18
+KIND_INSTANCE_PROPERTY = 19
+KIND_CLASS_PROPERTY = 20
+KIND_STATIC_PROPERTY = 21
+KIND_CONSTRUCTOR = 22
+KIND_DESTRUCTOR = 23
+FUNCTION_KINDS = {KIND_FUNCTION, KIND_INSTANCE_METHOD, KIND_CLASS_METHOD, KIND_STATIC_METHOD}
+METHOD_KINDS = {KIND_INSTANCE_METHOD, KIND_CLASS_METHOD, KIND_STATIC_METHOD}
+PROPERTY_KINDS = {KIND_INSTANCE_PROPERTY, KIND_CLASS_PROPERTY, KIND_STATIC_PROPERTY}
+SUBKIND_NONE = 0
+SUBKIND_GETTER = 3
+SUBKIND_SETTER = 4
+SUBKIND_WILL_SET = 1000
+SUBKIND_DID_SET = 1001
+SUBKIND_ADDRESSOR = 1002
+SUBKIND_MUTABLE_ADDRESSOR = 1003
+SUBKIND_PREFIX_OPERATOR = 1008
+SUBKIND_POSTFIX_OPERATOR = 1009
+SUBKIND_INFIX_OPERATOR = 1010
+SUBKIND_SUBSCRIPT = 1011
+SUBKIND_READ = 1014
+SUBKIND_MODIFY = 1015
+SUBKIND_INIT_ACCESSOR = 1016
+OPERATOR_SUBKINDS = {SUBKIND_PREFIX_OPERATOR, SUBKIND_POSTFIX_OPERATOR, SUBKIND_INFIX_OPERATOR}
+ACCESSOR_SUBKINDS = {
+    "get": SUBKIND_GETTER, "set": SUBKIND_SETTER, "willSet": SUBKIND_WILL_SET, "didSet": SUBKIND_DID_SET,
+    "_read": SUBKIND_READ, "read": SUBKIND_READ, "_modify": SUBKIND_MODIFY, "modify": SUBKIND_MODIFY,
+    "unsafeAddress": SUBKIND_ADDRESSOR, "unsafeMutableAddress": SUBKIND_MUTABLE_ADDRESSOR,
+    "init": SUBKIND_INIT_ACCESSOR,
+}
+ACCESSOR_KEYWORDS = {
+    SUBKIND_GETTER: ("get",), SUBKIND_SETTER: ("set",), SUBKIND_WILL_SET: ("willSet",),
+    SUBKIND_DID_SET: ("didSet",), SUBKIND_READ: ("_read", "read"), SUBKIND_MODIFY: ("_modify", "modify"),
+    SUBKIND_ADDRESSOR: ("unsafeAddress",), SUBKIND_MUTABLE_ADDRESSOR: ("unsafeMutableAddress",),
+    SUBKIND_INIT_ACCESSOR: ("init",),
+}
+ROLE_DEFINITION = 1 << 1
+ROLE_IMPLICIT = 1 << 8
+RELATION_CHILD_OF = 1 << 9
+RELATION_ACCESSOR_OF = 1 << 15
+
+UNIT_CLASSES = ("system", "otherPackage", "otherModule", "stale", "duplicate", "variant", "kept")
+READ_CLASSES = ("kept", "variant")
+QUARANTINED_CLASSES = ("stale", "otherModule")
+QUARANTINE_DIRECTORY = "swiftstats-quarantined-units"
+STORE_DIRECTORY = "out"
+
+# Reasons, in the order design section 3.4 applies them, and the ones
+# criterion 1 doesn't accept (u4 asserts 0).
+REASONS = ("top-level code", "plugin target", "inactive #if branch", "file changed during the scan",
+           "target not built", "file not indexed", "disagreement", "unexplained")
+FORBIDDEN_REASONS = ("target not built", "file not indexed", "file changed during the scan",
+                     "disagreement", "unexplained")
+REASON_ALIASES = {
+    "toplevelcode": "top-level code", "toplevel": "top-level code",
+    "plugintarget": "plugin target", "plugin": "plugin target",
+    "inactiveifbranch": "inactive #if branch", "inactiveif": "inactive #if branch",
+    "inactivebranch": "inactive #if branch", "inactive": "inactive #if branch",
+    "filechangedduringthescan": "file changed during the scan", "filechanged": "file changed during the scan",
+    "targetnotbuilt": "target not built", "filenotindexed": "file not indexed",
+    "disagreement": "disagreement", "unexplained": "unexplained",
+}
+NO_RECORD_REASONS = ("requirement", "incompatibleKind", "outsideRecords")
+DISAGREEMENT_KINDS = ("severalUSRs", "sharedUSR")
+COLLISION_WARNING = "key shared by several declarations, disambiguated by location: "
+
+# `swift demangle` accessor words, and the record accessor kinds they stand for.
+DEMANGLED_ACCESSORS = {
+    "getter": {"get"}, "setter": {"set"}, "willset": {"willSet"}, "didset": {"didSet"},
+    "read": {"_read", "read"}, "read2": {"_read", "read"}, "modify": {"_modify", "modify"},
+    "modify2": {"_modify", "modify"}, "unsafeAddressor": {"unsafeAddress"},
+    "unsafeMutableAddressor": {"unsafeMutableAddress"}, "init": {"init"},
+}
+OPERATOR_CHARACTERS = set("/=-+!*%<>&|^~?.")
+DECLARATION_MODIFIERS = MODIFIER_WORDS | {"class", "mutating", "nonmutating", "__consuming"}
+
+
+def canonical_reason(value):
+    if value is None:
+        return None
+    text = re.sub(r"[^a-z]", "", str(value).lower())
+    return REASON_ALIASES.get(text, f"?{value}")
+
+
+def c99_name(name):
+    """SwiftPM's module name for a target name whose describe lacks c99name:
+    non-alphanumerics to `_`, a leading digit prefixed with `_` (design 1.3)."""
+    text = re.sub(r"[^A-Za-z0-9_]", "_", name)
+    return "_" + text if text[:1].isdigit() else text
+
+
+# ---- small text scanners (shared by the key and demangled-name readers)
+
+OPENERS = {"(": ")", "[": "]", "<": ">", "{": "}"}
+
+
+def generic_opener(text, index):
+    """Whether the `<` at `index` opens a generic clause (it follows a name)."""
+    return index > 0 and (text[index - 1].isalnum() or text[index - 1] in "_`>]?")
+
+
+def balanced(text, start):
+    """The index just past the bracket group opening at `start`. A `->`'s
+    `>` closes nothing, and a `<` opens only after a name."""
+    stack = [OPENERS[text[start]]]
+    index = start + 1
+    while index < len(text) and stack:
+        char = text[index]
+        if char in "([{":
+            stack.append(OPENERS[char])
+        elif char == "<" and generic_opener(text, index):
+            stack.append(">")
+        elif char == stack[-1] and not (char == ">" and text[index - 1] == "-"):
+            stack.pop()
+        index += 1
+    return index
+
+
+def split_top(text, separator):
+    """`text` split at occurrences of `separator` outside brackets."""
+    parts = []
+    stack = []
+    last = 0
+    index = 0
+    while index < len(text):
+        char = text[index]
+        if not stack and text.startswith(separator, index):
+            parts.append(text[last:index])
+            index += len(separator)
+            last = index
+            continue
+        if char in "([{":
+            stack.append(OPENERS[char])
+        elif char == "<" and generic_opener(text, index):
+            stack.append(">")
+        elif stack and char == stack[-1] and not (char == ">" and text[index - 1] == "-"):
+            stack.pop()
+        index += 1
+    parts.append(text[last:])
+    return parts
+
+
+def parameter_labels(group):
+    """Argument labels of a parenthesized parameter list, `_` for none."""
+    inner = group[1:-1].strip() if group.startswith("(") else group.strip()
+    if not inner:
+        return []
+    labels = []
+    for parameter in split_top(inner, ","):
+        parameter = parameter.strip()
+        match = re.match(r"(`[^`]+`|[A-Za-z_][A-Za-z0-9_]*)(\s+[A-Za-z_`][A-Za-z0-9_`]*)?\s*:(?!:)", parameter)
+        labels.append(match.group(1).strip("`") if match else "_")
+    return labels
+
+
+# ---- the key side (u6)
+
+
+def key_facts(record, by_key):
+    """(type path, base name, labels, accessor kind) from a record's key, or a
+    string saying why the key wasn't understood."""
+    key = record["key"]
+    module = record.get("module", "")
+    rest = key[len(module) + 2:] if key.startswith(module + "::") else key
+    segments = split_top(rest, " / ")
+    last = segments[-1].strip()
+    accessor = record.get("accessorKind") if record.get("kind") == "accessor" else None
+    if last.startswith("{"):
+        parent = by_key.get(record.get("parentKey"))
+        if parent is None:
+            return f"an accessor segment {last!r} with no parent record"
+        facts = key_facts(parent, by_key)
+        if isinstance(facts, str):
+            return facts
+        path, base, labels, _ = facts
+        return path, base, labels, accessor
+    parts = split_top(last, "::")
+    declaration = parts[-1].strip()
+    path = []
+    if record.get("typePath"):
+        # T0's own type path (the key's type part without an extension's
+        # where clause, which can't be split from a nested type's name).
+        path = [component.strip("`") for component in split_top(record["typePath"], ".")]
+        parts = parts[-1:]
+    for part in parts[:-1]:
+        part = re.split(r"\s+where\s+", part.strip())[0]
+        for component in split_top(part, "."):
+            component = component.strip()
+            if "<" in component:
+                component = component[:component.index("<")]
+            path.append(component.strip("`"))
+    words = declaration.split()
+    while words and (words[0] in DECLARATION_MODIFIERS or words[0].startswith("@")):
+        words.pop(0)
+    declaration = " ".join(words)
+    match = re.match(r"func\s+(`[^`]+`|[A-Za-z_][A-Za-z0-9_]*|[/=\-+!*%<>&|^~?.]+)", declaration)
+    if match:
+        base = match.group(1).strip("`")
+        tail = declaration[match.end():]
+        if tail.startswith("<"):
+            tail = tail[balanced(tail, 0):]
+        if not tail.startswith("("):
+            return f"no parameter list in {declaration!r}"
+        return path, base, parameter_labels(tail[:balanced(tail, 0)]), accessor
+    match = re.match(r"(init|subscript)[?!]?(?=[(<])", declaration)
+    if match:
+        tail = declaration[match.end():]
+        if tail.startswith("<"):
+            tail = tail[balanced(tail, 0):]
+        if not tail.startswith("("):
+            return f"no parameter list in {declaration!r}"
+        return path, match.group(1), parameter_labels(tail[:balanced(tail, 0)]), accessor
+    if declaration.startswith("deinit"):
+        return path, "deinit", [], accessor
+    match = re.match(r"(?:var|let)\s+(`[^`]+`|[A-Za-z_][A-Za-z0-9_]*)", declaration)
+    if match:
+        return path, match.group(1).strip("`"), [], accessor
+    return f"a declaration this check doesn't read: {declaration!r}"
+
+
+# ---- the demangled side (u6): `swift demangle --tree-only`'s node tree
+
+NOMINAL_NODES = {"Structure", "Class", "Enum", "Protocol", "TypeAlias", "OtherNominalType"}
+ACCESSOR_NODES = {
+    "Getter": "getter", "GlobalGetter": "getter", "Setter": "setter", "WillSet": "willset", "DidSet": "didset",
+    "ReadAccessor": "read", "Read2Accessor": "read2", "ModifyAccessor": "modify", "Modify2Accessor": "modify2",
+    "UnsafeAddressor": "unsafeAddressor", "UnsafeMutableAddressor": "unsafeMutableAddressor",
+    "InitAccessor": "init",
+}
+CONSTRUCTOR_NODES = {"Constructor", "Allocator"}
+DESTRUCTOR_NODES = {"Destructor", "Deallocator", "IsolatedDeallocator"}
+CALLABLE_NODES = ({"Function", "Subscript", "Variable", "ExplicitClosure", "ImplicitClosure", "Static"}
+                  | CONSTRUCTOR_NODES | DESTRUCTOR_NODES | set(ACCESSOR_NODES))
+NAME_NODES = {"Identifier", "LocalDeclName", "PrivateDeclName", "PrefixOperator", "InfixOperator", "PostfixOperator"}
+TREE_LINE = re.compile(r'kind=(\w+)(?:, text="(.*)")?(?:, index=(-?\d+))?$')
+
+
+def parse_trees(text):
+    """{mangled name: root node} from `swift demangle --tree-only` output;
+    a node is {kind, text, children}, nested by two-space indentation."""
+    trees = {}
+    current = None
+    stack = []
+    for line in text.split("\n"):
+        if line.startswith("Demangling for "):
+            current = line[len("Demangling for "):].strip()
+            stack = []
+            continue
+        match = TREE_LINE.match(line.strip())
+        if current is None or not match:
+            continue
+        depth = (len(line) - len(line.lstrip(" "))) // 2
+        node = {"kind": match.group(1), "text": match.group(2), "children": []}
+        if depth == 0:
+            trees[current] = node
+            stack = [node]
+        elif depth <= len(stack):
+            stack = stack[:depth]
+            stack[-1]["children"].append(node)
+            stack.append(node)
+    return trees
+
+
+def child(node, *kinds):
+    return next((c for c in node["children"] if c["kind"] in kinds), None)
+
+
+def name_of(node):
+    if node is None:
+        return None
+    if node["kind"] in ("Identifier", "PrefixOperator", "InfixOperator", "PostfixOperator"):
+        return node["text"]
+    identifiers = [c["text"] for c in node["children"] if c["kind"] == "Identifier"]
+    return identifiers[-1] if identifiers else None
+
+
+def tree_type_path(node):
+    """Type path of a context node: nominal types from the outermost one
+    declared at file scope or in a function (local types start the path), a
+    module dropped; an extension's path is its extended type's."""
+    kind = node["kind"]
+    if kind == "Module" or kind in CALLABLE_NODES:
+        return []
+    if kind == "Type" and node["children"]:
+        return tree_type_path(node["children"][0])
+    if kind == "Extension" and len(node["children"]) > 1:
+        return tree_type_path(node["children"][1])
+    if kind.startswith("BoundGeneric") and node["children"]:
+        return tree_type_path(node["children"][0])
+    if kind in NOMINAL_NODES and len(node["children"]) > 1:
+        return tree_type_path(node["children"][0]) + [name_of(node["children"][1])]
+    return [f"?{kind}"]
+
+
+def parameter_count(type_node):
+    node = type_node
+    while node is not None and node["kind"] != "FunctionType":
+        if node["kind"] == "Type":
+            node = node["children"][0] if node["children"] else None
+        elif node["kind"] == "DependentGenericType":
+            node = child(node, "Type")
+        else:
+            return None
+    if node is None:
+        return None
+    arguments = child(node, "ArgumentTuple")
+    inner = child(arguments, "Type") if arguments else None
+    inner = inner["children"][0] if inner and inner["children"] else None
+    if inner is None:
+        return 0
+    if inner["kind"] == "Tuple":
+        return sum(1 for c in inner["children"] if c["kind"] == "TupleElement")
+    return 1
+
+
+def tree_labels(node):
+    labels = child(node, "LabelList")
+    if labels is not None and labels["children"]:
+        return ["_" if c["kind"] == "FirstElementMarker" else c["text"] for c in labels["children"]]
+    count = parameter_count(child(node, "Type"))
+    return ["_"] * (count or 0)
+
+
+def demangled_facts(tree):
+    """(type path, base name, labels, accessor word) of a demangled USR's
+    entity, or a string saying why it isn't a function-like one."""
+    if tree is None or not tree["children"]:
+        return "swift demangle gave no tree"
+    entity = tree["children"][0]
+    while entity["kind"] == "Static" and entity["children"]:
+        entity = entity["children"][0]
+    kind = entity["kind"]
+    if not entity["children"]:
+        return f"an empty {kind} node"
+    context = entity["children"][0]
+    if kind in ACCESSOR_NODES:
+        storage = context
+        if storage["kind"] == "Subscript":
+            return tree_type_path(storage["children"][0]), "subscript", tree_labels(storage), ACCESSOR_NODES[kind]
+        if storage["kind"] == "Variable":
+            return tree_type_path(storage["children"][0]), name_of(child(storage, *NAME_NODES)), [], ACCESSOR_NODES[kind]
+        return f"an accessor of a {storage['kind']}"
+    if kind == "Function":
+        return tree_type_path(context), name_of(child(entity, *NAME_NODES)), tree_labels(entity), None
+    if kind in CONSTRUCTOR_NODES:
+        return tree_type_path(context), "init", tree_labels(entity), None
+    if kind in DESTRUCTOR_NODES:
+        return tree_type_path(context), "deinit", [], None
+    if kind == "Subscript":
+        return tree_type_path(context), "subscript", tree_labels(entity), None
+    return f"a {kind}, not a function-like entity"
+
+
+def demangle_all(usrs, demangler, *flags):
+    """`swift demangle <flags>` of `$s` + each `s:` USR's rest, in one run."""
+    names = ["$s" + usr[2:] for usr in usrs]
+    if not names:
+        return ""
+    command = ([demangler] if os.path.basename(demangler) == "swift-demangle" else [demangler, "demangle"]) + list(flags)
+    result = subprocess.run(command, input="\n".join(names) + "\n", capture_output=True, text=True, timeout=600)
+    if result.returncode != 0:
+        fail(f"{' '.join(command)} exited {result.returncode}: {result.stderr.strip()[:300]}")
+    return result.stdout
+
+
+# ---- inputs
+
+
+class Spellings:
+    """Path prefixes a recording uses for real paths (`@ROOT@`, `@BUILD@`, ...)."""
+
+    def __init__(self, pairs):
+        self.pairs = sorted(pairs, key=lambda pair: -len(pair[0]))
+
+    def restore(self, text):
+        for token, real in self.pairs:
+            if token and (text == token or text.startswith(token + "/")):
+                return real + text[len(token):]
+        return text
+
+
+class UsrPackage:
+    """The package: its real paths, the scan JSON (T0 facts and the index
+    block), its own describe, and the units and records of the store."""
+
+    def __init__(self, arguments):
+        self.root = real_path(os.path.abspath(arguments.package), "the package")
+        self.scratch = real_path(os.path.join(self.root, BUILD_DIRECTORY), "the build directory")
+        with open(arguments.scan, encoding="utf-8") as handle:
+            self.scan = json.load(handle)
+        self.block = self.scan.get("index")
+        self.records = self.scan.get("records", [])
+        self.by_key = {r["key"]: r for r in self.records}
+        self.records_by_file = defaultdict(list)
+        for record in self.records:
+            self.records_by_file[record["file"]].append(record)
+        self.files = {f["path"]: f for f in self.scan.get("files", [])}
+        self.scan_targets = {t["name"]: t for t in self.scan.get("targets", [])}
+        self.children = defaultdict(list)
+        for record in self.records:
+            if record.get("parentKey"):
+                self.children[record["parentKey"]].append(record)
+        pairs = [(arguments.root_spelling, self.root), (arguments.build_spelling, self.scratch)]
+        for item in arguments.spelling or []:
+            token, _, path = item.partition("=")
+            pairs.append((token, path))
+        self.spellings = Spellings([(t, p) for t, p in pairs if t])
+        self.changed = set()
+        for path, entry in self.files.items():
+            full = os.path.join(self.root, path)
+            if not os.path.isfile(full) or sha256_of(full) != entry.get("sha256"):
+                self.changed.add(path)
+        self.sources = {}
+
+    def relative(self, path):
+        """Package-relative NFC path of an absolute real path under the root, else None."""
+        if path and is_under(path, self.root) and path != self.root:
+            return unicodedata.normalize("NFC", path[len(self.root) + 1:])
+        return None
+
+    def source_bytes(self, path):
+        if path not in self.sources:
+            with open(os.path.join(self.root, path), "rb") as handle:
+                self.sources[path] = handle.read().split(b"\n")
+        return self.sources[path]
+
+
+def toolchain_of(package_root, swift):
+    """The toolchain of `swift -print-target-info` run in the package root
+    (swiftly's proxy reads `.swift-version` there): its usr/lib/swift."""
+    try:
+        result = subprocess.run([swift, "-print-target-info"], cwd=package_root, capture_output=True,
+                                text=True, timeout=120)
+    except (OSError, subprocess.TimeoutExpired) as error:
+        fail(f"{swift} -print-target-info didn't run: {error}")
+    if result.returncode != 0:
+        fail(f"{swift} -print-target-info exited {result.returncode}: {result.stderr.strip()[:300]}")
+    try:
+        resource = json.loads(result.stdout)["paths"]["runtimeResourcePath"]
+    except (ValueError, KeyError) as error:
+        fail(f"-print-target-info gave no paths.runtimeResourcePath: {error}")
+    return os.path.normpath(resource)
+
+
+def run_describe(package_root, swift_executable):
+    """`swift package --scratch-path <tmp> describe --type json` in the
+    package, its Package.resolved (bytes or absence) put back afterwards."""
+    resolved = os.path.join(package_root, "Package.resolved")
+    kept = open(resolved, "rb").read() if os.path.isfile(resolved) else None
+    scratch = tempfile.mkdtemp(prefix="index-check-describe-")
+    try:
+        result = subprocess.run([swift_executable, "package", "--scratch-path", scratch, "describe", "--type", "json"],
+                                cwd=package_root, capture_output=True, text=True, timeout=600,
+                                stdin=subprocess.DEVNULL)
+    finally:
+        shutil.rmtree(scratch, ignore_errors=True)
+        if kept is None:
+            if os.path.exists(resolved):
+                os.remove(resolved)
+        elif not os.path.isfile(resolved) or open(resolved, "rb").read() != kept:
+            with open(resolved, "wb") as handle:
+                handle.write(kept)
+    if result.returncode != 0:
+        fail(f"describe exited {result.returncode}: {result.stderr.strip()[:300]}")
+    return json.loads(result.stdout)
+
+
+class Described:
+    """The targets of a describe JSON: C99 names, sources, types, library products."""
+
+    def __init__(self, describe, package):
+        self.name = describe.get("name")
+        self.targets = {}
+        self.by_module = {}
+        for target in describe.get("targets", []):
+            module = target.get("c99name") or c99_name(target["name"])
+            base = os.path.normpath(os.path.join(package.root, package.spellings.restore(target.get("path", ""))))
+            sources = set()
+            for source in target.get("sources", []):
+                full = os.path.normpath(os.path.join(base, source))
+                relative = package.relative(unicodedata.normalize("NFC", full))
+                if relative is not None:
+                    sources.add(relative)
+            entry = {"name": target["name"], "module": module, "type": target.get("type"), "sources": sources}
+            self.targets[target["name"]] = entry
+            if module in self.by_module:
+                fail(f"targets {self.by_module[module]['name']} and {target['name']} share the module name {module}")
+            self.by_module[module] = entry
+        self.library_targets = set()
+        for product in describe.get("products", []):
+            kind = product.get("type")
+            if isinstance(kind, dict) and "library" in kind:
+                self.library_targets.update(product.get("targets", []))
+        # Local path dependencies' folders (step 4a's adopted deviation from
+        # design 2.3's rule 2: a nested path dependency is another package).
+        self.dependency_roots = []
+        for dependency in describe.get("dependencies", []):
+            if dependency.get("type") == "fileSystem" and dependency.get("path"):
+                location = package.spellings.restore(dependency["path"])
+                if not os.path.isabs(location):
+                    location = os.path.join(package.root, location)
+                try:
+                    self.dependency_roots.append(real_path(location, "a path dependency"))
+                except ReadError:
+                    self.dependency_roots.append(location)
+
+
+# ---- units and records
+
+
+class UnitReader:
+    """Unit headers and records, from the store through this script's ctypes
+    reader, or from a recorded dump (`--reader`)."""
+
+    def __init__(self, package, arguments):
+        self.package = package
+        self.store = None
+        self.library = None
+        self.dump_records = None
+        self.quarantine_names = None
+        self.units = []
+        if arguments.reader:
+            with open(arguments.reader, encoding="utf-8") as handle:
+                dump = json.load(handle)
+            self.dump_records = {r["name"]: r for r in dump["records"]}
+            for unit in dump["units"]:
+                main = package.spellings.restore(unit["mainFile"])
+                records = []
+                for name in unit["records"]:
+                    record = self.dump_records.get(name)
+                    paths = [record["file"]] + record.get("otherFiles", []) if record else []
+                    paths = [package.spellings.restore(p) for p in paths]
+                    records.append((name, main if main in paths or not paths else paths[0]))
+                self.units.append(self.unit_entry(unit, main, records, "store"))
+            self.system_known = False
+            return
+        self.system_known = True
+        store_path = real_path(os.path.abspath(arguments.index_store or os.path.join(package.scratch, STORE_DIRECTORY)),
+                               "the index store")
+        if not os.path.isdir(os.path.join(store_path, "v5", "units")):
+            fail(f"{store_path} holds no v5/units")
+        self.store_path = store_path
+        self.library = Library(arguments.library)
+        self.store = Store(self.library, store_path)
+        for name in self.store.unit_names():
+            self.units.append(self.read_unit(self.store, name, "store"))
+        self.read_quarantine()
+
+    def unit_entry(self, unit, main, records, location):
+        return {"name": unit["name"], "module": unit["module"], "mainFile": main, "triple": unit["target"],
+                "isSystem": unit["isSystem"], "modified": (unit["modified"]["seconds"], unit["modified"]["nanoseconds"]),
+                "records": records, "location": location}
+
+    def read_unit(self, store, name, location):
+        unit, records, _ = store.unit(name)
+        main = real_path(unit["mainFile"], f"unit {name}'s main file") if not unit["isSystem"] else unit["mainFile"]
+        paths = []
+        for record, path in records:
+            paths.append((record, real_path(path, f"record {record}'s file") if path and not unit["isSystem"] else path))
+        return self.unit_entry(unit, main, paths, location)
+
+    def read_quarantine(self):
+        """The units the scan moved out of the store (design 2.3), read
+        through a temporary store view: their unit files plus the records."""
+        directory = os.path.join(self.package.scratch, QUARANTINE_DIRECTORY)
+        self.quarantine_names = []
+        if not os.path.isdir(directory):
+            return
+        self.quarantine_names = sorted(n for n in os.listdir(directory) if not n.startswith("."))
+        if not self.quarantine_names:
+            return
+        view = tempfile.mkdtemp(prefix="index-check-quarantine-")
+        try:
+            os.makedirs(os.path.join(view, "v5", "units"))
+            os.symlink(os.path.join(self.store_path, "v5", "records"), os.path.join(view, "v5", "records"))
+            for name in self.quarantine_names:
+                os.symlink(os.path.join(directory, name), os.path.join(view, "v5", "units", name))
+            store = Store(self.library, view)
+            try:
+                for name in self.quarantine_names:
+                    self.units.append(self.read_unit(store, name, "quarantine"))
+            finally:
+                store.close()
+        finally:
+            shutil.rmtree(view, ignore_errors=True)
+
+    def occurrences(self, record_name):
+        if self.dump_records is not None:
+            record = self.dump_records.get(record_name)
+            if record is None:
+                raise ReadError(f"the recording holds no record {record_name}")
+            return record["occurrences"]
+        return self.store.occurrences(record_name)
+
+    def close(self):
+        if self.store is not None:
+            self.store.close()
+
+
+def classify_units(units, package, described):
+    """Each unit's class, design section 2.3 (first that applies)."""
+    classes = {}
+    pending = []
+    for unit in units:
+        main = unit["mainFile"]
+        relative = package.relative(main) if os.path.isabs(main or "x") else None
+        first = relative.split("/")[0] if relative else None
+        if unit["isSystem"]:
+            classes[unit["name"]] = "system"
+        elif (not main or relative is None or is_under(main, package.scratch) or first in (".build", ".swiftstats")
+              or any(is_under(main, root) for root in described.dependency_roots)):
+            classes[unit["name"]] = "otherPackage"
+        elif unit["module"] not in described.by_module:
+            classes[unit["name"]] = "otherModule"
+        elif not os.path.exists(main) or relative not in described.by_module[unit["module"]]["sources"]:
+            classes[unit["name"]] = "stale"
+        else:
+            pending.append(unit)
+    groups = defaultdict(list)
+    for unit in pending:
+        groups[(unit["module"], unit["mainFile"], unit["triple"])].append(unit)
+    survivors = []
+    for group in groups.values():
+        newest = max(group, key=lambda u: (u["modified"], u["name"]))
+        for unit in group:
+            if unit is not newest:
+                classes[unit["name"]] = "duplicate"
+        survivors.append(newest)
+    triples = defaultdict(set)
+    for unit in survivors:
+        triples[(unit["module"], unit["mainFile"])].add(unit["triple"])
+    for unit in survivors:
+        several = len(triples[(unit["module"], unit["mainFile"])]) > 1
+        classes[unit["name"]] = "variant" if several else "kept"
+    return classes
+
+
+# ---- the join
+
+
+def function_like(occurrence):
+    kind, subkind = occurrence["kind"], occurrence["subkind"]
+    return (kind in FUNCTION_KINDS or kind in (KIND_CONSTRUCTOR, KIND_DESTRUCTOR)
+            or (kind in PROPERTY_KINDS and subkind == SUBKIND_SUBSCRIPT))
+
+
+def compatible(record, occurrence):
+    """Design section 3.2, primary assignments only (the subscript getter is
+    the secondary case, handled apart)."""
+    kind, subkind = occurrence["kind"], occurrence["subkind"]
+    record_kind = record["kind"]
+    if record_kind == "func":
+        return kind in FUNCTION_KINDS and (subkind == SUBKIND_NONE or subkind in OPERATOR_SUBKINDS)
+    if record_kind == "init":
+        return kind == KIND_CONSTRUCTOR
+    if record_kind == "deinit":
+        return kind == KIND_DESTRUCTOR
+    if record_kind == "subscript":
+        return kind in PROPERTY_KINDS and subkind == SUBKIND_SUBSCRIPT
+    if record_kind == "accessor":
+        wanted = ACCESSOR_SUBKINDS.get(record.get("accessorKind") or "get")
+        return kind in FUNCTION_KINDS and subkind == wanted
+    return False
+
+
+def holds(record, line, column):
+    start, end = range_of(record)
+    return start <= (line, column) <= end
+
+
+def innermost(records):
+    return min(records, key=lambda r: ((-range_of(r)[0][0], -range_of(r)[0][1]), range_of(r)[1], r["key"]))
+
+
+class UsrJoin:
+    """Design sections 2.3 and 3 reimplemented over this script's read."""
+
+    def __init__(self, package, described, reader, log_text):
+        self.package = package
+        self.described = described
+        self.reader = reader
+        self.classes = classify_units(reader.units, package, described)
+        self.units = sorted(reader.units, key=lambda u: u["name"])
+        self.read_units = [u for u in self.units if self.classes[u["name"]] in READ_CLASSES]
+        self.log_text = log_text
+        self.read_records()
+        self.join()
+        self.reasons()
+        self.collisions()
+
+    # Units -> occurrences per package file.
+    def read_records(self):
+        self.occurrences_by_file = defaultdict(list)
+        self.records_read = set()
+        self.occurrence_count = 0
+        done = set()
+        cache = {}
+        for unit in self.read_units:
+            for record, path in unit["records"]:
+                if record not in cache:
+                    cache[record] = self.reader.occurrences(record)
+                    self.records_read.add(record)
+                    self.occurrence_count += len(cache[record])
+                relative = self.package.relative(path)
+                if relative is None or (record, relative) in done:
+                    continue
+                done.add((record, relative))
+                self.occurrences_by_file[relative].extend(cache[record])
+        self.kept_files_by_module = defaultdict(set)
+        for unit in self.read_units:
+            relative = self.package.relative(unit["mainFile"])
+            self.kept_files_by_module[unit["module"]].add(relative)
+
+    def join(self):
+        package = self.package
+        self.definitions_in = defaultdict(list)   # every definition, any kind, implicit too
+        primaries = defaultdict(dict)             # record key -> usr -> definition
+        pending = []                              # (getter definition, subscript record)
+        self.no_record = []
+        self.implicit = set()
+        joined = set()
+        seen = set()
+        for path in sorted(self.occurrences_by_file):
+            for occurrence in self.occurrences_by_file[path]:
+                if not occurrence["roles"] & ROLE_DEFINITION:
+                    continue
+                identity = (path, occurrence["line"], occurrence["column"], occurrence["usr"],
+                            occurrence["kind"], occurrence["subkind"], occurrence["roles"])
+                if identity in seen:
+                    continue  # the same definition read through a variant unit
+                seen.add(identity)
+                self.definitions_in[path].append((occurrence["line"], occurrence["column"]))
+                if path not in package.files or path in package.changed or not function_like(occurrence):
+                    continue
+                definition = {"file": path, "line": occurrence["line"], "column": occurrence["column"],
+                              "usr": occurrence["usr"], "name": occurrence["name"], "kind": occurrence["kind"],
+                              "subkind": occurrence["subkind"], "relations": occurrence["relations"]}
+                if occurrence["roles"] & ROLE_IMPLICIT:
+                    self.implicit.add((path, occurrence["line"], occurrence["column"], occurrence["usr"]))
+                    continue
+                holding = [r for r in package.records_by_file.get(path, [])
+                           if holds(r, occurrence["line"], occurrence["column"])]
+                if not holding:
+                    requirement = any(rel["roles"] & RELATION_CHILD_OF and rel["kind"] == KIND_PROTOCOL
+                                      for rel in occurrence["relations"])
+                    self.no_record.append(dict(definition, subreason="requirement" if requirement else "outsideRecords",
+                                               key=None))
+                    continue
+                record = innermost(holding)
+                if compatible(record, occurrence):
+                    primaries[record["key"]].setdefault(occurrence["usr"], definition)
+                    joined.add((path, occurrence["line"], occurrence["column"], occurrence["usr"]))
+                elif (record["kind"] == "subscript" and occurrence["subkind"] == SUBKIND_GETTER
+                      and occurrence["kind"] in FUNCTION_KINDS):
+                    pending.append((definition, record))
+                else:
+                    self.no_record.append(dict(definition, subreason="incompatibleKind", key=record["key"]))
+        # Disagreements (design 3.5).
+        self.disagreements = []
+        holders = defaultdict(set)
+        for key, usrs in primaries.items():
+            for usr in usrs:
+                holders[usr].add(key)
+        self.primary = {}
+        self.in_disagreement = set()
+        for key in sorted(primaries):
+            usrs = primaries[key]
+            if len(usrs) > 1:
+                self.in_disagreement.add(key)
+                for usr in sorted(usrs):
+                    definition = usrs[usr]
+                    self.disagreements.append({"kind": "severalUSRs", "key": key, "usr": usr,
+                                               "file": definition["file"], "line": definition["line"],
+                                               "column": definition["column"]})
+        for usr in sorted(holders):
+            if len(holders[usr]) > 1:
+                for key in sorted(holders[usr]):
+                    self.in_disagreement.add(key)
+                    definition = primaries[key][usr]
+                    self.disagreements.append({"kind": "sharedUSR", "key": key, "usr": usr,
+                                               "file": definition["file"], "line": definition["line"],
+                                               "column": definition["column"]})
+        for key, usrs in primaries.items():
+            if key not in self.in_disagreement:
+                self.primary[key] = next(iter(usrs))
+        self.primary_definitions = {key: next(iter(usrs.values())) for key, usrs in primaries.items()
+                                    if key in self.primary}
+        # Secondary accessor USRs (design 3.3).
+        self.secondary = {}
+        self.secondary_definitions = {}
+        self.several_secondaries = []
+        for definition, record in pending:
+            has_accessors = any(child["kind"] == "accessor" for child in self.package.children.get(record["key"], []))
+            names_primary = any(rel["roles"] & RELATION_ACCESSOR_OF and rel["usr"] == self.primary.get(record["key"])
+                                for rel in definition["relations"])
+            if not has_accessors and names_primary:
+                previous = self.secondary.get(record["key"])
+                if previous is not None and previous != definition["usr"]:
+                    self.several_secondaries.append(record["key"])
+                    continue
+                self.secondary[record["key"]] = definition["usr"]
+                self.secondary_definitions[record["key"]] = definition
+                joined.add((definition["file"], definition["line"], definition["column"], definition["usr"]))
+            else:
+                self.no_record.append(dict(definition, subreason="incompatibleKind", key=record["key"]))
+        self.joined = joined
+        self.joined_definitions = [(key, d, "primary") for key, usrs in sorted(primaries.items())
+                                   for d in usrs.values()]
+        self.joined_definitions += [(key, d, "secondary") for key, d in sorted(self.secondary_definitions.items())]
+        self.no_record.sort(key=lambda d: (d["file"], d["line"], d["column"], d["usr"]))
+
+    def reasons(self):
+        """Design section 3.4: the first reason that applies."""
+        modules_any = {u["module"] for u in self.units}
+        self.reason = {}
+        targets = self.package.scan_targets
+        for record in self.package.records:
+            key = record["key"]
+            if key in self.primary:
+                self.reason[key] = None
+                continue
+            target = self.described.targets.get(record.get("module")) or {}
+            scan_target = targets.get(record.get("module")) or {}
+            module = target.get("module") or c99_name(record.get("module", ""))
+            target_type = target.get("type") or scan_target.get("type")
+            path = record["file"]
+            definitions = self.definitions_in.get(path, [])
+            if record["kind"] == "topLevel":
+                reason = "top-level code"
+            elif target_type == "plugin":
+                reason = "plugin target"
+            elif record.get("ifConfig") and not any(holds(record, line, column) for line, column in definitions):
+                reason = "inactive #if branch"
+            elif path in self.package.changed:
+                reason = "file changed during the scan"
+            elif module not in modules_any and not self.log_compiles(module):
+                reason = "target not built"
+            elif self.kept_files_by_module.get(module) and path not in self.kept_files_by_module[module]:
+                reason = "file not indexed"
+            elif key in self.in_disagreement:
+                reason = "disagreement"
+            else:
+                reason = "unexplained"
+            self.reason[key] = reason
+
+    def log_compiles(self, module):
+        if self.log_text is None:
+            return False
+        return re.search(r"-module-name\s+" + re.escape(module) + r"(\s|$)", self.log_text) is not None
+
+    def collisions(self):
+        """Records whose keys a collision suffix tells apart (the scan's
+        warnings name the collided keys) and whose USRs differ."""
+        collided = [w["message"][len(COLLISION_WARNING):] for w in self.package.scan.get("warnings", [])
+                    if str(w.get("message", "")).startswith(COLLISION_WARNING)]
+        self.collision_groups = []
+        for original in sorted(set(collided)):
+            members = []
+            for record in self.package.records:
+                key = record["key"]
+                if not key.startswith(original):
+                    continue
+                suffix = key[len(original):]
+                file_part = "" if " @ " in original else " @ " + record["file"]
+                if re.fullmatch(re.escape(file_part) + r"(:\d+){0,2}", suffix):
+                    members.append(record)
+            usrs = {self.primary.get(r["key"]) for r in members} - {None}
+            if len(usrs) > 1:
+                self.collision_groups.append({"key": original,
+                                              "records": [{"key": r["key"], "usr": self.primary.get(r["key"])}
+                                                          for r in sorted(members, key=lambda r: r["key"])]})
+
+    # Figures.
+    def unit_rows(self):
+        rows = []
+        for unit in self.units:
+            target = self.described.by_module.get(unit["module"])
+            rows.append({"name": unit["name"], "target": target["name"] if target else None,
+                         "module": unit["module"], "mainFile": self.package.relative(unit["mainFile"]) or unit["mainFile"],
+                         "triple": unit["triple"], "class": self.classes[unit["name"]], "location": unit["location"]})
+        return rows
+
+    def class_counts(self):
+        counts = Counter(self.classes.values())
+        return {name: counts.get(name, 0) for name in UNIT_CLASSES}
+
+    def definitions(self):
+        return {"joined": len(self.joined), "implicit": len(self.implicit), "secondary": len(self.secondary),
+                "objc": sum(1 for usr in self.primary.values() if usr.startswith("c:"))}
+
+    def scopes(self):
+        """Roll-up scopes as the scan's T0 roll-ups name them."""
+        scopes = defaultdict(list)
+        for record in self.package.records:
+            scopes[("module", record.get("module"))].append(record)
+            scopes[("project", "production" if record.get("role") == "production" else "tests")].append(record)
+        return scopes
+
+    def rollup(self, records):
+        reasons = Counter(self.reason[r["key"]] for r in records if self.reason[r["key"]] is not None)
+        return {"withUSR": sum(1 for r in records if r["key"] in self.primary),
+                "withoutUSR": dict(sorted(reasons.items())),
+                "disagreements": sum(1 for r in records if self.reason[r["key"]] == "disagreement")}
+
+
+# ---- u3 and u6
+
+
+def name_token_problem(join, key, definition, how):
+    """Why the source bytes at a joined definition aren't its name token, or None."""
+    lines = join.package.source_bytes(definition["file"])
+    line, column = definition["line"], definition["column"]
+    if line < 1 or line > len(lines):
+        return f"line {line} is past the file's end"
+    text = lines[line - 1][column - 1:]
+    kind, subkind = definition["kind"], definition["subkind"]
+    if how == "secondary":
+        wanted = ("{",)
+    elif kind == KIND_CONSTRUCTOR:
+        wanted = ("init",)
+    elif kind == KIND_DESTRUCTOR:
+        wanted = ("deinit",)
+    elif kind in PROPERTY_KINDS:
+        wanted = ("subscript",)
+    elif subkind in ACCESSOR_KEYWORDS:
+        wanted = ACCESSOR_KEYWORDS[subkind] + (("{",) if subkind == SUBKIND_GETTER else ())
+    else:
+        base = definition["name"].split("(")[0]
+        wanted = (base, f"`{base}`")
+    for token in wanted:
+        encoded_token = token.encode("utf-8")
+        if text.startswith(encoded_token):
+            following = text[len(encoded_token):len(encoded_token) + 1]
+            if token[-1:].isalnum() or token[-1:] == "_":
+                if following and (following.isalnum() or following == b"_"):
+                    continue
+            return None
+    return f"{definition['file']}:{line}:{column} reads {text[:24].decode('utf-8', 'replace')!r}, wanted one of {list(wanted)}"
+
+
+def demangle_problem(record, facts_key, facts_demangled, secondary=False):
+    if isinstance(facts_key, str):
+        return f"key not read: {facts_key}"
+    if isinstance(facts_demangled, str):
+        return f"demangled USR not read: {facts_demangled}"
+    key_path, key_base, key_labels, key_accessor = facts_key
+    path, base, labels, accessor = facts_demangled
+    problems = []
+    if [p.strip("`") for p in path] != [p.strip("`") for p in key_path]:
+        problems.append(f"type path {path} vs key {key_path}")
+    if base.strip("`") != key_base.strip("`"):
+        problems.append(f"base name {base!r} vs key {key_base!r}")
+    operator = key_base[:1] in OPERATOR_CHARACTERS
+    if operator:
+        if len(labels) != len(key_labels):
+            problems.append(f"{len(labels)} operands vs key {len(key_labels)}")
+    elif labels != key_labels:
+        problems.append(f"labels {labels} vs key {key_labels}")
+    wanted = "get" if secondary else key_accessor
+    if wanted is None and accessor is not None:
+        problems.append(f"accessor {accessor} on a {record['kind']} record")
+    elif wanted is not None and wanted not in DEMANGLED_ACCESSORS.get(accessor or "", set()):
+        problems.append(f"accessor {accessor} vs key {wanted}")
+    return "; ".join(problems) or None
+
+
+# ---- comparison with the scan JSON
+
+
+def flattened(items):
+    """Rows of a list whose items may nest lists of dicts: each nested dict
+    inherits its parents' scalar fields."""
+    rows = []
+
+    def walk(item, inherited):
+        scalars = dict(inherited)
+        nested = []
+        for name, value in item.items():
+            if isinstance(value, list) and value and all(isinstance(v, dict) for v in value):
+                nested.append(value)
+            elif isinstance(value, dict) and name in ("position", "location", "place"):
+                scalars.update(value)
+            elif not isinstance(value, (list, dict)):
+                scalars[name] = value
+        if nested:
+            for group in nested:
+                for child in group:
+                    walk(child, scalars)
+        else:
+            rows.append(scalars)
+
+    for item in items if isinstance(items, list) else []:
+        if isinstance(item, dict):
+            walk(item, {})
+    return rows
+
+
+def path_of(package, value):
+    if not isinstance(value, str):
+        return value
+    restored = package.spellings.restore(value)
+    if os.path.isabs(restored):
+        return package.relative(unicodedata.normalize("NFC", restored)) or restored
+    return unicodedata.normalize("NFC", restored)
+
+
+def scan_records(package, block):
+    rows = lookup(block, "records")
+    out = {}
+    if not isinstance(rows, list):
+        return None
+    for row in rows:
+        out[row.get("key")] = (row.get("usr"), row.get("usrAccessor", row.get("secondaryUSR")),
+                               canonical_reason(row.get("reason", row.get("usrReason"))))
+    return out
+
+
+def compare_index(verdict, join, problems_u3, problems_u6):
+    package = join.package
+    block = package.block
+    scan = package.scan
+    run = next((c for c in scan.get("collectors", []) if c.get("name") == "index"), None)
+    verdict.section("the scan JSON's index block against this reimplementation")
+    verdict.info(f"index collector: {run.get('state') if run else 'absent'}"
+                 + (f" ({run.get('reason')})" if run and run.get("reason") else ""))
+    verdict.result("the index collector ran", bool(run) and run.get("state") == "ran",
+                   run.get("state") if run else "absent")
+    if not isinstance(block, dict):
+        verdict.result("the scan JSON has an index block", False, "absent")
+        return
+
+    def same(name, mine, theirs):
+        if theirs is MISSING:
+            verdict.result(name, False, f"mine {mine}; the scan JSON has no such value")
+        else:
+            verdict.result(name, theirs == mine, f"mine {mine}, scan {theirs}")
+
+    # u1: units.
+    verdict.section("u1 units: the same unit set and classes")
+    mine_rows = {row["name"]: row for row in join.unit_rows()}
+    listed = lookup(block, "store.units", "units")
+    if not isinstance(listed, list):
+        verdict.result("the scan lists its units (index.store.units)", False, "absent")
+        listed = []
+    theirs_rows = {}
+    for row in listed:
+        theirs_rows[row.get("name")] = {
+            "target": row.get("target"), "mainFile": path_of(package, row.get("mainFile", row.get("file", row.get("path")))),
+            "triple": row.get("triple"), "class": row.get("class")}
+    differences = []
+    for name, row in sorted(theirs_rows.items(), key=lambda pair: str(pair[0])):
+        own = mine_rows.get(name)
+        if own is None:
+            differences.append(f"{name}: listed by the scan, not in this check's store read")
+            continue
+        target_ok = row["target"] == own["target"] or (own["class"] == "otherModule"
+                                                       and row["target"] in (None, "", own["module"]))
+        if not target_ok or row["mainFile"] != own["mainFile"] or row["triple"] != own["triple"] \
+                or row["class"] != own["class"]:
+            differences.append(f"{name}: scan {row}, mine {{'target': {own['target']!r}, 'mainFile': "
+                               f"{own['mainFile']!r}, 'triple': {own['triple']!r}, 'class': {own['class']!r}}}")
+    for name, own in sorted(mine_rows.items()):
+        if own["class"] in READ_CLASSES and name not in theirs_rows:
+            differences.append(f"{name}: {own['class']} here, not listed by the scan")
+    listed_classes = Counter(row["class"] for row in theirs_rows.values())
+    for name in ("duplicate", "stale", "otherModule"):
+        own = {n for n, r in mine_rows.items() if r["class"] == name}
+        if listed_classes.get(name):
+            missing = sorted(own - set(theirs_rows))
+            if missing:
+                differences.append(f"{name} units not listed although the scan lists that class: {missing}")
+    verdict.result("unit list (name, target, main file, triple, class) equals this check's",
+                   not differences, f"{len(theirs_rows)} listed, {len(mine_rows)} read here "
+                   f"({', '.join(f'{k} {v}' for k, v in join.class_counts().items())})")
+    verdict.listing(differences)
+    counts = join.class_counts()
+    for name in UNIT_CLASSES:
+        if name == "system" and not join.reader.system_known:
+            verdict.info("system: not known from a recorded dump (it lists non-system units only)")
+            continue
+        capital = name[0].upper() + name[1:]
+        same(f"units {name}", counts[name], lookup(block, f"store.counts.{name}", f"store.unitCounts.{name}",
+                                                  f"store.{name}", f"store.units{capital}", f"counts.{name}",
+                                                  f"units{capital}"))
+    quarantined_mine = sorted(n for n, c in join.classes.items() if c in QUARANTINED_CLASSES)
+    value = lookup(block, "store.counts.quarantined", "store.unitCounts.quarantined", "store.quarantined",
+                   "store.unitsQuarantined", "unitsQuarantined")
+    if isinstance(value, list):
+        same("quarantined units (the scan's list)", quarantined_mine, sorted(value))
+    else:
+        same("units quarantined", len(quarantined_mine), value)
+    if join.reader.quarantine_names is not None:
+        remaining = sorted(u["name"] for u in join.units
+                           if u["location"] == "store" and join.classes[u["name"]] in QUARANTINED_CLASSES)
+        verdict.result("no stale or otherModule unit remains in out/v5/units", not remaining,
+                       f"{len(remaining)} remain" if remaining else "")
+        verdict.listing(remaining)
+        listed_quarantine = sorted(n for n, r in theirs_rows.items() if r["class"] in QUARANTINED_CLASSES)
+        verdict.result(f"{QUARANTINE_DIRECTORY}/ holds exactly this check's stale and otherModule units",
+                       join.reader.quarantine_names == quarantined_mine,
+                       f"{len(join.reader.quarantine_names)} there, {len(quarantined_mine)} classed here")
+        verdict.listing(f"only there: {n}" for n in sorted(set(join.reader.quarantine_names) - set(quarantined_mine)))
+        verdict.listing(f"only classed here: {n}" for n in sorted(set(quarantined_mine) - set(join.reader.quarantine_names)))
+        if listed_quarantine or not isinstance(value, list):
+            verdict.result("the quarantine holds exactly the scan's stale and otherModule units",
+                           join.reader.quarantine_names == listed_quarantine or not listed_quarantine
+                           and not join.reader.quarantine_names,
+                           f"{len(listed_quarantine)} listed by the scan")
+    else:
+        verdict.info("quarantine: not checked (a recorded dump has no store directory)")
+    for name, mine_value in (("records", len(join.records_read)), ("occurrences", join.occurrence_count)):
+        theirs = lookup(block, f"store.{name}", f"store.counts.{name}", name if name == "occurrences" else "store.records")
+        if theirs is MISSING or isinstance(theirs, list):
+            verdict.info(f"{name} read: mine {mine_value}; the scan JSON gives none to compare")
+        else:
+            same(f"{name} read (each record once)", mine_value, theirs)
+    library = lookup(block, "libraryModules", "store.libraryModules")
+    if library is not MISSING:
+        own_library = sorted(t for t in join.described.library_targets
+                             if join.kept_files_by_module.get(join.described.targets.get(t, {}).get("module")))
+        same("libraryModules (library-product targets with kept units)", own_library, sorted(library))
+
+    # u2: USRs.
+    verdict.section("u2 USRs: primary and secondary per record")
+    theirs = scan_records(package, block)
+    if theirs is None:
+        verdict.result("the scan lists every record (index.records)", False, "absent")
+        theirs = {}
+    differences = []
+    for record in package.records:
+        key = record["key"]
+        own = (join.primary.get(key), join.secondary.get(key))
+        if key not in theirs:
+            differences.append(f"{key}: not listed by the scan (mine {own})")
+            continue
+        if theirs[key][:2] != own:
+            differences.append(f"{key}: scan {theirs[key][:2]}, mine {own}")
+    extra = sorted(set(theirs) - set(package.by_key), key=str)
+    differences += [f"{key}: listed by the scan, no such record" for key in extra]
+    verdict.result("primary USR and secondary accessor USR of every record", not differences,
+                   f"{len(join.primary)} with a USR here, {sum(1 for v in theirs.values() if v[0])} in the scan; "
+                   f"{len(join.secondary)} secondary here, {sum(1 for v in theirs.values() if v[1])} in the scan")
+    verdict.listing(differences)
+    definitions = join.definitions()
+    for name, paths in (("joined", ("definitions.joined", "definitionsJoined")),
+                        ("implicit", ("definitions.implicit", "definitions.implicitSkipped", "definitionsImplicit")),
+                        ("secondary", ("definitions.secondary", "definitions.secondaryUSRs", "secondaryUSRs")),
+                        ("objc", ("definitions.objc", "definitions.objcUSRs", "objcUSRs"))):
+        same(f"definitions {name}", definitions[name], lookup(block, *paths))
+
+    # u4: reasons.
+    verdict.section("u4 reasons")
+    differences = []
+    for record in package.records:
+        key = record["key"]
+        if key in theirs and theirs[key][2] != join.reason[key]:
+            differences.append(f"{key}: scan {theirs[key][2]!r}, mine {join.reason[key]!r}")
+    verdict.result("reason of every record without a USR (and none for the others)", not differences,
+                   ", ".join(f"{k} {v}" for k, v in sorted(Counter(r for r in join.reason.values() if r).items()))
+                   or "no record without a USR")
+    verdict.listing(differences)
+
+    # u5: lists.
+    verdict.section("u5 disagreements, definitions with no record, collisions")
+    own = {(d["kind"], d["key"], d["usr"]) for d in join.disagreements}
+    rows = lookup(block, "disagreements")
+    their_rows = flattened(rows) if isinstance(rows, list) else []
+    theirs_set = {(r.get("kind"), r.get("key"), r.get("usr")) for r in their_rows}
+    verdict.result("disagreements (kind, key, USR)", rows is not MISSING and own == theirs_set,
+                   f"{len(own)} mine, {len(theirs_set)} scan" if rows is not MISSING else "absent")
+    verdict.listing(f"only mine: {item}" for item in sorted(own - theirs_set, key=str))
+    verdict.listing(f"only the scan's: {item}" for item in sorted(theirs_set - own, key=str))
+    positions = {(d["kind"], d["key"], d["usr"]): (d["file"], d["line"], d["column"]) for d in join.disagreements}
+    wrong = [f"{(r.get('kind'), r.get('key'), r.get('usr'))}: scan {(path_of(package, r.get('file')), r.get('line'), r.get('column'))}, "
+             f"mine {positions[(r.get('kind'), r.get('key'), r.get('usr'))]}"
+             for r in their_rows if (r.get("kind"), r.get("key"), r.get("usr")) in positions and "line" in r
+             and (path_of(package, r.get("file")), r.get("line"), r.get("column"))
+             != positions[(r.get("kind"), r.get("key"), r.get("usr"))]]
+    if wrong:
+        verdict.result("disagreement positions", False, f"{len(wrong)} differ")
+        verdict.listing(wrong)
+    own_none = {(d["subreason"], d["usr"], d["file"], d["line"], d["column"], d["key"]) for d in join.no_record}
+    rows = lookup(block, "withoutRecord", "definitionsWithoutRecord")
+    their_none = {(r.get("subreason", r.get("subReason", r.get("reason"))), r.get("usr"),
+                   path_of(package, r.get("file")), r.get("line"), r.get("column"), r.get("key"))
+                  for r in flattened(rows)} if isinstance(rows, list) else set()
+    verdict.result("definitions with no record (sub-reason, USR, place, record for incompatibleKind)",
+                   rows is not MISSING and own_none == their_none,
+                   f"{len(own_none)} mine, {len(their_none)} scan" if rows is not MISSING else "absent")
+    verdict.listing(f"only mine: {item}" for item in sorted(own_none - their_none, key=str))
+    verdict.listing(f"only the scan's: {item}" for item in sorted(their_none - own_none, key=str))
+    own_collisions = {(member["key"], member["usr"]) for group in join.collision_groups
+                      for member in group["records"] if member["usr"]}
+    rows = lookup(block, "collisions")
+    their_collisions = {(r.get("key"), r.get("usr")) for r in flattened(rows) if r.get("usr")} \
+        if isinstance(rows, list) else set()
+    verdict.result("collisions the USR separates (key, USR)", rows is not MISSING and own_collisions == their_collisions,
+                   f"{len(own_collisions)} mine, {len(their_collisions)} scan" if rows is not MISSING else "absent")
+    verdict.listing(f"only mine: {item}" for item in sorted(own_collisions - their_collisions, key=str))
+    verdict.listing(f"only the scan's: {item}" for item in sorted(their_collisions - own_collisions, key=str))
+
+    # Files and roll-ups.
+    verdict.section("files hashed after the build, and the roll-ups")
+    rows = lookup(block, "files")
+    if not isinstance(rows, list):
+        verdict.result("the scan lists the files hashed after the build (index.files)", False, "absent")
+    else:
+        hashed = {path_of(package, r.get("path")): r.get("sha256") for r in rows}
+        differences = [p for p in sorted(set(hashed) | set(package.files), key=str) if p not in hashed or p not in package.files]
+        verdict.result("index.files lists every scanned file", not differences, f"{len(hashed)} listed, "
+                       f"{len(package.files)} scanned")
+        verdict.listing(differences)
+        stale = [p for p, digest in sorted(hashed.items(), key=lambda pair: str(pair[0]))
+                 if p in package.files and digest != sha256_of(os.path.join(package.root, p))]
+        verdict.result("each index.files hash is the file's bytes now", not stale, f"{len(stale)} differ" if stale else "")
+        verdict.listing(stale)
+    differences = []
+    lacking = []
+    scopes = join.scopes()
+    for entry in scan.get("rollups", []):
+        scope = (entry.get("scope"), entry.get("name"))
+        index = entry.get("index")
+        if not isinstance(index, dict):
+            lacking.append(f"{scope[0]} {scope[1]}")
+            continue
+        own_rollup = join.rollup(scopes.get(scope, []))
+        their_reasons = {canonical_reason(k): v for k, v in (index.get("withoutUSR") or {}).items() if v}
+        theirs_rollup = {"withUSR": index.get("withUSR"), "withoutUSR": dict(sorted(their_reasons.items())),
+                         "disagreements": index.get("disagreements", 0)}
+        if theirs_rollup != own_rollup:
+            differences.append(f"{scope[0]} {scope[1]}: scan {theirs_rollup}, mine {own_rollup}")
+    verdict.result("every roll-up scope has index.withUSR, index.withoutUSR and index.disagreements", not lacking,
+                   f"lacking in {', '.join(lacking)}" if lacking else "")
+    verdict.result("roll-ups index.withUSR, index.withoutUSR.<reason>, index.disagreements", not differences,
+                   f"{len(scan.get('rollups', []))} scopes")
+    verdict.listing(differences)
+
+
+def report_own(verdict, join, problems_u3, problems_u6, objc_skipped, checked_u6):
+    verdict.section("units, by this check's own filter (design 2.3)")
+    counts = join.class_counts()
+    verdict.info(", ".join(f"{name} {count}" for name, count in counts.items())
+                 + ("" if join.reader.system_known else " (system: unknown in a dump)"))
+    quarantined = sorted(n for n, c in join.classes.items() if c in QUARANTINED_CLASSES)
+    if quarantined:
+        verdict.info("stale and otherModule: " + ", ".join(
+            f"{n} ({join.classes[n]}, {next(u['location'] for u in join.units if u['name'] == n)})" for n in quarantined))
+    variants = sorted(n for n, c in join.classes.items() if c in ("variant", "duplicate"))
+    if variants:
+        verdict.info("variant and duplicate: " + ", ".join(f"{n} ({join.classes[n]})" for n in variants))
+    verdict.info(f"records read {len(join.records_read)}, occurrences {join.occurrence_count}")
+    verdict.section("the join, by this check's own rules (design 3)")
+    records = join.package.records
+    with_usr = sum(1 for r in records if r["key"] in join.primary)
+    verdict.info(f"records with a USR: {with_usr} of {len(records)}; secondary accessor USRs {len(join.secondary)}; "
+                 f"c: USRs {join.definitions()['objc']}")
+    verdict.info("definitions: " + ", ".join(f"{k} {v}" for k, v in join.definitions().items()))
+    reasons = Counter(r for r in join.reason.values() if r)
+    verdict.info("without a USR: " + (", ".join(f"{k} {v}" for k, v in sorted(reasons.items())) or "none"))
+    verdict.listing(f"{key}: {join.reason[key]} ({join.package.by_key[key]['file']}:"
+                    f"{join.package.by_key[key]['range']['start']['line']})"
+                    for key in sorted(k for k, r in join.reason.items() if r))
+    verdict.info(f"disagreements {len(join.disagreements)}; definitions with no record "
+                 + ", ".join(f"{s} {sum(1 for d in join.no_record if d['subreason'] == s)}" for s in NO_RECORD_REASONS)
+                 + f"; collisions the USR separates {len(join.collision_groups)}")
+    verdict.listing(f"{d['subreason']}: {d['name']} {d['file']}:{d['line']}:{d['column']}"
+                    + (f" (innermost {d['key']})" if d["key"] else "") for d in join.no_record)
+    verdict.listing(f"collision {g['key']}: " + "; ".join(f"{m['key']} = {m['usr']}" for m in g["records"])
+                    for g in join.collision_groups)
+    if join.several_secondaries:
+        verdict.info(f"subscripts with several getter definitions: {join.several_secondaries}")
+
+    verdict.section("u4 reasons criterion 1 doesn't accept")
+    for name in FORBIDDEN_REASONS:
+        verdict.result(f"{name}: 0", reasons.get(name, 0) == 0, str(reasons.get(name, 0)))
+    verdict.section("u5 definitions with no record: expected protocol requirements only")
+    for name in ("incompatibleKind", "outsideRecords"):
+        count = sum(1 for d in join.no_record if d["subreason"] == name)
+        verdict.result(f"{name}: 0", count == 0, str(count))
+    verdict.section("u3 every joined definition sits on its name token")
+    verdict.result("source bytes at each joined definition begin with its name token", not problems_u3,
+                   f"{len(join.joined_definitions)} definitions checked")
+    verdict.listing(problems_u3)
+    verdict.section("u6 swift demangle of each s: USR agrees with its record's key")
+    verdict.result("type path, base name, argument labels and accessor kind", not problems_u6,
+                   f"{checked_u6} USRs checked, {objc_skipped} c: USRs skipped")
+    verdict.listing(problems_u6)
+
+
+def own_usr_figures(join):
+    return {
+        "units": join.unit_rows(),
+        "unitCounts": join.class_counts(),
+        "quarantined": sorted(n for n, c in join.classes.items() if c in QUARANTINED_CLASSES),
+        "recordsRead": len(join.records_read),
+        "occurrences": join.occurrence_count,
+        "records": [{"key": r["key"], "usr": join.primary.get(r["key"]), "usrAccessor": join.secondary.get(r["key"]),
+                     "reason": join.reason[r["key"]]} for r in sorted(join.package.records, key=lambda r: r["key"])],
+        "definitions": join.definitions(),
+        "disagreements": join.disagreements,
+        "withoutRecord": [{k: d[k] for k in ("subreason", "usr", "name", "kind", "subkind", "file", "line", "column", "key")}
+                          for d in join.no_record],
+        "collisions": join.collision_groups,
+        "rollups": [{"scope": scope, "name": name, "index": join.rollup(records)}
+                    for (scope, name), records in sorted(join.scopes().items(), key=lambda pair: str(pair[0]))],
+        "changedFiles": sorted(join.package.changed),
+    }
+
+
+def usr_mode(arguments):
+    try:
+        package = UsrPackage(arguments)
+    except (OSError, ValueError, ReadError) as error:
+        fail(str(error))
+    resource = None
+    if (arguments.reader is None and arguments.library is None) or arguments.demangle is None \
+            or arguments.describe is None:
+        resource = toolchain_of(package.root, arguments.swift)
+    if arguments.library is None and arguments.reader is None:
+        arguments.library = os.path.join(os.path.dirname(resource), "libIndexStore.dylib")
+    demangler = arguments.demangle or os.path.join(os.path.dirname(os.path.dirname(resource)), "bin", "swift-demangle")
+    if arguments.describe:
+        with open(arguments.describe, encoding="utf-8") as handle:
+            describe = json.load(handle)
+    else:
+        describe = run_describe(package.root, os.path.join(os.path.dirname(os.path.dirname(resource)), "bin", "swift"))
+    described_path = describe.get("path")
+    if not isinstance(described_path, str) or real_path(package.spellings.restore(described_path), "describe's path") \
+            != package.root:
+        fail(f"the describe JSON describes {described_path!r}, not {package.root}")
+    described = Described(describe, package)
+    log_path = arguments.log or os.path.join(package.scratch, BUILD_LOG)
+    log_text = open(log_path, encoding="utf-8", errors="replace").read() if os.path.isfile(log_path) else None
+    try:
+        reader = UnitReader(package, arguments)
+        try:
+            join = UsrJoin(package, described, reader, log_text)
+        finally:
+            reader.close()
+    except ReadError as error:
+        fail(str(error))
+    verdict = Verdict(arguments.all)
+    print(f"package {package.root}\nbuild directory {package.scratch}\n"
+          f"index read from {'the recording ' + arguments.reader if arguments.reader else reader.store_path}"
+          + (f" with {arguments.library}" if not arguments.reader else "")
+          + f"\nbuild log for 'target not built': {log_path if log_text is not None else 'none (no compile named)'}")
+    if package.changed:
+        print(f"files changed since the scan hashed them: {len(package.changed)} "
+              f"({', '.join(sorted(package.changed)[:5])})")
+    problems_u3 = []
+    for key, definition, how in join.joined_definitions:
+        problem = name_token_problem(join, key, definition, how)
+        if problem:
+            problems_u3.append(f"{key} ({how}): {problem}")
+    checked = sorted({usr for usr in list(join.primary.values()) + list(join.secondary.values())
+                      if usr.startswith("s:")})
+    trees = parse_trees(demangle_all(checked, demangler, "--tree-only"))
+    compact = demangle_all(checked, demangler, "--compact").split("\n")
+    demangled = {usr: compact[index] if index < len(compact) else "" for index, usr in enumerate(checked)}
+    problems_u6 = []
+    objc_skipped = 0
+    for record in sorted(package.records, key=lambda r: r["key"]):
+        key = record["key"]
+        for usr, secondary in ((join.primary.get(key), False), (join.secondary.get(key), True)):
+            if usr is None:
+                continue
+            if not usr.startswith("s:"):
+                objc_skipped += 1
+                continue
+            facts = key_facts(record, package.by_key)
+            problem = demangle_problem(record, facts, demangled_facts(trees.get("$s" + usr[2:])), secondary)
+            if problem:
+                problems_u6.append(f"{key}{' (secondary)' if secondary else ''}: {problem} [{demangled[usr]}]")
+    report_own(verdict, join, problems_u3, problems_u6, objc_skipped, len(checked))
+    if arguments.dump:
+        write_json(arguments.dump, own_usr_figures(join))
+    if arguments.own_only:
+        verdict.section("comparison with the scan JSON skipped (--own-only)")
+    else:
+        compare_index(verdict, join, problems_u3, problems_u6)
+    print("\nRESULT: " + ("FAIL" if verdict.failed else "PASS"))
+    return 1 if verdict.failed else 0
+
+
+# --------------------------------------------------------------------------
 
 
 def main():
@@ -2218,8 +3736,28 @@ def main():
                           help="print this check's figures without comparing them with the scan JSON")
     building.add_argument("--dump", help="write this check's figures as JSON")
     building.add_argument("--all", action="store_true", help="list every difference and unaccounted line")
+    joining = modes.add_parser("usr", help="check the scan's units, USRs, reasons and lists (u1-u6)")
+    joining.add_argument("package", help="the scanned package (its .swiftstats/index-build holds the store)")
+    joining.add_argument("scan", help="`swiftstats scan --index --format json` of <package>")
+    joining.add_argument("--swift", default="swift",
+                         help="the swift asked for -print-target-info in <package> (default: swift on PATH)")
+    joining.add_argument("--library", help="libIndexStore.dylib (default: the package toolchain's)")
+    joining.add_argument("--demangle", help="swift-demangle (default: the package toolchain's)")
+    joining.add_argument("--describe", help="a describe JSON of <package> instead of running describe")
+    joining.add_argument("--index-store", help="the directory holding v5/units (default: <build>/out)")
+    joining.add_argument("--reader", help="a recorded `dump` JSON read instead of the store (no quarantine check)")
+    joining.add_argument("--root-spelling", help="the package root as a recording spells it (e.g. @ROOT@)")
+    joining.add_argument("--build-spelling", help="the build directory as a recording spells it (e.g. @BUILD@)")
+    joining.add_argument("--spelling", action="append", metavar="TOKEN=PATH",
+                         help="another recorded path prefix (e.g. @DEP@=/path); repeatable")
+    joining.add_argument("--log", help="the build's -v task log (default: <build>/swiftstats-build.log)")
+    joining.add_argument("--own-only", action="store_true",
+                         help="print this check's figures and u3-u6 without comparing with the scan JSON")
+    joining.add_argument("--dump", help="write this check's figures as JSON")
+    joining.add_argument("--all", action="store_true", help="list every difference")
     arguments = parser.parse_args()
-    return {"dump": dump_mode, "build-lines": build_lines_mode, "build": build_mode}[arguments.mode](arguments)
+    return {"dump": dump_mode, "build-lines": build_lines_mode, "build": build_mode,
+            "usr": usr_mode}[arguments.mode](arguments)
 
 
 if __name__ == "__main__":

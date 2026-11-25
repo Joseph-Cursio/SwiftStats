@@ -35,34 +35,7 @@ import Foundation
 struct UnitFilter: Sendable {
     /// A unit's class, the first that applies in the order of the cases'
     /// documentation in this file's header.
-    enum UnitClass: String, CaseIterable, Sendable {
-        /// A system unit.
-        case system
-        /// A unit of no package file: another package's, a generated
-        /// file's, or one with no main file.
-        case otherPackage
-        /// A package file's unit for a module that is no target's.
-        case otherModule
-        /// A unit whose main file is gone or has left its module's target.
-        case stale
-        /// An older unit of the same module, main file and triple.
-        case duplicate
-        /// A kept unit with a sibling of another triple.
-        case variant
-        /// A current compile of a package file.
-        case kept
-
-        /// Whether the walk reads the unit's records.
-        var isRead: Bool {
-            self == .kept || self == .variant
-        }
-
-        /// Whether the quarantine moves the unit out of the store (when
-        /// its main file is under the package root).
-        var isQuarantined: Bool {
-            self == .stale || self == .otherModule
-        }
-    }
+    typealias UnitClass = IndexUnitClass
 
     /// A unit and its class.
     struct ClassedUnit: Hashable, Sendable {
@@ -196,16 +169,34 @@ struct UnitFilter: Sendable {
     /// store's `v5/units` into the quarantine folder, emptied first, and
     /// returns their names, sorted.
     func quarantine(_ classed: [ClassedUnit]) throws -> [String] {
+        try move(
+            classed
+                .filter { $0.unitClass.isQuarantined && packagePath(of: $0.unit.mainFile) != nil }
+                .map(\.unit.name)
+        )
+    }
+
+    /// Moves the units of `snapshot` that the quarantine takes, as
+    /// `quarantine(_:)` does for classed units: a snapshot unit's main file
+    /// is under the root when its path is a path in the package.
+    func quarantine(_ snapshot: IndexSnapshot) throws -> [String] {
+        try move(
+            snapshot.units
+                .filter { $0.unitClass.isQuarantined && $0.path.isEmpty == false && $0.path.hasPrefix("/") == false }
+                .map(\.name)
+        )
+    }
+
+    /// Moves the units named `names` from the store's `v5/units` into the
+    /// quarantine folder, emptied first, and returns the names, sorted.
+    private func move(_ names: [String]) throws -> [String] {
         let manager = FileManager.default
         let scratchURL = URL(fileURLWithPath: scratch)
         let units = scratchURL
             .appendingPathComponent(BuildSession.storeDirectory)
             .appendingPathComponent(BuildSession.unitsPath)
         let destination = scratchURL.appendingPathComponent(Self.quarantineDirectory)
-        let moved = classed
-            .filter { $0.unitClass.isQuarantined && packagePath(of: $0.unit.mainFile) != nil }
-            .map(\.unit.name)
-            .sorted()
+        let moved = names.sorted()
         do {
             if manager.fileExists(atPath: destination.path) {
                 try manager.removeItem(at: destination)

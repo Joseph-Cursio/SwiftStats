@@ -13,9 +13,10 @@
 //  timings mapped onto the records and compiler warnings as `swiftc`
 //  findings (`BuildReport`). A collector reading the build is skipped
 //  `needs the build: …` when the build didn't run, and fails when the
-//  build wrote no index store; until the reader and the outskirts
-//  collector are built, a group whose build ran gives each one's
-//  placeholder once its own settings let it run (design §13).
+//  build wrote no index store. Once the build ran, the `index` collector
+//  reads its store and joins its definitions to the records
+//  (`IndexAdapter`); until the outskirts collector is built, `periphery`
+//  gives its placeholder once its own settings let it run (design §13).
 //
 
 import Foundation
@@ -34,6 +35,14 @@ extension PackageScanner {
         /// The build's warnings, as `swiftc` findings whose places aren't
         /// attached yet.
         let findings: [RawFinding]
+        /// The index results mapped onto the scan; nil unless the `index`
+        /// collector ran.
+        let indexReport: IndexReport?
+
+        /// The `index` collector's status.
+        var indexStatus: CollectorStatus {
+            readers[0].result.status
+        }
 
         /// The three runs, `build`, `index` and `periphery`.
         var timed: [TimedAdapterResult] {
@@ -56,7 +65,13 @@ extension PackageScanner {
                     milliseconds: 0
                 )
             }
-            return Self(build: runs[0], readers: Array(runs.dropFirst()), report: nil, findings: [])
+            return Self(
+                build: runs[0],
+                readers: Array(runs.dropFirst()),
+                report: nil,
+                findings: [],
+                indexReport: nil
+            )
         }
     }
 
@@ -134,17 +149,6 @@ extension PackageScanner {
         return MappedBuild(run: run, report: report, findings: warnings.findings)
     }
 
-    /// The `index` collector's run after `build`, under `configuration`:
-    /// skipped for `collectors.index.enabled`, else as the build leaves
-    /// it (`BuildAdapter.dependent`), else the placeholder.
-    private static func index(after build: BuildRun, configuration: SwiftStatsConfiguration) -> AdapterResult {
-        if configuration.collectors[IndexAdapter.name]?.enabled == false {
-            return .skipped(IndexAdapter.name, reason: "disabled by collectors.\(IndexAdapter.name).enabled")
-        }
-        return BuildAdapter.dependent(IndexAdapter.name, after: build)
-            ?? .skipped(IndexAdapter.name, reason: IndexAdapter.notBuiltReason)
-    }
-
     /// The `periphery` collector's run on the package at `root` after
     /// `build`, under `configuration`: skipped for its own settings
     /// (`collectors.periphery.enabled`, a path that isn't an executable,
@@ -168,6 +172,31 @@ extension PackageScanner {
         }
         return BuildAdapter.dependent(PeripheryAdapter.name, after: build)
             ?? .skipped(PeripheryAdapter.name, reason: PeripheryAdapter.notBuiltReason)
+    }
+
+    /// The `index` collector's run after `build`, under `configuration`,
+    /// over `scan`: skipped for `collectors.index.enabled`, else as the
+    /// build leaves it (`BuildAdapter.dependent`), else its read of the
+    /// build's store.
+    private func index(
+        after build: BuildRun,
+        configuration: SwiftStatsConfiguration,
+        scan: IndexAdapter.Scan
+    ) -> IndexAdapter.Run {
+        let skipped: AdapterResult?
+        if configuration.collectors[IndexAdapter.name]?.enabled == false {
+            skipped = .skipped(IndexAdapter.name, reason: "disabled by collectors.\(IndexAdapter.name).enabled")
+        } else {
+            skipped = BuildAdapter.dependent(IndexAdapter.name, after: build)
+        }
+        guard skipped == nil, let products = build.products else {
+            let result = skipped ?? .skipped(IndexAdapter.name, reason: BuildAdapter.notRequestedReason)
+            return IndexAdapter.Run(
+                timed: TimedAdapterResult(result: result, executable: nil, identity: nil, milliseconds: 0),
+                report: nil
+            )
+        }
+        return IndexAdapter.run(products: products, scan: scan, opening: indexSource)
     }
 
     /// The same scanner, its `index` collector reading the stores
@@ -209,15 +238,26 @@ extension PackageScanner {
         ) { run in
             let mapped = Self.build(of: run, measured: measured, targets: targets, root: root)
             failedBuild?.record(mapped.run)
-            let index = Self.index(after: mapped.run, configuration: configuration)
+            let index = index(
+                after: mapped.run,
+                configuration: configuration,
+                scan: IndexAdapter.Scan(
+                    root: root,
+                    records: measured.records.sorted(by: Self.recordOrder),
+                    files: measured.files,
+                    warnings: measured.warnings
+                )
+            )
             let periphery = Self.periphery(after: mapped.run, root: root, configuration: configuration, locator: tools)
             return IndexGroup(
                 build: mapped.run.timed,
-                readers: [index, periphery].map { result in
-                    TimedAdapterResult(result: result, executable: nil, identity: nil, milliseconds: 0)
-                },
+                readers: [
+                    index.timed,
+                    TimedAdapterResult(result: periphery, executable: nil, identity: nil, milliseconds: 0)
+                ],
                 report: mapped.report,
-                findings: mapped.findings
+                findings: mapped.findings,
+                indexReport: index.report
             )
         }
     }

@@ -70,11 +70,22 @@ public struct Rollup: Codable, Hashable, Sendable {
     /// left no results, and on test modules and the `tests` part, which it
     /// doesn't mutate.
     public internal(set) var mutation: MutationRollup?
+    /// Records by USR: with one, without one by reason, in a disagreement
+    /// (M7, design §3.4); nil when the `index` collector didn't run. Every
+    /// scope has it, test modules and the `tests` part included.
+    public internal(set) var index: IndexRollup?
 
     /// The roll-up with `coverage` as its coverage.
     func with(coverage: CoverageRollup?) -> Self {
         var rollup = self
         rollup.coverage = coverage
+        return rollup
+    }
+
+    /// The roll-up with `index` as its USR counts.
+    func with(index: IndexRollup?) -> Self {
+        var rollup = self
+        rollup.index = index
         return rollup
     }
 

@@ -46,6 +46,9 @@ struct BuildSession {
         /// The scanned files, relative to the package root, whose bytes
         /// changed after they were parsed, sorted.
         let changedFiles: [String]
+        /// Each scanned file's SHA-256 after the build, by path relative to
+        /// the package root; a file that can no longer be read is absent.
+        let hashes: [String: String]
         /// What the run notes without failing, in order.
         let notes: [String]
         /// Why the `index` and `periphery` collectors can't read the
@@ -212,12 +215,14 @@ struct BuildSession {
         var isDirectory: ObjCBool = false
         let hasStore = FileManager.default.fileExists(atPath: units.path, isDirectory: &isDirectory)
             && isDirectory.boolValue
+        let hashes = hashesAfterBuild()
         return Products(
             toolchain: toolchain,
             scratch: command.build,
             package: described.package,
             modules: described.modules,
-            changedFiles: changedFiles(),
+            changedFiles: files.filter { hashes[$0.path] != $0.sha256 }.map(\.path).sorted(),
+            hashes: hashes,
             notes: described.notes,
             storeFailure: hasStore
                 ? nil
@@ -327,13 +332,13 @@ struct BuildSession {
         }
     }
 
-    /// The scanned files whose bytes no longer hash as they did when
-    /// parsed (or that can no longer be read), by path, sorted.
-    private func changedFiles() -> [String] {
-        files.filter { file in
-            ContentHash.sha256(ofFileAt: command.root.appendingPathComponent(file.path)) != file.sha256
+    /// Each scanned file's SHA-256 now, by path; a file that can no longer
+    /// be read is absent.
+    private func hashesAfterBuild() -> [String: String] {
+        var hashes: [String: String] = [:]
+        for file in files {
+            hashes[file.path] = ContentHash.sha256(ofFileAt: command.root.appendingPathComponent(file.path))
         }
-        .map(\.path)
-        .sorted()
+        return hashes
     }
 }

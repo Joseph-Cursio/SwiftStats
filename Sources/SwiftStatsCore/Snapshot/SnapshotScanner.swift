@@ -17,6 +17,12 @@ public struct SnapshotScanner {
     /// The collectors whose build identity is their toolchain's `swift`
     /// version line, which their run reports.
     private static let toolchainIdentified: Set = [CoverageAdapter.name, BuildAdapter.name]
+    /// The collectors linked into SwiftStats rather than run, each named
+    /// by the revision it is pinned to.
+    private static let linkedIdentities = [
+        EffectCollector.name: EffectInferenceRevision.identity,
+        IndexAdapter.name: IndexStoreReader.identity
+    ]
 
     /// The scan itself.
     let scanner: PackageScanner
@@ -66,12 +72,13 @@ public struct SnapshotScanner {
             if outcome.executables[status.name] != nil, let version = toolchain.swiftVersion {
                 identity = ("swift:\(version)", nil)
             }
-        } else if status.name == EffectCollector.name {
+        } else if let pinned = Self.linkedIdentities[status.name] {
             // Linked, not run as a binary: the pinned revision is the
-            // build. Diff also requires `swiftstats` to match, since
-            // SwiftStats' own code maps the library's answers.
+            // build (SwiftEffectInference's, or indexstore-db's reader).
+            // Diff also requires `swiftstats` to match, since SwiftStats'
+            // own code maps the library's answers.
             if status.state != .skipped {
-                identity = (EffectInferenceRevision.identity, nil)
+                identity = (pinned, nil)
             }
         } else if let executable = outcome.executables[status.name] {
             identity = BinaryIdentity.of(executable)
