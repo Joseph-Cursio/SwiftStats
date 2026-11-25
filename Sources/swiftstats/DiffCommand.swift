@@ -9,7 +9,8 @@ struct DiffCommand: ParsableCommand {
         abstract: "Show what changed between two commits' snapshots.",
         discussion: """
         Compares functions (added, removed, moved, renamed, changed) and metrics, for collectors that ran \
-        in both snapshots with the same build and options. A commit with no snapshot is scanned first, \
+        in both snapshots with the same build and options; when both hold index results, a function whose \
+        key changed can be matched by its USR, and a USR change is listed. A commit with no snapshot is scanned first, \
         from a copy of its tracked files checked out into a temporary directory, and stored. A rescan keeps \
         the coverage, mutation and index results of the snapshot it replaces when the tree, the records and the \
         mapping rule are the same, and otherwise stops; --drop-coverage replaces it without its coverage \

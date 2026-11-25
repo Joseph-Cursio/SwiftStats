@@ -15,8 +15,12 @@ public struct SnapshotReport: Codable, Hashable, Sendable {
     /// signals and their payloads, `markers`, `coverage` and a clone
     /// class's `coverage` (M5); 5 adds the mutation signals and their
     /// payloads, `mutation`, `ratio`, `propertyTarget` and a clone class's
-    /// `mutation`, and `thresholds`, those the signals used (M6).
-    public static let currentSchemaVersion = 5
+    /// `mutation`, and `thresholds`, those the signals used (M6); 6 adds
+    /// the index signals (hidden coupling, dead but tested, test-only
+    /// production code) and their payloads, `coupling`, `dead` and
+    /// `references`, a dead-but-tested item's `mutation.coverage`, and the
+    /// hidden-coupling limits under `thresholds` (M7).
+    public static let currentSchemaVersion = 6
 
     /// The document's format version.
     public let schemaVersion: Int

@@ -212,10 +212,10 @@ struct SignalOrderTests {
         let reportHotspot = reportSignals.first { $0["name"] as? String == "hotspot" }
         let reportItems = reportHotspot?["items"] as? [[String: Any]] ?? []
 
-        #expect(TopReport.currentSchemaVersion == 4)
-        #expect(SnapshotReport.currentSchemaVersion == 5)
-        #expect(top?["schemaVersion"] as? Int == 4)
-        #expect(report?["schemaVersion"] as? Int == 5)
+        #expect(TopReport.currentSchemaVersion == 5)
+        #expect(SnapshotReport.currentSchemaVersion == 6)
+        #expect(top?["schemaVersion"] as? Int == 5)
+        #expect(report?["schemaVersion"] as? Int == 6)
         let item = try #require(topItems.first)
         #expect(topItems.count == 1)
         #expect(Self.keys(item) == ["rank", "subject", "file", "line", "score", "member", "history"])

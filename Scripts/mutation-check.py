@@ -124,7 +124,8 @@ base S_B, per path and per function, as the done-when reads them:
 them with `swiftstats report --format json` of that snapshot (the snapshot
 the report names, by package, path, commit and dirtiness):
 
-  t  the report is schema 5 and its `thresholds` lists exactly the limits
+  t  the report is schema 5 (M6) or 6 (M7, which leaves M6's signals as
+     they were) and its `thresholds` lists exactly the limits
      this script uses for the three mutation signals (the defaults with
      each `--set` applied, genuinely under-tested's ratio only when set),
      so the limits the report states are checked against the ones given
@@ -2193,8 +2194,9 @@ WEAK_NOT_LISTED_NOTE = ("; the mutation results don't list code no test ran (a S
 NOT_LISTED_REASON = ("the mutation results don't list code no test ran (a SwiftMutator build before 13f96a46), "
                      "so low scores can't be told from missing ones")
 FIRST_M6_SCHEMA = 8
-# The `swiftstats report --format json` version that lists the thresholds used.
-REPORT_SCHEMA = 5
+# The `swiftstats report --format json` versions that list the thresholds used: 5 (M6), and 6 (M7), which
+# adds the index signals and their payloads and leaves M6's signals and payloads as they were.
+REPORT_SCHEMAS = (5, 6)
 NAMED_KILLING_TESTS = 5
 VERIFIED_BONUS = 50
 UNKILLED = ("survived", "timedOut", "noCoverage", "notCovered")
@@ -2802,9 +2804,9 @@ class SignalModel:
 
 class SignalChecks(Checker):
     def thresholds(self, report, limits):
-        self.section("t   thresholds: report 5 lists the limits this script uses")
-        self.result("report schema", report.get("schemaVersion") == REPORT_SCHEMA,
-                    f"expected {REPORT_SCHEMA}, got {report.get('schemaVersion')}")
+        self.section("t   thresholds: report 5 or 6 lists the limits this script uses")
+        self.result("report schema", report.get("schemaVersion") in REPORT_SCHEMAS,
+                    f"expected one of {REPORT_SCHEMAS}, got {report.get('schemaVersion')}")
         listed = (report.get("thresholds") or {}).get("limits")
         mutation = {name: values for name, values in listed.items() if name in limits} \
             if isinstance(listed, dict) else listed

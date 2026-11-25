@@ -37,8 +37,9 @@ public struct HistoryReport: Codable, Hashable, Sendable {
     public let sweepCommits: [HistoryCommitNote]
     /// Every family at the analysed commit, by file, line and id.
     public let families: [FamilyHistory]
-    /// Coupled pairs, by support (most first), then ids.
-    public let coupling: [CouplingPair]
+    /// Coupled pairs, by support (most first), then ids. A stored report
+    /// reads them back from the store's `couplingPair` table (M7).
+    public internal(set) var coupling: [CouplingPair]
     /// Problems worth reporting.
     public let warnings: [String]
 }

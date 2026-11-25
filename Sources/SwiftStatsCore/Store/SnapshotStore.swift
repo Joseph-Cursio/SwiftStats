@@ -328,22 +328,11 @@ public struct SnapshotStore: Sendable {
         }
     }
 
-    /// Snapshot `id`'s scan report. One written with another report schema
-    /// can't be read by this build, and the error says to rescan.
+    /// Snapshot `id`'s scan report, its history's change-coupling pairs
+    /// those of the `couplingPair` table (`SnapshotStore+Report`). One
+    /// written with another report schema can't be read by this build, and
+    /// the error says to rescan.
     public func report(id: Int64) throws -> ScanReport {
-        let row = try queue.read { database in
-            try ReportRow.filter(Column("snapshotId") == id).fetchOne(database)
-        }
-        guard let row else {
-            throw StoreError.noSnapshot("id \(id)")
-        }
-        guard row.schemaVersion == ScanReport.currentSchemaVersion else {
-            throw StoreError.reportSchema(stored: row.schemaVersion, current: ScanReport.currentSchemaVersion)
-        }
-        guard row.encoding == ReportCompression.encoding else {
-            throw StoreError.corruptReport("unknown encoding \(row.encoding)")
-        }
-        let json = try ReportCompression.inflate(row.data, length: row.uncompressedLength)
-        return try JSONDecoder().decode(ScanReport.self, from: json)
+        try queue.read { database in try Self.report(id: id, in: database) }
     }
 }

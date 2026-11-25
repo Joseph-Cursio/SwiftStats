@@ -11,8 +11,10 @@ struct ReportCommand: ParsableCommand {
         Shows the working tree's snapshot (HEAD's, or its uncommitted one when the tree has changes and one \
         was scanned), or --commit's. Outside git, the latest. Run `swiftstats scan` first. The signals are \
         computed when the report is made, with the thresholds under `signals:` in this package's configuration \
-        (the mutation signals' limits included); each signal's rule states those it used, and the JSON lists \
-        them under `thresholds`.
+        (the mutation and hidden-coupling limits included); each signal's rule states those it used, and the \
+        JSON lists them under `thresholds`. A snapshot scanned with --index adds the Build and index and the \
+        Dead code sections and the three index signals; the change-coupling pairs are read from the store's \
+        table.
         """
     )
 

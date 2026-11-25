@@ -90,8 +90,8 @@ struct SnapshotReportTests {
     }
 
     @Test("""
-        the Markdown report leads with the signals, then the collectors, coverage, mutation, the project and the \
-        modules
+        the Markdown report leads with the signals, then the collectors, coverage, mutation, the build and index, \
+        the dead code, the project and the modules; the M7 sections say why they weren't collected
         """)
     func markdownOrder() throws {
         let directory = try SnapshotHarness.temporaryDirectory("Report")
@@ -123,8 +123,9 @@ struct SnapshotReportTests {
             "### Risky + untested", "### Uneven clone testing", "### Weak tests", "### Genuinely under-tested",
             "### Best property-test targets", "### Uneven clone testing (mutation)", "### Hidden coupling",
             "### Dead but tested", "### Test-only production code", "## Collectors", "## Coverage",
-            "## Mutation", "## Project", "### Findings by rule", "### Findings by kind", "## Side effects",
-            "## Property candidates", "## Law checks", "## Clones", "## Modules"
+            "## Mutation", "## Build and index", "## Dead code", "## Project", "### Findings by rule",
+            "### Findings by kind", "## Side effects", "## Property candidates", "## Law checks", "## Clones",
+            "## Modules"
         ]
         #expect(headings == expected)
         #expect(text.contains("Left out: history was not collected: skipped, not in a git repository with commits."))
@@ -141,6 +142,8 @@ struct SnapshotReportTests {
         ))
         #expect(text.contains("## Coverage\n\nNot collected: skipped, not requested; scan --coverage runs it.\n"))
         #expect(text.contains("## Mutation\n\nNot collected: skipped, not requested; scan --mutation runs it.\n"))
+        #expect(text.contains("## Build and index\n\nNot collected: skipped, not requested; scan --index runs it.\n"))
+        #expect(text.contains("## Dead code\n\nNot collected: skipped, not requested; scan --index runs it.\n"))
         #expect(text.contains("### Risky + untested\n\nLeft out: needs coverage: skipped, not requested; "
             + "scan --coverage runs it."))
         // The package declares no conformance the kit covers.

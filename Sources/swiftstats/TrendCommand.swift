@@ -17,7 +17,8 @@ struct TrendCommand: ParsableCommand {
         discussion: """
         The metric is a roll-up number's path, such as fileLength.total, cognitive.median or \
         findings.swiftlint.line_length. Points come from stored clean snapshots; `swiftstats backfill` \
-        adds past commits. A break marks a point whose collector or SwiftStats build differs from the one before.
+        adds past commits. A break marks a point whose collector or SwiftStats build differs from the one before. \
+        The index metrics (index.*, deadCode.*, findings.swiftc.*) come only from snapshots scanned with --index.
         """
     )
 
