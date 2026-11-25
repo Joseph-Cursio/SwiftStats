@@ -106,12 +106,25 @@ public struct ScanReport: Codable, Hashable, Sendable {
         return report
     }
 
-    /// The report with `build` attached and the `build` collector's
-    /// status replaced by `status` (M7): how the scan attaches its T1
-    /// build's mapped timings, whose warnings are already among the
-    /// findings and counted in the roll-ups.
-    func with(build: BuildReport?, status: CollectorStatus) -> Self {
-        var report = replacing(status, rollups: rollups, coverage: coverage, mutation: mutation, warnings: warnings)
+    /// The report with `build` attached, the `build` collector's status
+    /// replaced by `status` and the roll-ups' type-check figures rebuilt
+    /// from it with `totals` as each scope's total (M7, design §6.4): how
+    /// the scan attaches its T1 build's mapped timings, whose warnings are
+    /// already among the findings and counted in the roll-ups, so a fresh
+    /// scan and a carried one roll them up alike. A nil `build` leaves
+    /// every roll-up without type-check figures.
+    func with(build: BuildReport?, totals: TypeCheckTotals, status: CollectorStatus) -> Self {
+        let plain = rollups.map { $0.with(typecheck: nil) }
+        let built = build.map { held in
+            TypeCheckRollupBuilder(targets: targets, records: records, report: held, totals: totals).rollups(plain)
+        }
+        var report = replacing(
+            status,
+            rollups: built ?? plain,
+            coverage: coverage,
+            mutation: mutation,
+            warnings: warnings
+        )
         report.build = build
         report.history = history
         return report
@@ -120,7 +133,7 @@ public struct ScanReport: Codable, Hashable, Sendable {
     /// The report with the T1 `group`'s build, index and dead-code results
     /// attached and their collectors' statuses replaced.
     func with(_ group: PackageScanner.IndexGroup) -> Self {
-        with(build: group.report, status: group.build.result.status)
+        with(build: group.report, totals: group.typeCheckTotals, status: group.build.result.status)
             .with(index: group.indexReport, status: group.indexStatus)
             .with(deadCode: group.deadCodeReport, status: group.peripheryStatus)
     }

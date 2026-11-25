@@ -5,8 +5,9 @@
 //  The T1 results a stored snapshot holds, as a rescan whose build didn't
 //  run needs them to decide whether to carry them (M7, design §9.4): where
 //  the snapshot stood in git, its `build`, `index` and `periphery` runs,
-//  the three blocks read back from their rows (never the report blob), the
-//  `swiftc` findings and the warnings describing the results, and what the
+//  the three blocks read back from their rows (never the report blob), each
+//  roll-up scope's type-check total from its roll-up row, the `swiftc`
+//  findings and the warnings describing the results, and what the
 //  carry is checked against: every record of every role with its full
 //  span, family and owning type, every type record with its span, and
 //  every scanned file's SHA-256. The store's `function` rows keep no
@@ -79,6 +80,10 @@ struct HeldIndex {
     let collectedAt: String
     /// The build results.
     let buildReport: BuildReport
+    /// Each roll-up scope's type-check total, read back from the
+    /// snapshot's `typecheck.milliseconds.total` roll-up rows, since the
+    /// build's rows hold only whole milliseconds per record, type and file.
+    let typeCheckTotals: TypeCheckTotals
     /// The index results; nil when the `index` collector didn't run.
     let index: IndexReport?
     /// The dead-code results; nil when the `periphery` collector didn't

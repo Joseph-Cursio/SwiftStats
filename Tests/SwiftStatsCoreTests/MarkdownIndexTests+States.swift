@@ -7,9 +7,8 @@
 //  empty state's sentence; a record without a USR for an unexplained
 //  reason dropping "Every compiled record has a USR."; a build whose only
 //  warnings went unmapped saying none mapped, with the unmapped count; a
-//  list cut at 50 rows while the JSON keeps them all; type-check totals
-//  per part and module without nested records, with types' and files'
-//  entries, and the slowest lists ordered and cut; a carried status with
+//  list cut at 50 rows while the JSON keeps them all; the type-check
+//  table read from the roll-ups, and the slowest lists ordered and cut; a carried status with
 //  its date apart; the section when the build didn't run, and when only
 //  the index failed.
 //
@@ -40,16 +39,29 @@ extension MarkdownIndexTests {
           {"owner": "Sources/Kits/Support.swift", "attachedTo": "file", "milliseconds": 2}
         ]
         """
-    /// The scope table of the hand-made timings: the nested function's 20
-    /// ms left out of the totals, the type's and the file's entries in.
+    /// The hand-made type-check totals: none of them the sum of its
+    /// records' own figures (IndexCore's add to 34 with the type's 4, the
+    /// tests' to 7), as hundredths rounded once per scope can give.
+    private static let figureTotals = """
+        {"project production": 37, "project tests": 8, "module IndexCore": 35, "module IndexCoreTests": 8,
+         "module index-support": 2}
+        """
+    /// The scope table of the hand-made timings: each scope's roll-up,
+    /// its total as given, the nested function's 20 ms among the maxima
+    /// and timed records, and neither the type's nor the file's entries
+    /// (their 11 ms expression is no record's).
     private static let figureScopes = [
-        "|  | Function-body time (ms) | Records timed | Slowest expression (ms) |",
-        "| --- | --- | --- | --- |",
-        "| production | 36 | 2 | 11 |",
-        "| tests | 7 | 1 | 9 |",
-        "| IndexCore | 34 | 2 | 11 |",
-        "| IndexCoreTests | 7 | 1 | 9 |",
-        "| index-support | 2 | 0 | — |"
+        "|  | Function-body time (ms) | Slowest function (ms) | Functions timed | Slowest expression (ms) |",
+        "| --- | --- | --- | --- | --- |",
+        "| production | 37 | 30 | 2 | 5 |",
+        "| tests | 8 | 7 | 1 | 9 |",
+        "| IndexApp | 0 | — | 0 | — |",
+        "| IndexCore | 35 | 30 | 2 | 5 |",
+        "| IndexCoreTests | 8 | 7 | 1 | 9 |",
+        "| IndexTool | 0 | — | 0 | — |",
+        "| IndexXCTests | 0 | — | 0 | — |",
+        "| index-kit | 0 | — | 0 | — |",
+        "| index-support | 2 | — | 0 | — |"
     ]
     /// The slowest functions of the hand-made timings, the nested one with
     /// its own time.
@@ -231,7 +243,11 @@ extension MarkdownIndexTests {
         try await IndexHarness.scan(indexed: true) { snapshot in
             let held = try #require(snapshot.report.build)
             let status = try Self.status(BuildAdapter.name, of: snapshot.report)
-            var report = snapshot.report.with(build: Self.build(held, unmapped: 3), status: status)
+            var report = snapshot.report.with(
+                build: Self.build(held, unmapped: 3),
+                totals: TypeCheckTotals(rollups: snapshot.report.rollups),
+                status: status
+            )
             report.findings = report.findings.filter { $0.tool != WarningReader.tool }
             let lines = MarkdownIndex.render(report)
 
@@ -272,8 +288,8 @@ extension MarkdownIndexTests {
     }
 
     @Test("""
-        type-check totals per part and module leave out nested records and add types' and files' entries; the \
-        slowest functions and expressions come highest first
+        the type-check table reads each part's and module's roll-up, its total as the scan gave it; the slowest \
+        functions and expressions come highest first
         """)
     func typeCheckFigures() async throws {
         try await IndexHarness.scan(indexed: true) { snapshot in
@@ -287,7 +303,9 @@ extension MarkdownIndexTests {
             let attachments = try JSONDecoder().decode([BuildAttachment].self, from: Data(Self.attachmentsJSON.utf8))
             let build = try BuildReport.sample(records: timings, attachments: attachments)
             let status = try Self.status(BuildAdapter.name, of: snapshot.report)
-            Self.checkTypeCheckFigures(MarkdownIndex.render(snapshot.report.with(build: build, status: status)))
+            let totals = try TypeCheckTotals.given(Self.figureTotals)
+            let report = snapshot.report.with(build: build, totals: totals, status: status)
+            Self.checkTypeCheckFigures(MarkdownIndex.render(report))
         }
     }
 
@@ -299,7 +317,7 @@ extension MarkdownIndexTests {
                 BuildRecordTiming(key: record.key, milliseconds: offset + 1, slowestExpression: offset + 1)
             }
             let build = try BuildReport.sample(records: many, attachments: [])
-            let cut = MarkdownIndex.render(snapshot.report.with(build: build, status: status))
+            let cut = MarkdownIndex.render(snapshot.report.with(build: build, totals: .empty, status: status))
             let rows = IndexReportHarness.part(cut, from: "Slowest functions:", to: "Slowest expressions")
                 .filter { $0.hasPrefix("| `") }
 
@@ -318,7 +336,11 @@ extension MarkdownIndexTests {
             let build = try Self.status(BuildAdapter.name, of: snapshot.report)
             let index = try Self.status(IndexAdapter.name, of: snapshot.report)
             let report = snapshot.report
-                .with(build: snapshot.report.build, status: Self.status(build, .ran, carried + "; 2 files changed"))
+                .with(
+                    build: snapshot.report.build,
+                    totals: TypeCheckTotals(rollups: snapshot.report.rollups),
+                    status: Self.status(build, .ran, carried + "; 2 files changed")
+                )
                 .with(index: snapshot.report.index, status: Self.status(index, .ran, carried))
             let lines = MarkdownIndex.render(report)
 
@@ -339,7 +361,7 @@ extension MarkdownIndexTests {
             let build = try Self.status(BuildAdapter.name, of: snapshot.report)
             let index = try Self.status(IndexAdapter.name, of: snapshot.report)
             let skipped = snapshot.report
-                .with(build: nil, status: Self.status(build, .skipped, BuildAdapter.notRequestedReason))
+                .with(build: nil, totals: .empty, status: Self.status(build, .skipped, BuildAdapter.notRequestedReason))
                 .with(index: nil, status: Self.status(index, .skipped, BuildAdapter.notRequestedReason))
             let failed = snapshot.report.with(index: nil, status: Self.status(index, .failed, "the reader failed"))
             let lines = MarkdownIndex.render(failed)

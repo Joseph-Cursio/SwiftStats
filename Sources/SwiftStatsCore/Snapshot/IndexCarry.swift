@@ -23,7 +23,8 @@
 //  state, its reason saying when the results were collected; the `swiftc`
 //  findings and the warnings describing the results come with them, and
 //  the roll-ups and line ratios are rebuilt from the blocks as a scan
-//  builds them. A rescan whose build was asked for and failed or was
+//  builds them, the type-check totals read back from their roll-up
+//  rows. A rescan whose build was asked for and failed or was
 //  skipped says so in a warning. Otherwise the rescan is refused, saying
 //  why, and why the build asked for didn't run.
 //
@@ -240,7 +241,7 @@ enum IndexCarry {
                 ?? CollectorStatus(name: name, state: .skipped, version: nil, reason: nil, options: [])
         }
         let report = snapshot.report
-            .with(build: held.buildReport, status: status(BuildAdapter.name))
+            .with(build: held.buildReport, totals: held.typeCheckTotals, status: status(BuildAdapter.name))
             .with(index: held.index, status: status(IndexAdapter.name))
             .with(deadCode: held.deadCode, status: status(PeripheryAdapter.name))
             .with(findings: held.findings, of: WarningReader.tool)

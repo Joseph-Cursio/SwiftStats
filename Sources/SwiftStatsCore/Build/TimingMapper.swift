@@ -66,6 +66,10 @@ struct TimingMapper {
         let dropped: BuildDropped
         /// The totals.
         let totals: BuildTotals
+        /// The function-body time on each record, type and file the totals
+        /// count (records nested in a body left out), in hundredths: what
+        /// each roll-up scope's total adds (`TypeCheckTotals`).
+        let counted: [Placement: Int]
     }
 
     /// The classes of entries left unplaced.
@@ -293,11 +297,11 @@ struct TimingMapper {
             let tally = left[leftOut] ?? (0, 0)
             return BuildEntryCount(entries: tally.entries, milliseconds: Self.milliseconds(tally.hundredths))
         }
-        let total = figures.reduce(0) { sum, item in
-            if case .record(let key) = item.key, nested.contains(key) {
-                return sum
+        let counted = figures.compactMapValues(\.functions).filter { placement, _ in
+            guard case .record(let key) = placement else {
+                return true
             }
-            return sum + (item.value.functions ?? 0)
+            return nested.contains(key) == false
         }
         return Mapped(
             records: Self.records(figures),
@@ -312,8 +316,9 @@ struct TimingMapper {
             totals: BuildTotals(
                 functionEntries: entries.count { $0.kind == .function },
                 expressionEntries: entries.count { $0.kind == .expression },
-                milliseconds: Self.milliseconds(total)
-            )
+                milliseconds: Self.milliseconds(counted.values.reduce(0, +))
+            ),
+            counted: counted
         )
     }
 }

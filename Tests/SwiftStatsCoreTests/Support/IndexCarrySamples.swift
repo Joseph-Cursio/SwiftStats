@@ -140,6 +140,7 @@ enum IndexCarrySamples {
             readers: held.readers.map(run),
             collectedAt: held.collectedAt,
             buildReport: held.buildReport,
+            typeCheckTotals: held.typeCheckTotals,
             index: held.index,
             deadCode: held.deadCode,
             findings: held.findings,
@@ -158,6 +159,7 @@ enum IndexCarrySamples {
             readers: held.readers,
             collectedAt: held.collectedAt,
             buildReport: held.buildReport,
+            typeCheckTotals: held.typeCheckTotals,
             index: held.index,
             deadCode: held.deadCode,
             findings: held.findings,
@@ -289,7 +291,7 @@ enum IndexCarrySamples {
     static func withBuild(_ run: CollectorRunInfo, in snapshot: ScannedSnapshot) -> ScannedSnapshot {
         ScannedSnapshot(
             info: snapshot.info.with(run: run),
-            report: snapshot.report.with(build: nil, status: run.status)
+            report: snapshot.report.with(build: nil, totals: .empty, status: run.status)
         )
     }
 

@@ -21,7 +21,11 @@ struct IndexCarryScanTests {
     /// attached again.
     private static func with(_ statuses: [CollectorStatus], in report: ScanReport) throws -> ScanReport {
         let status = { (name: String) in try #require(statuses.first { $0.name == name }) }
-        return report.with(build: report.build, status: try status(BuildAdapter.name))
+        return report.with(
+            build: report.build,
+            totals: TypeCheckTotals(rollups: report.rollups),
+            status: try status(BuildAdapter.name)
+        )
             .with(index: report.index, status: try status(IndexAdapter.name))
             .with(deadCode: report.deadCode, status: try status(PeripheryAdapter.name))
     }

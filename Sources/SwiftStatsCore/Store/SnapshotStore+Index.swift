@@ -12,7 +12,7 @@
 //  a build that ran always replaces held T1 results, even when the index
 //  or outskirts then failed. A rescan that may carry them reads them back
 //  with what the carry is checked against (`HeldIndex`): the blocks from
-//  their rows, and the records, types, files, `swiftc` findings and
+//  their rows, the type-check totals from their roll-up rows, and the records, types, files, `swiftc` findings and
 //  warnings from the stored report, decoded only as far as they go.
 //
 
@@ -77,6 +77,7 @@ extension SnapshotStore {
             throw StoreError.corruptReport("the dead-code rows of snapshot \(id)")
         }
         let parts = try scanParts(id: id, in: database)
+        let totals = try typeCheckTotals(id: id, in: database)
         let hashes = index?.files.map { ($0.path, $0.sha256) } ?? parts.files.map { ($0.path, Optional($0.sha256)) }
         return HeldIndex(
             git: snapshot.git,
@@ -84,6 +85,7 @@ extension SnapshotStore {
             readers: [indexRun, peripheryRun],
             collectedAt: build.scan.collectedAt,
             buildReport: build.stored.report,
+            typeCheckTotals: totals,
             index: index,
             deadCode: deadCode,
             findings: parts.findings.filter { $0.tool == WarningReader.tool },
@@ -92,6 +94,31 @@ extension SnapshotStore {
             types: parts.types.map(HeldIndex.TypeSpan.init),
             files: Dictionary(hashes) { first, _ in first }
         )
+    }
+
+    /// Each roll-up scope's type-check total in snapshot `id`, which holds
+    /// T1 results, read in `database` from its
+    /// `typecheck.milliseconds.total` rows. A snapshot whose roll-ups hold
+    /// none, or one that isn't whole milliseconds, throws a damaged store:
+    /// a build that ran gives every scope a total.
+    private static func typeCheckTotals(id: Int64, in database: Database) throws -> TypeCheckTotals {
+        let mine = Column("snapshotId") == id
+        let rows: [RollupMetricRow]
+        do {
+            rows = try RollupMetricRow.filter(mine && Column("metric") == TypeCheckTotals.metric).fetchAll(database)
+        } catch is RowDecodingError {
+            throw StoreError.corruptReport("the type-check roll-ups of snapshot \(id)")
+        } catch is DecodingError {
+            throw StoreError.corruptReport("the type-check roll-ups of snapshot \(id)")
+        }
+        let held = rows.compactMap { row in
+            Int(exactly: row.value).map { (TypeCheckTotals.Scope(scope: row.scope, name: row.name), $0) }
+        }
+        let scoped = try RollupMetricRow.filter(mine).fetchCount(database) > 0
+        guard held.count == rows.count, rows.isEmpty == false || scoped == false else {
+            throw StoreError.corruptReport("the type-check roll-ups of snapshot \(id)")
+        }
+        return TypeCheckTotals(milliseconds: Dictionary(held) { first, _ in first })
     }
 
     /// Inserts the T1 blocks of `report`, collected at `collectedAt`, as

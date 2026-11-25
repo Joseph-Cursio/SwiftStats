@@ -25,20 +25,19 @@ enum RollupMetrics {
     private static let swiftProjectLintPaths: Set<String> = ["api.overExposed", "tests.swiftTestingWithoutAssertions"]
     /// Roll-up fields whose next key names the tool.
     private static let perToolFields: Set<String> = ["findings", "findingKinds"]
-    /// The roll-up field whose numbers come from SwiftEffectInference.
-    private static let effectsField = "effects"
-    /// The roll-up field whose numbers come from SwiftInferProperties.
-    private static let propertiesField = "properties"
-    /// The roll-up field whose numbers come from SwiftCloneDetector.
-    private static let clonesField = "clones"
-    /// The roll-up field whose numbers come from the coverage collector.
-    private static let coverageField = "coverage"
-    /// The roll-up field whose numbers come from the SwiftMutator collector.
-    private static let mutationField = "mutation"
-    /// The roll-up field whose numbers come from the `index` collector.
-    private static let indexField = "index"
-    /// The roll-up field whose numbers come from the `periphery` collector.
-    private static let deadCodeField = "deadCode"
+    /// The roll-up fields whose numbers all come from one collector: its
+    /// name, by field. The `typecheck` figures come from the `build`
+    /// collector's type-check timings (M7, design §6.4).
+    private static let fieldCollectors = [
+        "effects": EffectCollector.name,
+        "properties": SwiftInferPropertiesAdapter.name,
+        "clones": SwiftCloneDetectorAdapter.name,
+        "coverage": CoverageAdapter.name,
+        "mutation": MutationAdapter.name,
+        "index": IndexAdapter.name,
+        "deadCode": PeripheryAdapter.name,
+        "typecheck": BuildAdapter.name
+    ]
     /// The line ratio's dead lines, which come from the `periphery`
     /// collector, though the rest of the ratio is SwiftStats' own (M7,
     /// design §7).
@@ -65,25 +64,10 @@ enum RollupMetrics {
         if swiftProjectLintPaths.contains(path.joined(separator: ".")) {
             return SwiftProjectLintAdapter.name
         }
-        if path.first == effectsField {
-            return EffectCollector.name
+        if let field = path.first, let named = fieldCollectors[field] {
+            return named
         }
-        if path.first == propertiesField {
-            return SwiftInferPropertiesAdapter.name
-        }
-        if path.first == clonesField {
-            return SwiftCloneDetectorAdapter.name
-        }
-        if path.first == coverageField {
-            return CoverageAdapter.name
-        }
-        if path.first == mutationField {
-            return MutationAdapter.name
-        }
-        if path.first == indexField {
-            return IndexAdapter.name
-        }
-        if path.first == deadCodeField || path.joined(separator: ".") == deadLinesPath {
+        if path.joined(separator: ".") == deadLinesPath {
             return PeripheryAdapter.name
         }
         return SwiftStatsCollector.name

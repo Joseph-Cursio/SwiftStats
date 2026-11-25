@@ -151,10 +151,10 @@ struct MarkdownIndexTests {
             + "(in a macro expansion without its origin, at an unknown place, or in a file changed during the scan)."
     ]
 
-    /// The scope column and the records-timed column of the type-check
+    /// The scope column and the functions-timed column of the type-check
     /// table: counts and names only, which a re-recording keeps.
     private static let timedRecords = [
-        "production 91", "tests 7", "IndexApp 1", "IndexCore 83", "IndexCoreTests 6", "IndexTool 1",
+        "production 90", "tests 7", "IndexApp 0", "IndexCore 83", "IndexCoreTests 6", "IndexTool 1",
         "IndexXCTests 1", "index-kit 2", "index-support 4"
     ]
 
@@ -179,7 +179,7 @@ struct MarkdownIndexTests {
             let rows = part.filter { $0.hasPrefix("| ") && $0.hasPrefix("| ---") == false }
             let scopes = rows.dropFirst().prefix(Self.timedRecords.count).map { row in
                 let cells = row.split(separator: "|").map { $0.trimmingCharacters(in: .whitespaces) }
-                return "\(cells[0]) \(cells[2])"
+                return "\(cells[0]) \(cells[3])"
             }
 
             #expect(scopes == Self.timedRecords)

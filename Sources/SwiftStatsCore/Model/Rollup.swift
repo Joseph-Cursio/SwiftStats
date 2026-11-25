@@ -80,6 +80,10 @@ public struct Rollup: Codable, Hashable, Sendable {
     /// didn't run, and on test modules and the `tests` part, whose entries
     /// it leaves out.
     public internal(set) var deadCode: DeadCodeRollup?
+    /// Type-check time, the slowest record and expression, and the records
+    /// timed (M7, design §6.4); nil when the `build` collector didn't run.
+    /// Every scope has it, test modules and the `tests` part included.
+    public internal(set) var typecheck: TypeCheckRollup?
 
     /// The roll-up with `coverage` as its coverage.
     func with(coverage: CoverageRollup?) -> Self {
@@ -115,6 +119,13 @@ public struct Rollup: Codable, Hashable, Sendable {
     func with(index: IndexRollup?) -> Self {
         var rollup = self
         rollup.index = index
+        return rollup
+    }
+
+    /// The roll-up with `typecheck` as its type-check figures.
+    func with(typecheck: TypeCheckRollup?) -> Self {
+        var rollup = self
+        rollup.typecheck = typecheck
         return rollup
     }
 

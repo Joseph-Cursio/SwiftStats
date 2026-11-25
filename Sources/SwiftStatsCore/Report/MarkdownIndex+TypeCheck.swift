@@ -3,9 +3,11 @@
 //  SwiftStatsCore
 //
 //  The type-check part of the report's Build and index section (M7,
-//  design §6.2, §10.1): the function-body time per project part and per
-//  module, without the records nested in a body (whose entries their
-//  ancestors' already hold), the 20 slowest functions with the time
+//  design §6.2, §10.1): the type-check roll-ups (§6.4) of each project
+//  part and module, read as the scan rolled them up: the function-body
+//  time without the records nested in a body (whose entries their
+//  ancestors' already hold), the slowest record, the records timed and
+//  the slowest expression; the 20 slowest functions with the time
 //  including their local functions, the 10 slowest expressions by record,
 //  the entries no record holds and those left out, and the note that two
 //  builds differ by a fifth to a third per function.
@@ -24,11 +26,11 @@ extension MarkdownIndex {
         var lines = [
             "\(totals.milliseconds) ms of function-body time from \(totals.functionEntries) function-body and "
                 + "\(totals.expressionEntries) expression entries. Per record, a function's time includes its local "
-                + "functions; totals leave out records nested in a body, whose time their ancestors hold. The total "
-                + "rounds once; the figures below add each record's whole milliseconds, so they can differ from it "
-                + "by rounding."
+                + "functions; totals leave out records nested in a body, whose time their ancestors hold, and add "
+                + "the time on types and files. Each total rounds once over its own entries, so the parts can differ "
+                + "from the whole by rounding; the slowest function and expression take every record."
         ]
-        lines += [""] + scopes(scan, build: build)
+        lines += [""] + scopes(scan)
         let timed = build.records.filter { $0.milliseconds != nil }.sorted { lhs, rhs in
             ((lhs.milliseconds ?? 0), rhs.key) > ((rhs.milliseconds ?? 0), lhs.key)
         }
@@ -56,58 +58,30 @@ extension MarkdownIndex {
         return lines + ["", leftOut(build), "", noise]
     }
 
-    /// The function-body time, the records timed and the slowest
-    /// expression per project part and per module, from the records not
-    /// nested in a body and the entries types and files hold.
-    private static func scopes(_ scan: ScanReport, build: BuildReport) -> [String] {
-        let times = moduleTimes(scan, build: build)
-        let tests = Set(scan.targets.filter(\.isTest).map(\.name))
-        var table = MarkdownTable(header: ["", "Function-body time (ms)", "Records timed", "Slowest expression (ms)"])
-        for part in ["production", "tests"] {
-            let held = times.filter { tests.contains($0.key) == (part == "tests") }.values
-            table.rows.append(row(part, held.reduce(ModuleTime()) { $0.adding($1) }))
+    /// The type-check roll-ups (design §6.4) of each project part and
+    /// each module: the function-body time, records nested in a body left
+    /// out and types' and files' entries added, rounded once per scope;
+    /// the slowest record; the records timed; and the slowest expression
+    /// on a record.
+    private static func scopes(_ scan: ScanReport) -> [String] {
+        var table = MarkdownTable(header: [
+            "", "Function-body time (ms)", "Slowest function (ms)", "Functions timed", "Slowest expression (ms)"
+        ])
+        let parts = ["production", "tests"].compactMap { part in
+            scan.rollups.first { $0.scope == .project && $0.name == part }
         }
-        for module in times.keys.sorted() {
-            table.rows.append(row(module, times[module] ?? ModuleTime()))
+        let modules = scan.rollups.filter { $0.scope == .module }.sorted { $0.name < $1.name }
+        for rollup in parts + modules {
+            let figures = rollup.typecheck
+            table.rows.append([
+                rollup.name,
+                MarkdownNumber.optional(figures?.milliseconds.total),
+                MarkdownNumber.optional(figures?.milliseconds.max),
+                MarkdownNumber.optional(figures?.functions.timed),
+                MarkdownNumber.optional(figures?.slowestExpression.max)
+            ])
         }
         return table.lines(empty: "")
-    }
-
-    /// Each module's time: its records not nested in a body, and the
-    /// entries its types and files hold.
-    private static func moduleTimes(_ scan: ScanReport, build: BuildReport) -> [String: ModuleTime] {
-        var times: [String: ModuleTime] = [:]
-        let records = Dictionary(scan.records.map { ($0.key, $0) }) { first, _ in first }
-        let nested = TimingMapper.nestedInBody(scan.records, types: scan.types)
-        for timing in build.records {
-            guard let record = records[timing.key] else {
-                continue
-            }
-            let counted = nested.contains(timing.key) ? nil : timing.milliseconds
-            let tally = ModuleTime(milliseconds: counted ?? 0, timed: 1, slowest: timing.slowestExpression)
-            times[record.module, default: ModuleTime()] = times[record.module, default: ModuleTime()].adding(tally)
-        }
-        let fileModules = Dictionary(scan.files.map { ($0.path, $0.module) }) { first, _ in first }
-        for attachment in build.attachments {
-            let owner = attachment.attachedTo == .type
-                ? attachment.owner.components(separatedBy: ModuleTime.moduleSeparator).first
-                : fileModules[attachment.owner]
-            guard let module = owner else {
-                continue
-            }
-            let tally = ModuleTime(
-                milliseconds: attachment.milliseconds ?? 0,
-                timed: 0,
-                slowest: attachment.slowestExpression
-            )
-            times[module, default: ModuleTime()] = times[module, default: ModuleTime()].adding(tally)
-        }
-        return times
-    }
-
-    /// A table row naming `scope` with `tally`'s figures.
-    private static func row(_ scope: String, _ tally: ModuleTime) -> [String] {
-        [scope, String(tally.milliseconds), String(tally.timed), MarkdownNumber.optional(tally.slowest)]
     }
 
     /// The entries no record holds and those left out.

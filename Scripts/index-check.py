@@ -11,7 +11,8 @@ script reads them with its own line patterns, not design section 6.1's
 grammar, and accounts for every line. Run it as `python3 -I -B Scripts/index-check.py <mode> ...`, so it
 writes no bytecode cache beside itself.
 
-Modes (a later plan step adds `coverage-names`):
+Modes: dump, build-lines, build, usr, rows, dead and signals (a later plan
+step adds `coverage-names`).
 
 `dump` writes the reader's values for a store as JSON: the recorded
 `reader.json` the unit tests read through `RecordedIndexSource`, and the
@@ -161,6 +162,49 @@ The scan's block is read by design section 9.2's names (`records` with
 `dropped`; `totals`; `unparsedTimingLines`, `escapedLines`,
 `otherWarningLines`, `pluginWarnings`); a value it lacks is a failure that
 names it. `--own-only` prints this script's figures without comparing.
+
+`build` also recomputes design 6.4's type-check roll-ups from this script's
+own placement above and compares them with each roll-up scope of the scan
+JSON (`typecheck` in the scope object: `milliseconds.total`,
+`milliseconds.max`, `slowestExpression.max`, `functions.timed`) and, with
+`--store`, with the snapshot's `rollupMetric` rows named `typecheck.*`
+(which must name collector `build`). `--without-typecheck` skips both
+(SwiftStats doesn't build these roll-ups yet: until it does, they fail with
+"not built yet"). The reading, for the Swift side to match or argue:
+  scopes   a module scope per target (`module`, the target name) and the two
+           project parts (`project`, `production` and `tests`), as the T0
+           roll-ups name them. An entry on a record counts for the record's
+           module, and for part production when the record's role is
+           production, else tests (test and helper records: the T0 roll-ups'
+           split by role). An entry attached to a type or a file counts for
+           that type's or file's module, and for part tests when that
+           module's target is a test target (`isTest`), else production.
+           Every scope the scan's roll-ups list gets figures, also one with no
+           entry at all.
+  total    `typecheck.milliseconds.total`: the function-body entries placed
+           on records not nested in a body, on types and on files (the same
+           entries as the build block's total: design 6.2's "Totals don't
+           double count"), summed in integer hundredths of a millisecond over
+           the scope, then rounded to whole ms half up ((sum + 50) // 100)
+           once per scope. Design 6.2 rounds "once, after summing" and says
+           the roll-up sums add entries, so entries are summed, not the
+           per-record rounded figures; a scope's total therefore need not
+           equal the sum of its records' `typeCheckMilliseconds`, and the two
+           parts' totals can differ from the build block's total by rounding.
+           0 when the scope holds no such entry.
+  maxima   `typecheck.milliseconds.max`: the largest `typeCheckMilliseconds`
+           (the rounded per-record figure) over every record of the scope,
+           nested ones included ("Maxima ... take every record");
+           `typecheck.slowestExpression.max` the largest per-record slowest
+           expression likewise. Records only: type and file attachments are
+           not records and are left out (their largest figures are printed).
+           Absent when no record of the scope has such a figure (a null
+           roll-up, as a record's null figures; never 0).
+  timed    `typecheck.functions.timed`: the records of the scope with a
+           `typeCheckMilliseconds` (at least one function-body entry), nested
+           ones included; a record with only expression entries isn't timed.
+           0 when none.
+Any other `typecheck.*` name in the scan JSON fails.
 
 Inputs `build-lines` trusts: the output files' bytes, nothing else.
 Inputs `build` trusts, besides those:
@@ -359,7 +403,8 @@ roll-ups `index.typeCycles`, `index.typesInCycles` and `index.moduleEdges`
   position decided, and identities several types share (a design gap:
   local types of one name).
 
-`usr` with `--store` also runs check u8 (plan step 7a) on --snapshot (the
+`usr` with `--store` also runs check u8 (plan step 7a; made whole by the
+`rows` mode below, which `usr --store` runs in full) on --snapshot (the
 newest by default), whether or not `--own-only` is given:
   u8  the stored rows equal the scan JSON (design 9.1 and 9.2): the
       `function` columns usr, usrAccessor, usrReason (the record's
@@ -382,9 +427,83 @@ newest by default), whether or not `--own-only` is given:
       written with the history whether or not the index ran (design 9.1),
       by ordinal (from 0 or 1, no gap) equal the scan's `history.coupling`
       in order, none when it has none. Printed, not failed: columns whose
-      nullability differs from design 9.1's NULL marks. The store's other
-      tables aren't checked here (`build --store` and `dead --store` check
-      theirs).
+      nullability differs from design 9.1's NULL marks. The build and dead
+      code rows, the timing columns, the swiftc findings, the M7 roll-up
+      rows and the T1 collector rows are the `rows` mode's part of u8 below
+      (`build --store` and `dead --store` check the same tables against
+      this script's own figures instead).
+
+`rows <scan.json> --store <store>` runs check u8 whole (design 11 step 2:
+"the stored rows equal the scan JSON"): for --snapshot (the newest by
+default), the snapshot the scan JSON came from, every M7 row equals the scan
+JSON, row for row, nulls as nulls (the scan JSON leaves a null out: an
+absent key is null). It needs no package, build output or index store: only
+the two files. Each difference is listed with its table, row and column.
+  index    everything `usr --store`'s u8 above lists (the `function` index
+           columns, indexScan, indexUnit, indexFile, usrDisagreement,
+           moduleEdge, typeIndex, familyReference, familyTypeReference,
+           couplingPair);
+  snapshot `snapshot.reportSchemaVersion` is the scan JSON's `schemaVersion`;
+  build    one `buildScan` row (none without a `build` block): collectedAt
+           the snapshot's date or the date a `carried from the scan of
+           <date>` reason of the build collector names, then each column at
+           its place in the block: complete (0 or 1), totals.functionEntries,
+           .expressionEntries, .milliseconds (totalMilliseconds),
+           unmapped.synthesized and .macro (entries, milliseconds),
+           dropped.build, .outsideRoot, .fileChanged, .unscanned (entries,
+           milliseconds), changedFiles, unparsedTimingLines, escapedLines,
+           otherWarningLines, warningsDropped, warningsUnmapped,
+           pluginWarnings; a store column this list doesn't place fails, and
+           design 9.1's columns the store spells otherwise (`droppedEntries`,
+           split per class) are printed. `timingAttachment` rows (owner,
+           attachedTo, milliseconds, slowestExpressionMilliseconds) equal the
+           block's `attachments` (owner, attachedTo, milliseconds,
+           slowestExpression) as multisets, by field name (which of the two
+           holds `type`/`file` is printed: design 9.1's comment puts it in
+           owner). `function.typeCheckMilliseconds` and
+           `slowestExpressionMilliseconds` equal the block's `records`
+           (milliseconds, slowestExpression) per key, and are null on every
+           other row of the snapshot. `finding` rows of tool `swiftc` (rule,
+           kind, severity, message, file, line, column, attachedTo, owner)
+           equal the scan's `findings` of tool swiftc, one row per location,
+           as multisets (the JSON's `category` has no column: printed);
+  dead     one `deadScan` row (none without a `deadCode` block): collectedAt
+           (as for build, the periphery collector's reason), version, and
+           rootsResults and productionResults from `runs`. `deadDeclaration`
+           rows by (run, ordinal) equal the block's `declarations`, column by
+           column (hint, hintText, kind, name, accessibility, attributes,
+           modifiers, ids, modules, class, file, line, column, place, owner,
+           module, strippedLines; the four array columns read back from their
+           JSON text), each run's ordinals from 0 or 1 with no gap.
+           `deadRecord` rows (run, key, declaration, via) equal `records` as
+           multisets. The store's `deadLines` table (run, module, lines; not
+           in design 9.1) equals `deadLines` ({run: {module: lines}});
+  rollups  `rollupMetric` rows whose metric is an M7 name (`index.*`,
+           `deadCode.*`, `tests.lineRatio.deadLines`, `findings.swiftc.*`,
+           `findingKinds.swiftc.*`, `typecheck.*`) equal, as multisets of
+           (scope, name, metric, collector, value), every numeric leaf under
+           those names in the scan JSON's roll-up scopes (metric = the dotted
+           path in the scope object; booleans and nulls have no row), with
+           the collector design attributes: index for `index.*` (design 4),
+           periphery for `deadCode.*` and `tests.lineRatio.deadLines`
+           (design 7), build for tool swiftc's findings (design 6.3) and for
+           `typecheck.*` (design 6.4's figures come from the build
+           collector; the design names no other);
+  runs     the `collectorRun` rows of build, index and periphery: state,
+           reason, version and options (stored as a JSON array) equal the scan
+           JSON's collector entries; no row for a collector the JSON doesn't
+           list.
+Not compared, with the reason: `collectorRun`'s identity, identityLabel and
+durationMilliseconds (the scan JSON's collector entries don't hold them;
+`dead --store` checks periphery's identity against the binary); the `report`
+blob (SwiftStats' own copy of the report, not one of design 9.1's row
+models); design 9.1's two INDEXes (not rows: the indexes present are
+printed). The output ends with this list of design 9.1's tables, each marked
+compared or not.
+
+Inputs `rows` trusts: the scan JSON as what the rows must equal (it checks
+nothing in it but its consistency with the rows), and the store, opened
+read-only, by the table and column names of the store's migrations.
 
 Inputs `usr` trusts:
   - libIndexStore.dylib's C API (as for `dump`), the library being the
@@ -886,6 +1005,7 @@ Usage:
                                          [--root-spelling <text>]
                                          [--build-spelling <text>]
                                          [--own-only] [--dump <path>] [--all]
+                                         [--without-typecheck]
     python3 -I -B Scripts/index-check.py usr <package> <scan.json>
                                          [--swift <swift>] [--library <dylib>]
                                          [--demangle <swift-demangle>]
@@ -901,6 +1021,8 @@ Usage:
                                          [--without-u7]
                                          [--local-containers symbol|enclosing]
                                          [--requirements protocol|package|all]
+    python3 -I -B Scripts/index-check.py rows <scan.json> --store <store>
+                                         [--snapshot <id>] [--all]
     python3 -I -B Scripts/index-check.py dead <package> <scan.json>
                                          <outskirts>
                                          [--store <store>] [--snapshot <id>]
@@ -933,7 +1055,7 @@ or to `--output`; a summary (unit, record and occurrence counts) goes to
 standard error.
 
 Exit status: `dump` 0 when the dump is written, 2 on bad input or a store
-that doesn't read; `build-lines`, `build`, `usr`, `dead` and `signals` 0
+that doesn't read; `build-lines`, `build`, `usr`, `rows`, `dead` and `signals` 0
 when every check passes (`signals --own-only`: when the figures are
 printed), 1 when one fails, 2 on bad input or a store that doesn't read
 (for `dead`, also when outskirts can't be started).
@@ -2631,6 +2753,63 @@ class Timings:
                 "slowestExpression.max": max(slowest) if slowest else None,
                 "functions.timed": len(timed)}
 
+    def scope_of(self, owner):
+        """(module, part) of an owner: a record by its module and role
+        (production, else tests: test and helper records); a type or file by
+        its module, tests when that module's target is a test target."""
+        if owner[0] == "record":
+            record = self.package.by_key[owner[1]]
+            return record.get("module"), "production" if record.get("role") == "production" else "tests"
+        module = self.module_of_owner.get(owner)
+        target = next((t for t in self.package.targets if t.get("name") == module), None)
+        return module, "tests" if target is not None and target.get("isTest") else "production"
+
+    def rollups(self, scopes=()):
+        """Design 6.4's roll-ups, by this check's placement: {(scope, name):
+        {metric: value}} for each module (`module`, its name) and project
+        part (`project`, production or tests) holding a timed owner, and for
+        each of `scopes` (the scan's T0 roll-up scopes): the module docstring's
+        reading of design 6.4 (scopes, total, maxima, timed)."""
+        sums = defaultdict(int)
+        timed = defaultdict(int)
+        longest = {}
+        slowest = {}
+        every = set(scopes)
+        for owner in set(self.function_sum) | set(self.expression_max):
+            module, part = self.scope_of(owner)
+            every |= {("module", module), ("project", part)}
+        for owner, hundredths in self.function_sum.items():
+            if self.included_in_totals(owner):
+                module, part = self.scope_of(owner)
+                sums[("module", module)] += hundredths
+                sums[("project", part)] += hundredths
+        for key, (ms, expression) in self.records().items():
+            module, part = self.scope_of(("record", key))
+            for scope in (("module", module), ("project", part)):
+                if ms is not None:
+                    timed[scope] += 1
+                    longest[scope] = max(longest.get(scope, ms), ms)
+                if expression is not None:
+                    slowest[scope] = max(slowest.get(scope, expression), expression)
+        out = {}
+        for scope in every:
+            figures = {"typecheck.milliseconds.total": half_up(sums.get(scope, 0)),
+                       "typecheck.functions.timed": timed.get(scope, 0)}
+            if scope in longest:
+                figures["typecheck.milliseconds.max"] = longest[scope]
+            if scope in slowest:
+                figures["typecheck.slowestExpression.max"] = slowest[scope]
+            out[scope] = figures
+        return out
+
+    def attachment_maxima(self):
+        """The largest attachment figures, which design 6.4's maxima leave out
+        (they take records); printed so a scan taking them in can be told."""
+        figures = list(self.attachments().values())
+        timed = [ms for ms, _ in figures if ms is not None]
+        slowest = [s for _, s in figures if s is not None]
+        return (max(timed) if timed else None, max(slowest) if slowest else None)
+
 
 class Warnings:
     """design section 6.3 reimplemented: warning diagnostics as swiftc findings."""
@@ -2843,6 +3022,104 @@ def compare_store(verdict, package, timings, warnings, store_path, snapshot):
         connection.close()
 
 
+TYPECHECK_METRICS = ("typecheck.milliseconds.total", "typecheck.milliseconds.max",
+                     "typecheck.slowestExpression.max", "typecheck.functions.timed")
+
+
+def scan_scopes(scan):
+    """The (scope, name) of every roll-up scope in the scan JSON."""
+    return [(r.get("scope"), r.get("name")) for r in scan.get("rollups", []) if isinstance(r, dict)]
+
+
+def typecheck_differences(mine, theirs, theirs_name):
+    """Per scope and metric, the figures that differ; an absent value shown
+    as `absent`."""
+    differences = []
+    for scope in sorted(set(mine) | set(theirs), key=str):
+        own, other = mine.get(scope), theirs.get(scope)
+        if own is None:
+            differences.append(f"{scope[0]} {scope[1]}: no such scope by this check's placement, "
+                               f"{theirs_name} {dict(sorted(other.items()))}")
+            continue
+        if other is None:
+            differences.append(f"{scope[0]} {scope[1]}: {theirs_name} has no such scope; mine "
+                               f"{dict(sorted(own.items()))}")
+            continue
+        for metric in sorted(set(own) | set(other)):
+            if own.get(metric, MISSING) != other.get(metric, MISSING):
+                shown = ["absent" if value is MISSING else value
+                         for value in (own.get(metric, MISSING), other.get(metric, MISSING))]
+                differences.append(f"{scope[0]} {scope[1]} {metric}: mine {shown[0]}, {theirs_name} {shown[1]}")
+    return differences
+
+
+def compare_typecheck_scan(verdict, package, timings):
+    """Design 6.4's typecheck.* roll-ups in the scan JSON's roll-up scopes
+    against this check's own placement (the module docstring's reading)."""
+    scan = package.scan
+    verdict.section("the scan JSON's typecheck.* roll-ups against this reimplementation (design 6.4)")
+    scopes = scan_scopes(scan)
+    mine = timings.rollups(scopes)
+    theirs = {}
+    unknown = []
+    for scope in scan.get("rollups", []):
+        if not isinstance(scope, dict):
+            continue
+        key = (scope.get("scope"), scope.get("name"))
+        figures = dict(flatten_numbers(scope.get("typecheck") or {}, "typecheck"))
+        unknown += [f"{key[0]} {key[1]} {metric}" for metric in figures if metric not in TYPECHECK_METRICS]
+        theirs[key] = figures
+    held = sum(1 for figures in theirs.values() if figures)
+    verdict.result("the scan JSON's roll-up scopes hold typecheck.* figures", held > 0,
+                   f"{held} of {len(theirs)} scopes have any"
+                   + ("" if held else " (not built yet in SwiftStats: the expected failure until they are)"))
+    verdict.result("no typecheck.* name other than design 6.4's four", not unknown, f"{len(unknown)} others")
+    verdict.listing(unknown)
+    differences = typecheck_differences(mine, theirs, "scan")
+    verdict.result("typecheck.milliseconds.total (rounded once per scope), .max, slowestExpression.max and "
+                   "functions.timed per module and project part", not differences,
+                   f"{len(mine)} scopes by this check, {len(theirs)} in the scan JSON")
+    verdict.listing(differences)
+
+
+def compare_typecheck_store(verdict, package, timings, store_path, snapshot):
+    """The stored rollupMetric rows named typecheck.* against the same figures."""
+    import sqlite3
+
+    verdict.section(f"the store's typecheck.* roll-up rows ({store_path}) against this reimplementation")
+    connection = sqlite3.connect(f"file:{store_path}?mode=ro", uri=True)
+    try:
+        if snapshot is None:
+            snapshot = connection.execute("SELECT max(id) FROM snapshot").fetchone()[0]
+        stored = defaultdict(dict)
+        collectors = Counter()
+        for scope, name, metric, collector, value in connection.execute(
+                "SELECT scope, name, metric, collector, value FROM rollupMetric WHERE snapshotId = ? "
+                "AND metric LIKE 'typecheck.%'", (snapshot,)):
+            stored[(scope, name)][metric] = int(value) if float(value).is_integer() else value
+            collectors[collector] += 1
+        scopes = [tuple(r) for r in connection.execute(
+            "SELECT DISTINCT scope, name FROM rollupMetric WHERE snapshotId = ?", (snapshot,))]
+        for scope in scopes:
+            stored.setdefault(scope, {})
+    except sqlite3.Error as error:
+        verdict.result("the store reads", False, str(error))
+        return
+    finally:
+        connection.close()
+    mine = timings.rollups(scopes)
+    verdict.result("the store holds typecheck.* rollupMetric rows", bool(stored),
+                   f"{sum(len(v) for v in stored.values())} rows in {len(stored)} scopes"
+                   + ("" if stored else " (not built yet in SwiftStats: the expected failure until they are)"))
+    wrong = {name: count for name, count in collectors.items() if name != "build"}
+    verdict.result("typecheck.* rows are attributed to the build collector", not wrong,
+                   ", ".join(f"{name} {count}" for name, count in sorted(wrong.items())))
+    differences = typecheck_differences(mine, dict(stored), "store")
+    verdict.result("rollupMetric typecheck.* per module and project part", not differences,
+                   f"{len(mine)} scopes by this check, {len(stored)} stored")
+    verdict.listing(differences)
+
+
 def report_timings(verdict, timings, warnings):
     verdict.section("timings and warnings, by this check's own rules")
     for name in Timings.CLASSES:
@@ -2853,6 +3130,12 @@ def report_timings(verdict, timings, warnings):
     verdict.info(f"records timed {maxima['functions.timed']}, attachments {len(timings.attachments())}, "
                  f"total {timings.total()} ms (records nested in a body left out), "
                  f"max {maxima['milliseconds.max']} ms, slowest expression {maxima['slowestExpression.max']} ms")
+    for (scope, name), figures in sorted(timings.rollups(scan_scopes(timings.package.scan)).items(), key=str):
+        verdict.info(f"roll-up {scope} {name}: " + ", ".join(f"{metric[len('typecheck.'):]} {figures[metric]}"
+                                                           for metric in TYPECHECK_METRICS if metric in figures))
+    longest, slowest = timings.attachment_maxima()
+    verdict.info(f"attachments (left out of the maxima, which take records): largest {longest} ms, "
+                 f"slowest expression {slowest} ms")
     verdict.info(f"warnings: {len(warnings.findings)} findings ({len(warnings.unscanned)} unscanned, "
                  f"{len(warnings.plugin)} in plugin targets), {len(warnings.dropped)} dropped "
                  f"(build directory or outside the root), {len(warnings.without_origin)} in macro expansions "
@@ -2878,6 +3161,8 @@ def own_figures(package, accounting, timings, warnings):
             "totalMilliseconds": timings.total(),
             "moduleTotals": {str(k): v for k, v in sorted(timings.module_totals().items(), key=str)},
             "maxima": timings.maxima(),
+            "rollups": [{"scope": scope, "name": name, **figures} for (scope, name), figures in
+                        sorted(timings.rollups(scan_scopes(package.scan)).items(), key=str)],
         },
         "warnings": sorted(warnings.findings.values(), key=lambda f: (f["file"], f["line"], f["column"], f["rule"])),
         "warningsDropped": len(warnings.dropped),
@@ -2916,8 +3201,12 @@ def build_mode(arguments):
         verdict.section("comparison with the scan JSON skipped (--own-only)")
     else:
         compare_scan(verdict, package, accounting, timings, warnings)
+        if not arguments.without_typecheck:
+            compare_typecheck_scan(verdict, package, timings)
     if arguments.store:
         compare_store(verdict, package, timings, warnings, arguments.store, arguments.snapshot)
+        if not arguments.without_typecheck:
+            compare_typecheck_store(verdict, package, timings, arguments.store, arguments.snapshot)
     print("\nRESULT: " + ("FAIL" if verdict.failed else "PASS"))
     return 1 if verdict.failed else 0
 
@@ -5414,6 +5703,414 @@ def compare_index_store(verdict, scan, store_path, snapshot):
         connection.close()
 
 
+# --------------------------------------------------------------------------
+# rows (check u8 whole): every M7 row of a snapshot against the scan JSON that
+# saved it (design sections 9.1, 9.2 and 11 step 2; the gaps step). The index
+# tables are compare_index_store's above; this part adds the build and dead
+# code tables, the function table's timing columns, the swiftc findings, the
+# M7 roll-up rows and the T1 collector rows, and names every table design 9.1
+# lists as compared or not.
+
+# buildScan's columns, as the store names them, and where the scan JSON's
+# `build` block holds each (design 9.2's names). Design 9.1's `droppedEntries`
+# is split per class in the store, and the store adds `warningsUnmapped` and
+# each class's milliseconds; a column this list doesn't name fails.
+BUILD_SCAN_PATHS = {
+    "complete": "complete",
+    "functionEntries": "totals.functionEntries",
+    "expressionEntries": "totals.expressionEntries",
+    "totalMilliseconds": "totals.milliseconds",
+    "synthesizedEntries": "unmapped.synthesized.entries",
+    "synthesizedMilliseconds": "unmapped.synthesized.milliseconds",
+    "macroEntries": "unmapped.macro.entries",
+    "macroMilliseconds": "unmapped.macro.milliseconds",
+    "buildEntries": "dropped.build.entries",
+    "buildMilliseconds": "dropped.build.milliseconds",
+    "outsideRootEntries": "dropped.outsideRoot.entries",
+    "outsideRootMilliseconds": "dropped.outsideRoot.milliseconds",
+    "fileChangedEntries": "dropped.fileChanged.entries",
+    "fileChangedMilliseconds": "dropped.fileChanged.milliseconds",
+    "unscannedEntries": "dropped.unscanned.entries",
+    "unscannedMilliseconds": "dropped.unscanned.milliseconds",
+    "changedFiles": "changedFiles",
+    "unparsedTimingLines": "unparsedTimingLines",
+    "escapedLines": "escapedLines",
+    "otherWarningLines": "otherWarningLines",
+    "warningsDropped": "warningsDropped",
+    "warningsUnmapped": "warningsUnmapped",
+    "pluginWarnings": "pluginWarnings",
+}
+DESIGN_BUILD_SCAN = ("collectedAt", "complete", "functionEntries", "expressionEntries", "totalMilliseconds",
+                     "synthesizedEntries", "synthesizedMilliseconds", "macroEntries", "macroMilliseconds",
+                     "droppedEntries", "unscannedEntries", "changedFiles", "unparsedTimingLines", "escapedLines",
+                     "otherWarningLines", "warningsDropped", "pluginWarnings")
+TIMING_FUNCTION_COLUMNS = ("typeCheckMilliseconds", "slowestExpressionMilliseconds")
+DEAD_DECLARATION_COLUMNS = ("hint", "hintText", "kind", "name", "accessibility", "attributes", "modifiers", "ids",
+                            "modules", "class", "file", "line", "column", "place", "owner", "module",
+                            "strippedLines")
+DEAD_DECLARATION_ARRAYS = ("attributes", "modifiers", "ids", "modules")
+SWIFTC_FINDING_COLUMNS = ("rule", "kind", "severity", "message", "file", "line", "column", "attachedTo", "owner")
+# identity and identityLabel aren't in the scan JSON's collector entries (name,
+# state, reason, version, options): `dead --store` checks periphery's.
+COLLECTOR_COLUMNS = ("state", "reason", "version")
+T1_COLLECTORS = ("build", "index", "periphery")
+# The M7 roll-up metric names (rollupMetric.metric, the dotted path into a
+# roll-up scope of the scan JSON) and the collector each is attributed to:
+# design 4 and 9.4 (`index.*` to index), 7 (`tests.lineRatio.deadLines` to
+# periphery, with `deadCode.*`), 6.3 (tool swiftc to collector build) and 6.4
+# (`typecheck.*`: the build collector's figures; the design names no other).
+M7_METRICS = (("index.", "index"), ("deadCode.", "periphery"), ("tests.lineRatio.deadLines", "periphery"),
+              ("findings.swiftc.", "build"), ("findingKinds.swiftc.", "build"), ("typecheck.", "build"))
+# Design 9.1's tables, each with the comparison that covers it, or why none.
+ROWS_COVERAGE = {
+    "function (usr, usrAccessor, usrReason, witness, referrers*, testReferrers)":
+        "compared (u8 index part, per record, null where the index block lists none)",
+    "function (typeCheckMilliseconds, slowestExpressionMilliseconds)":
+        "compared (per record, null where the build block lists none)",
+    "indexScan": "compared (one row)", "indexUnit": "compared", "indexFile": "compared",
+    "usrDisagreement": "compared (with ordinals)", "moduleEdge": "compared", "typeIndex": "compared",
+    "familyReference": "compared", "familyTypeReference": "compared",
+    "couplingPair": "compared (in order, against history.coupling)",
+    "buildScan": "compared (one row)", "timingAttachment": "compared",
+    "deadScan": "compared (one row)", "deadDeclaration": "compared (by run and ordinal)",
+    "deadRecord": "compared",
+    "finding (tool swiftc)": "compared (one row per location; the JSON's category has no column)",
+    "rollupMetric (index.*, deadCode.*, tests.lineRatio.deadLines, findings.swiftc.*, findingKinds.swiftc.*, "
+    "typecheck.*)": "compared (scope, name, metric, value; collector by design)",
+    "deadLines (the store's, not in design 9.1)": "compared with deadCode.deadLines",
+    "collectorRun (build, index, periphery)":
+        "compared: state, reason, version, options; identity, identityLabel and durationMilliseconds aren't "
+        "in the scan JSON's collector entries, so not compared (`dead --store` checks periphery's identity "
+        "against the binary)",
+    "INDEX deadRecord(snapshotId, key), INDEX familyReference(snapshotId, toFamily)":
+        "not rows: their presence is printed, not failed",
+    "report (the stored report blob)":
+        "not compared: SwiftStats' own copy of the report, not a row model of design 9.1",
+}
+
+
+def json_path(block, path):
+    """The value at a dotted path of a JSON object, None when any key is absent
+    (the scan JSON leaves nulls out)."""
+    value = block
+    for key in path.split("."):
+        if not isinstance(value, dict) or key not in value:
+            return None
+        value = value[key]
+    return value
+
+
+def flatten_numbers(value, prefix=""):
+    """(dotted path, number) for every numeric leaf, booleans and nulls left
+    out (rollupMetric holds a row per number)."""
+    if isinstance(value, dict):
+        for key, child in value.items():
+            yield from flatten_numbers(child, f"{prefix}.{key}" if prefix else key)
+    elif isinstance(value, (int, float)) and not isinstance(value, bool):
+        yield prefix, value
+
+
+def m7_collector(metric):
+    """The collector design attributes an M7 metric to, None for a non-M7 one."""
+    for prefix, collector in M7_METRICS:
+        if metric == prefix or (prefix.endswith(".") and metric.startswith(prefix)):
+            return collector
+    return None
+
+
+def collected_at(scan, collector, date):
+    """The snapshot's date, or the date a `carried from the scan of <date>`
+    reason of the collector names."""
+    run = next((c for c in scan.get("collectors", []) if c.get("name") == collector), {}) or {}
+    carried = CARRIED_FROM.search(run.get("reason") or "")
+    return carried.group(1) if carried else date
+
+
+def columns_of(connection, table):
+    return [r[1] for r in connection.execute(f'PRAGMA table_info("{table}")')]
+
+
+def by_column_differences(name, columns, mine, held):
+    """Each differing column of one row, precisely."""
+    return [f"{name}.{column}: scan JSON {a!r}, store {b!r}"
+            for column, a, b in zip(columns, mine, held) if a != b]
+
+
+def compare_one_row(verdict, connection, table, snapshot, columns, expected, label):
+    """A table with one row per snapshot (or none when `expected` is None)."""
+    quoted = ", ".join(f'"{name}"' for name in columns)
+    rows = [tuple(r) for r in connection.execute(f'SELECT {quoted} FROM "{table}" WHERE snapshotId = ?',
+                                                 (snapshot,))]
+    if expected is None:
+        verdict.result(f"no {table} row (the scan JSON has no block for it)", not rows, f"{len(rows)} stored")
+        return
+    if len(rows) != 1:
+        verdict.result(f"one {table} row", False, f"{len(rows)} stored")
+        return
+    wrong = by_column_differences(table, columns, expected, rows[0])
+    verdict.result(label, not wrong, f"{len(columns)} columns")
+    verdict.listing(wrong)
+
+
+def compare_build_rows(verdict, connection, scan, snapshot, date):
+    block = scan.get("build") if isinstance(scan.get("build"), dict) else None
+    verdict.section("u8 the build collector's rows against the scan JSON's build block")
+    held_columns = columns_of(connection, "buildScan")
+    unmapped = [c for c in held_columns if c not in BUILD_SCAN_PATHS and c not in ("snapshotId", "collectedAt")]
+    verdict.result("every buildScan column maps to a value of the build block", not unmapped, ", ".join(unmapped))
+    missing = [c for c in DESIGN_BUILD_SCAN if c not in held_columns]
+    if missing:
+        verdict.info("printed, not failed: design 9.1's buildScan columns the store spells otherwise: "
+                     + ", ".join(missing) + " (droppedEntries is split per class: build, outsideRoot, "
+                     "fileChanged, unscanned)")
+    columns = ["collectedAt"] + [c for c in held_columns if c in BUILD_SCAN_PATHS]
+    expected = None
+    if block is not None:
+        expected = (collected_at(scan, "build", date),) + tuple(
+            json_path(block, BUILD_SCAN_PATHS[c]) for c in columns[1:])
+        expected = tuple(int(v) if isinstance(v, bool) else v for v in expected)
+    compare_one_row(verdict, connection, "buildScan", snapshot, columns, expected,
+                    "buildScan (collectedAt the snapshot's or the carried scan's date; totals, unmapped, dropped, "
+                    "counters)")
+
+    # timingAttachment, by the JSON's own field names.
+    attachments = block.get("attachments", []) if block else []
+    mine = [(a.get("owner"), a.get("attachedTo"), a.get("milliseconds"), a.get("slowestExpression"))
+            for a in attachments]
+    held = [tuple(r) for r in connection.execute(
+        'SELECT owner, attachedTo, milliseconds, slowestExpressionMilliseconds FROM timingAttachment '
+        'WHERE snapshotId = ?', (snapshot,))]
+    u8_compare(verdict, "timingAttachment rows (owner, attachedTo, milliseconds, slowestExpressionMilliseconds)",
+               mine, held)
+    kinds = Counter(r[1] for r in held)
+    if held and set(kinds) <= {"type", "file"}:
+        verdict.info("printed, not failed: `attachedTo` holds type/file and `owner` the name (M6's attachment "
+                     "convention); design 9.1's comment puts 'type' | 'file' in `owner`")
+
+    # function: the timing columns per record, null on every other row.
+    expected_rows = {r.get("key"): (None, None) for r in scan.get("records", [])}
+    listed = block.get("records", []) if block else []
+    unknown = [item.get("key") for item in listed if item.get("key") not in expected_rows]
+    for item in listed:
+        expected_rows[item.get("key")] = (item.get("milliseconds"), item.get("slowestExpression"))
+    verdict.result("every build record names a record of the scan", not unknown, f"{len(unknown)} don't")
+    verdict.listing(unknown)
+    stored = {key: (ms, slowest) for key, ms, slowest in connection.execute(
+        "SELECT key, typeCheckMilliseconds, slowestExpressionMilliseconds FROM function WHERE snapshotId = ?",
+        (snapshot,))}
+    differences = [f"{key}: scan JSON {expected_rows.get(key, 'no record')}, store {stored.get(key, 'no row')}"
+                   for key in sorted(set(expected_rows) | set(stored), key=str)
+                   if expected_rows.get(key) != stored.get(key)]
+    verdict.result("function.typeCheckMilliseconds and slowestExpressionMilliseconds per record (null where the "
+                   "build block lists none)", not differences,
+                   f"{len(listed)} timed records in the scan JSON, "
+                   f"{sum(1 for v in stored.values() if v != (None, None))} stored rows with a figure")
+    verdict.listing(differences)
+
+    # Compiler warnings: finding rows of tool swiftc, one per location.
+    mine = []
+    categories = 0
+    for finding in scan.get("findings", []):
+        if finding.get("tool") != "swiftc":
+            continue
+        categories += finding.get("category") is not None
+        for location in finding.get("locations") or [{}]:
+            mine.append((finding.get("rule"), finding.get("kind"), finding.get("severity"), finding.get("message"),
+                         location.get("file"), location.get("line"), location.get("column"),
+                         location.get("attachedTo"), location.get("owner")))
+    quoted = ", ".join(f'"{name}"' for name in SWIFTC_FINDING_COLUMNS)
+    held = [tuple(r) for r in connection.execute(
+        f"SELECT {quoted} FROM finding WHERE snapshotId = ? AND tool = 'swiftc'", (snapshot,))]
+    u8_compare(verdict, "finding rows of tool swiftc (" + ", ".join(SWIFTC_FINDING_COLUMNS) + ")", mine, held)
+    if categories:
+        verdict.info(f"printed, not failed: {categories} swiftc findings carry a category (the group), which "
+                     "`finding` has no column for")
+
+
+def compare_dead_rows(verdict, connection, scan, snapshot, date):
+    block = scan.get("deadCode") if isinstance(scan.get("deadCode"), dict) else None
+    verdict.section("u8 the periphery collector's rows against the scan JSON's deadCode block")
+    expected = None
+    if block is not None:
+        results = {r.get("name"): r.get("results") for r in block.get("runs") or []}
+        expected = (collected_at(scan, "periphery", date), block.get("version"),
+                    results.get("roots"), results.get("production"))
+    compare_one_row(verdict, connection, "deadScan", snapshot,
+                    ("collectedAt", "version", "rootsResults", "productionResults"), expected,
+                    "deadScan (collectedAt, version, results per run)")
+
+    # deadDeclaration: by (run, ordinal), every column, arrays read back.
+    quoted = ", ".join(f'"{name}"' for name in DEAD_DECLARATION_COLUMNS)
+    held = {}
+    unread = []
+    for row in connection.execute(f'SELECT run, ordinal, {quoted} FROM deadDeclaration WHERE snapshotId = ?',
+                                  (snapshot,)):
+        values = list(row[2:])
+        for index, column in enumerate(DEAD_DECLARATION_COLUMNS):
+            if column in DEAD_DECLARATION_ARRAYS:
+                values[index] = u8_json_text(values[index])
+                if values[index] is MISSING:
+                    unread.append(f"{row[0]} {row[1]}: {column}")
+        held[(row[0], row[1])] = tuple(values)
+    verdict.result("deadDeclaration's JSON array columns read back", not unread, f"{len(unread)} don't")
+    verdict.listing(unread)
+    declarations = block.get("declarations", []) if block else []
+    mine = {}
+    repeated = []
+    for item in declarations:
+        identity = (item.get("run"), item.get("ordinal"))
+        if identity in mine:
+            repeated.append(identity)
+        mine[identity] = tuple(item.get(column) for column in DEAD_DECLARATION_COLUMNS)
+    verdict.result("the scan JSON's declarations are distinct by (run, ordinal)", not repeated,
+                   f"{len(repeated)} repeated")
+    verdict.listing(repeated)
+    differences = []
+    for identity in sorted(set(mine) | set(held), key=repr):
+        if identity not in held:
+            differences.append(f"{identity}: only the scan JSON's: {mine[identity]}")
+        elif identity not in mine:
+            differences.append(f"{identity}: only the store's: {held[identity]}")
+        else:
+            differences += by_column_differences(f"{identity}", DEAD_DECLARATION_COLUMNS, mine[identity],
+                                                 held[identity])
+    verdict.result("deadDeclaration rows by (run, ordinal): " + ", ".join(DEAD_DECLARATION_COLUMNS),
+                   not differences, f"{len(mine)} in the scan JSON, {len(held)} stored")
+    verdict.listing(differences)
+    for run in DEAD_RUNS:
+        u8_ordinals(verdict, f"deadDeclaration {run}", [o for r, o in held if r == run])
+
+    u8_compare(verdict, "deadRecord rows (run, key, declaration, via)",
+               [(r.get("run"), r.get("key"), r.get("declaration"), r.get("via"))
+                for r in ((block.get("records") or []) if block else [])],
+               [tuple(r) for r in connection.execute(
+                   "SELECT run, key, declaration, via FROM deadRecord WHERE snapshotId = ?", (snapshot,))])
+    tables = {name for (name,) in connection.execute("SELECT name FROM sqlite_master WHERE type = 'table'")}
+    if "deadLines" in tables:
+        lines = (block.get("deadLines") or {}) if block else {}
+        u8_compare(verdict, "deadLines rows (run, module, lines; the store's table, not in design 9.1) against "
+                   "deadCode.deadLines",
+                   [(run, module, count) for run, modules in lines.items() if isinstance(modules, dict)
+                    for module, count in modules.items()],
+                   [tuple(r) for r in connection.execute(
+                       "SELECT run, module, lines FROM deadLines WHERE snapshotId = ?", (snapshot,))])
+    else:
+        verdict.info("the store has no deadLines table (design 9.1 names none): not compared")
+
+
+def compare_rollup_rows(verdict, connection, scan, snapshot):
+    verdict.section("u8 the M7 roll-up rows (rollupMetric) against the scan JSON's roll-ups")
+    mine = []
+    for scope in scan.get("rollups", []):
+        for metric, value in flatten_numbers(scope):
+            collector = m7_collector(metric)
+            if collector is not None:
+                mine.append((scope.get("scope"), scope.get("name"), metric, collector, value))
+    held = []
+    for row in connection.execute("SELECT scope, name, metric, collector, value FROM rollupMetric "
+                                  "WHERE snapshotId = ?", (snapshot,)):
+        if m7_collector(row[2]) is not None:
+            held.append(tuple(row))
+    u8_compare(verdict, "rollupMetric rows named " + ", ".join(p + ("*" if p.endswith(".") else "")
+                                                              for p, _ in M7_METRICS)
+               + " (scope, name, metric, collector as design attributes it, value)", mine, held)
+    names = Counter(metric.split(".")[0] + ("." + metric.split(".")[1] if metric.startswith(("findings.",
+                    "findingKinds.")) else "") for _, _, metric, _, _ in held)
+    verdict.info("stored M7 metrics by family: " + (", ".join(f"{n} {c}" for n, c in sorted(names.items()))
+                                                   or "none"))
+
+
+def compare_collector_rows(verdict, connection, scan, snapshot):
+    verdict.section("u8 the T1 collectors' collectorRun rows against the scan JSON's collectors")
+    for name in T1_COLLECTORS:
+        run = next((c for c in scan.get("collectors", []) if c.get("name") == name), None)
+        row = connection.execute('SELECT state, reason, version, options '
+                                 'FROM collectorRun WHERE snapshotId = ? AND name = ?', (snapshot, name)).fetchone()
+        if run is None:
+            verdict.result(f"{name}: no collectorRun row (the scan JSON lists no such collector)", row is None,
+                           "a row is stored" if row else "")
+            continue
+        if row is None:
+            verdict.result(f"{name}: a collectorRun row", False, "absent")
+            continue
+        expected = tuple(run.get(column) for column in COLLECTOR_COLUMNS)
+        wrong = by_column_differences(name, COLLECTOR_COLUMNS, expected, tuple(row[:3]))
+        stored_options = u8_json_text(row[3])
+        options = run.get("options")
+        if stored_options is MISSING:
+            verdict.info(f"printed, not failed: {name}'s stored options aren't JSON: {row[3][:80]!r}")
+        elif stored_options != options:
+            wrong.append(f"{name}.options: scan JSON {options!r}, store {stored_options!r}")
+        verdict.result(f"{name}: " + ", ".join(COLLECTOR_COLUMNS) + ", options", not wrong,
+                       f"state {row[0]}")
+        verdict.listing(wrong)
+
+
+def compare_rows(verdict, scan, store_path, snapshot):
+    """Check u8 whole: every M7 row of `snapshot` (the newest by default)
+    equals the scan JSON that saved it, row for row, nulls as nulls."""
+    import sqlite3
+
+    connection = sqlite3.connect(f"file:{store_path}?mode=ro", uri=True)
+    try:
+        if snapshot is None:
+            snapshot = connection.execute("SELECT max(id) FROM snapshot").fetchone()[0]
+        row = connection.execute("SELECT date, reportSchemaVersion FROM snapshot WHERE id = ?",
+                                 (snapshot,)).fetchone()
+    except sqlite3.Error as error:
+        connection.close()
+        verdict.result("the store reads", False, str(error))
+        return
+    if row is None:
+        connection.close()
+        verdict.result(f"snapshot {snapshot} is in the store", False, "absent")
+        return
+    date, schema = row
+    compare_index_store(verdict, scan, store_path, snapshot)
+    try:
+        verdict.section(f"u8 the snapshot row ({snapshot}) against the scan JSON")
+        verdict.result("snapshot.reportSchemaVersion is the scan JSON's schemaVersion",
+                       schema == scan.get("schemaVersion"), f"store {schema}, scan JSON {scan.get('schemaVersion')}")
+        tables = {name for (name,) in connection.execute("SELECT name FROM sqlite_master WHERE type = 'table'")}
+        absent = [t for t in ("buildScan", "timingAttachment", "deadScan", "deadDeclaration", "deadRecord",
+                              "rollupMetric", "finding", "collectorRun") if t not in tables]
+        function_columns = columns_of(connection, "function")
+        absent += [f"function.{c}" for c in TIMING_FUNCTION_COLUMNS if c not in function_columns]
+        verdict.result("the store has design 9.1's build and dead code tables and timing columns", not absent,
+                       ", ".join(absent))
+        if absent:
+            return
+        compare_build_rows(verdict, connection, scan, snapshot, date)
+        compare_dead_rows(verdict, connection, scan, snapshot, date)
+        compare_rollup_rows(verdict, connection, scan, snapshot)
+        compare_collector_rows(verdict, connection, scan, snapshot)
+        indexes = {name for (name,) in connection.execute("SELECT name FROM sqlite_master WHERE type = 'index'")}
+        verdict.section("u8 coverage of design 9.1's tables")
+        for table, how in ROWS_COVERAGE.items():
+            verdict.info(f"{table}: {how}")
+        verdict.info("indexes present (printed, not failed): "
+                     + (", ".join(sorted(i for i in indexes if not i.startswith("sqlite_"))) or "none"))
+    except sqlite3.Error as error:
+        verdict.result("the store reads", False, str(error))
+    finally:
+        connection.close()
+
+
+def rows_mode(arguments):
+    try:
+        with open(arguments.scan, encoding="utf-8") as handle:
+            scan = json.load(handle)
+    except (OSError, ValueError) as error:
+        fail(f"the scan JSON doesn't read: {error}")
+    if not os.path.isfile(arguments.store):
+        fail(f"no store at {arguments.store}")
+    verdict = Verdict(arguments.all)
+    print(f"scan JSON {arguments.scan}\nstore {arguments.store}")
+    compare_rows(verdict, scan, arguments.store, arguments.snapshot)
+    print("\nRESULT: " + ("FAIL" if verdict.failed else "PASS"))
+    return 1 if verdict.failed else 0
+
+
 def usr_mode(arguments):
     try:
         package = UsrPackage(arguments)
@@ -5495,7 +6192,7 @@ def usr_mode(arguments):
         if coupling is not None:
             compare_coupling(verdict, coupling)
     if arguments.store:
-        compare_index_store(verdict, package.scan, arguments.store, arguments.snapshot)
+        compare_rows(verdict, package.scan, arguments.store, arguments.snapshot)
     print("\nRESULT: " + ("FAIL" if verdict.failed else "PASS"))
     return 1 if verdict.failed else 0
 
@@ -8770,6 +9467,8 @@ def main():
                           help="print this check's figures without comparing them with the scan JSON")
     building.add_argument("--dump", help="write this check's figures as JSON")
     building.add_argument("--all", action="store_true", help="list every difference and unaccounted line")
+    building.add_argument("--without-typecheck", action="store_true",
+                          help="skip the typecheck.* roll-up comparison (design 6.4) with the scan JSON and the store")
     joining = modes.add_parser("usr", help="check the scan's units, USRs, reasons, lists and coupling (u1-u7)")
     joining.add_argument("package", help="the scanned package (its .swiftstats/index-build holds the store)")
     joining.add_argument("scan", help="`swiftstats scan --index --format json` of <package>")
@@ -8800,6 +9499,12 @@ def main():
                          help="u7: which overridden USRs' references count for their witnesses: protocol "
                               "requirements (design 4.1 as written, the default), only those of protocols the "
                               "package declares, or every overridden USR (class methods too)")
+    rowing = modes.add_parser("rows", help="check u8 whole: every M7 row of a snapshot against the scan JSON "
+                                            "that saved it")
+    rowing.add_argument("scan", help="`swiftstats scan --format json` output of the scan that saved --store's snapshot")
+    rowing.add_argument("--store", required=True, help="the store the scan saved to (opened read-only)")
+    rowing.add_argument("--snapshot", type=int, help="the snapshot id in --store (default: the newest)")
+    rowing.add_argument("--all", action="store_true", help="list every difference")
     dead = modes.add_parser("dead", help="run outskirts twice and compare with the periphery collector's output")
     dead.add_argument("package", help="the scanned package (its .swiftstats/index-build holds the store)")
     dead.add_argument("scan", help="`swiftstats scan --index --format json` of <package>")
@@ -8863,7 +9568,8 @@ def main():
                                  "latter for every root")
     arguments = parser.parse_args()
     return {"dump": dump_mode, "build-lines": build_lines_mode, "build": build_mode,
-            "usr": usr_mode, "dead": dead_mode, "signals": signals_mode}[arguments.mode](arguments)
+            "usr": usr_mode, "rows": rows_mode, "dead": dead_mode,
+            "signals": signals_mode}[arguments.mode](arguments)
 
 
 if __name__ == "__main__":

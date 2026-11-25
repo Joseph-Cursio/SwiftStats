@@ -99,6 +99,16 @@ enum IndexStoreSamples {
          "warningsDropped": 25, "warningsUnmapped": 26, "pluginWarnings": 27}
         """
 
+    /// The hand-made build's type-check totals: the library's 17 ms, not
+    /// the 16 its record's and file's own figures add to, as hundredths
+    /// rounded once can give (12.40 + 4.40), so a carry that added the
+    /// rows' figures again would differ; the tests' scopes hold nothing.
+    static let typeCheckTotals = (try? TypeCheckTotals.given(typeCheckJSON)) ?? .empty
+    /// `typeCheckTotals` as JSON.
+    private static let typeCheckJSON = """
+        {"module Lib": 17, "module LibTests": 0, "project production": 17, "project tests": 0}
+        """
+
     /// The dead-code block: an unused production function covering a
     /// record in both runs, an entry in a test target and one outside the
     /// root, an unused local, and dead lines with a module of none.
@@ -280,7 +290,11 @@ enum IndexStoreSamples {
     /// own first three, with its `build`, `index` and `periphery` runs ran.
     static func indexed(_ scanned: ScannedSnapshot) throws -> ScannedSnapshot {
         let report = scanned.report
-            .with(build: BuildRows.normalized(try build()), status: status(BuildAdapter.name, .ran))
+            .with(
+                build: BuildRows.normalized(try build()),
+                totals: typeCheckTotals,
+                status: status(BuildAdapter.name, .ran)
+            )
             .with(
                 index: IndexRows.normalized(try index(records: scanned.report.records)),
                 status: status(IndexAdapter.name, .ran)
@@ -294,7 +308,7 @@ enum IndexStoreSamples {
     /// blocks, and its three collectors skipped, not requested.
     static func plain(_ snapshot: ScannedSnapshot) -> ScannedSnapshot {
         let report = snapshot.report
-            .with(build: nil, status: status(BuildAdapter.name, .skipped))
+            .with(build: nil, totals: .empty, status: status(BuildAdapter.name, .skipped))
             .with(index: nil, status: status(IndexAdapter.name, .skipped))
             .with(deadCode: nil, status: status(PeripheryAdapter.name, .skipped))
         let info = names.reduce(snapshot.info) { info, name in info.with(run: run(name, .skipped)) }

@@ -38,6 +38,9 @@ extension PackageScanner {
         /// The build's timings and warning counts mapped onto the scan;
         /// nil unless it ran and its output was read.
         let report: BuildReport?
+        /// Each roll-up scope's type-check total; none unless the build
+        /// ran and its output was read.
+        let typeCheckTotals: TypeCheckTotals
         /// The build's warnings, as `swiftc` findings whose places aren't
         /// attached yet.
         let findings: [RawFinding]
@@ -86,6 +89,7 @@ extension PackageScanner {
                 build: runs[0],
                 readers: Array(runs.dropFirst()),
                 report: nil,
+                typeCheckTotals: .empty,
                 findings: [],
                 indexReport: nil,
                 peripheryOutput: nil,
@@ -100,6 +104,9 @@ extension PackageScanner {
         let run: BuildRun
         /// The timings and warning counts; nil unless it ran and was read.
         let report: BuildReport?
+        /// Each roll-up scope's type-check total; none unless it ran and
+        /// was read.
+        let typeCheckTotals: TypeCheckTotals
         /// The warnings, as findings whose places aren't attached yet.
         let findings: [RawFinding]
     }
@@ -118,7 +125,8 @@ extension PackageScanner {
     /// `targets`: its standard error and task log read (design §6.1), the
     /// timing entries placed on records, types and files (§6.2) and the
     /// warnings made findings (§6.3), against the root's real path and the
-    /// build directory's. A run that didn't run maps to nothing; one whose
+    /// build directory's, with each roll-up scope's type-check total
+    /// (§6.4). A run that didn't run maps to nothing; one whose
     /// output can't be read fails, saying so.
     static func build(
         of run: BuildRun,
@@ -127,7 +135,7 @@ extension PackageScanner {
         root: URL
     ) -> MappedBuild {
         guard run.status.state == .ran, let products = run.products else {
-            return MappedBuild(run: run, report: nil, findings: [])
+            return MappedBuild(run: run, report: nil, typeCheckTotals: .empty, findings: [])
         }
         let output: BuildOutput
         do {
@@ -141,7 +149,7 @@ extension PackageScanner {
             ]
             let reason = SwiftInferTargetRun.reason(for: error, replacing: replacements)
             let failed = run.failing("could not read the build's output: \(reason)")
-            return MappedBuild(run: failed, report: nil, findings: [])
+            return MappedBuild(run: failed, report: nil, typeCheckTotals: .empty, findings: [])
         }
         let rootPath = realPath(root)
         let changed = Set(products.changedFiles)
@@ -165,7 +173,13 @@ extension PackageScanner {
             changedFiles: changed.count,
             complete: products.complete
         )
-        return MappedBuild(run: run, report: report, findings: warnings.findings)
+        let totals = TypeCheckTotals(
+            counted: timings.counted,
+            targets: targets,
+            records: measured.records,
+            files: measured.files
+        )
+        return MappedBuild(run: run, report: report, typeCheckTotals: totals, findings: warnings.findings)
     }
 
     /// The `periphery` collector's run after `build` and `index`, under
@@ -296,6 +310,7 @@ extension PackageScanner {
                 build: mapped.run.timed,
                 readers: [index.timed, periphery.timed],
                 report: mapped.report.map(BuildRows.normalized),
+                typeCheckTotals: mapped.typeCheckTotals,
                 findings: mapped.findings,
                 indexReport: index.report.map(IndexRows.normalized),
                 peripheryOutput: periphery.output,

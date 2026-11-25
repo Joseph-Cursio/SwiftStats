@@ -110,7 +110,7 @@ enum DiffIndexFixture {
             files: scanned.report.files.map(\.path).sorted().map { IndexFileHash(path: $0, sha256: nil) }
         )
         let report = scanned.report
-            .with(build: nil, status: status(BuildAdapter.name))
+            .with(build: nil, totals: .empty, status: status(BuildAdapter.name))
             .with(index: IndexRows.normalized(index), status: status(IndexAdapter.name))
         let info = scanned.info
             .with(run: run(BuildAdapter.name, identity: build))
