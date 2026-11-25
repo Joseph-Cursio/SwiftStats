@@ -64,7 +64,7 @@ struct HeldResultsUpFrontTests {
         let dropped = try harness.workspace.heldResultsChecks(git: git, tiers: tiers, drop: .coverage)
 
         #expect(refused == expected)
-        #expect(dropped != nil)
+        #expect(dropped.mutation != nil && dropped.index == nil)
     }
 
     @Test("""

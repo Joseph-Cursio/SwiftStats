@@ -16,9 +16,7 @@ public struct DropOptions: OptionSet, Hashable, Sendable {
     /// Mutation results (`--drop-mutation`).
     public static let mutation = Self(rawValue: 1 << 1)
     /// The T1 group's results: the build's, the index's and outskirts'
-    /// (`--drop-index`). Accepted, but it drops nothing yet: no snapshot
-    /// holds T1 results until the store keeps them (a placeholder; design
-    /// §13, removed in step 8).
+    /// (`--drop-index`).
     public static let index = Self(rawValue: 1 << 2)
 
     /// The options as bits.

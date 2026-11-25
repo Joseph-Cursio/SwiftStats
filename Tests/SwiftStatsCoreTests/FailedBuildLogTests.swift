@@ -140,18 +140,20 @@ struct FailedBuildLogTests {
     }
 
     @Test("""
-        a failed build's log is recorded though the scan then throws, as when its save refuses held coverage of \
-        other uncommitted changes
+        a failed build's log is recorded though the scan then throws, as when its save refuses held T1 results \
+        that don't describe the files, naming the failed build
         """)
     func recordedThoughTheScanThrows() throws {
         let harness = try HeldResultsHarness()
         defer { harness.remove() }
         let toolchain = try FakeToolchain.make(build: try Self.brokenBuild())
         defer { toolchain.remove() }
-        try harness.edit("Edit A.")
-        try harness.storeCoverage()
-        try harness.edit("Edit B.")
+        try harness.storeIndex()
         let expected = try #require(try harness.plainRefusal())
+        guard case let .indexNotKept(snapshot, collectedAt, reason) = expected else {
+            Issue.record("expected the index refusal, got \(expected)")
+            return
+        }
         let configuration = harness.since.folder.appendingPathComponent("index.yml")
         try IndexGroupHarness.configuration(toolchain, extra: "")
             .write(to: configuration, atomically: true, encoding: .utf8)
@@ -173,7 +175,12 @@ struct FailedBuildLogTests {
             )
         }
 
-        #expect(refused == expected)
+        guard case let .indexNotKept(refusedSnapshot, refusedAt, refusedReason) = refused else {
+            Issue.record("expected the index refusal, got \(String(describing: refused))")
+            return
+        }
+        #expect(refusedSnapshot == snapshot && refusedAt == collectedAt)
+        #expect(refusedReason.hasPrefix(reason + "; this scan's index build failed ("))
         #expect(toolchain.calls(of: "swift").contains { $0.hasPrefix("build\t") })
         let log = try #require(record.url)
         #expect(BuildFixture.realPath(log) == Self.logPath(of: harness.since.root))

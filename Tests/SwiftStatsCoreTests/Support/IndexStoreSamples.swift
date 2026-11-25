@@ -6,9 +6,10 @@
 //  tables (M7, design §9.1), written as the scan JSON writes them, and
 //  attached to a small library's snapshot as a scan attaches them, with
 //  its `build`, `index` and `periphery` runs, so the rows can be checked
-//  without a build, an index store or outskirts. Also a snapshot with the
-//  T1 group not run, as a plain rescan of the same tree makes it, and a
-//  history with change-coupling pairs.
+//  without a build, an index store or outskirts, the runs recording this
+//  build's rules. Also a snapshot with the T1 group not run, as a plain
+//  rescan of the same tree makes it, and a history with change-coupling
+//  pairs.
 //
 
 import Foundation
@@ -226,19 +227,29 @@ enum IndexStoreSamples {
         )
     }
 
-    /// The status of collector `name` in `state`.
-    private static func status(_ name: String, _ state: CollectorState) -> CollectorStatus {
-        CollectorStatus(
-            name: name,
-            state: state,
-            version: state == .ran ? "test" : nil,
-            reason: state == .ran ? nil : BuildAdapter.notRequestedReason,
-            options: []
-        )
+    /// The options a run of collector `name` that ran records: the rules
+    /// this build collects by, which a carry compares.
+    static func options(_ name: String) -> [String] {
+        switch name {
+        case BuildAdapter.name:
+            ["map: " + TimingMapper.rule, "warnings: " + WarningReader.rule]
+
+        case IndexAdapter.name:
+            IndexAdapter.options
+
+        default:
+            ["classes: " + PeripheryOutput.rule, "map: " + DeadCodeMapper.rule]
+        }
     }
 
-    /// The run of collector `name` in `state`.
-    private static func run(_ name: String, _ state: CollectorState) -> CollectorRunInfo {
+    /// The status of collector `name` in `state`.
+    private static func status(_ name: String, _ state: CollectorState) -> CollectorStatus {
+        run(name, state).status
+    }
+
+    /// The run of collector `name` in `state`: one that ran records this
+    /// build's rules.
+    static func run(_ name: String, _ state: CollectorState) -> CollectorRunInfo {
         CollectorRunInfo(
             name: name,
             state: state,
@@ -246,7 +257,7 @@ enum IndexStoreSamples {
             version: state == .ran ? "test" : nil,
             identity: nil,
             identityLabel: nil,
-            options: [],
+            options: state == .ran ? options(name) : [],
             durationMilliseconds: 0
         )
     }

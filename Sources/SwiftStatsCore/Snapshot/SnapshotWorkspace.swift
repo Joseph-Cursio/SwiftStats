@@ -94,9 +94,9 @@ public struct SnapshotWorkspace {
     /// file don't let it go on (`MutationResume`); the resume of a
     /// `--since` run chooses its base again. Neither is checked when the
     /// collector's tools aren't found, which skips it. A scan asking for
-    /// coverage or SwiftMutator is refused, before the run, as its save
-    /// would refuse held results it can't keep, and a SwiftMutator run
-    /// that ran is kept until its snapshot is stored
+    /// coverage, the T1 group or SwiftMutator is refused, before the run,
+    /// as its save would refuse held results it can't keep, and a
+    /// SwiftMutator run that ran is kept until its snapshot is stored
     /// (`SnapshotWorkspace+Held`). A T1 build that ran and failed records
     /// its task log in `failedBuild`, even when the scan then throws.
     public func scanWorkingTree(
@@ -108,7 +108,8 @@ public struct SnapshotWorkspace {
         let git = GitReader.read(packageRoot: root, ignoring: storeInPackage)
         let base = try mutationBase(tiers.mutation, git: git)
         let saving = try heldResultsChecks(git: git, tiers: tiers, drop: drop)
-        let snapshot = try scanner.saving(saving).recording(failedBuild: failedBuild).scan(
+        let scanning = scanner.saving(saving.mutation, index: saving.index).recording(failedBuild: failedBuild)
+        let snapshot = try scanning.scan(
             packageAt: root,
             configurationFile: configurationFile ?? StoreLocation.localConfiguration(packageRoot: root),
             git: git,

@@ -41,9 +41,9 @@ public struct Rollup: Codable, Hashable, Sendable {
     /// Stripped lines of every file.
     public let fileLength: Distribution
     /// Findings by tool, then rule; only tools that ran have an entry (PRD §7.16).
-    public let findings: [String: [String: Int]]
+    public internal(set) var findings: [String: [String: Int]]
     /// Findings by tool, then kind (`census`, `defect`); only tools that ran have an entry.
-    public let findingKinds: [String: [String: Int]]
+    public internal(set) var findingKinds: [String: [String: Int]]
     /// Declarations by access level, documentation and `final` (PRD §7.5).
     public let api: APISurface
     /// Tests by framework and kind, and the test-to-code line counts (PRD
@@ -99,6 +99,15 @@ public struct Rollup: Codable, Hashable, Sendable {
     func with(deadLines: Int?) -> Self {
         var rollup = self
         rollup.tests.lineRatio = tests.lineRatio.with(deadLines: deadLines)
+        return rollup
+    }
+
+    /// The roll-up with `rules` and `kinds` as tool `tool`'s finding
+    /// counts by rule and by kind.
+    func with(findings rules: [String: Int], kinds: [String: Int], of tool: String) -> Self {
+        var rollup = self
+        rollup.findings[tool] = rules
+        rollup.findingKinds[tool] = kinds
         return rollup
     }
 

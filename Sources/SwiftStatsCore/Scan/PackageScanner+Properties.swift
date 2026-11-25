@@ -32,15 +32,25 @@ extension PackageScanner {
         let index: Bool
         /// What a scan that stores its snapshot checks before its
         /// SwiftMutator run starts (`MutationSaving`); nil for another scan.
-        var gate: ((CollectorStatus, [FunctionRecord]) throws -> Void)?
+        var gate: ((CollectorStatus, CollectorStatus, ScanMeasurements) throws -> Void)?
+        /// What a scan that stores its snapshot checks before its T1 build
+        /// starts (`IndexSaving`); nil for another scan.
+        var indexGate: ((CollectorStatus, ScanMeasurements) throws -> Void)?
 
         /// Sets the SwiftMutator run's copy to check out `git`'s commit and
         /// leave out the files at `ignoring`, and, for a scan that stores
-        /// its snapshot as `saving` says, its gate and keeping a run that
-        /// ran until it is stored.
-        mutating func prepareMutation(git: GitState?, ignoring: [String], saving: MutationSaving?) {
+        /// its snapshot as `saving` and `indexSaving` say, the gates before
+        /// SwiftMutator and the T1 build and keeping a run that ran until
+        /// it is stored.
+        mutating func prepareMutation(
+            git: GitState?,
+            ignoring: [String],
+            saving: MutationSaving?,
+            indexSaving: IndexSaving?
+        ) {
             mutation = mutation?.with(git: git, ignoring: ignoring, keepsUntilStored: saving != nil)
             gate = saving?.gate
+            indexGate = indexSaving?.gate
         }
     }
 
@@ -137,7 +147,8 @@ extension PackageScanner {
             coverage: startCoverage(root: root, configuration: configuration, requested: tiers.coverage),
             mutation: tiers.mutation.map { MutationScope(request: $0, base: tiers.base, git: nil, ignoring: []) },
             index: tiers.index,
-            gate: nil
+            gate: nil,
+            indexGate: nil
         )
     }
 
@@ -156,9 +167,10 @@ extension PackageScanner {
 
     /// The runs that go alone, once every background run has ended, on
     /// `targets` of the package at `root` under `configuration`: the T1
-    /// group, skipped unless `pending` asks for it, then, after `pending`'s
-    /// gate has been given its coverage run's status and `measured`'s
-    /// records, the SwiftMutator run `pending` asks for.
+    /// group, skipped unless `pending` asks for it, after `pending`'s T1
+    /// gate has been given its coverage run's status and `measured`, then,
+    /// after `pending`'s gate has been given its coverage run's status,
+    /// the build's and `measured`, the SwiftMutator run `pending` asks for.
     private func aloneRuns(
         root: URL,
         targets: [TargetSummary],
@@ -166,6 +178,9 @@ extension PackageScanner {
         pending: PendingRuns,
         measured: ScanMeasurements
     ) throws -> (IndexGroup, MutationRun) {
+        if pending.index, let gate = pending.indexGate {
+            try gate(pending.coverage.wait().status, measured)
+        }
         let indexGroup = runIndexGroup(
             root: root,
             configuration: configuration,
@@ -174,7 +189,7 @@ extension PackageScanner {
             targets: targets
         )
         if pending.mutation != nil, let gate = pending.gate {
-            try gate(pending.coverage.wait().status, measured.records)
+            try gate(pending.coverage.wait().status, indexGroup.build.result.status, measured)
         }
         let mutation = runMutation(
             root: root,
@@ -192,10 +207,12 @@ extension PackageScanner {
     /// otherwise), then the SwiftMutator collector alone, and attaches the
     /// classes, the suggestions, the coverage, the build's timings, the
     /// mutants and every finding, the compiler's warnings among them, to
-    /// `measured`'s records. When a SwiftMutator run was asked for,
-    /// `pending`'s gate is given the coverage run's status and the records
-    /// before it starts, once every other run has ended, and may stop the
-    /// scan.
+    /// `measured`'s records. When the T1 group was asked for, `pending`'s
+    /// T1 gate is given the coverage run's status and `measured` before
+    /// the build starts; when a SwiftMutator run was asked for, `pending`'s
+    /// gate is given the coverage run's status, the build's and `measured`
+    /// before it starts, once every other run has ended; either may stop
+    /// the scan.
     func externalRuns(
         root: URL,
         targets: [TargetSummary],

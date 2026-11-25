@@ -109,10 +109,10 @@ public struct SnapshotScanner {
         return (reported, binary?.identity == reported ? binary?.label : nil)
     }
 
-    /// The same scanner, its scans storing their snapshots as `added`
-    /// says (`MutationSaving`).
-    func saving(_ added: MutationSaving?) -> Self {
-        Self(scanner: scanner.saving(added), build: build)
+    /// The same scanner, its scans storing their snapshots as `mutation`
+    /// and `index` say (`MutationSaving`, `IndexSaving`).
+    func saving(_ mutation: MutationSaving?, index: IndexSaving?) -> Self {
+        Self(scanner: scanner.saving(mutation, index: index), build: build)
     }
 
     /// The same scanner, its scans recording in `record` the task log of a

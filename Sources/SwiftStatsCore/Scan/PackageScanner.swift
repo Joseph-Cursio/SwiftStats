@@ -27,6 +27,9 @@ public struct PackageScanner {
     /// What a scan that stores its snapshot adds to the SwiftMutator run
     /// it asks for (`MutationSaving`); nil for any other scan.
     private(set) var saving: MutationSaving?
+    /// What a scan that stores its snapshot adds to the T1 group it asks
+    /// for (`IndexSaving`); nil for any other scan.
+    private(set) var indexSaving: IndexSaving?
     /// Where a scan records the task log of a T1 build it ran that failed;
     /// nil when nobody asks.
     private(set) var failedBuild: FailedBuildLog?
@@ -300,11 +303,12 @@ public struct PackageScanner {
         )
     }
 
-    /// The same scanner, its scans storing their snapshots as `added`
-    /// says.
-    func saving(_ added: MutationSaving?) -> Self {
+    /// The same scanner, its scans storing their snapshots as `mutation`
+    /// and `index` say.
+    func saving(_ mutation: MutationSaving?, index: IndexSaving?) -> Self {
         var scanner = self
-        scanner.saving = added
+        scanner.saving = mutation
+        scanner.indexSaving = index
         return scanner
     }
 

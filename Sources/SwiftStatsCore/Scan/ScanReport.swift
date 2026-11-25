@@ -48,19 +48,19 @@ public struct ScanReport: Codable, Hashable, Sendable {
     /// File records, sorted by path.
     public let files: [FileRecord]
     /// Size, shape and complexity per module and for the project.
-    public let rollups: [Rollup]
+    public internal(set) var rollups: [Rollup]
     /// Sitrep-compatible project counts (PRD §7.1).
     public let sitrep: SitrepReport
     /// Each external collector's run, sorted by name (PRD §6.5).
     public let collectors: [CollectorStatus]
     /// Every finding, sorted by first location, then tool and rule (PRD §7.16).
-    public let findings: [Finding]
+    public internal(set) var findings: [Finding]
     /// The test inventory, sorted by file, then key (PRD §7.8).
     public let tests: [TestRecord]
     /// Direct dependencies, pins and the resolved graph (PRD §7.14).
     public let dependencies: DependencyReport
     /// Non-fatal problems, sorted.
-    public let warnings: [ScanWarning]
+    public internal(set) var warnings: [ScanWarning]
     /// What the side-effect run produced beyond each record's facts; absent
     /// when SwiftEffectInference didn't run (PRD §7.10).
     public let effects: EffectSummary?
@@ -166,6 +166,36 @@ public struct ScanReport: Codable, Hashable, Sendable {
         )
         report.index = index
         report.history = history
+        return report
+    }
+
+    /// The report with `added` as tool `tool`'s findings, replacing any it
+    /// held, and every roll-up's counts of them rebuilt as a scan counts
+    /// the findings of a tool that ran (M7, design §9.4): how a scan
+    /// carrying T1 results keeps the build's warnings, `swiftc` findings
+    /// already attached to the same records and places.
+    func with(findings added: [Finding], of tool: String) -> Self {
+        var report = self
+        report.findings = (findings.filter { $0.tool != tool } + added).sorted(by: PackageScanner.findingOrder)
+        let tally = FindingTally(findings: added, tools: [tool])
+        report.rollups = rollups.map { rollup in
+            let modules = RollupBuilder.modules(of: rollup, targets: targets)
+            let paths = Set(files.filter { modules.contains($0.module) }.map(\.path))
+            return rollup.with(
+                findings: tally.byRule(in: paths)[tool] ?? [:],
+                kinds: tally.byKind(in: paths)[tool] ?? [:],
+                of: tool
+            )
+        }
+        return report
+    }
+
+    /// The report with `added` among its warnings, once each, sorted as a
+    /// scan sorts them.
+    func with(warnings added: [ScanWarning]) -> Self {
+        var report = self
+        report.warnings = (warnings + added.filter { warnings.contains($0) == false })
+            .sorted(by: PackageScanner.warningOrder)
         return report
     }
 

@@ -300,10 +300,10 @@ public struct SnapshotStore: Sendable {
         try queue.read { database in try Self.holdsIndex(id: id, in: database) }
     }
 
-    /// When the T1 results snapshot `id` holds were collected; nil when it
-    /// holds none (`SnapshotStore+Index`).
-    func indexCollectedAt(id: Int64) throws -> String? {
-        try queue.read { database in try Self.indexCollectedAt(id: id, in: database) }
+    /// The T1 results snapshot `id` holds, for a rescan that may carry
+    /// them (`SnapshotStore+Index`); nil when it holds none.
+    func heldIndex(id: Int64) throws -> HeldIndex? {
+        try queue.read { database in try Self.heldIndex(id: id, in: database) }
     }
 
     /// The mutation results snapshot `id` holds, with its swiftmutator run,

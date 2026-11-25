@@ -57,7 +57,7 @@ struct HeldResultsKeptTests {
     }
 
     @Test("""
-        a save refused after a run that ran, for held T1 results this build can't carry yet, advises adding \
+        a save refused after a run that ran, for held T1 results that don't describe the files, advises adding \
         --mutation --resume to either scan the refusal names, and --drop-index --mutation --resume stores the \
         same results without running SwiftMutator
         """)
@@ -72,6 +72,7 @@ struct HeldResultsKeptTests {
         let refused = try harness.storeError { _ = try harness.workspace.storing(scanned, drop: []) }
 
         #expect(plain.description.contains("holds index results from"))
+        #expect(plain.description.contains("is scanned now, but wasn't when the index was built"))
         #expect(refused == .mutationResultsKept(refusal: plain.description, advised: true))
         #expect(refused?.description.hasSuffix(
             "; this scan's SwiftMutator results are kept: add --mutation --resume to either scan to store them "

@@ -2,32 +2,30 @@
 //  SnapshotWorkspace+Save.swift
 //  SwiftStatsCore
 //
-//  The one way a workspace stores a scan (PRD §6.2; M5, M6, design §6.4),
-//  shared by `scan`, `diff`'s scans and `backfill`. A scan replaces the
-//  snapshot of the same package, commit and dirtiness, but coverage is
-//  collected only by `scan --coverage` and mutation results only by
-//  `scan --mutation`, so a scan whose collector for either didn't run, or
-//  whose run failed, carries what the replaced snapshot holds
-//  (`CoverageCarry`, `MutationCarry`) or, when it can't, is refused before
-//  anything is written, saying why and, when it was asked for, why the
-//  scan's own run didn't collect it, unless `--drop-coverage` or
-//  `--drop-mutation` lets those results go, as they do results too damaged
-//  to read. Both held results are decided before any write, coverage
-//  first, then mutation, and the first refusal stops the save; what
-//  carries is written once. Held T1 results (M7) are decided last: until
-//  their carry is built, a scan whose build didn't run is refused when
-//  the replaced snapshot holds them, unless `--drop-index` lets them go. Only a run that ran replaces held results
-//  without asking. A scan asking for coverage or SwiftMutator meets the
-//  same refusals before its slow runs, as far as they can be known then
-//  (`SnapshotWorkspace+Held`).
+//  The one way a workspace stores a scan (PRD §6.2; M5, M6, M7, design
+//  §6.4, §9.4), shared by `scan`, `diff`'s scans and `backfill`. A scan
+//  replaces the snapshot of the same package, commit and dirtiness, but
+//  coverage is collected only by `scan --coverage`, mutation results only
+//  by `scan --mutation` and T1 results only by `scan --index`, so a scan
+//  whose collector for any of them didn't run, or whose run failed (for
+//  T1 results, whose build didn't run), carries what the replaced snapshot
+//  holds (`CoverageCarry`, `MutationCarry`, `IndexCarry`) or, when it
+//  can't, is refused before anything is written, saying why and, when it
+//  was asked for, why the scan's own run didn't collect it, unless
+//  `--drop-coverage`, `--drop-mutation` or `--drop-index` lets those
+//  results go, as they do results too damaged to read. All three are
+//  decided before any write, coverage first, then mutation, then T1
+//  results, and the first refusal stops the save; what carries is written
+//  once. Only a run that ran replaces held results without asking; for T1
+//  results, a build that ran, even when the index or outskirts then
+//  failed. A scan asking for coverage, the T1 group or SwiftMutator meets
+//  the same refusals before its slow runs, as far as they can be known
+//  then (`SnapshotWorkspace+Held`).
 //
 
 extension SnapshotWorkspace {
     /// How many characters of a commit a refusal shows.
     private static let shortCommitLength = 10
-    /// Why held T1 results aren't carried yet (design §13's placeholder
-    /// from step 7a to step 8).
-    static let indexNotCarried = "this SwiftStats build can't carry index results yet"
 
     /// How a refusal names the snapshot `info` describes: its package and
     /// commit, and whether it has uncommitted changes.
@@ -56,13 +54,15 @@ extension SnapshotWorkspace {
     /// onto it, or, when it can't be, `StoreError.coverageNotKept` is
     /// thrown and nothing is written; mutation results held where
     /// `snapshot`'s SwiftMutator collector didn't run are carried the same
-    /// way, or refused with `StoreError.mutationNotKept`, coverage decided
-    /// first. `drop` holding `.coverage` or `.mutation` replaces the
+    /// way, or refused with `StoreError.mutationNotKept`, and T1 results
+    /// held where `snapshot`'s build didn't run likewise, or refused with
+    /// `StoreError.indexNotKept`, coverage decided first, then mutation.
+    /// `drop` holding `.coverage`, `.mutation` or `.index` replaces the
     /// snapshot without those results instead, but never drops results
     /// that carry. Results too damaged to read throw
-    /// `StoreError.damagedCoverage` or `.damagedMutation`, naming the way
-    /// past them, unless `drop` lets them go; any other failure to read
-    /// them throws the store's error.
+    /// `StoreError.damagedCoverage`, `.damagedMutation` or
+    /// `.damagedIndex`, naming the way past them, unless `drop` lets them
+    /// go; any other failure to read them throws the store's error.
     @discardableResult
     func save(_ snapshot: ScannedSnapshot, drop: DropOptions) throws -> (snapshot: ScannedSnapshot, id: Int64) {
         let git = snapshot.info.git
@@ -74,7 +74,7 @@ extension SnapshotWorkspace {
         )
         let coverage = try carriedCoverage(from: replaced, onto: snapshot, drop: drop.contains(.coverage))
         let mutation = try carriedMutation(from: replaced, onto: snapshot, drop: drop.contains(.mutation))
-        try refuseHeldIndex(in: replaced, onto: snapshot, drop: drop.contains(.index))
+        let index = try carriedIndex(from: replaced, onto: snapshot, drop: drop.contains(.index))
         var stored = snapshot
         if let coverage {
             stored = CoverageCarry.carried(coverage, onto: stored)
@@ -82,7 +82,15 @@ extension SnapshotWorkspace {
         if let mutation {
             stored = MutationCarry.carried(mutation, onto: stored)
         }
-        return (stored, try store.save(stored, coverageCollectedAt: coverage?.coverage.collectedAt))
+        if let index {
+            stored = IndexCarry.carried(index, onto: stored)
+        }
+        let id = try store.save(
+            stored,
+            coverageCollectedAt: coverage?.coverage.collectedAt,
+            indexCollectedAt: index?.collectedAt
+        )
+        return (stored, id)
     }
 
     /// The coverage snapshot `replaced` holds that `snapshot` carries: nil
@@ -126,21 +134,24 @@ extension SnapshotWorkspace {
         }
     }
 
-    /// Refuses a save that would replace the T1 results snapshot
-    /// `replaced` holds with `snapshot`, whose build didn't run, unless
-    /// `drop` lets them go. Until the same-tree carry is built (design §13
-    /// step 8) no such results are carried, so the refusal says so.
-    private func refuseHeldIndex(in replaced: Int64?, onto snapshot: ScannedSnapshot, drop: Bool) throws {
-        guard let replaced, drop == false, Self.ran(BuildAdapter.name, in: snapshot) == false,
-              let collectedAt = try store.indexCollectedAt(id: replaced)
-        else {
-            return
+    /// The T1 results snapshot `replaced` holds that `snapshot` carries:
+    /// nil when `snapshot`'s build ran, there is no such snapshot or
+    /// results, or `drop` lets results go that don't carry or can't be
+    /// read. Throws the refusal when they don't carry, and
+    /// `StoreError.damagedIndex` when they can't be read, unless `drop`.
+    private func carriedIndex(
+        from replaced: Int64?,
+        onto snapshot: ScannedSnapshot,
+        drop: Bool
+    ) throws -> HeldIndex? {
+        guard let replaced, Self.ran(BuildAdapter.name, in: snapshot) == false else {
+            return nil
         }
-        throw StoreError.indexNotKept(
-            snapshot: Self.name(of: snapshot.info),
-            collectedAt: collectedAt,
-            reason: Self.indexNotCarried
-        )
+        return try keptIndex(in: replaced, named: Self.name(of: snapshot.info), drop: drop) { held in
+            IndexCarry.refusal(of: held, onto: snapshot).map { reason in
+                [reason, IndexCarry.ownRun(of: snapshot)].compactMap(\.self).joined(separator: "; ")
+            }
+        }
     }
 
     /// The coverage snapshot `id`, named `name`, holds when `refusal`
@@ -207,6 +218,40 @@ extension SnapshotWorkspace {
         }
         guard drop else {
             throw StoreError.mutationNotKept(snapshot: name, collectedAt: held.results.collectedAt, reason: reason)
+        }
+        return nil
+    }
+
+    /// The T1 results snapshot `id`, named `name`, holds when `refusal`
+    /// gives no reason they can't be kept: nil when it holds none, or
+    /// `drop` lets results go that can't be kept or read. Throws
+    /// `StoreError.indexNotKept` with `refusal`'s reason, and
+    /// `StoreError.damagedIndex` when they can't be read, unless `drop`.
+    func keptIndex(
+        in id: Int64,
+        named name: String,
+        drop: Bool,
+        refusal: (HeldIndex) -> String?
+    ) throws -> HeldIndex? {
+        guard try store.holdsIndex(id: id) else {
+            return nil
+        }
+        let read: HeldIndex?
+        do {
+            read = try store.heldIndex(id: id)
+        } catch StoreError.corruptReport(let reason) where !drop {
+            throw StoreError.damagedIndex(snapshot: name, reason: reason)
+        } catch {
+            guard drop else {
+                throw error
+            }
+            return nil
+        }
+        guard let held = read, let reason = refusal(held) else {
+            return read
+        }
+        guard drop else {
+            throw StoreError.indexNotKept(snapshot: name, collectedAt: held.collectedAt, reason: reason)
         }
         return nil
     }

@@ -38,8 +38,10 @@ struct ScanCommand: ParsableCommand {
         without them instead. --index also builds the package once more, in .swiftstats/index-build, with the \
         coverage collector's swift, for type-check times, compiler warnings, USRs and references from the index \
         store, and dead code from outskirts (outskirts on PATH, or collectors.periphery.path); a scan without it \
-        lists those collectors as not requested, and --drop-index replaces a snapshot without the results this \
-        scan can't keep. A coverage, mutation or index run asked for that fails or is skipped doesn't fail the \
+        lists those collectors as not requested. A scan without --index, or whose index build fails, keeps the \
+        index results of the snapshot it replaces when the tree, the records, the types, the files and the rules \
+        are the same, and otherwise stops without storing anything; --drop-index replaces the snapshot without \
+        them instead. A coverage, mutation or index run asked for that fails or is skipped doesn't fail the \
         scan, which says so on standard error.
         """
     )

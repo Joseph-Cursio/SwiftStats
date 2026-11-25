@@ -6,9 +6,9 @@ import Testing
 /// dead-code results read back from their rows exactly as its JSON holds
 /// them, dated when the T1 build ran; they go with the snapshot when a
 /// rescan replaces it; a store written before v6 migrates with no T1 rows;
-/// and, until the same-tree carry is built (design §13's placeholder from
-/// step 7a to step 8), a scan whose build didn't run is refused rather
-/// than replace held T1 results. Serialized: the fixture scan runs on a
+/// and a scan whose build didn't run is refused rather than replace held
+/// T1 results that don't describe its files (`IndexCarryTests` covers the
+/// carry). Serialized: the fixture scan runs on a
 /// thread of its own, as the index collector's tests do.
 @Suite("Store v6 rows", .serialized)
 struct StoreIndexTests {
@@ -146,9 +146,9 @@ struct StoreIndexTests {
 
     @Test("""
         a scan whose build didn't run is refused, before anything is written, rather than replace held T1 \
-        results this build can't carry yet; --drop-index replaces them, and a scan whose build ran always does
+        results whose files hold other bytes; --drop-index replaces them, and a scan whose build ran always does
         """)
-    func placeholderRefusal() throws {
+    func otherBytesRefusal() throws {
         let made = try TemporaryStore("StoreIndex")
         defer { made.remove() }
         let package = try TemporaryPackage(IndexStoreSamples.files)
@@ -167,7 +167,7 @@ struct StoreIndexTests {
         let refusal = StoreError.indexNotKept(
             snapshot: "\(full.info.package) at c1",
             collectedAt: full.info.date,
-            reason: SnapshotWorkspace.indexNotCarried
+            reason: "`Sources/Lib/Lib.swift` holds other bytes now"
         )
 
         #expect(throws: refusal) {
@@ -175,8 +175,8 @@ struct StoreIndexTests {
         }
         #expect(refusal.description == """
             the snapshot of \(full.info.package) at c1 holds index results from \(full.info.date) that this scan \
-            can't keep (this SwiftStats build can't carry index results yet); run scan --index to collect them \
-            again, or --drop-index to replace them
+            can't keep (`Sources/Lib/Lib.swift` holds other bytes now); run scan --index to collect them again, \
+            or --drop-index to replace them
             """)
         #expect(try workspace.store.load(id: held).index != nil)
 
