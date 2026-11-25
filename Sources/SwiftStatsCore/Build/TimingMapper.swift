@@ -13,9 +13,14 @@
 //  (`PositionPlacement`); a position a record holds inside a local type
 //  declared in it, outside the type's members (a stored property's
 //  implicit accessors), goes to that type. Paths are the compiler's
-//  absolute real paths,
-//  made relative to the root's real path and compared in NFC. Per record
-//  and attachment, the function-body entries are summed and the largest
+//  absolute paths (a linked target directory's files under their real
+//  path, a linked file under its link), resolved and looked up among the
+//  scanned files' real paths, then the describe's other sources'
+//  (`SourcePaths`), so a file reached through a symbolic link or spelled
+//  in another case is the scanned file, or the source as the manifest
+//  spells it; any other path is made relative to the root's real path,
+//  compared in NFC. Per
+//  record and attachment, the function-body entries are summed and the largest
 //  expression entry kept, in hundredths, each rounded to whole milliseconds
 //  once, half up; nothing is deduplicated, since the emit-module job's
 //  second check is time the build spent too. A function's entry includes
@@ -72,6 +77,16 @@ struct TimingMapper {
         let counted: [Placement: Int]
     }
 
+    /// Where a path the compiler printed lies.
+    private enum Location: Hashable {
+        /// Under the build directory.
+        case build
+        /// At this path in the package.
+        case inRoot(String)
+        /// Outside the package root.
+        case outsideRoot
+    }
+
     /// The classes of entries left unplaced.
     private enum LeftOut {
         /// Under the build directory.
@@ -112,8 +127,8 @@ struct TimingMapper {
 
     /// Places positions on records of every role.
     private let placement: PositionPlacement
-    /// The package root's real path.
-    private let root: String
+    /// The scanned files, then any other sources, by real path.
+    private let paths: SourcePaths
     /// The build directory's real path.
     private let build: String
     /// The scanned files whose bytes changed during the scan.
@@ -128,8 +143,20 @@ struct TimingMapper {
     /// scanned files `changedFiles` (relative to the root) changed during
     /// the scan.
     init(measured: ScanMeasurements, root: String, build: String, changedFiles: Set<String>) {
+        self.init(
+            measured: measured,
+            paths: SourcePaths(root: root, files: measured.files),
+            build: build,
+            changedFiles: changedFiles
+        )
+    }
+
+    /// A mapper onto `measured`, whose scanned files are `paths`, built in
+    /// the directory whose real path is `build`; the scanned files
+    /// `changedFiles` (relative to the root) changed during the scan.
+    init(measured: ScanMeasurements, paths: SourcePaths, build: String, changedFiles: Set<String>) {
         placement = PositionPlacement(measured: measured, roles: .every)
-        self.root = root
+        self.paths = paths
         self.build = build
         changed = Set(changedFiles.map(NFCPath.init))
         spellings = Dictionary(measured.files.map { (NFCPath($0.path), $0.path) }) { first, _ in first }
@@ -236,8 +263,23 @@ struct TimingMapper {
         .sorted { ($0.attachedTo.rawValue, $0.owner) < ($1.attachedTo.rawValue, $1.owner) }
     }
 
+    /// Where `path`, as the compiler printed it, lies: under the build
+    /// directory, else at a path in the package (`SourcePaths`), else
+    /// outside the root.
+    private func locate(_ path: String) -> Location {
+        if path.hasPrefix(build + "/") {
+            return .build
+        }
+        return paths.packagePath(of: path, in: nil).map(Location.inRoot) ?? .outsideRoot
+    }
+
     /// Where `entry` goes.
     func place(_ entry: TimingEntry) -> Placement {
+        place(entry, locating: locate)
+    }
+
+    /// Where `entry` goes, its path's location given by `locating`.
+    private func place(_ entry: TimingEntry, locating: (String) -> Location) -> Placement {
         guard let place = entry.place else {
             return .synthesized
         }
@@ -245,13 +287,18 @@ struct TimingMapper {
         if name.hasPrefix(Self.macroBufferPrefix) {
             return .macro
         }
-        if place.path.hasPrefix(build + "/") {
+        let inRoot: String
+        switch locating(place.path) {
+        case .build:
             return .build
-        }
-        guard place.path.hasPrefix(root + "/") else {
+
+        case .outsideRoot:
             return .outsideRoot
+
+        case .inRoot(let path):
+            inRoot = path
         }
-        let relative = NFCPath(String(place.path.dropFirst(root.count + 1)))
+        let relative = NFCPath(inRoot)
         if changed.contains(relative) {
             return .fileChanged(relative.spelling)
         }
@@ -276,8 +323,10 @@ struct TimingMapper {
     func map(_ entries: [TimingEntry]) -> Mapped {
         var figures: [Placement: Figures] = [:]
         var left: [LeftOut: (entries: Int, hundredths: Int)] = [:]
+        let printed = Set(entries.compactMap { $0.place?.path })
+        let locations = Dictionary(uniqueKeysWithValues: printed.map { ($0, locate($0)) })
         for entry in entries {
-            let placed = place(entry)
+            let placed = place(entry) { locations[$0] ?? locate($0) }
             guard let leftOut = Self.leftOut(placed) else {
                 var held = figures[placed] ?? Figures()
                 switch entry.kind {

@@ -219,7 +219,17 @@ Inputs `build` trusts, besides those:
   - realpath(3) of the package and its build directory, which the
     compiler's absolute real paths start with (`--root-spelling` and
     `--build-spelling` name other spellings, such as a recording's `@ROOT@`
-    and `@BUILD@`);
+    and `@BUILD@`), and of each scanned file (the root joined with its
+    `files` path): a compiler path that resolves to a scanned file's real
+    path is that file, so a target directory or file reached through a
+    link, or spelled in another case than the disk, maps to the scan's
+    spelling; else one that resolves to the real path of another source
+    of the describe (a file the scan excludes) is that source, as the
+    manifest spells it; any other path under the root is made relative as
+    printed, then resolved;
+  - its own `swift package --scratch-path <tmp> describe --type json` of
+    the package by the package toolchain's swift (as `usr`), or
+    `--describe`: each target's `path` and `sources`, nothing else;
   - with `--store`, the store's tables as design section 9.1 names them.
 Not the scan JSON's `build` block, findings or roll-ups, which it checks.
 
@@ -234,9 +244,14 @@ compares the result with the scan JSON's `index` block (design 9.2) and the
       class, first that applies: `system`; `otherPackage` (no main file, or
       one outside the root, under the build directory, under a first path
       component `.build` or `.swiftstats`, or in a local path dependency's
-      folder: step 4a's adopted deviation); `otherModule` (its module is no
-      target's C99 name in this script's own describe); `stale` (main file
-      missing, or not a source of the target its module names); `duplicate`
+      folder: step 4a's adopted deviation; a main file outside the root
+      that is a source's real path isn't outside it); `otherModule` (its
+      module is no target's C99 name in this script's own describe); `stale`
+      (main file missing, or not a source of the target its module names,
+      compared as real paths, so a source reached through a link or spelled
+      in another case than the disk matches; a unit's main file and its
+      records' files then read as the describe spells the source);
+      `duplicate`
       (an older unit of the same module, main file and triple: full-precision
       date, then the larger unit name, kept); `variant` (every unit of a
       module and main file read with more than one triple); else `kept`. The
@@ -580,8 +595,12 @@ kept and stored (design sections 5.1 to 5.3, 9.1, 9.2 and 11):
            read as hint `name` and hintText `text` (a stored hintText
            repeating the whole hint is accepted as the same), ids, modules,
            attributes and modifiers as lists, modules translated from C99
-           to target names through the describe, file the package-relative
-           NFC real path (null outside the root; any path under the build
+           to target names through the describe, file the scan's spelling
+           of the scanned file whose real path the location resolves to,
+           else the describe's spelling of its other source whose real path
+           it resolves to (a source the scan didn't parse; in the target of
+           the first module either way), else the package-relative NFC
+           real path (null outside the root; any path under the build
            directory compared as one value); and when the declarations carry ordinals, ordinal k
            (from 0 or 1, contiguous) is the run's k-th entry in outskirts'
            order. With --store the same holds for the `deadScan` and
@@ -624,6 +643,9 @@ Inputs `dead` (run part) trusts:
     `usr`), for which library-product targets have kept or variant units;
   - realpath(3), git (`status`, `rev-parse`, `describe`) and the file
     system;
+  - the scan JSON's `files` (`path`, `module`), whose real paths come
+    before the describe's sources' when an entry's location is spelled
+    (and whose `module` classes a scanned file `test`);
   - the scan JSON's `collectors` entry for `periphery` only as the thing
     checked, and its `deadCode` block and the store's rows likewise.
 Nothing from SwiftStats' code.
@@ -635,9 +657,11 @@ else 1), and design 7's ratio fields, and compares them with the scan
 JSON's `deadCode` block (design 9.2), its roll-ups and, with --store, the
 `deadDeclaration` and `deadRecord` rows (design 9.1):
   classes  every entry of both runs, first that applies: `build` (under
-           <build>); `outsideRoot`; `test` (its file under a test target's
-           directory in the describe, or every `modules` entry a test
-           target); `unscanned` (in the root, not among the scan's files);
+           <build>); `outsideRoot`; `test` (its file is among the scan's
+           files and the scan's `module` for it is a test target; a file
+           not among them is `test` when it lies under a test target's
+           directory as the describe spells it or every `modules` entry is
+           a test target); `unscanned` (in the root, not among the scan's files);
            `fileChanged` (a scanned file whose bytes no longer have the
            scan's hash: the check runs right after the scan); `local`;
            else `production`. `local` (the default `--local-rule plan`,
@@ -999,6 +1023,8 @@ Usage:
                                          [--json <path>] [--compare <path>]
                                          [--all]
     python3 -I -B Scripts/index-check.py build <package> <scan.json>
+                                         [--swift <swift>]
+                                         [--describe <describe.json>]
                                          [--store <store>] [--snapshot <id>]
                                          [--stderr <file>] [--log <file>]
                                          [--combined <file>]
@@ -1143,6 +1169,63 @@ def real_path(path, what):
 
 def is_under(path, root):
     return path == root or path.startswith(root + "/")
+
+
+def resolved(path):
+    """A path as every source is compared: an absolute path's NFC real path
+    (`real_path`), an unresolvable or relative one only in NFC."""
+    if not os.path.isabs(path or ""):
+        return unicodedata.normalize("NFC", path or "")
+    try:
+        return real_path(path, "a path")
+    except ReadError:
+        return unicodedata.normalize("NFC", path)
+
+
+class SourceSpellings:
+    """The package's sources by real path: a tool gives a source's real path
+    (links resolved, the disk's case), the scan and the describe the
+    package's spelling (a linked target directory or file, a manifest path
+    in another case). One real path reached under several spellings maps to
+    the spelling in the target asked for, else the first in code point
+    order. A source added as a fallback (the describe's sources behind the
+    scan's files) counts only at a real path no other source resolves to,
+    so a source the scan didn't parse keeps its manifest spelling."""
+
+    def __init__(self, root):
+        self.root = root
+        self.by_real = defaultdict(set)
+        self.fallback = defaultdict(set)
+
+    def add(self, spelling, target, fallback=False):
+        tier = self.fallback if fallback else self.by_real
+        tier[resolved(os.path.join(self.root, spelling))].add((spelling, target))
+
+    def at(self, path):
+        real = resolved(path)
+        return self.by_real.get(real) or self.fallback.get(real) or ()
+
+    def source(self, path, target=None):
+        sources = sorted(self.at(path))
+        chosen = next((s for s, t in sources if t == target), None)
+        return chosen if chosen is not None else (sources[0][0] if sources else None)
+
+    def is_source(self, path, target):
+        return any(t == target for _, t in self.at(path))
+
+
+def describe_sources(describe, root, restore=lambda path: path):
+    """(spelling, target name) of each source of each target of a describe
+    JSON: the target's `path` (`restore`d) joined with the source,
+    normalised, NFC, relative to the root (sources outside it left out)."""
+    sources = []
+    for target in describe.get("targets", []):
+        base = os.path.normpath(os.path.join(root, restore(target.get("path", ""))))
+        for source in target.get("sources", []):
+            full = unicodedata.normalize("NFC", os.path.normpath(os.path.join(base, source)))
+            if is_under(full, root) and full != root:
+                sources.append((full[len(root) + 1:], target["name"]))
+    return sources
 
 
 def sha256_of(path):
@@ -2523,8 +2606,8 @@ def half_up(hundredths):
 
 
 class BuildPackage:
-    """The scan JSON's records, types, files and targets, and the package
-    sources on disk."""
+    """The scan JSON's records, types, files and targets, the describe's
+    sources, and the package sources on disk."""
 
     def __init__(self, clone, scan_path, root_spelling, build_spelling):
         self.root = real_path(os.path.abspath(clone), "the package")
@@ -2542,6 +2625,11 @@ class BuildPackage:
         for record in self.scan.get("types", []):
             self.types_by_file[record["file"]].append(record)
         self.files = {f["path"]: f for f in self.scan.get("files", [])}
+        # The scanned files by real path; `add_described` puts the
+        # describe's other sources behind them.
+        self.source_spellings = SourceSpellings(self.root)
+        for path, entry in self.files.items():
+            self.source_spellings.add(path, entry.get("module"))
         self.targets = self.scan.get("targets", [])
         self.target_of_file = {}
         for target in self.targets:
@@ -2568,13 +2656,26 @@ class BuildPackage:
                 changed.add(path)
         return changed
 
+    def add_described(self, describe):
+        """The describe's sources, behind the scanned files."""
+        for spelling, target in describe_sources(describe, self.root):
+            self.source_spellings.add(spelling, target, fallback=True)
+
     def relative(self, path):
-        """(class, package-relative NFC path) of a compiler path."""
-        for spelling, kind in ((self.build_spelling, "build"), (self.root_spelling, "root")):
-            if path.startswith(spelling + "/"):
-                if kind == "build":
-                    return "build", None
-                return "root", unicodedata.normalize("NFC", path[len(spelling) + 1:])
+        """(class, package-relative NFC path) of a compiler path: under the
+        build directory; else a scanned file whose real path the path
+        resolves to (its spelling); else another describe source whose real
+        path it resolves to (the manifest's spelling); else under the root,
+        as printed, then resolved; else outside the root."""
+        if path.startswith(self.build_spelling + "/"):
+            return "build", None
+        source = self.source_spellings.source(path)
+        if source is not None:
+            return "root", source
+        for candidate in (unicodedata.normalize("NFC", path), resolved(path)):
+            for root in (self.root_spelling, self.root):
+                if candidate.startswith(root + "/"):
+                    return "root", candidate[len(root) + 1:]
         return "outsideRoot", None
 
     def statement_lines(self, path):
@@ -3177,6 +3278,17 @@ def build_mode(arguments):
         package = BuildPackage(arguments.package, arguments.scan, arguments.root_spelling, arguments.build_spelling)
     except (OSError, ValueError, ReadError) as error:
         fail(str(error))
+    if arguments.describe:
+        with open(arguments.describe, encoding="utf-8") as handle:
+            describe = json.load(handle)
+    else:
+        resource = toolchain_of(package.root, arguments.swift)
+        describe = run_describe(package.root, os.path.join(os.path.dirname(os.path.dirname(resource)), "bin", "swift"))
+    described_path = describe.get("path")
+    if not isinstance(described_path, str) or not os.path.isabs(described_path) \
+            or real_path(described_path, "describe's path") != package.root:
+        fail(f"the describe JSON describes {described_path!r}, not {package.root}")
+    package.add_described(describe)
     if arguments.combined:
         stderr, log = None, None
     else:
@@ -3634,6 +3746,11 @@ class UsrPackage:
             token, _, path = item.partition("=")
             pairs.append((token, path))
         self.spellings = Spellings([(t, p) for t, p in pairs if t])
+        # The describe's sources by real path, which `Described` fills.
+        self.source_spellings = SourceSpellings(self.root)
+        # outskirts' locations' spellings (`dead`): the scanned files, then
+        # the describe's other sources, which `dead_mode` fills.
+        self.entry_spellings = SourceSpellings(self.root)
         self.changed = set()
         for path, entry in self.files.items():
             full = os.path.join(self.root, path)
@@ -3641,10 +3758,20 @@ class UsrPackage:
                 self.changed.add(path)
         self.sources = {}
 
-    def relative(self, path):
-        """Package-relative NFC path of an absolute real path under the root, else None."""
-        if path and is_under(path, self.root) and path != self.root:
-            return unicodedata.normalize("NFC", path[len(self.root) + 1:])
+    def relative(self, path, target=None, spellings=None):
+        """Package-relative NFC path of an absolute path: the spelling in
+        `spellings` (default: the describe's sources) of the source whose
+        real path it resolves to (in `target` when that target has one),
+        else relative to the root as given, then resolved; None outside the
+        root."""
+        if not path:
+            return None
+        source = (spellings or self.source_spellings).source(path, target)
+        if source is not None:
+            return source
+        for candidate in (unicodedata.normalize("NFC", path), resolved(path)):
+            if is_under(candidate, self.root) and candidate != self.root:
+                return candidate[len(self.root) + 1:]
         return None
 
     def source_bytes(self, path):
@@ -3701,15 +3828,13 @@ class Described:
         self.name = describe.get("name")
         self.targets = {}
         self.by_module = {}
+        spelled = defaultdict(set)
+        for spelling, name in describe_sources(describe, package.root, package.spellings.restore):
+            spelled[name].add(spelling)
+            package.source_spellings.add(spelling, name)
         for target in describe.get("targets", []):
             module = target.get("c99name") or c99_name(target["name"])
-            base = os.path.normpath(os.path.join(package.root, package.spellings.restore(target.get("path", ""))))
-            sources = set()
-            for source in target.get("sources", []):
-                full = os.path.normpath(os.path.join(base, source))
-                relative = package.relative(unicodedata.normalize("NFC", full))
-                if relative is not None:
-                    sources.add(relative)
+            sources = spelled[target["name"]]
             entry = {"name": target["name"], "module": module, "type": target.get("type"), "sources": sources}
             self.targets[target["name"]] = entry
             if module in self.by_module:
@@ -3835,7 +3960,8 @@ def classify_units(units, package, described):
     pending = []
     for unit in units:
         main = unit["mainFile"]
-        relative = package.relative(main) if os.path.isabs(main or "x") else None
+        target = described.by_module.get(unit["module"])
+        relative = package.relative(main, target and target["name"]) if os.path.isabs(main or "x") else None
         first = relative.split("/")[0] if relative else None
         if unit["isSystem"]:
             classes[unit["name"]] = "system"
@@ -3844,7 +3970,7 @@ def classify_units(units, package, described):
             classes[unit["name"]] = "otherPackage"
         elif unit["module"] not in described.by_module:
             classes[unit["name"]] = "otherModule"
-        elif not os.path.exists(main) or relative not in described.by_module[unit["module"]]["sources"]:
+        elif not os.path.exists(main) or not package.source_spellings.is_source(main, target["name"]):
             classes[unit["name"]] = "stale"
         else:
             pending.append(unit)
@@ -3928,19 +4054,21 @@ class UsrJoin:
         done = set()
         cache = {}
         for unit in self.read_units:
+            target = self.described.by_module.get(unit["module"])
             for record, path in unit["records"]:
                 if record not in cache:
                     cache[record] = self.reader.occurrences(record)
                     self.records_read.add(record)
                     self.occurrence_count += len(cache[record])
-                relative = self.package.relative(path)
+                relative = self.package.relative(path, target and target["name"])
                 if relative is None or (record, relative) in done:
                     continue
                 done.add((record, relative))
                 self.occurrences_by_file[relative].extend(cache[record])
         self.kept_files_by_module = defaultdict(set)
         for unit in self.read_units:
-            relative = self.package.relative(unit["mainFile"])
+            target = self.described.by_module.get(unit["module"])
+            relative = self.package.relative(unit["mainFile"], target and target["name"])
             self.kept_files_by_module[unit["module"]].add(relative)
 
     def join(self):
@@ -4107,8 +4235,9 @@ class UsrJoin:
         rows = []
         for unit in self.units:
             target = self.described.by_module.get(unit["module"])
+            main = self.package.relative(unit["mainFile"], target and target["name"]) or unit["mainFile"]
             rows.append({"name": unit["name"], "target": target["name"] if target else None,
-                         "module": unit["module"], "mainFile": self.package.relative(unit["mainFile"]) or unit["mainFile"],
+                         "module": unit["module"], "mainFile": main,
                          "triple": unit["triple"], "class": self.classes[unit["name"]], "location": unit["location"]})
         return rows
 
@@ -4726,8 +4855,8 @@ class Coupling:
         """Each read unit's main file -> its target name (C99 module -> describe)."""
         self.target_of_file = {}
         for unit in self.join.read_units:
-            relative = self.package.relative(unit["mainFile"])
             target = self.described.by_module.get(unit["module"])
+            relative = self.package.relative(unit["mainFile"], target and target["name"])
             if relative is not None and target is not None:
                 self.target_of_file.setdefault(relative, target["name"])
 
@@ -5121,7 +5250,7 @@ class Coupling:
         files = defaultdict(set)
         for unit in self.join.read_units:
             target = package_modules.get(unit["module"])
-            relative = self.package.relative(unit["mainFile"])
+            relative = self.package.relative(unit["mainFile"], target and target["name"])
             if target is None or relative is None:
                 continue
             for dependency in unit.get("moduleDependencies", []):
@@ -6413,12 +6542,12 @@ class DeadRuns:
         hint, text = (match.group(1), match.group(2)) if match else (raw, None)
         path, line, column = split_location(entry["location"])
         real = self.real(path)
+        modules = tuple(self.described.by_module[module]["name"] if module in self.described.by_module else module
+                        for module in entry["modules"])
         if is_under(real, self.package.scratch):
             file = BUILD_FILE
         else:
-            file = self.package.relative(real)
-        modules = tuple(self.described.by_module[module]["name"] if module in self.described.by_module else module
-                        for module in entry["modules"])
+            file = self.package.relative(real, modules[0] if modules else None, self.package.entry_spellings)
         return (run, hint, text, entry["kind"], entry["name"], entry["accessibility"], tuple(entry["attributes"]),
                 tuple(entry["modifiers"]), tuple(entry["ids"]), modules, file, line, column)
 
@@ -6751,8 +6880,9 @@ OUTSKIRTS_ACCESSORS = {
 }
 # Design 10.1's kinds for unused production declarations.
 KIND_GROUPS = ("function", "type", "extension", "property", "enumCase", "parameter", "import", "other")
-DESIGN_CLASSES_RULE = ("build, outside the root, test targets, unscanned, files changed during the scan, local "
-                       "declarations (index local property, or a variable inside a function record), else production")
+DESIGN_CLASSES_RULE = ("build, outside the root, test targets (the scanned file's target; an unscanned file's test "
+                       "directory or modules), unscanned, files changed during the scan, local declarations (index "
+                       "local property, or a variable inside a function record), else production")
 DESIGN_MAP_RULE = ("outermost unused declarations: by USR to the record (a property's accessor records by role-free "
                    "accessorOf), a type to every record it owns in any file (extensions folded, as outskirts folds "
                    "them), an extension to the records in its range, else a function by its name position; others "
@@ -6877,18 +7007,19 @@ class DeadMapping:
         self.function_records = [r for r in self.records if r["kind"] != "topLevel"]
         self.notes = Counter()
         self.test_targets = {name for name, target in described.targets.items() if target["type"] == "test"}
+        # A test target's directory as the manifest spells it, as an
+        # unscanned file's path is spelled (a describe source's spelling).
         self.test_directories = []
         for target in describe.get("targets", []):
             if target.get("type") != "test" or not target.get("path"):
                 continue
-            location = os.path.normpath(os.path.join(package.root, target["path"]))
-            try:
-                location = real_path(location, "a test target's directory")
-            except ReadError:
-                pass
-            relative = package.relative(unicodedata.normalize("NFC", location))
-            if relative is not None:
-                self.test_directories.append(relative)
+            location = unicodedata.normalize("NFC", os.path.normpath(
+                os.path.join(package.root, package.spellings.restore(target["path"]))))
+            if not is_under(location, package.root):
+                # An absolute path under another spelling of the root.
+                location = resolved(location)
+            if is_under(location, package.root) and location != package.root:
+                self.test_directories.append(location[len(package.root) + 1:])
         self.local_usrs = set()
         self.record_by_usr = {}
         if self.with_index:
@@ -6922,11 +7053,14 @@ class DeadMapping:
             return "build"
         if file is None:
             return "outsideRoot"
-        if any(file.startswith(directory + "/") for directory in self.test_directories) \
-                or (modules and all(module in self.test_targets for module in modules)):
-            return "test"
-        if file not in self.package.files:
+        scanned = self.package.files.get(file)
+        if scanned is None:
+            if any(file.startswith(directory + "/") for directory in self.test_directories) \
+                    or (modules and all(module in self.test_targets for module in modules)):
+                return "test"
             return "unscanned"
+        if scanned.get("module") in self.test_targets:
+            return "test"
         if file in self.package.changed:
             return "fileChanged"
         variable = kind.startswith("var.")
@@ -7613,6 +7747,10 @@ def dead_mode(arguments):
                 or real_path(described_path, "describe's path") != package.root:
             fail(f"the describe JSON describes {described_path!r}, not {package.root}")
         described = Described(describe, package)
+        for path, entry in package.files.items():
+            package.entry_spellings.add(path, entry.get("module"))
+        for spelling, name in describe_sources(describe, package.root, package.spellings.restore):
+            package.entry_spellings.add(spelling, name, fallback=True)
         join = coupling = None
         try:
             reader = UnitReader(package, arguments)
@@ -9461,6 +9599,9 @@ def main():
     building.add_argument("--stderr", help="the build's stderr (default: <build>/swiftstats-build.stderr)")
     building.add_argument("--log", help="the build's stdout (default: <build>/swiftstats-build.log)")
     building.add_argument("--combined", help="one file holding both streams, instead of --stderr and --log")
+    building.add_argument("--swift", default="swift",
+                          help="the swift whose toolchain describes <package> (default: swift on PATH)")
+    building.add_argument("--describe", help="a describe JSON of <package> instead of running describe")
     building.add_argument("--root-spelling", help="the package root as the output spells it (default: its real path)")
     building.add_argument("--build-spelling",
                           help="the build directory as the output spells it (default: its real path)")

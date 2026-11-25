@@ -15,9 +15,12 @@
 //  no place in a file (a macro expansion without its origin note,
 //  `<unknown>`) or in a file that changed during the scan is unmapped, and
 //  counted; a place in a plugin target, which the build compiles without
-//  `-debug-diagnostic-names`, is kept and counted apart. The existing
-//  `FindingMapper` then attaches the places, a file the scan didn't parse
-//  `unscanned`.
+//  `-debug-diagnostic-names`, is kept and counted apart. A place's path is
+//  resolved and looked up among the scanned files' real paths, then the
+//  describe's other sources' (`SourcePaths`), so a file reached through a
+//  symbolic link or spelled in another case is the scanned file, or the
+//  source as the manifest spells it. The existing `FindingMapper` then
+//  attaches the places, a file the scan didn't parse `unscanned`.
 //
 
 import Foundation
@@ -62,8 +65,8 @@ struct WarningReader {
     /// The type of a plugin target.
     static let pluginType = "plugin"
 
-    /// The package root's real path.
-    private let root: String
+    /// The scanned files, then any other sources, by real path.
+    private let paths: SourcePaths
     /// The build directory's real path.
     private let build: String
     /// The package's targets, the longest path first.
@@ -78,7 +81,27 @@ struct WarningReader {
     /// path is `build`; the scanned files `changedFiles` (relative to the
     /// root) changed during the scan.
     init(measured: ScanMeasurements, targets: [TargetSummary], root: String, build: String, changedFiles: Set<String>) {
-        self.root = root
+        self.init(
+            measured: measured,
+            targets: targets,
+            paths: SourcePaths(root: root, files: measured.files),
+            build: build,
+            changedFiles: changedFiles
+        )
+    }
+
+    /// A reader for the package with `targets` measured as `measured`,
+    /// whose scanned files are `paths`, built in the directory whose real
+    /// path is `build`; the scanned files `changedFiles` (relative to the
+    /// root) changed during the scan.
+    init(
+        measured: ScanMeasurements,
+        targets: [TargetSummary],
+        paths: SourcePaths,
+        build: String,
+        changedFiles: Set<String>
+    ) {
+        self.paths = paths
         self.build = build
         self.targets = targets.sorted { ($0.path.count, $0.name) > ($1.path.count, $1.name) }
         changed = Set(changedFiles.map(NFCPath.init))
@@ -161,13 +184,13 @@ struct WarningReader {
         )
     }
 
-    /// `path` relative to the root; nil under the build directory or
-    /// outside the root.
+    /// `path` as a path in the package (`SourcePaths`); nil under the
+    /// build directory or outside the root.
     private func relative(_ path: String) -> String? {
-        guard path.hasPrefix(build + "/") == false, path.hasPrefix(root + "/") else {
+        guard path.hasPrefix(build + "/") == false else {
             return nil
         }
-        return String(path.dropFirst(root.count + 1))
+        return paths.packagePath(of: path, in: nil)
     }
 
     /// The target holding the file at `path`: the one listing it, else the

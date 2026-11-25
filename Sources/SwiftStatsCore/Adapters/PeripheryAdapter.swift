@@ -142,7 +142,7 @@ enum PeripheryAdapter {
             scratch: products.scratch.path.precomposedStringWithCanonicalMapping,
             package: products.package,
             modules: products.modules,
-            files: Set(job.scan.files.map(\.path)),
+            files: Dictionary(job.scan.files.map { ($0.path, $0.module) }) { first, _ in first },
             changedFiles: Set(products.changedFiles),
             records: job.scan.records,
             localUSRs: units.localUSRs

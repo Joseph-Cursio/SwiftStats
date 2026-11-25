@@ -209,7 +209,7 @@ struct UnitFilterTests {
         )
 
         #expect(filter.classify([unit]).map(\.unitClass) == [.kept])
-        #expect(filter.packagePath(of: unit.mainFile) == "Sources/Lib/" + composed)
+        #expect(filter.packagePath(of: unit.mainFile, module: unit.module) == "Sources/Lib/" + composed)
     }
 
     @Test("two targets sharing a C99 name can't be filtered")

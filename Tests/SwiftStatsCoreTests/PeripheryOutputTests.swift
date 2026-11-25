@@ -38,7 +38,7 @@ struct PeripheryOutputTests {
             scratch: "/NoSuchPeripheryPackage/.swiftstats/index-build",
             package: package,
             modules: try BuildSession.moduleMap(of: package),
-            files: ["Sources/IndexCore/Locals.swift"],
+            files: ["Sources/IndexCore/Locals.swift": "IndexCore"],
             changedFiles: [],
             records: [],
             localUSRs: []
@@ -58,7 +58,7 @@ struct PeripheryOutputTests {
             scratch: fixture.build,
             package: package,
             modules: try BuildSession.moduleMap(of: package),
-            files: Set(fixture.measured.files.map(\.path)),
+            files: Dictionary(fixture.measured.files.map { ($0.path, $0.module) }) { first, _ in first },
             changedFiles: changed,
             records: fixture.measured.records,
             localUSRs: localUSRs
@@ -216,6 +216,8 @@ struct PeripheryOutputTests {
             Self.entry(location: core + "Locals.swift:26:9", kind: "var.global", ids: ["s:local"]),
             Self.entry(location: root + "/Tests/IndexCoreTests/IndexCoreTests.swift:3:6", modules: ["IndexCoreTests"]),
             Self.entry(location: core + "TestOnly.swift:7:6", modules: ["IndexCoreTests", "IndexXCTests"]),
+            Self.entry(location: root + "/Tests/IndexCoreTests/Unparsed.swift:1:6"),
+            Self.entry(location: core + "Unparsed.swift:1:6", modules: ["IndexCoreTests"]),
             Self.entry(location: root + "/Package.swift:1:1"),
             Self.entry(location: fixture.build + "/checkouts/Dep/Dep.swift:2:3")
         ])
@@ -235,10 +237,16 @@ struct PeripheryOutputTests {
             )
         )
 
-        #expect(byPlace.map(\.entryClass) == [.production, .production, .local, .test, .test, .unscanned, .build])
-        #expect(byIndex.map(\.entryClass) == [.local, .production, .local, .test, .test, .unscanned, .build])
+        // TestOnly.swift is IndexCore's, so its modules don't make it test
+        // code; only the unparsed files fall back to the folder or modules.
+        #expect(byPlace.map(\.entryClass) == [
+            .production, .production, .local, .test, .production, .test, .test, .unscanned, .build
+        ])
+        #expect(byIndex.map(\.entryClass) == [
+            .local, .production, .local, .test, .production, .test, .test, .unscanned, .build
+        ])
         #expect(changed.map(\.entryClass) == [
-            .production, .fileChanged, .fileChanged, .test, .test, .unscanned, .build
+            .production, .fileChanged, .fileChanged, .test, .production, .test, .test, .unscanned, .build
         ])
         #expect(byPlace.last?.file == ".swiftstats/index-build/checkouts/Dep/Dep.swift")
     }
@@ -249,6 +257,9 @@ struct PeripheryOutputTests {
             .build, .outsideRoot, .test, .unscanned, .fileChanged, .local, .production
         ])
         #expect(Set(PeripheryEntryClass.ordered) == Set(PeripheryEntryClass.allCases))
-        #expect(PeripheryOutput.rule.hasPrefix("build, outside the root, test targets, unscanned, files changed"))
+        #expect(PeripheryOutput.rule.hasPrefix("""
+            build, outside the root, test targets (the scanned file's target; an unscanned file's test directory \
+            or modules), unscanned, files changed
+            """))
     }
 }

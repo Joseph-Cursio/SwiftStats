@@ -5,8 +5,9 @@
 //  Reads an index store through any `IndexStoreSource` (M7, design §2.2):
 //  every unit's header, classed by `UnitFilter`, then the records of the
 //  kept and variant units only, each record once though several units may
-//  name it, in name order. Reading dependency units' records would cost
-//  seconds and isn't needed. Nothing is partial: a unit or record that
+//  name it, in name order, each path as the filter gives it in the package
+//  (a source's describe spelling, links and case resolved, `SourcePaths`).
+//  Reading dependency units' records would cost seconds and isn't needed. Nothing is partial: a unit or record that
 //  doesn't read fails the walk, naming it.
 //
 
@@ -21,17 +22,18 @@ enum IndexWalk {
     /// The snapshot of the store `source` reads, classed by `filter`.
     static func walk(_ source: any IndexStoreSource, filter: UnitFilter) throws -> IndexSnapshot {
         let classed = filter.classify(try units(of: source))
-        var naming: [String: String] = [:]
+        var naming: [String: IndexUnitFact] = [:]
         for entry in classed where entry.unitClass.isRead {
             for record in entry.unit.records where naming[record] == nil {
-                naming[record] = entry.unit.name
+                naming[record] = entry.unit
             }
         }
         let records = try naming.keys.sorted().map { name in
-            let fact = try reading("record \(name) of unit \(naming[name] ?? "")") { try source.record(named: name) }
+            let unit = naming[name]
+            let fact = try reading("record \(name) of unit \(unit?.name ?? "")") { try source.record(named: name) }
             return IndexSnapshot.Record(
                 name: fact.name,
-                path: filter.packagePath(of: fact.file) ?? fact.file,
+                path: filter.packagePath(of: fact.file, module: unit?.module) ?? fact.file,
                 occurrences: fact.occurrences
             )
         }
@@ -58,7 +60,7 @@ enum IndexWalk {
             unitClass: entry.unitClass,
             module: target ?? unit.module,
             isPackageModule: target != nil,
-            path: filter.packagePath(of: unit.mainFile) ?? unit.mainFile,
+            path: filter.packagePath(of: unit.mainFile, module: unit.module) ?? unit.mainFile,
             triple: unit.target,
             records: unit.records,
             moduleDependencies: unit.moduleDependencies.map { dependency in

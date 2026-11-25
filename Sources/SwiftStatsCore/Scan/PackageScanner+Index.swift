@@ -124,7 +124,9 @@ extension PackageScanner {
     /// `run`'s output mapped onto `measured`, the package at `root` with
     /// `targets`: its standard error and task log read (design §6.1), the
     /// timing entries placed on records, types and files (§6.2) and the
-    /// warnings made findings (§6.3), against the root's real path and the
+    /// warnings made findings (§6.3), against the scanned files' real
+    /// paths, then the describe's other sources' (`SourcePaths`, resolved
+    /// once for both), the root's and the
     /// build directory's, with each roll-up scope's type-check total
     /// (§6.4). A run that didn't run maps to nothing; one whose
     /// output can't be read fails, saying so.
@@ -151,18 +153,18 @@ extension PackageScanner {
             let failed = run.failing("could not read the build's output: \(reason)")
             return MappedBuild(run: failed, report: nil, typeCheckTotals: .empty, findings: [])
         }
-        let rootPath = realPath(root)
+        let paths = SourcePaths(root: realPath(root), files: measured.files, package: products.package)
         let changed = Set(products.changedFiles)
         let timings = TimingMapper(
             measured: measured,
-            root: rootPath,
+            paths: paths,
             build: products.scratch.path,
             changedFiles: changed
         ).map(output.entries)
         let warnings = WarningReader(
             measured: measured,
             targets: targets,
-            root: rootPath,
+            paths: paths,
             build: products.scratch.path,
             changedFiles: changed
         ).read(output.diagnostics)

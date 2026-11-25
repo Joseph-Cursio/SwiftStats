@@ -11,10 +11,18 @@
 //  that isn't `path:line:column` is a format failure the collector reports
 //  naming outskirts' version and hash. A hint written `name(text)` is read
 //  as the name with the text kept. A location is read from the right, its
-//  path made real (NFC) and, under the package root, a path in the
-//  package. Modules, C99 names in the JSON, become target names wherever
-//  they are the package's (design choice 5). Each entry then gets its
-//  class (`PeripheryEntryClass`), the first that applies. A local
+//  path made real (NFC) and looked up among the scanned files' real paths,
+//  then the describe's other sources' (`SourcePaths`): a scanned file's
+//  spelling, else a source's manifest spelling, else, under the package
+//  root, a path in the package. Modules, C99 names in the JSON, become
+//  target names wherever they are the package's (design choice 5). Each
+//  entry then gets its class (`PeripheryEntryClass`), the first that
+//  applies. An entry is test code when the target the scan reads its
+//  file in is a test target (Package.swift's test targets, never folders:
+//  a production target sharing a test target's directory stays
+//  production); only a file the scan didn't parse falls back to lying in
+//  a test target's directory, or every `modules` entry being a test
+//  target. A local
 //  variable is told by the index, when it ran (its USR's definition has
 //  the local property), or by its place: a variable kind, a parameter
 //  aside, lying in a record other than top-level code, where no global
@@ -37,8 +45,9 @@ struct PeripheryOutput: Sendable {
         let package: DescribedPackage
         /// Each target's C99 module name, mapped to the target's name.
         let modules: [String: String]
-        /// The scanned files, as paths in the package.
-        let files: Set<String>
+        /// The scanned files, as paths in the package, each to the target
+        /// the scan reads it in.
+        let files: [String: String]
         /// The scanned files that changed during the scan.
         let changedFiles: Set<String>
         /// The scan's records.
@@ -50,6 +59,16 @@ struct PeripheryOutput: Sendable {
         /// The test targets' names.
         var testTargets: Set<String> {
             Set(package.targets.filter { $0.type == PeripheryOutput.testType }.map(\.name))
+        }
+
+        /// The scanned files, then the describe's other sources, by real
+        /// path.
+        var paths: SourcePaths {
+            SourcePaths(
+                root: root,
+                sources: files.map { SourcePaths.Source(path: $0.key, target: $0.value) },
+                fallback: SourcePaths.sources(of: package)
+            )
         }
 
         /// The test targets' directories, as paths in the package.
@@ -68,7 +87,8 @@ struct PeripheryOutput: Sendable {
 
     /// The rule the entries are classed by, the collector's `classes:`
     /// option.
-    static let rule = "build, outside the root, test targets, unscanned, files changed during the scan, "
+    static let rule = "build, outside the root, test targets (the scanned file's target; an unscanned file's "
+        + "test directory or modules), unscanned, files changed during the scan, "
         + "local variables (a variable kind other than a parameter whose USR the index marks local, or lying "
         + "in a record other than top-level code), else production"
     /// The keys every entry holds.
@@ -109,11 +129,12 @@ struct PeripheryOutput: Sendable {
             throw FormatFailure(description: "JSON isn't an array in the \(run.rawValue) run")
         }
         let byFile = Dictionary(grouping: context.records, by: \.file)
+        let paths = context.paths
         return try array.enumerated().map { offset, element in
             let entry = try fields(of: element, ordinal: offset + 1, run: run)
             let path = IndexStoreReader.realPath(entry.location.path)
-            let file = packagePath(of: path, root: context.root)
             let modules = entry.lists["modules", default: []].map { context.modules[$0] ?? $0 }
+            let file = paths.packagePath(of: path, in: modules.first)
             let (hint, hintText) = split(entry.lists["hints", default: []][0])
             let draft = PeripheryEntry(
                 run: run,
@@ -151,12 +172,15 @@ struct PeripheryOutput: Sendable {
             return .outsideRoot
         }
         let testTargets = context.testTargets
-        let inTestDirectory = context.testDirectories.contains { file.hasPrefix($0 + "/") }
-        if inTestDirectory || (entry.modules.isEmpty == false && entry.modules.allSatisfy(testTargets.contains)) {
-            return .test
-        }
-        if context.files.contains(file) == false {
+        guard let target = context.files[file] else {
+            let inTestDirectory = context.testDirectories.contains { file.hasPrefix($0 + "/") }
+            if inTestDirectory || (entry.modules.isEmpty == false && entry.modules.allSatisfy(testTargets.contains)) {
+                return .test
+            }
             return .unscanned
+        }
+        if testTargets.contains(target) {
+            return .test
         }
         if context.changedFiles.contains(file) {
             return .fileChanged
@@ -180,13 +204,6 @@ struct PeripheryOutput: Sendable {
             return false
         }
         return holder.kind != .topLevelCode
-    }
-
-    /// `path`, a real path, as a path in the package at `root`; nil
-    /// outside it.
-    private static func packagePath(of path: String, root: String) -> String? {
-        let prefix = root.hasSuffix("/") ? root : root + "/"
-        return path.hasPrefix(prefix) ? String(path.dropFirst(prefix.count)) : nil
     }
 
     /// `hint` split into its name and the text in its parentheses, when it
