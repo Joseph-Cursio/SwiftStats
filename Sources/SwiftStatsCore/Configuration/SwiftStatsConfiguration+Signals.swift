@@ -2,10 +2,11 @@
 //  SwiftStatsConfiguration+Signals.swift
 //  SwiftStatsCore
 //
-//  Parsing the mutation signals' limits under `signals:` (M6, design §7,
-//  PRD §10.1): `signals.<name>.<limit>` for weak tests, genuinely
-//  under-tested and uneven clone mutation. A percent lies from 0 to 100, a
-//  fewest number of mutants is a whole number from 1 to a million, genuinely
+//  Parsing the signals' limits under `signals:` (M6, design §7; M7, design
+//  §8; PRD §10.1): `signals.<name>.<limit>` for weak tests, genuinely
+//  under-tested, uneven clone mutation and hidden coupling. A percent lies
+//  from 0 to 100, a fewest number of mutants or of commits (hidden
+//  coupling's `support`) is a whole number from 1 to a million, genuinely
 //  under-tested's ratio is a number above 0, and uneven clone mutation's
 //  `high` must lie above its `low` (each as set, else its default).
 //  Unknown keys and invalid values are errors naming the key, checked in
@@ -17,14 +18,14 @@ import Yams
 extension SwiftStatsConfiguration {
     /// The highest percent a limit may be.
     private static let wholePercent = 100.0
-    /// The most scored mutants a limit may ask for: far above any
-    /// function's, and small enough that every count is exact as the
+    /// The most scored mutants (or commits) a limit may ask for: far above
+    /// any function's, and small enough that every count is exact as the
     /// `Double` thresholds hold and converts back to `Int` without trapping.
     private static let mostMutants = 1_000_000
 
-    /// The mutation signals' limits `mapping` (the `signals:` mapping) sets,
-    /// by signal, then limit.
-    static func mutationLimits(_ mapping: Node.Mapping, path: String) throws -> [String: [String: Double]] {
+    /// The mutation signals' and hidden coupling's limits `mapping` (the
+    /// `signals:` mapping) sets, by signal, then limit.
+    static func signalLimits(_ mapping: Node.Mapping, path: String) throws -> [String: [String: Double]] {
         var limits: [String: [String: Double]] = [:]
         for (signal, kinds) in SignalThresholds.limitKinds.sorted(by: { $0.key < $1.key }) {
             guard let entry = mapping[signal], entry.null == nil else {

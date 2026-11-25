@@ -11,7 +11,7 @@
 //  Items sort by their signal's key, by default score, highest first, then
 //  subject, file and line, and are ranked by position. Everything listed
 //  carries a member flag, so `top` can show a full list where membership
-//  is short.
+//  is short. M7's signals are in `SignalEngine+Index.swift`.
 //
 
 /// Computes signals.
@@ -24,13 +24,14 @@ public enum SignalEngine {
         var results: [SignalResult] = []
         for name in SignalName.reportOrder {
             let reason = leftOut(name.requirements, in: snapshot) ?? leftOut(name, comparing: inputs)
+                ?? unbuilt(name)
             let computed = reason == nil
                 ? computation(name, inputs: inputs, thresholds: thresholds) { families }
                 : nil
             guard let computed else {
                 // A computation finds no input only where its requirements
                 // say one is missing: history, an earlier snapshot, or the
-                // coverage rows of a coverage run that ran.
+                // rows of a collector that ran.
                 results.append(SignalResult(
                     name: name,
                     leftOut: reason ?? missingInput(name, snapshot),
@@ -68,29 +69,44 @@ public enum SignalEngine {
         case .bestPropertyTarget, .genuinelyUnderTested, .unevenCloneMutation, .weakTests:
             return mutationComputation(signal, snapshot: snapshot, thresholds: thresholds)
 
+        case .missingTemplate, .riskyUntested, .toolDisagreement, .uncheckedLaws, .unevenCloneTesting,
+            .untestedProperty:
+            return snapshotComputation(signal, snapshot: snapshot)
+
+        case .deadButTested, .hiddenCoupling, .testOnlyProduction:
+            return indexComputation(signal, inputs: inputs)
+        }
+    }
+
+    /// M4's and M5's signal `signal` read from `snapshot` alone, missing
+    /// template, risky + untested, tool disagreement, unchecked laws,
+    /// uneven clone testing or untested property, computed from it.
+    private static func snapshotComputation(_ signal: SignalName, snapshot: StoredSnapshot) -> SignalComputation? {
+        switch signal {
         case .missingTemplate:
-            return MissingTemplate.compute(snapshot)
+            MissingTemplate.compute(snapshot)
 
         case .riskyUntested:
-            return RiskyUntested.compute(snapshot)
+            RiskyUntested.compute(snapshot)
 
         case .toolDisagreement:
-            return ToolDisagreement.compute(snapshot)
+            ToolDisagreement.compute(snapshot)
 
         case .uncheckedLaws:
-            return UncheckedLaws.compute(snapshot)
+            UncheckedLaws.compute(snapshot)
 
         case .unevenCloneTesting:
-            return UnevenCloneTesting.compute(snapshot)
+            UnevenCloneTesting.compute(snapshot)
 
-        case .untestedProperty:
-            return UntestedProperty.compute(snapshot)
+        default:
+            UntestedProperty.compute(snapshot)
         }
     }
 
     /// Why a signal needing `requirements` can't be computed from
     /// `snapshot`; nil when it can. A missing history says so as M3 did;
-    /// else, in the requirements' order, a snapshot stored before M6, or
+    /// else, in the requirements' order, a snapshot stored before M7, or
+    /// without an index run, predates M7; one stored before M6, or
     /// without a SwiftMutator run, predates M6; one stored before M5, or
     /// without a coverage run, predates M5; one stored before M4, or
     /// without a row for a collector or its scan facts, predates M4; the
@@ -115,7 +131,7 @@ public enum SignalEngine {
             case .history:
                 continue
 
-            case .m4Snapshot, .m5Snapshot, .m6Snapshot, .notCoveredListed:
+            case .m4Snapshot, .m5Snapshot, .m6Snapshot, .m7Snapshot, .notCoveredListed:
                 if let reason = rowsMissing(requirement, in: snapshot) {
                     return reason
                 }
@@ -143,6 +159,10 @@ public enum SignalEngine {
         case .m6Snapshot:
             return schema >= SignalRequirement.firstM6Schema && collectors.contains(MutationAdapter.name)
                 ? nil : "the snapshot predates M6"
+
+        case .m7Snapshot:
+            return schema >= SignalRequirement.firstM7Schema && collectors.contains(IndexAdapter.name)
+                ? nil : "the snapshot predates M7"
 
         case .notCoveredListed:
             guard let mutation = snapshot.mutation?.report, mutation.listsNotCovered == false else {
@@ -238,10 +258,14 @@ public enum SignalEngine {
     }
 
     /// Why `signal`'s computation found no input its requirements check:
-    /// for a mutation signal, the mutation rows a run that ran leaves,
-    /// then, for one needing coverage, the coverage rows; for a coverage
-    /// signal, the coverage rows; for the others, history.
+    /// for M7's signals, the inputs each reads (`indexMissingInput`); for
+    /// a mutation signal, the mutation rows a run that ran leaves, then,
+    /// for one needing coverage, the coverage rows; for a coverage signal,
+    /// the coverage rows; for the others, history.
     private static func missingInput(_ signal: SignalName, _ snapshot: StoredSnapshot) -> String {
+        if signal.requirements.contains(.m7Snapshot) {
+            return indexMissingInput(signal, snapshot)
+        }
         let noCoverage = "the snapshot holds no coverage rows"
         if signal.requirements.contains(.m6Snapshot) {
             return snapshot.mutation == nil ? "the snapshot holds no mutation rows" : noCoverage
@@ -262,7 +286,7 @@ public enum SignalEngine {
 
     /// The rule a left-out signal states: as over an empty pool, without
     /// the counts a computed M4 signal adds; an M6 signal's with the
-    /// thresholds it would use.
+    /// thresholds it would use; an M7 signal's without its funnel.
     private static func rule(for signal: SignalName, thresholds: SignalThresholds) -> String {
         switch signal {
         case .bugProne, .hotspot, .safeToLeave, .testsNotKeepingUp, .unstableFixes:
@@ -277,6 +301,19 @@ public enum SignalEngine {
         case .bestPropertyTarget, .genuinelyUnderTested, .unevenCloneMutation, .weakTests:
             mutationRule(signal, thresholds: thresholds)
 
+        case .missingTemplate, .riskyUntested, .toolDisagreement, .uncheckedLaws, .unevenCloneTesting,
+            .untestedProperty:
+            snapshotRule(signal)
+
+        case .deadButTested, .hiddenCoupling, .testOnlyProduction:
+            indexRule(signal, thresholds: thresholds)
+        }
+    }
+
+    /// The rule M4's and M5's signal `signal`, read from the snapshot
+    /// alone, states when left out.
+    private static func snapshotRule(_ signal: SignalName) -> String {
+        switch signal {
         case .missingTemplate:
             MissingTemplate.rule
 
@@ -292,7 +329,7 @@ public enum SignalEngine {
         case .unevenCloneTesting:
             UnevenCloneTesting.rule
 
-        case .untestedProperty:
+        default:
             UntestedProperty.rule
         }
     }

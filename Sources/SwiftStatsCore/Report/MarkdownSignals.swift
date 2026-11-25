@@ -196,6 +196,9 @@ public enum MarkdownSignals {
 
         case .bestPropertyTarget, .genuinelyUnderTested, .unevenCloneMutation, .weakTests:
             mutationColumns(for: signal)
+
+        case .deadButTested, .hiddenCoupling, .testOnlyProduction:
+            indexColumns(for: signal)
         }
     }
 

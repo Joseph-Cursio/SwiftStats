@@ -51,6 +51,7 @@ extension SnapshotStore {
     /// Snapshot `id` with its rows, read in `database`.
     static func snapshot(id: Int64, in database: Database) throws -> StoredSnapshot {
         let mine = Column("snapshotId") == id
+        let index = try IndexRows(id: id, in: database)?.stored
         return StoredSnapshot(
             id: id,
             info: try info(id: id, in: database),
@@ -89,9 +90,10 @@ extension SnapshotStore {
             couplingPairs: try CouplingPairRow.filter(mine).order(Column("ordinal")).fetchAll(database).map(\.pair),
             coverage: try CoverageRows(id: id, in: database)?.stored,
             mutation: try MutationRows(id: id, in: database)?.stored,
-            index: try IndexRows(id: id, in: database)?.stored,
+            index: index,
             build: try BuildRows(id: id, in: database)?.stored,
-            deadCode: try DeadCodeRows(id: id, in: database)?.stored
+            deadCode: try DeadCodeRows(id: id, in: database)?.stored,
+            executableTargets: index == nil ? [] : try executableTargets(id: id, in: database)
         )
     }
 

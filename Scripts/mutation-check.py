@@ -125,9 +125,11 @@ them with `swiftstats report --format json` of that snapshot (the snapshot
 the report names, by package, path, commit and dirtiness):
 
   t  the report is schema 5 and its `thresholds` lists exactly the limits
-     this script uses (the defaults with each `--set` applied, genuinely
-     under-tested's ratio only when set), so the limits the report states
-     are checked against the ones given here, not taken from it.
+     this script uses for the three mutation signals (the defaults with
+     each `--set` applied, genuinely under-tested's ratio only when set),
+     so the limits the report states are checked against the ones given
+     here, not taken from it. Limits of other signals (M7's hidden
+     coupling) are printed and left to their own checker.
   s  each of weak tests, genuinely under-tested, best property-test target
      and uneven clone testing (mutation) is computed, or left out with the
      reason its inputs give: a scan before schema 8 or with no swiftmutator
@@ -2804,7 +2806,12 @@ class SignalChecks(Checker):
         self.result("report schema", report.get("schemaVersion") == REPORT_SCHEMA,
                     f"expected {REPORT_SCHEMA}, got {report.get('schemaVersion')}")
         listed = (report.get("thresholds") or {}).get("limits")
-        self.result("mutation limits", listed == limits, f"expected {limits}, got {listed}")
+        mutation = {name: values for name, values in listed.items() if name in limits} \
+            if isinstance(listed, dict) else listed
+        self.result("mutation limits", mutation == limits, f"expected {limits}, got {mutation}")
+        if isinstance(listed, dict) and set(listed) - set(limits):
+            print("note: other signals' limits (their own checker's): "
+                  + ", ".join(f"{name} {listed[name]}" for name in sorted(set(listed) - set(limits))))
 
     def requirements(self, model, signals):
         self.section("s   requirements: each signal is computed, or left out with the reason its inputs give")

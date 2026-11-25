@@ -11,7 +11,8 @@
 //  report schema 4 and top schema 3 (M5) add `markers`, `coverage` and a
 //  clone class's `coverage` (M5's payloads are in `SignalItem+Coverage.swift`);
 //  M6 adds `mutation`, `ratio`, `propertyTarget` and a clone class's
-//  `mutation` (in `SignalItem+Mutation.swift`).
+//  `mutation` (in `SignalItem+Mutation.swift`); M7 adds `references` (in
+//  `SignalItem+Index.swift`).
 //
 
 /// An item's place in a signal.
@@ -187,6 +188,8 @@ public struct SignalItem: Codable, Hashable, Sendable {
         /// The function's suggestions, its unkilled mutants and its
         /// partners'.
         var propertyTarget: PropertyTarget?
+        /// Where the function's references come from.
+        var references: References?
     }
 
     /// Its position, from 1.
@@ -225,6 +228,9 @@ public struct SignalItem: Codable, Hashable, Sendable {
     /// The function's suggestions, its unkilled mutants and its partners',
     /// for best property-test target.
     public let propertyTarget: PropertyTarget?
+    /// Where the function's references come from, for a signal reading
+    /// the index's referrers.
+    public let references: References?
 
     /// `draft` ranked at `rank` with `score`, a member or not.
     init(_ draft: Draft, rank: Int, score: Double, member: Bool) {
@@ -245,5 +251,6 @@ public struct SignalItem: Codable, Hashable, Sendable {
         mutation = draft.mutation
         ratio = draft.ratio
         propertyTarget = draft.propertyTarget
+        references = draft.references
     }
 }

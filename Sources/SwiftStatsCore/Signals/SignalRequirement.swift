@@ -22,6 +22,9 @@ enum SignalRequirement: Hashable, Sendable {
     /// A snapshot holding M6's rows: stored from a scan of schema 8 or
     /// later, with a run of the SwiftMutator collector, whatever its state.
     case m6Snapshot
+    /// A snapshot holding M7's rows: stored from a scan of schema 9 or
+    /// later, with a run of the index collector, whatever its state.
+    case m7Snapshot
     /// Mutation results that list the mutants of code no test ran
     /// (`mutantsNotCovered`, SwiftMutator 13f96a46 or later), so a low
     /// function score can be told from a missing one (design §7.2, the
@@ -35,4 +38,6 @@ enum SignalRequirement: Hashable, Sendable {
     static let firstM5Schema = 7
     /// The first scan schema whose snapshots hold M6's rows.
     static let firstM6Schema = 8
+    /// The first scan schema whose snapshots hold M7's rows.
+    static let firstM7Schema = 9
 }

@@ -36,8 +36,8 @@ struct SnapshotReportTests {
     }
 
     @Test("""
-        report 5 lists the thresholds its signals used: every ranked signal's percent and every mutation limit in \
-        effect, configured or default, genuinely under-tested's ratio only when set
+        report 5 lists the thresholds its signals used: every ranked signal's percent and every mutation and \
+        hidden-coupling limit in effect, configured or default, genuinely under-tested's ratio only when set
         """)
     func thresholds() throws {
         let directory = try SnapshotHarness.temporaryDirectory("Report")
@@ -70,7 +70,8 @@ struct SnapshotReportTests {
         #expect(defaults["limits"] as? [String: [String: Double]] == [
             "weak-tests": ["coverage": 80, "score": 50, "mutants": 3],
             "genuinely-under-tested": ["coverage": 20, "score": 20, "mutants": 3],
-            "uneven-clone-mutation": ["high": 80, "low": 20, "mutants": 2]
+            "uneven-clone-mutation": ["high": 80, "low": 20, "mutants": 2],
+            "hidden-coupling": ["support": 3, "confidence": 50]
         ])
         #expect(set["percents"] as? [String: Double] == ["bug-prone": 10, "clone-hotspot": 10, "hotspot": 5])
         let limits = set["limits"] as? [String: [String: Double]]
@@ -120,7 +121,8 @@ struct SnapshotReportTests {
             "### Tests not keeping up", "### Safe to leave", "### Untested properties", "### Tool disagreements",
             "### Missing templates", "### Unchecked laws", "### Divergent clones", "### Clone hotspots",
             "### Risky + untested", "### Uneven clone testing", "### Weak tests", "### Genuinely under-tested",
-            "### Best property-test targets", "### Uneven clone testing (mutation)", "## Collectors", "## Coverage",
+            "### Best property-test targets", "### Uneven clone testing (mutation)", "### Hidden coupling",
+            "### Dead but tested", "### Test-only production code", "## Collectors", "## Coverage",
             "## Mutation", "## Project", "### Findings by rule", "### Findings by kind", "## Side effects",
             "## Property candidates", "## Law checks", "## Clones", "## Modules"
         ]

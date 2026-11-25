@@ -11,7 +11,8 @@ script reads them with its own line patterns, not design section 6.1's
 grammar, and accounts for every line. Run it as `python3 -I -B Scripts/index-check.py <mode> ...`, so it
 writes no bytecode cache beside itself.
 
-Modes (later plan steps add `signals` and `coverage-names`):
+Modes (a later plan step adds `coverage-names`; plan steps 9b and 9c extend
+`signals`):
 
 `dump` writes the reader's values for a store as JSON: the recorded
 `reader.json` the unit tests read through `RecordedIndexSource`, and the
@@ -640,6 +641,83 @@ Inputs `dead` (mapping part) trusts, besides the run part's:
 Not the scan JSON's `deadCode` block, `deadLines`, `deadCodeExcluded` or
 `deadCode.*` roll-ups, which it checks.
 
+`signals` re-derives M7's signals (design section 8; criterion 4 of section
+11 step 3) from a store's rows by the rules, and compares them with
+`swiftstats report --format json` of that snapshot (the snapshot the report
+names, by package, path, commit and dirtiness; `--snapshot` names another,
+the newest without a report). Plan step 9a writes its test-only part and
+the groundwork the three signals share; 9b and 9c add dead but tested and
+hidden coupling:
+  t  thresholds: the report's `thresholds.limits` lists `hidden-coupling`
+     with exactly the limits this check uses (support 3 and confidence 50
+     unless `--config`'s `signals.hidden-coupling` or `--set` say otherwise;
+     a key other than support or confidence, a support that isn't a whole
+     number from 1 to 1,000,000 or a confidence outside 0 to 100 is bad
+     input here, as SwiftStats must refuse it), and no limits for
+     dead-but-tested or test-only-production (they take none). The report
+     schema is printed (5 before plan step 10 bumps it to 6), not failed.
+  n  names: the report's last three signals are hidden-coupling,
+     dead-but-tested and test-only-production, in that order, each once,
+     right after uneven-clone-mutation. The other two's left-out reasons are
+     printed (9b and 9c check them).
+  o  test-only production code (design 8.3):
+     left out, first that applies: `the snapshot predates M7` (the
+     snapshot's reportSchemaVersion below 9, or no collectorRun row for
+     `index`, whatever its state); `needs index: <state>[, <reason>]` (a
+     carried run reads `ran`); `the snapshot holds no index rows` (no
+     `indexScan` row). A left-out signal lists nothing, has 0 candidates and
+     states design 8.3's rule text (the funnel optional).
+     pool, in the store's row order: `function` rows of role production
+     whose `generated` is 0 (a row that doesn't say is left out and
+     counted, as M4's signals do), each counted out by the first that
+     applies: W no primary USR (`usr` null; counted by `usrReason`); P
+     `access` public or open in a target `indexScan.libraryModules` names
+     (target names); V `witness` true; J a `c:` USR; M an entry point:
+     kind func, name `main`, no parameters, its key's last segment holding
+     `static func main()`, in a target whose type (the stored report's
+     `targets`) is `executable`; D kind deinit; else C, a candidate. A
+     candidate is L listed when `referrersTests` > 0 and
+     `referrersSameModule` + `referrersOtherModules` = 0, R when the latter
+     sum is above 0, else Z. Null referrer counts or witness on a row with a
+     USR are printed as notes (u8 checks the rows).
+     The rule: design 8.3's text, then "; " and the funnel in its words
+     (`N production functions = W without a USR + K with one; K = P ... + C
+     candidates; C = L listed + R ... + Z ...`), every number equal to this
+     check's and adding up as stated; a by-reason breakdown of W in
+     parentheses after "without a USR", when given, must equal this check's
+     (its absence is printed: the design's funnel text names none); text
+     around the funnel is printed. `candidates` is N (the Pool) or C (the
+     funnel's candidates): the design names both, and which is printed.
+     items: the L candidates, ordered by `referrersTests` descending, then
+     subject (the record key), file and line (code point order, which is
+     Swift's for ASCII keys); each with rank (from 1), member true, score
+     `referrersTests`, and payloads: `references` {tests, testReferrers
+     (the stored JSON array), module}; `coverage` exactly when the snapshot
+     holds coverage rows (`coverageRun`): {lines, regions} from
+     `functionCoverage`, null tallies left out, and for a function without
+     a row `{}` or absent; `mutation` exactly when it holds mutation rows
+     (`mutationScan`): M6's weak-tests shape (counts, score, functionScore,
+     killingTests, firstKillingTests, survivors, suspects), built by
+     Scripts/mutation-check.py's SignalModel, and for a function without
+     mutants absent or that shape with zero counts; no other payload.
+`--own-only` prints the figures without a report; `--dump` writes them as
+JSON (the signal in the report's shape, the funnel, the exclusions).
+
+Inputs `signals` trusts:
+  - the store's rows, opened read-only, as design section 9.1 names them:
+    `snapshot` (reportSchemaVersion and state), `collectorRun`,
+    `indexScan` (libraryModules), the `function` columns key, module,
+    kind, name, file, startLine, role, generated, access, parameterCount,
+    usr, usrReason, witness, referrersSameModule, referrersOtherModules,
+    referrersTests and testReferrers (checked against the scan by `usr`'s
+    u7 and u8), `coverageRun`, `functionCoverage`, `mutationScan` and
+    M6's mutation tables, and the stored report's `targets` (name, type)
+    as T0 wrote them;
+  - Scripts/mutation-check.py (the M6 checker) for M6's `mutation` and
+    `coverage` payload shapes, loaded without writing bytecode;
+  - the configuration file's `signals.hidden-coupling` keys, or `--set`.
+Not the report's signals or thresholds, which it checks.
+
 Usage:
     python3 -I -B Scripts/index-check.py dump <store> <libIndexStore.dylib>
                                          <describe.json> <root>
@@ -687,6 +765,12 @@ Usage:
                                          [--local-rule plan|literal]
                                          [--map-hints all|unused]
                                          [--ordinal-base 0|1]
+    python3 -I -B Scripts/index-check.py signals <store>
+                                         [--report <report.json>]
+                                         [--config <.swiftstats.yml>]
+                                         [--set <signal>.<limit>=<value>]...
+                                         [--snapshot <id>] [--own-only]
+                                         [--dump <path>] [--all]
 
 For `dump`, <store> is the directory holding `v5/units` (for the T1 build,
 `<package>/.swiftstats/index-build/out`). The JSON goes to standard output,
@@ -694,9 +778,10 @@ or to `--output`; a summary (unit, record and occurrence counts) goes to
 standard error.
 
 Exit status: `dump` 0 when the dump is written, 2 on bad input or a store
-that doesn't read; `build-lines`, `build`, `usr` and `dead` 0 when every
-check passes, 1 when one fails, 2 on bad input or a store that doesn't
-read (for `dead`, also when outskirts can't be started).
+that doesn't read; `build-lines`, `build`, `usr`, `dead` and `signals` 0
+when every check passes (`signals --own-only`: when the figures are
+printed), 1 when one fails, 2 on bad input or a store that doesn't read
+(for `dead`, also when outskirts can't be started).
 """
 
 import argparse
@@ -6741,6 +6826,608 @@ def dead_mode(arguments):
 
 
 # --------------------------------------------------------------------------
+# signals: M7's signals re-derived from a store's rows (design section 8)
+
+FIRST_M7_SCHEMA = 9
+HIDDEN_COUPLING = "hidden-coupling"
+DEAD_BUT_TESTED = "dead-but-tested"
+TEST_ONLY = "test-only-production"
+# Design 8: after uneven-clone-mutation in report order.
+M7_SIGNALS = (HIDDEN_COUPLING, DEAD_BUT_TESTED, TEST_ONLY)
+LAST_M6_SIGNAL = "uneven-clone-mutation"
+# Design 8's limits table: name -> (default, the smallest and largest value, whether it must be whole).
+HIDDEN_COUPLING_LIMITS = {"support": (3, 1, 1_000_000, True), "confidence": (50, 0, 100, False)}
+# An item's own fields (SignalItem), and every payload one may carry (plus design 8's three).
+ITEM_KEYS = ("rank", "subject", "file", "line", "score", "member")
+ITEM_PAYLOADS = ("history", "property", "effect", "function", "laws", "clone", "markers", "ratio",
+                 "propertyTarget", "coupling", "dead", "references", "coverage", "mutation")
+TEST_ONLY_PAYLOADS = ("references", "coverage", "mutation")
+LIBRARY_ACCESS = ("public", "open")
+TEST_REFERRERS_NAMED = 5
+# Design 8.3's rule text, before the funnel (a left-out signal states it alone).
+TEST_ONLY_PROSE = (
+    "production functions whose only references come from test targets (index: calls, reads and writes; "
+    "references within the function's own family don't count, and a property's reads and writes count for its "
+    "reading and writing accessors); public API of library-product modules, witnesses and overrides, @objc "
+    "declarations, entry points of executable targets and deinitializers are left out and counted; either dead or "
+    "missing a production caller; types and properties aren't judged")
+# Design 8.3's funnel with its numbers as groups; `wby` takes a by-reason breakdown of W should the rule add one
+# (design 8.3 counts W "by reason" but its funnel text names no breakdown).
+TEST_ONLY_FUNNEL = re.compile(
+    r"(?P<N>\d+) production functions = (?P<W>\d+) without a USR(?P<wby> \([^()]*\))? \+ (?P<K>\d+) with one; "
+    r"(?P<K2>\d+) = (?P<P>\d+) public API of a library product \+ (?P<V>\d+) witnesses or overrides \+ "
+    r"(?P<J>\d+) @objc \+ (?P<M>\d+) entry points \+ (?P<D>\d+) deinitializers \+ (?P<C>\d+) candidates; "
+    r"(?P<C2>\d+) = (?P<L>\d+) listed \+ (?P<R>\d+) with a production reference \+ "
+    r"(?P<Z>\d+) with no reference at all \(not listed: fan-in 0 isn't dead, PRD §7\.6a\)")
+FUNNEL_TERMS = (("N", "production functions"), ("W", "without a USR"), ("K", "with one"), ("K2", "K restated"),
+                ("P", "public API of a library product"), ("V", "witnesses or overrides"), ("J", "@objc"),
+                ("M", "entry points"), ("D", "deinitializers"), ("C", "candidates"), ("C2", "C restated"),
+                ("L", "listed"), ("R", "with a production reference"), ("Z", "with no reference at all"))
+ENTRY_POINT = re.compile(r"(?:^|\s)static func main\(\)(?:\s|$)")
+
+
+def blind(text):
+    """Text compared case- and punctuation-blind (reasons as a rule may spell them)."""
+    return re.sub(r"[^a-z0-9]", "", str(text).lower())
+
+
+def reason_key(text):
+    """A reason of W compared by its canonical spelling when it is a known one (a stored `fileChanged` and the
+    written "file changed during the scan" agree), else case- and punctuation-blind."""
+    canonical = canonical_reason(text)
+    return blind(text if canonical.startswith("?") else canonical)
+
+
+def load_mutation_check():
+    """Scripts/mutation-check.py, the M6 checker, for M6's `mutation` and `coverage` payloads (its SignalModel
+    builds them as weak tests' items carry them). Loaded without writing bytecode beside it."""
+    import importlib.util
+    path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "mutation-check.py")
+    spec = importlib.util.spec_from_file_location("mutation_check", path)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+def store_uri(path):
+    import urllib.parse
+    return "file:" + urllib.parse.quote(os.path.abspath(path)) + "?mode=ro"
+
+
+def read_limit_file(path):
+    """`signals.hidden-coupling.*` of a `.swiftstats.yml`: a small reader of the YAML subset the configuration uses
+    (block mappings by indentation, `# comments`, scalars, and one-line `{key: value, ...}` mappings). Other keys
+    are ignored; `signals.hidden-coupling`'s own keys are returned as written."""
+    try:
+        with open(path, encoding="utf-8") as handle:
+            lines = handle.read().splitlines()
+    except OSError as error:
+        fail(f"--config {path} doesn't read: {error}")
+
+    def scalar(text):
+        text = text.strip()
+        if len(text) >= 2 and text[0] == text[-1] and text[0] in "'\"":
+            return text[1:-1]
+        return text
+
+    def inline(text):
+        body = text.strip()[1:-1]
+        found = {}
+        for part in filter(None, (piece.strip() for piece in body.split(","))):
+            key, _, value = part.partition(":")
+            found[scalar(key)] = scalar(value)
+        return found
+
+    path_stack = []  # (indent, key)
+    found = None
+    for raw in lines:
+        text = raw.split(" #", 1)[0].rstrip() if not raw.lstrip().startswith("#") else ""
+        if not text.strip() or text.strip() == "---":
+            continue
+        indent = len(text) - len(text.lstrip(" "))
+        key, separator, value = text.strip().partition(":")
+        if not separator:
+            continue
+        while path_stack and path_stack[-1][0] >= indent:
+            path_stack.pop()
+        key = scalar(key)
+        names = [name for _, name in path_stack] + [key]
+        if names == ["signals", HIDDEN_COUPLING]:
+            found = {} if found is None else found
+            if value.strip().startswith("{"):
+                found.update(inline(value))
+        elif names[:2] == ["signals", HIDDEN_COUPLING] and len(names) == 3:
+            found = {} if found is None else found
+            found[key] = scalar(value)
+        if not value.strip():
+            path_stack.append((indent, key))
+    return found or {}
+
+
+def hidden_coupling_limits(config_path, settings):
+    """The hidden-coupling limits in force: the defaults, then `--config`'s, then each `--set`. A key or value
+    SwiftStats must refuse (design 8: unknown keys and invalid values are configuration errors) is bad input
+    here too, naming the key."""
+    written = read_limit_file(config_path) if config_path else {}
+    for setting in settings or []:
+        key, _, value = setting.partition("=")
+        signal, _, limit = key.rpartition(".")
+        if signal != HIDDEN_COUPLING or not value:
+            fail(f"--set {setting}: expected {HIDDEN_COUPLING}.<limit>=<value> (dead-but-tested and "
+                 "test-only-production take no limits; M6's limits are mutation-check.py's)")
+        written[limit] = value
+    limits = {name: default for name, (default, _, _, _) in HIDDEN_COUPLING_LIMITS.items()}
+    for name, text in written.items():
+        if name not in HIDDEN_COUPLING_LIMITS:
+            fail(f"signals.{HIDDEN_COUPLING}.{name} is no limit of {HIDDEN_COUPLING} (its limits are "
+                 f"{', '.join(HIDDEN_COUPLING_LIMITS)}); SwiftStats refuses such a configuration")
+        _, lowest, highest, whole = HIDDEN_COUPLING_LIMITS[name]
+        try:
+            value = float(text)
+        except ValueError:
+            fail(f"signals.{HIDDEN_COUPLING}.{name}: {text!r} isn't a number")
+        if value != value or not lowest <= value <= highest or (whole and value != int(value)):
+            kind = "a whole number" if whole else "a number"
+            fail(f"signals.{HIDDEN_COUPLING}.{name}: {text!r} isn't {kind} from {lowest} to {highest:,}")
+        limits[name] = int(value) if value == int(value) else value
+    return limits
+
+
+class SignalRows:
+    """The rows design 8's signals read, straight from a store opened read-only (no SwiftStats code)."""
+
+    def __init__(self, path, snapshot_id=None, report_snapshot=None):
+        import sqlite3
+        import zlib
+        if not os.path.isfile(path):
+            fail(f"no store at {path}")
+        self.path = path
+        try:
+            database = sqlite3.connect(store_uri(path), uri=True)
+            database.row_factory = sqlite3.Row
+            self.tables = {row[0] for row in database.execute("SELECT name FROM sqlite_master WHERE type = 'table'")}
+            if snapshot_id is None and report_snapshot is not None:
+                git = report_snapshot.get("git") or {}
+                row = database.execute(
+                    "SELECT id FROM snapshot WHERE package = ? AND packagePath = ? AND ifnull(commitHash, '') = ? "
+                    "AND isDirty = ? ORDER BY id DESC LIMIT 1",
+                    (report_snapshot.get("package"), git.get("packagePath", ""), git.get("commit") or "",
+                     1 if git.get("isDirty") else 0)).fetchone()
+                if row is None:
+                    fail(f"no snapshot of {report_snapshot.get('package')} at {git.get('commit')} "
+                         f"(dirty {bool(git.get('isDirty'))}, path {git.get('packagePath', '')!r}) in {path}")
+                snapshot_id = row[0]
+            elif snapshot_id is None:
+                row = database.execute("SELECT max(id) FROM snapshot").fetchone()
+                if row is None or row[0] is None:
+                    fail(f"{path} holds no snapshot")
+                snapshot_id = row[0]
+            snapshot = database.execute("SELECT * FROM snapshot WHERE id = ?", (snapshot_id,)).fetchone()
+            if snapshot is None:
+                fail(f"{path} holds no snapshot {snapshot_id}")
+            self.id = snapshot_id
+            self.snapshot = dict(snapshot)
+            self.schema = snapshot["reportSchemaVersion"]
+
+            def rows(sql, table=None):
+                if table is not None and table not in self.tables:
+                    return []
+                return [dict(row) for row in database.execute(sql, (self.id,))]
+            self.collectors = {row["name"]: row for row in rows("SELECT * FROM collectorRun WHERE snapshotId = ?",
+                                                                 "collectorRun")}
+            scans = rows("SELECT * FROM indexScan WHERE snapshotId = ?", "indexScan")
+            self.index_scan = scans[0] if scans else None
+            self.library_modules = []
+            if self.index_scan is not None:
+                try:
+                    self.library_modules = json.loads(self.index_scan["libraryModules"])
+                except (TypeError, ValueError):
+                    fail(f"indexScan.libraryModules of snapshot {self.id} isn't a JSON array: "
+                         f"{self.index_scan['libraryModules']!r}")
+            columns = {row[1] for row in database.execute("PRAGMA table_info(function)")}
+            wanted = ("key", "module", "kind", "name", "file", "startLine", "role", "generated", "access",
+                      "typePath", "parameterCount", "usr", "usrAccessor", "usrReason", "witness",
+                      "referrersSameModule", "referrersOtherModules", "referrersTests", "testReferrers")
+            selected = ", ".join(name if name in columns else f"NULL AS {name}" for name in wanted)
+            every = rows(f"SELECT {selected} FROM function WHERE snapshotId = ? ORDER BY rowid")
+            self.unknown_generated = sum(1 for row in every if row["role"] == "production" and row["generated"] is None)
+            self.functions = [row for row in every if row["role"] == "production" and row["generated"] == 0]
+            self.coverage_held = bool(rows("SELECT snapshotId FROM coverageRun WHERE snapshotId = ?", "coverageRun"))
+            self.mutation_held = bool(rows("SELECT snapshotId FROM mutationScan WHERE snapshotId = ?",
+                                           "mutationScan"))
+            self.coverage = {row["key"]: row for row in
+                             rows("SELECT * FROM functionCoverage WHERE snapshotId = ?", "functionCoverage")}
+            blob = database.execute("SELECT encoding, data FROM report WHERE snapshotId = ?", (self.id,)).fetchone()
+            database.close()
+        except sqlite3.Error as error:
+            fail(f"{path} doesn't read: {error}")
+        self.targets = {}
+        if blob is not None:
+            try:
+                data = zlib.decompress(blob["data"], -15) if blob["encoding"] == "deflate" else None
+            except zlib.error as error:
+                fail(f"the stored report of snapshot {self.id} doesn't inflate: {error}")
+            if data is None:
+                fail(f"the stored report of snapshot {self.id} has encoding {blob['encoding']!r}, not deflate")
+            scan = json.loads(data)
+            self.targets = {target["name"]: target for target in scan.get("targets", [])}
+        self.state = {"package": self.snapshot["package"],
+                      "git": {"packagePath": self.snapshot["packagePath"], "commit": self.snapshot["commitHash"],
+                              "isDirty": bool(self.snapshot["isDirty"])}}
+
+    def left_out_m7(self, collector, missing):
+        """Why a signal requiring `.m7Snapshot`, then `collector`, then rows of `missing` (a table) can't be
+        computed (design 8's requirements, in order, M6's wording); nil when it can."""
+        if self.schema < FIRST_M7_SCHEMA or "index" not in self.collectors:
+            return "the snapshot predates M7"
+        run = self.collectors.get(collector)
+        if run is None:
+            return "the snapshot predates M4"
+        if run["state"] != "ran":
+            return f"needs {collector}: {run['state']}" + (f", {run['reason']}" if run["reason"] else "")
+        if missing == "indexScan" and self.index_scan is None:
+            return "the snapshot holds no index rows"
+        return None
+
+
+class TestOnlyProduction:
+    """Design 8.3, by its words, over SignalRows."""
+
+    def __init__(self, rows):
+        self.rows = rows
+        self.left_out = rows.left_out_m7("index", "indexScan")
+        self.counts = Counter()
+        self.without_by_reason = Counter()
+        self.members = defaultdict(list)          # funnel term -> keys
+        self.test_only_excluded = Counter()       # exclusion term -> records only tests reference
+        self.problems = []
+        self.items = []
+        if self.left_out is not None:
+            return
+        library = set(rows.library_modules)
+        for row in rows.functions:
+            self.counts["N"] += 1
+            if row["usr"] is None:
+                self.counts["W"] += 1
+                self.without_by_reason[row["usrReason"] if row["usrReason"] is not None else "(no reason stored)"] += 1
+                self.members["W"].append(row["key"])
+                continue
+            self.counts["K"] += 1
+            tests, same, other = row["referrersTests"], row["referrersSameModule"], row["referrersOtherModules"]
+            if None in (tests, same, other):
+                self.problems.append(f"{row['key']}: a USR but referrer counts {same}/{other}/{tests} "
+                                     "(same module/other modules/tests; null is never right where the index ran)")
+            if row["witness"] is None:
+                self.problems.append(f"{row['key']}: a USR but witness null")
+            only_tests = (tests or 0) > 0 and (same or 0) + (other or 0) == 0
+            term = self.exclusion(row, library)
+            if term is not None:
+                self.counts[term] += 1
+                self.members[term].append(row["key"])
+                if only_tests:
+                    self.test_only_excluded[term] += 1
+                continue
+            self.counts["C"] += 1
+            if only_tests:
+                self.counts["L"] += 1
+                self.items.append(row)
+            elif (same or 0) + (other or 0) > 0:
+                self.counts["R"] += 1
+            else:
+                self.counts["Z"] += 1
+                self.members["Z"].append(row["key"])
+        self.items.sort(key=lambda row: (-row["referrersTests"], row["key"], row["file"], row["startLine"]))
+
+    def exclusion(self, row, library):
+        """The first exclusion of design 8.3 that applies after W: P, V, J, M, D; nil for a candidate."""
+        if row["access"] in LIBRARY_ACCESS and row["module"] in library:
+            return "P"
+        if row["witness"]:
+            return "V"
+        if row["usr"].startswith("c:"):
+            return "J"
+        if self.entry_point(row):
+            return "M"
+        if row["kind"] == "deinit":
+            return "D"
+        return None
+
+    def entry_point(self, row):
+        """A parameterless `static func main()` in an executable target (design 8.3's M)."""
+        if row["kind"] != "func" or row["name"] != "main" or row["parameterCount"] not in (None, 0):
+            return False
+        target = self.rows.targets.get(row["module"])
+        if target is None or target.get("type") != "executable":
+            return False
+        declaration = row["key"].rsplit("::", 1)[-1].split(" @ ", 1)[0]
+        return ENTRY_POINT.search(declaration) is not None
+
+    def funnel(self):
+        counts = self.counts
+        return (f"{counts['N']} production functions = {counts['W']} without a USR + {counts['K']} with one; "
+                f"{counts['K']} = {counts['P']} public API of a library product + {counts['V']} witnesses or "
+                f"overrides + {counts['J']} @objc + {counts['M']} entry points + {counts['D']} deinitializers + "
+                f"{counts['C']} candidates; {counts['C']} = {counts['L']} listed + {counts['R']} with a production "
+                f"reference + {counts['Z']} with no reference at all (not listed: fan-in 0 isn't dead, PRD §7.6a)")
+
+    def rule(self):
+        return TEST_ONLY_PROSE if self.left_out is not None else TEST_ONLY_PROSE + "; " + self.funnel()
+
+    def expected_numbers(self):
+        numbers = {term: self.counts[term] for term, _ in FUNNEL_TERMS if term not in ("K2", "C2")}
+        numbers["K2"], numbers["C2"] = numbers["K"], numbers["C"]
+        return numbers
+
+    def payloads(self, row, mutation_model, mutation_check):
+        """The payloads design 8.3 gives an item: `references` always; `coverage` and `mutation` when the snapshot
+        holds coverage rows or mutation rows. Returns (required, alternatives): alternatives maps a payload that
+        may be absent, or take another value, to the values accepted besides `required`'s (None = absent)."""
+        required = {"references": {"tests": row["referrersTests"],
+                                   "testReferrers": self.referrer_names(row),
+                                   "module": row["module"]}}
+        alternatives = {}
+        if self.rows.coverage_held:
+            stored = self.rows.coverage.get(row["key"])
+            if stored is None:
+                required["coverage"] = {}
+                alternatives["coverage"] = [None]
+            else:
+                required["coverage"] = mutation_check.without_nulls({
+                    "lines": mutation_check.nonnegative_lines(stored["lineCovered"], stored["lineTotal"]),
+                    "regions": mutation_check.nonnegative_lines(stored["regionCovered"], stored["regionTotal"])})
+        if self.rows.mutation_held:
+            held = mutation_model.held.get(row["key"])
+            if held:
+                required["mutation"] = mutation_check.without_nulls(mutation_model.payload(
+                    {"function": row, "counts": mutation_check.record_counts(held)})["mutation"])
+            else:
+                zero = mutation_check.without_nulls(mutation_model.payload(
+                    {"function": row, "counts": mutation_check.zero_counts()})["mutation"])
+                alternatives["mutation"] = [None, zero]
+        return required, alternatives
+
+    @staticmethod
+    def referrer_names(row):
+        try:
+            names = json.loads(row["testReferrers"]) if row["testReferrers"] is not None else None
+        except ValueError:
+            names = row["testReferrers"]
+        return names
+
+
+def mutation_payload_model(rows):
+    """mutation-check.py's SignalModel over the snapshot, for M6's payloads; (None, module) when the snapshot holds
+    neither coverage nor mutation rows."""
+    mutation_check = load_mutation_check()
+    if not (rows.coverage_held or rows.mutation_held):
+        return None, mutation_check
+    # SignalStore finds the snapshot by its state; the state given is this snapshot's own.
+    try:
+        store = mutation_check.SignalStore(rows.path, rows.state)
+    except SystemExit:
+        fail(f"mutation-check.py's SignalStore couldn't read snapshot {rows.id}")
+    if store.id != rows.id:
+        fail(f"mutation-check.py's SignalStore chose snapshot {store.id}, not {rows.id}")
+    limits = {name: dict(values) for name, values in mutation_check.DEFAULT_LIMITS.items()}
+    return mutation_check.SignalModel(store, limits, None), mutation_check
+
+
+def test_only_expected_items(model, mutation_model, mutation_check):
+    expected = []
+    for rank, row in enumerate(model.items, start=1):
+        required, alternatives = model.payloads(row, mutation_model, mutation_check)
+        expected.append({"rank": rank, "subject": row["key"], "file": row["file"], "line": row["startLine"],
+                         "score": row["referrersTests"], "member": True, "payloads": required,
+                         "alternatives": alternatives})
+    return expected
+
+
+def report_test_only_own(verdict, model, show_all):
+    verdict.section(f"{TEST_ONLY}: this check's figures (design 8.3)")
+    rows = model.rows
+    verdict.info(f"snapshot {rows.id} of {rows.snapshot['package']} at {rows.snapshot['commitHash']} "
+                 f"(dirty {bool(rows.snapshot['isDirty'])}), scan schema {rows.schema}")
+    if rows.unknown_generated:
+        verdict.info(f"{rows.unknown_generated} production rows don't say whether their file is generated "
+                     "(stored before store v3): left out, as M4's signals leave them out")
+    if model.left_out is not None:
+        verdict.info(f"left out: {model.left_out}")
+        return
+    verdict.info(f"library-product targets (indexScan.libraryModules): {rows.library_modules}")
+    executables = sorted(name for name, target in rows.targets.items() if target.get("type") == "executable")
+    verdict.info(f"executable targets: {executables}")
+    unknown = sorted(set(rows.library_modules) - set(rows.targets))
+    if unknown:
+        verdict.info(f"libraryModules names no target of the stored report: {unknown} (design 8.3: target names)")
+    verdict.info(f"coverage rows held: {rows.coverage_held}; mutation rows held: {rows.mutation_held}")
+    verdict.info("funnel: " + model.funnel())
+    if model.without_by_reason:
+        verdict.info("W by reason: " + ", ".join(f"{count} {reason}" for reason, count in
+                                                 sorted(model.without_by_reason.items())))
+    if model.test_only_excluded:
+        verdict.info("records only tests reference, left out before C: " + ", ".join(
+            f"{term} {count}" for term, count in sorted(model.test_only_excluded.items())))
+    for term in ("V", "J", "M", "D"):
+        if model.members[term]:
+            shown = model.members[term] if show_all else model.members[term][:5]
+            more = len(model.members[term]) - len(shown)
+            verdict.info(f"{term}: " + "; ".join(shown) + (f" ... and {more} more" if more else ""))
+    if model.items:
+        verdict.info(f"listed ({len(model.items)}), in order:")
+        for rank, row in enumerate(model.items if show_all else model.items[:LISTED], start=1):
+            names = model.referrer_names(row)
+            verdict.info(f"  #{rank} {row['referrersTests']} {row['key']} ({row['file']}:{row['startLine']}) "
+                         f"tests {names[:3] if isinstance(names, list) else names}")
+        if not show_all and len(model.items) > LISTED:
+            verdict.info(f"  ... and {len(model.items) - LISTED} more (--all lists them)")
+    else:
+        verdict.info("listed: none")
+    for problem in model.problems:
+        verdict.info(f"note: {problem}")
+
+
+def compare_test_only(verdict, model, signal, expected):
+    verdict.section(f"o   {TEST_ONLY}: left-out reason, rule, funnel, candidates, items, order and payloads")
+    actual_left = signal.get("leftOut")
+    verdict.result("left out", actual_left == model.left_out,
+                   f"expected {model.left_out!r}, got {actual_left!r}")
+    rule = signal.get("rule", "")
+    if model.left_out is not None:
+        verdict.result("rule states design 8.3's text", rule == TEST_ONLY_PROSE or rule.startswith(
+            TEST_ONLY_PROSE + "; "), f"got {rule!r}")
+        verdict.result("no items, no candidates", not signal.get("items") and signal.get("candidates", 0) == 0,
+                       f"{len(signal.get('items') or [])} items, candidates {signal.get('candidates')}")
+        return
+    verdict.result("rule's text before the funnel is design 8.3's", rule.startswith(TEST_ONLY_PROSE + "; "),
+                   "" if rule.startswith(TEST_ONLY_PROSE) else f"got {rule[:200]!r}...")
+    funnel_text = rule[len(TEST_ONLY_PROSE) + 2:] if rule.startswith(TEST_ONLY_PROSE + "; ") else rule
+    match = TEST_ONLY_FUNNEL.search(funnel_text)
+    verdict.result("funnel in design 8.3's words", match is not None,
+                   "" if match else f"got {funnel_text[:400]!r}")
+    if match is not None:
+        if match.start() != 0:
+            verdict.info(f"text between the rule and the funnel: {funnel_text[:match.start()]!r}")
+        if match.end() < len(funnel_text):
+            verdict.info(f"text after the funnel: {funnel_text[match.end():]!r}")
+        wanted = model.expected_numbers()
+        differences = [f"{term} ({name}): expected {wanted[term]}, got {match.group(term)}"
+                       for term, name in FUNNEL_TERMS if int(match.group(term)) != wanted[term]]
+        verdict.result("every funnel number", not differences, model.funnel() if differences else "")
+        verdict.listing(differences)
+        stated = [int(match.group(term)) for term in ("N", "W", "K", "P", "V", "J", "M", "D", "C", "L", "R", "Z")]
+        n, w, k, p, v, j, m, d, c, listed, r, z = stated
+        sums = n == w + k and k == p + v + j + m + d + c and c == listed + r + z \
+            and int(match.group("K2")) == k and int(match.group("C2")) == c
+        verdict.result("the funnel's parts add up as stated", sums)
+        breakdown = match.group("wby")
+        if breakdown is None:
+            verdict.info("W isn't broken down by reason in the rule (design 8.3's funnel names no breakdown); "
+                         "this check's: " + (", ".join(f"{count} {reason}" for reason, count in
+                                                      sorted(model.without_by_reason.items())) or "none"))
+        else:
+            body = re.sub(r"^\s*\(\s*(?:by reason:?\s*)?", "", breakdown).rstrip(") ")
+            parts = [part.strip() for part in re.split(r"[,;]", body) if part.strip()]
+            stated_reasons = {}
+            readable = True
+            for part in parts:
+                found = re.fullmatch(r"(\d+) (.+)", part)
+                if found is None:
+                    readable = False
+                    break
+                stated_reasons[reason_key(found.group(2))] = int(found.group(1))
+            mine = {reason_key(reason): count for reason, count in model.without_by_reason.items()}
+            verdict.result("W by reason", readable and stated_reasons == mine,
+                           f"expected {dict(model.without_by_reason)}, got {breakdown.strip()!r}")
+    candidates = signal.get("candidates")
+    if candidates == model.counts["N"]:
+        verdict.result("candidates", True, f"{candidates}: N, the pool (design 8.3's Pool)")
+    elif candidates == model.counts["C"]:
+        verdict.result("candidates", True, f"{candidates}: C, the funnel's candidates (design 8.3 names both)")
+    else:
+        verdict.result("candidates", False, f"expected N {model.counts['N']} or C {model.counts['C']}, "
+                                            f"got {candidates}")
+    items = signal.get("items") or []
+    listed = [(item.get("subject"), item.get("file"), item.get("line")) for item in items]
+    wanted = [(entry["subject"], entry["file"], entry["line"]) for entry in expected]
+    verdict.result("listed items in order", listed == wanted, f"{len(wanted)} items")
+    if listed != wanted:
+        verdict.listing([f"#{rank}: expected {mine}, got {theirs}" for rank, (mine, theirs)
+                         in enumerate(zip(wanted, listed), start=1) if mine != theirs]
+                        + [f"missing {mine}" for mine in wanted[len(listed):]]
+                        + [f"extra {theirs}" for theirs in listed[len(wanted):]])
+    differences, notes = [], Counter()
+    for item, entry in zip(items, expected):
+        label = f"#{entry['rank']} {entry['subject']}"
+        if item.get("rank") != entry["rank"] or item.get("member") is not True:
+            differences.append(f"{label}: rank {item.get('rank')} member {item.get('member')}")
+        if not isinstance(item.get("score"), (int, float)) or float(item["score"]) != entry["score"]:
+            differences.append(f"{label}: score {item.get('score')} != {entry['score']}")
+        extra = sorted(key for key in item if key not in ITEM_KEYS and key not in TEST_ONLY_PAYLOADS)
+        if extra:
+            unknown = [key for key in extra if key not in ITEM_PAYLOADS]
+            differences.append(f"{label}: payloads test-only doesn't fill: {extra}"
+                               + (f" ({unknown} no known payload)" if unknown else ""))
+        for name in TEST_ONLY_PAYLOADS:
+            value = item[name] if name in item else None
+            accepted = entry["alternatives"].get(name, [])
+            if name in entry["payloads"] and name in item and value == entry["payloads"][name]:
+                continue
+            if name in entry["payloads"] or accepted:
+                if value in accepted:
+                    shape = "absent" if value is None else json.dumps(value, sort_keys=True)[:60]
+                    notes[f"{name} {shape} for a function without {name} data"] += 1
+                    continue
+                wanted_text = json.dumps(entry["payloads"].get(name), sort_keys=True) if name in entry["payloads"] \
+                    else " or ".join("absent" if option is None else json.dumps(option, sort_keys=True)
+                                     for option in accepted)
+                differences.append(f"{label}: {name} {'absent' if value is None else json.dumps(value, sort_keys=True)}"
+                                   f" != {wanted_text}")
+            elif name in item:
+                differences.append(f"{label}: {name} given, but the snapshot holds no {name} rows")
+    verdict.result("ranks, members, scores and payloads", not differences, f"{len(expected)} items")
+    verdict.listing(differences)
+    for note, count in sorted(notes.items()):
+        verdict.info(f"accepted: {note} ({count})")
+
+
+def signals_mode(arguments):
+    report = None
+    if arguments.report:
+        try:
+            with open(arguments.report, encoding="utf-8") as handle:
+                report = json.load(handle)
+        except (OSError, ValueError) as error:
+            fail(f"{arguments.report} doesn't read as JSON: {error}")
+    elif not arguments.own_only:
+        fail("give --report (`swiftstats report --format json` of the snapshot), or --own-only")
+    limits = hidden_coupling_limits(arguments.config, arguments.set)
+    rows = SignalRows(arguments.store, arguments.snapshot, None if report is None else report.get("snapshot"))
+    verdict = Verdict(arguments.all)
+    model = TestOnlyProduction(rows)
+    mutation_model, mutation_check = mutation_payload_model(rows) if model.left_out is None else (None, None)
+    expected = test_only_expected_items(model, mutation_model, mutation_check) if model.left_out is None else []
+    report_test_only_own(verdict, model, arguments.all)
+    verdict.info(f"hidden-coupling limits in force: {limits}")
+    if arguments.dump:
+        write_json(arguments.dump, {
+            "snapshot": rows.state, "snapshotId": rows.id, "limits": {HIDDEN_COUPLING: limits},
+            "signals": [{"name": TEST_ONLY, "leftOut": model.left_out, "rule": model.rule(),
+                         "candidates": model.counts["N"] if model.left_out is None else 0,
+                         "items": [dict({key: entry[key] for key in ITEM_KEYS}, **entry["payloads"])
+                                   for entry in expected]}],
+            "funnel": dict(model.counts), "withoutUSRByReason": dict(model.without_by_reason),
+            "excluded": {term: keys for term, keys in model.members.items()}, "problems": model.problems})
+    if report is None:
+        print("\nRESULT: own figures only (nothing compared)")
+        return 0
+    verdict.section("t   thresholds: the report lists the hidden-coupling limits this check uses, and none for "
+                    "dead but tested or test-only")
+    verdict.info(f"report schema {report.get('schemaVersion')} (5 before plan step 10, 6 after)")
+    listed_limits = (report.get("thresholds") or {}).get("limits") or {}
+    verdict.result("hidden-coupling limits", listed_limits.get(HIDDEN_COUPLING) == limits,
+                   f"expected {limits}, got {listed_limits.get(HIDDEN_COUPLING)}")
+    unlimited = [name for name in (DEAD_BUT_TESTED, TEST_ONLY) if name in listed_limits]
+    verdict.result("dead but tested and test-only take no limits", not unlimited, f"listed for {unlimited}")
+    verdict.section("n   names: the three M7 signals, after uneven-clone-mutation in report order")
+    names = [signal.get("name") for signal in report.get("signals", [])]
+    tail = names[-len(M7_SIGNALS):]
+    in_order = tail == list(M7_SIGNALS) and len(names) > len(M7_SIGNALS) \
+        and names[-len(M7_SIGNALS) - 1] == LAST_M6_SIGNAL and all(names.count(name) == 1 for name in M7_SIGNALS)
+    verdict.result("report order", in_order, f"last four: {names[-len(M7_SIGNALS) - 1:]}")
+    by_name = {signal.get("name"): signal for signal in report.get("signals", [])}
+    for name in (HIDDEN_COUPLING, DEAD_BUT_TESTED):
+        if name in by_name:
+            verdict.info(f"{name}: left out {by_name[name].get('leftOut')!r} (not checked here before plan "
+                         f"step {'9c' if name == HIDDEN_COUPLING else '9b'})")
+    if TEST_ONLY not in by_name:
+        verdict.result(f"{TEST_ONLY} listed", False, "the report has no such signal")
+    else:
+        compare_test_only(verdict, model, by_name[TEST_ONLY], expected)
+    print("\nRESULT: " + ("FAIL" if verdict.failed else "PASS"))
+    return 1 if verdict.failed else 0
+
+
+# --------------------------------------------------------------------------
 
 
 def main():
@@ -6842,9 +7529,22 @@ def main():
                            "hint unused)")
     dead.add_argument("--ordinal-base", type=int, choices=(0, 1),
                       help="the first entry's ordinal (default: the scan's lowest declaration ordinal, else 1)")
+    signalling = modes.add_parser("signals", help="re-derive M7's signals from a store's rows (plan step 9a: "
+                                                  "test-only production)")
+    signalling.add_argument("store", help="the store holding the snapshot (store v6)")
+    signalling.add_argument("--report", help="`swiftstats report --format json` of the snapshot, compared")
+    signalling.add_argument("--config", help="the configuration the report was made with (its signals: limits)")
+    signalling.add_argument("--set", action="append", metavar="SIGNAL.LIMIT=VALUE",
+                            help="a limit, such as hidden-coupling.support=4, applied after --config")
+    signalling.add_argument("--snapshot", type=int,
+                            help="the snapshot id (default: the report's snapshot, else the newest)")
+    signalling.add_argument("--own-only", action="store_true",
+                            help="print this check's figures without a report to compare")
+    signalling.add_argument("--dump", help="write this check's signal, funnel and exclusions as JSON")
+    signalling.add_argument("--all", action="store_true", help="list every difference and every item")
     arguments = parser.parse_args()
     return {"dump": dump_mode, "build-lines": build_lines_mode, "build": build_mode,
-            "usr": usr_mode, "dead": dead_mode}[arguments.mode](arguments)
+            "usr": usr_mode, "dead": dead_mode, "signals": signals_mode}[arguments.mode](arguments)
 
 
 if __name__ == "__main__":

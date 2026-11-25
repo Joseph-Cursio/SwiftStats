@@ -1,0 +1,121 @@
+//
+//  MarkdownIndexSignalsTests.swift
+//  SwiftStatsCoreTests
+//
+//  M7's signal tables (design §10.1): test-only production code shows,
+//  after the function and its score, the test referrers counted with the
+//  first three named, then the lines covered and the function score, a
+//  dash when the snapshot holds no coverage or the function has no
+//  mutants; on `TestOnlyHarness`' package and on hand-made items.
+//
+
+import Foundation
+@testable import SwiftStatsCore
+import Testing
+
+@Suite("Markdown index signals")
+struct MarkdownIndexSignalsTests {
+    /// The function the hand-made items are about.
+    private static let subject = "Lib::func f(_: Int) -> Int"
+    /// Its file.
+    private static let file = "Sources/Lib/F.swift"
+    /// The table's header and separator.
+    private static let header = [
+        "| # | Function | Score | Test referrers | Lines covered | Function score |",
+        "| --- | --- | --- | --- | --- | --- |"
+    ]
+
+    /// A function's results: two kills of seven scored.
+    private static let mutationJSON = """
+        {
+          "counts": {"killed": 2, "crashKills": 0, "survived": 5, "noCoverage": 0, "timedOut": 0, "notCovered": 0,
+                     "buildErrors": 0, "suspectOnly": 0, "judgedKills": 2},
+          "score": {"killed": 2, "scored": 7, "percent": 28.57},
+          "functionScore": {"killed": 2, "scored": 7, "percent": 28.57},
+          "killingTests": 1,
+          "firstKillingTests": ["a()"],
+          "survivors": [],
+          "suspects": []
+        }
+        """
+
+    /// The table lines a report shows for `signal`.
+    private static func table(_ signal: SignalResult) -> [String] {
+        MarkdownSignals.render([signal], history: nil).filter { $0.hasPrefix("|") }
+    }
+
+    /// The table row of a test-only item scored `score` with `references`,
+    /// `coverage` and `mutation`.
+    private static func row(
+        score: Double,
+        references: SignalItem.References,
+        coverage: SignalItem.Coverage? = nil,
+        mutation: SignalItem.Mutation? = nil
+    ) throws -> String {
+        let item = SignalItem(
+            SignalItem.Draft(
+                subject: subject,
+                file: file,
+                line: 3,
+                coverage: coverage,
+                mutation: mutation,
+                references: references
+            ),
+            rank: 1,
+            score: score,
+            member: true
+        )
+        let signal = SignalResult(name: .testOnlyProduction, leftOut: nil, rule: "", candidates: 1, items: [item])
+        return try #require(table(signal).last)
+    }
+
+    @Test("""
+        test-only production code shows each listed function's test referrers, and a dash for coverage and \
+        function score when the snapshot holds neither
+        """)
+    func harness() throws {
+        let made = try TemporaryStore("TestOnlyMarkdown")
+        defer { made.remove() }
+        let snapshot = try TestOnlyHarness.stored(TestOnlyHarness.cases, in: made.store)
+
+        let signal = try TestOnlyHarness.signal(snapshot)
+
+        #expect(Self.table(signal) == Self.header + [
+            "| 1 | `func alsoTests() -> Int` (Sources/Lib/Lib.swift:13) | 2 | 2: LibTests::func test0(); "
+                + "LibTests::func test1() | — | — |",
+            "| 2 | `func onlyTests() -> Int` (Sources/Lib/Lib.swift:12) | 2 | 2: LibTests::func test0(); "
+                + "LibTests::func test1() | — | — |",
+            "| 3 | `func helper() -> Int` (Sources/Inner/Inner.swift:1) | 1 | 1: LibTests::func test0() | — | — |",
+            "| 4 | `Fake::static func main()` (Sources/Lib/Lib.swift:7) | 1 | 1: LibTests::func test0() | — | — |",
+            "| 5 | `func fewTests() -> Int` (Sources/Lib/Lib.swift:14) | 1 | 1: LibTests::func test0() | — | — |",
+            "| 6 | `Tool::static func main(_: [String])` (Sources/Tool/Tool.swift:4) | 1 | 1: LibTests::func "
+                + "test0() | — | — |"
+        ])
+    }
+
+    @Test("""
+        a test-referrers cell names the first three and counts the rest, or gives the count alone when none is \
+        named; lines covered and the function score show when present
+        """)
+    func cells() throws {
+        let mutation = try JSONDecoder().decode(SignalItem.Mutation.self, from: Data(Self.mutationJSON.utf8))
+        let many = SignalItem.References(
+            tests: 7,
+            testReferrers: ["T::a()", "T::b()", "T::c()", "T::d()", "T::e()"],
+            module: "Lib"
+        )
+        let three = SignalItem.References(tests: 3, testReferrers: ["T::a()", "T::b()", "T::c()"], module: "Lib")
+        let unnamed = SignalItem.References(tests: 2, testReferrers: [], module: "Lib")
+        let covered = SignalItem.Coverage(lines: CoverageTally(covered: 3, total: 4), regions: nil)
+        let place = "`func f(_: Int) -> Int` (Sources/Lib/F.swift:3)"
+
+        #expect(try Self.row(score: 7, references: many, coverage: covered, mutation: mutation)
+            == "| 1 | \(place) | 7 | 7: T::a(); T::b(); T::c() (+4 more) | 3/4 (75%) | 2/7 (28.57%) |")
+        #expect(try Self.row(score: 3, references: three, coverage: covered)
+            == "| 1 | \(place) | 3 | 3: T::a(); T::b(); T::c() | 3/4 (75%) | — |")
+        #expect(try Self.row(score: 2, references: unnamed)
+            == "| 1 | \(place) | 2 | 2 | — | — |")
+        #expect(try Self.row(score: 2, references: unnamed, coverage: SignalItem.Coverage(lines: nil, regions: nil))
+            == "| 1 | \(place) | 2 | 2 | — | — |")
+    }
+}
