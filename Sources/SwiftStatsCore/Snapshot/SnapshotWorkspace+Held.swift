@@ -79,7 +79,7 @@ extension SnapshotWorkspace {
             stored = try save(snapshot, drop: drop)
         } catch let error as StoreError where kept != nil {
             let advised = switch error {
-            case .coverageNotKept, .damagedCoverage, .mutationNotKept, .damagedMutation:
+            case .coverageNotKept, .damagedCoverage, .mutationNotKept, .damagedMutation, .indexNotKept, .damagedIndex:
                 true
 
             default:

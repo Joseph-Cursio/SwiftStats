@@ -69,6 +69,13 @@ struct HeldResultsHarness {
         try workspace.save(try CarrySamples.covered(plain), drop: [])
     }
 
+    /// Stores a plain scan of the working tree holding the hand-made T1
+    /// results, its build, index and periphery runs ran (M7, design §9.1).
+    func storeIndex() throws {
+        let plain = try workspace.scanWorkingTree(history: .skipped("test")).snapshot
+        try workspace.save(try IndexStoreSamples.indexed(plain), drop: [])
+    }
+
     /// The error a plain rescan's save gives now, which scans asking for
     /// the slow collectors must give before they run; nil when it stores
     /// the rescan (a refused save writes nothing).

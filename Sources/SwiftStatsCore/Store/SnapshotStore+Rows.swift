@@ -4,9 +4,10 @@
 //
 //  The rows store v3 adds (M4): scan-wide facts, property candidates, law
 //  checks, clone classes and their copies, and history's commit log with
-//  each family's changes; and reading a snapshot back with all its rows,
-//  v4's coverage (`CoverageRows`) and v5's mutation results
-//  (`MutationRows`) among them.
+//  each family's changes, and from v6 (M7) history's coupling pairs; and
+//  reading a snapshot back with all its rows, v4's coverage
+//  (`CoverageRows`), v5's mutation results (`MutationRows`) and v6's T1
+//  results (`IndexRows`, `BuildRows`, `DeadCodeRows`) among them.
 //  Signals read these rows, never the report blob.
 //
 
@@ -41,6 +42,9 @@ extension SnapshotStore {
         }
         for change in history.families.flatMap({ FamilyChangeRow.rows(for: $0, snapshotId: snapshotId) }) {
             try change.insert(database)
+        }
+        for (ordinal, pair) in history.coupling.enumerated() {
+            try CouplingPairRow(pair, ordinal: ordinal, snapshotId: snapshotId).insert(database)
         }
     }
 
@@ -82,8 +86,12 @@ extension SnapshotStore {
             familyChanges: try FamilyChangeRow.filter(mine)
                 .order(Column("family"), Column("file"), Column("commitOrdinal"))
                 .fetchAll(database),
+            couplingPairs: try CouplingPairRow.filter(mine).order(Column("ordinal")).fetchAll(database).map(\.pair),
             coverage: try CoverageRows(id: id, in: database)?.stored,
-            mutation: try MutationRows(id: id, in: database)?.stored
+            mutation: try MutationRows(id: id, in: database)?.stored,
+            index: try IndexRows(id: id, in: database)?.stored,
+            build: try BuildRows(id: id, in: database)?.stored,
+            deadCode: try DeadCodeRows(id: id, in: database)?.stored
         )
     }
 

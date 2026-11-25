@@ -11,8 +11,7 @@ script reads them with its own line patterns, not design section 6.1's
 grammar, and accounts for every line. Run it as `python3 -I -B Scripts/index-check.py <mode> ...`, so it
 writes no bytecode cache beside itself.
 
-Modes (later plan steps add `signals` and `coverage-names`, and `usr`'s
-check u8):
+Modes (later plan steps add `signals` and `coverage-names`):
 
 `dump` writes the reader's values for a store as JSON: the recorded
 `reader.json` the unit tests read through `RecordedIndexSource`, and the
@@ -360,6 +359,33 @@ roll-ups `index.typeCycles`, `index.typesInCycles` and `index.moduleEdges`
   position decided, and identities several types share (a design gap:
   local types of one name).
 
+`usr` with `--store` also runs check u8 (plan step 7a) on --snapshot (the
+newest by default), whether or not `--own-only` is given:
+  u8  the stored rows equal the scan JSON (design 9.1 and 9.2): the
+      `function` columns usr, usrAccessor, usrReason (the record's
+      `reason`), witness (0 or 1), referrersSameModule, referrersOtherModules,
+      referrersTests and testReferrers (a JSON array as text) of each record
+      the index block lists, and null on every other row of the snapshot
+      (null, never 0, for what wasn't collected); one `indexScan` row
+      (collectedAt the snapshot's date, or the date a `carried from the scan
+      of <date>` reason of the index collector names; layout, libraryModules
+      as a JSON array, the unit counts per class and quarantined, records,
+      occurrences and the four definition counts); `indexUnit`, `indexFile`,
+      `moduleEdge`, `typeIndex` (typeFile '' when the JSON has none),
+      `familyReference` and `familyTypeReference` rows equal their lists as
+      multisets; `usrDisagreement` rows (kind, subreason, usr, key,
+      symbolKind, name, file, line, column) equal the `disagreements`,
+      `withoutRecord` and `collisions` lists together as a multiset, their
+      ordinals counting up from 0 or 1 with no gap (whether the ordinals
+      follow the lists' order is printed, not failed); with no index block,
+      none of those tables holds a row of the snapshot. `couplingPair` rows,
+      written with the history whether or not the index ran (design 9.1),
+      by ordinal (from 0 or 1, no gap) equal the scan's `history.coupling`
+      in order, none when it has none. Printed, not failed: columns whose
+      nullability differs from design 9.1's NULL marks. The store's other
+      tables aren't checked here (`build --store` and `dead --store` check
+      theirs).
+
 Inputs `usr` trusts:
   - libIndexStore.dylib's C API (as for `dump`), the library being the
     package toolchain's (`swift -print-target-info` in the package:
@@ -384,7 +410,12 @@ Inputs `usr` trusts:
     them, and the sources' top-level statement lines and private or
     fileprivate types, read by the small tokenizer copied from
     Scripts/coverage-check.py.
-Not the scan JSON's `index` block or `index.*` roll-ups, which it checks.
+  - for u8: the scan JSON's `index` block, `records` (`key`), `history`
+    (`coupling`) and the index collector's reason, as what the rows must
+    equal, and the store's tables as design section 9.1 names them, opened
+    read-only.
+Not the scan JSON's `index` block or `index.*` roll-ups, which it checks
+(u1 to u7; u8 takes the block as given and checks the rows against it).
 
 `dead` (its run part, plan step 6a) runs outskirts itself, twice, with the
 command line built from design section 5.2's words, not from SwiftStats'
@@ -634,6 +665,7 @@ Usage:
                                           --build-spelling <text>
                                           [--spelling <token>=<path>]...]
                                          [--log <file>] [--own-only]
+                                         [--store <store>] [--snapshot <id>]
                                          [--dump <path>] [--all]
                                          [--without-u7]
                                          [--local-containers symbol|enclosing]
@@ -4890,6 +4922,258 @@ def compare_coupling(verdict, coupling):
     verdict.listing(differences)
 
 
+# --------------------------------------------------------------------------
+# usr, check u8: the store's index rows against the scan JSON (design
+# sections 9.1, 9.2 and 11; plan step 7a)
+
+U8_FUNCTION_COLUMNS = ("usr", "usrAccessor", "usrReason", "witness", "referrersSameModule",
+                       "referrersOtherModules", "referrersTests", "testReferrers")
+U8_TABLES = {
+    "indexScan": ("collectedAt", "layout", "libraryModules", "unitsKept", "unitsVariant", "unitsSystem",
+                  "unitsOtherPackage", "unitsOtherModule", "unitsStale", "unitsDuplicate", "unitsQuarantined",
+                  "records", "occurrences", "definitionsJoined", "definitionsImplicit", "secondaryUSRs", "objcUSRs"),
+    "indexUnit": ("name", "target", "mainFile", "triple", "class"),
+    "indexFile": ("path", "sha256"),
+    "usrDisagreement": ("ordinal", "kind", "subreason", "usr", "key", "symbolKind", "name", "file", "line", "column"),
+    "moduleEdge": ("fromModule", "toModule", "kind", "references", "files"),
+    "typeIndex": ("module", "typePath", "typeFile", "usr", "referrersSameModule", "referrersOtherModules",
+                  "referrersTests", "cycle"),
+    "familyReference": ("fromFamily", "toFamily", "via"),
+    "familyTypeReference": ("family", "module", "typePath", "typeFile"),
+    "couplingPair": ("ordinal", "familyA", "fileA", "familyB", "fileB", "support", "changesA", "changesB"),
+}
+# The columns design 9.1 marks NULL (every new `function` column is).
+U8_NULLABLE = {
+    "indexScan": set(), "indexUnit": set(), "indexFile": set(),
+    "usrDisagreement": {"subreason", "usr", "key", "symbolKind", "name"},
+    "moduleEdge": {"references"}, "typeIndex": {"usr", "cycle"},
+    "familyReference": set(), "familyTypeReference": set(), "couplingPair": set(),
+}
+U8_COUNTS = ("kept", "variant", "system", "otherPackage", "otherModule", "stale", "duplicate", "quarantined")
+U8_DEFINITIONS = ("joined", "implicit", "secondary", "objc")
+CARRIED_FROM = re.compile(r"carried from the scan of (\S+)")
+
+
+def u8_rows(connection, table, snapshot):
+    """Table `table`'s rows of `snapshot`, as tuples of U8_TABLES' columns."""
+    columns = U8_TABLES[table]
+    quoted = ", ".join(f'"{name}"' for name in columns)
+    return [tuple(row) for row in connection.execute(
+        f'SELECT {quoted} FROM "{table}" WHERE snapshotId = ?', (snapshot,))]
+
+
+def u8_compare(verdict, name, mine, stored):
+    """Two lists of tuples compared as multisets; the differences listed."""
+    expected, held = Counter(mine), Counter(stored)
+    verdict.result(name, expected == held, f"{len(mine)} in the scan JSON, {len(stored)} stored")
+    verdict.listing(f"only the scan JSON's: {item}" for item in sorted((expected - held).elements(), key=repr))
+    verdict.listing(f"only the store's: {item}" for item in sorted((held - expected).elements(), key=repr))
+
+
+def u8_ordinals(verdict, name, ordinals):
+    """Ordinals that count 0 or 1 upwards with no gap."""
+    ordered = sorted(ordinals)
+    base = ordered[0] if ordered else 0
+    ok = base in (0, 1) and ordered == list(range(base, base + len(ordered)))
+    verdict.result(f"{name} ordinals count up from 0 or 1 with no gap", ok,
+                   f"{ordered[:5]}{'...' if len(ordered) > 5 else ''}" if not ok else
+                   (f"from {base}" if ordered else "none"))
+    return base
+
+
+def u8_json_text(value):
+    """A JSON array stored as text, read back; MISSING when it doesn't read."""
+    if value is None:
+        return None
+    try:
+        return json.loads(value)
+    except (TypeError, ValueError):
+        return MISSING
+
+
+def u8_function_expected(item):
+    """The `function` columns design 9.1 adds for the index block's record `item`, in U8_FUNCTION_COLUMNS' order."""
+    references = item.get("references") if isinstance(item.get("references"), dict) else None
+    witness = item.get("witness")
+    return (item.get("usr"), item.get("usrAccessor"), item.get("reason"),
+            None if witness is None else int(bool(witness)),
+            references.get("sameModule") if references else None,
+            references.get("otherModules") if references else None,
+            references.get("tests") if references else None,
+            references.get("testReferrers") if references else None)
+
+
+def compare_index_store(verdict, scan, store_path, snapshot):
+    """Check u8: the store's index rows of `snapshot` (the newest by default)
+    equal the scan JSON's `index` block, its records' USR and referrer
+    columns, and its history's coupling pairs."""
+    import sqlite3
+
+    verdict.section(f"u8 the store's index rows ({store_path}) against the scan JSON")
+    block = scan.get("index")
+    connection = sqlite3.connect(f"file:{store_path}?mode=ro", uri=True)
+    try:
+        if snapshot is None:
+            snapshot = connection.execute("SELECT max(id) FROM snapshot").fetchone()[0]
+        row = connection.execute("SELECT package, commitHash, date FROM snapshot WHERE id = ?", (snapshot,)).fetchone()
+        if row is None:
+            verdict.result(f"snapshot {snapshot} is in the store", False, "absent")
+            return
+        package_name, commit, date = row
+        verdict.info(f"snapshot {snapshot}: {package_name} at {commit}, dated {date}")
+        scanned = scan.get("package", {}) if isinstance(scan.get("package"), dict) else {}
+        if scanned.get("name") not in (None, package_name):
+            verdict.info(f"the scan JSON names package {scanned.get('name')!r}, the snapshot {package_name!r}")
+
+        tables = {name for (name,) in connection.execute("SELECT name FROM sqlite_master WHERE type = 'table'")}
+        absent = [name for name in U8_TABLES if name not in tables]
+        function_columns = {r[1]: r for r in connection.execute("PRAGMA table_info(function)")}
+        absent += [f"function.{name}" for name in U8_FUNCTION_COLUMNS if name not in function_columns]
+        verdict.result("the store has design 9.1's index tables and function columns", not absent,
+                       ", ".join(absent))
+        if absent:
+            return
+        deviations = []
+        for table, columns in U8_TABLES.items():
+            info = {r[1]: r for r in connection.execute(f'PRAGMA table_info("{table}")')}
+            lacking = [name for name in columns if name not in info]
+            if lacking:
+                verdict.result(f"{table} has design 9.1's columns", False, ", ".join(lacking))
+                return
+            for name in columns:
+                nullable = info[name][3] == 0 and info[name][5] == 0
+                if nullable != (name in U8_NULLABLE[table]):
+                    deviations.append(f"{table}.{name}: {'NULL' if nullable else 'NOT NULL'} in the store, "
+                                      f"{'NULL' if name in U8_NULLABLE[table] else 'NOT NULL'} in design 9.1")
+        for name in U8_FUNCTION_COLUMNS:
+            if function_columns[name][3] != 0:
+                deviations.append(f"function.{name}: NOT NULL in the store, NULL in design 9.1")
+        if deviations:
+            verdict.info("printed, not failed: columns whose nullability differs from design 9.1")
+            verdict.listing(deviations)
+
+        # function: the index block's records' columns; null on every other row.
+        stored_functions = {}
+        duplicates = []
+        quoted = ", ".join(f'"{name}"' for name in U8_FUNCTION_COLUMNS)
+        for values in connection.execute(f"SELECT key, {quoted} FROM function WHERE snapshotId = ?", (snapshot,)):
+            key = values[0]
+            if key in stored_functions:
+                duplicates.append(key)
+            columns = list(values[1:])
+            columns[-1] = u8_json_text(columns[-1])
+            stored_functions[key] = tuple(columns)
+        if duplicates:
+            verdict.result("function keys are distinct in the snapshot", False, f"{len(duplicates)} repeated")
+            verdict.listing(duplicates)
+        expected_functions = {r.get("key"): (None,) * len(U8_FUNCTION_COLUMNS) for r in scan.get("records", [])}
+        listed = block.get("records", []) if isinstance(block, dict) else []
+        unknown = [item.get("key") for item in listed if item.get("key") not in expected_functions]
+        for item in listed:
+            expected_functions[item.get("key")] = u8_function_expected(item)
+        verdict.result("every index record names a record of the scan", not unknown, f"{len(unknown)} don't")
+        verdict.listing(unknown)
+        unread = [key for key, columns in stored_functions.items() if columns[-1] is MISSING]
+        verdict.result("function.testReferrers reads as a JSON array where set", not unread, f"{len(unread)} don't")
+        verdict.listing(unread)
+        differences = [f"{key}: scan JSON {expected_functions.get(key, 'no record')}, "
+                       f"store {stored_functions.get(key, 'no row')}"
+                       for key in sorted(set(expected_functions) | set(stored_functions), key=str)
+                       if expected_functions.get(key) != stored_functions.get(key)]
+        with_usr = sum(1 for columns in stored_functions.values() if columns[0] is not None)
+        verdict.result("function.usr, usrAccessor, usrReason, witness, referrers and testReferrers per record "
+                       "(null where the index block lists no record)", not differences,
+                       f"{len(expected_functions)} records, {len(stored_functions)} rows, {with_usr} with a USR")
+        verdict.listing(differences)
+
+        # The index tables: no rows without an index block.
+        if not isinstance(block, dict):
+            counts = {table: len(u8_rows(connection, table, snapshot))
+                      for table in U8_TABLES if table != "couplingPair"}
+            verdict.result("no index rows (the scan JSON has no index block)", not any(counts.values()),
+                           ", ".join(f"{table} {count}" for table, count in counts.items() if count))
+        else:
+            store_block = block.get("store", {}) if isinstance(block.get("store"), dict) else {}
+            counts = store_block.get("counts", {}) if isinstance(store_block.get("counts"), dict) else {}
+            definitions = block.get("definitions", {}) if isinstance(block.get("definitions"), dict) else {}
+            scan_rows = u8_rows(connection, "indexScan", snapshot)
+            run = next((c for c in scan.get("collectors", []) if c.get("name") == "index"), {}) or {}
+            carried = CARRIED_FROM.search(run.get("reason") or "")
+            collected = carried.group(1) if carried else date
+            expected = (collected, store_block.get("layout"), block.get("libraryModules"),
+                        *(counts.get(name) for name in U8_COUNTS),
+                        store_block.get("records"), store_block.get("occurrences"),
+                        *(definitions.get(name) for name in U8_DEFINITIONS))
+            if len(scan_rows) != 1:
+                verdict.result("one indexScan row", False, f"{len(scan_rows)}")
+            else:
+                held = list(scan_rows[0])
+                held[2] = u8_json_text(held[2])
+                names = U8_TABLES["indexScan"]
+                wrong = [f"{name}: scan JSON {mine!r}, store {theirs!r}"
+                         for name, mine, theirs in zip(names, expected, held) if mine != theirs]
+                verdict.result("indexScan (collectedAt the snapshot's date"
+                               + (f", or the carried scan's {collected}" if carried else "")
+                               + "; libraryModules, unit counts, records, occurrences, definitions)",
+                               not wrong, f"{len(names)} columns")
+                verdict.listing(wrong)
+            u8_compare(verdict, "indexUnit rows (name, target, mainFile, triple, class)",
+                       [(u.get("name"), u.get("target"), u.get("mainFile"), u.get("triple"), u.get("class"))
+                        for u in store_block.get("units", [])],
+                       u8_rows(connection, "indexUnit", snapshot))
+            u8_compare(verdict, "indexFile rows (path, sha256)",
+                       [(f.get("path"), f.get("sha256")) for f in block.get("files", [])],
+                       u8_rows(connection, "indexFile", snapshot))
+            fields = U8_TABLES["usrDisagreement"][1:]
+            lists = [item for name in ("disagreements", "withoutRecord", "collisions")
+                     for item in (block.get(name) or [])]
+            stored = sorted(u8_rows(connection, "usrDisagreement", snapshot))
+            u8_ordinals(verdict, "usrDisagreement", [r[0] for r in stored])
+            mine = [tuple(item.get(name) for name in fields) for item in lists]
+            u8_compare(verdict, "usrDisagreement rows (the disagreements, withoutRecord and collisions lists: "
+                       "kind, subreason, usr, key, symbolKind, name, file, line, column)",
+                       mine, [r[1:] for r in stored])
+            if Counter(mine) == Counter(r[1:] for r in stored) and mine != [r[1:] for r in stored]:
+                verdict.info("printed, not failed: by ordinal the rows aren't in the lists' order "
+                             "(disagreements, withoutRecord, collisions)")
+            u8_compare(verdict, "moduleEdge rows (fromModule, toModule, kind, references, files)",
+                       [(e.get("fromModule"), e.get("toModule"), e.get("kind"), e.get("references"), e.get("files"))
+                        for e in block.get("moduleEdges", [])],
+                       u8_rows(connection, "moduleEdge", snapshot))
+            u8_compare(verdict, "typeIndex rows (module, typePath, typeFile '' when absent, usr, referrers, cycle)",
+                       [(t.get("module"), t.get("typePath"), t.get("typeFile") or "", t.get("usr"),
+                         t.get("referrersSameModule"), t.get("referrersOtherModules"), t.get("referrersTests"),
+                         t.get("cycle")) for t in block.get("types", [])],
+                       u8_rows(connection, "typeIndex", snapshot))
+            u8_compare(verdict, "familyReference rows (fromFamily, toFamily, via)",
+                       [(f.get("fromFamily"), f.get("toFamily"), f.get("via"))
+                        for f in block.get("familyReferences", [])],
+                       u8_rows(connection, "familyReference", snapshot))
+            u8_compare(verdict, "familyTypeReference rows (family, module, typePath, typeFile '' when absent)",
+                       [(f.get("family"), f.get("module"), f.get("typePath"), f.get("typeFile") or "")
+                        for f in block.get("familyTypeReferences", [])],
+                       u8_rows(connection, "familyTypeReference", snapshot))
+
+        # couplingPair: written with the history, in its order.
+        history = scan.get("history") if isinstance(scan.get("history"), dict) else {}
+        pairs = history.get("coupling") or []
+        stored = sorted(u8_rows(connection, "couplingPair", snapshot))
+        u8_ordinals(verdict, "couplingPair", [r[0] for r in stored])
+        mine = [tuple(p.get(name) for name in U8_TABLES["couplingPair"][1:]) for p in pairs]
+        held = [r[1:] for r in stored]
+        verdict.result("couplingPair rows by ordinal equal history.coupling in order "
+                       "(familyA, fileA, familyB, fileB, support, changesA, changesB)", mine == held,
+                       f"{len(mine)} in the scan JSON, {len(held)} stored")
+        if mine != held:
+            verdict.listing(f"pair {number}: scan JSON {a}, store {b}"
+                            for number, (a, b) in enumerate(zip(mine + [None] * len(held), held + [None] * len(mine)))
+                            if a != b)
+    except sqlite3.Error as error:
+        verdict.result("the store reads", False, str(error))
+    finally:
+        connection.close()
+
+
 def usr_mode(arguments):
     try:
         package = UsrPackage(arguments)
@@ -4970,6 +5254,8 @@ def usr_mode(arguments):
         compare_index(verdict, join, problems_u3, problems_u6)
         if coupling is not None:
             compare_coupling(verdict, coupling)
+    if arguments.store:
+        compare_index_store(verdict, package.scan, arguments.store, arguments.snapshot)
     print("\nRESULT: " + ("FAIL" if verdict.failed else "PASS"))
     return 1 if verdict.failed else 0
 
@@ -6503,6 +6789,8 @@ def main():
     joining.add_argument("--spelling", action="append", metavar="TOKEN=PATH",
                          help="another recorded path prefix (e.g. @DEP@=/path); repeatable")
     joining.add_argument("--log", help="the build's -v task log (default: <build>/swiftstats-build.log)")
+    joining.add_argument("--store", help="the store the scan saved to: u8 compares its index rows with the scan JSON")
+    joining.add_argument("--snapshot", type=int, help="the snapshot id in --store (default: the newest)")
     joining.add_argument("--own-only", action="store_true",
                          help="print this check's figures and u3-u6 without comparing with the scan JSON")
     joining.add_argument("--dump", help="write this check's figures as JSON")

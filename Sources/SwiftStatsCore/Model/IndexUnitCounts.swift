@@ -37,4 +37,26 @@ public struct IndexUnitCounts: Codable, Hashable, Sendable {
         kept = classes.count { $0 == .kept }
         self.quarantined = quarantined
     }
+
+    /// The counts given, as the store reads them back. Fields are
+    /// documented on their properties.
+    init(
+        system: Int,
+        otherPackage: Int,
+        otherModule: Int,
+        stale: Int,
+        duplicate: Int,
+        variant: Int,
+        kept: Int,
+        quarantined: Int
+    ) {
+        self.system = system
+        self.otherPackage = otherPackage
+        self.otherModule = otherModule
+        self.stale = stale
+        self.duplicate = duplicate
+        self.variant = variant
+        self.kept = kept
+        self.quarantined = quarantined
+    }
 }

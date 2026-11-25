@@ -124,7 +124,7 @@ struct SnapshotStoreTests {
             arguments: [url.path, "PRAGMA user_version"],
             in: directory
         )
-        #expect(String(bytes: version, encoding: .utf8) == "5\n")
+        #expect(String(bytes: version, encoding: .utf8) == "6\n")
 
         try SnapshotHarness.sqlite(url, "INSERT INTO grdb_migrations VALUES ('v99')")
 

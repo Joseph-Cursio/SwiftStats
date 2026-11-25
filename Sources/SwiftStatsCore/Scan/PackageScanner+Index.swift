@@ -20,7 +20,9 @@
 //  same store, reads its entries and maps them onto the records
 //  (`PeripheryAdapter`, `DeadCodeMapper`), after the index has moved stale
 //  units out of the store or, when the index didn't run, moving them
-//  itself.
+//  itself. Each block is built through the store's rows (`BuildRows`,
+//  `IndexRows`, `DeadCodeRows`), so a fresh scan and one carrying stored
+//  results can't give different JSON.
 //
 
 import Foundation
@@ -293,11 +295,11 @@ extension PackageScanner {
             return IndexGroup(
                 build: mapped.run.timed,
                 readers: [index.timed, periphery.timed],
-                report: mapped.report,
+                report: mapped.report.map(BuildRows.normalized),
                 findings: mapped.findings,
-                indexReport: index.report,
+                indexReport: index.report.map(IndexRows.normalized),
                 peripheryOutput: periphery.output,
-                deadCodeReport: periphery.report
+                deadCodeReport: periphery.report.map(DeadCodeRows.normalized)
             )
         }
     }

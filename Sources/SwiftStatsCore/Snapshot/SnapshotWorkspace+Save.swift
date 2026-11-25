@@ -14,7 +14,9 @@
 //  `--drop-mutation` lets those results go, as they do results too damaged
 //  to read. Both held results are decided before any write, coverage
 //  first, then mutation, and the first refusal stops the save; what
-//  carries is written once. Only a run that ran replaces held results
+//  carries is written once. Held T1 results (M7) are decided last: until
+//  their carry is built, a scan whose build didn't run is refused when
+//  the replaced snapshot holds them, unless `--drop-index` lets them go. Only a run that ran replaces held results
 //  without asking. A scan asking for coverage or SwiftMutator meets the
 //  same refusals before its slow runs, as far as they can be known then
 //  (`SnapshotWorkspace+Held`).
@@ -23,6 +25,9 @@
 extension SnapshotWorkspace {
     /// How many characters of a commit a refusal shows.
     private static let shortCommitLength = 10
+    /// Why held T1 results aren't carried yet (design §13's placeholder
+    /// from step 7a to step 8).
+    static let indexNotCarried = "this SwiftStats build can't carry index results yet"
 
     /// How a refusal names the snapshot `info` describes: its package and
     /// commit, and whether it has uncommitted changes.
@@ -69,6 +74,7 @@ extension SnapshotWorkspace {
         )
         let coverage = try carriedCoverage(from: replaced, onto: snapshot, drop: drop.contains(.coverage))
         let mutation = try carriedMutation(from: replaced, onto: snapshot, drop: drop.contains(.mutation))
+        try refuseHeldIndex(in: replaced, onto: snapshot, drop: drop.contains(.index))
         var stored = snapshot
         if let coverage {
             stored = CoverageCarry.carried(coverage, onto: stored)
@@ -118,6 +124,23 @@ extension SnapshotWorkspace {
                 [reason, MutationCarry.ownRun(of: snapshot)].compactMap(\.self).joined(separator: "; ")
             }
         }
+    }
+
+    /// Refuses a save that would replace the T1 results snapshot
+    /// `replaced` holds with `snapshot`, whose build didn't run, unless
+    /// `drop` lets them go. Until the same-tree carry is built (design §13
+    /// step 8) no such results are carried, so the refusal says so.
+    private func refuseHeldIndex(in replaced: Int64?, onto snapshot: ScannedSnapshot, drop: Bool) throws {
+        guard let replaced, drop == false, Self.ran(BuildAdapter.name, in: snapshot) == false,
+              let collectedAt = try store.indexCollectedAt(id: replaced)
+        else {
+            return
+        }
+        throw StoreError.indexNotKept(
+            snapshot: Self.name(of: snapshot.info),
+            collectedAt: collectedAt,
+            reason: Self.indexNotCarried
+        )
     }
 
     /// The coverage snapshot `id`, named `name`, holds when `refusal`

@@ -3,9 +3,10 @@
 //  SwiftStatsCore
 //
 //  Why the snapshot store couldn't do what was asked (PRD §9), or wouldn't:
-//  a scan may not replace coverage (M5) or mutation results (M6) it can't
-//  carry, or can't read, and `scan --mutation --since` needs a stored
-//  snapshot whose mutation results it can merge with (M6).
+//  a scan may not replace coverage (M5), mutation results (M6) or T1
+//  results (M7) it can't carry, or can't read, and `scan --mutation
+//  --since` needs a stored snapshot whose mutation results it can merge
+//  with (M6).
 //
 
 /// A snapshot store failure.
@@ -20,10 +21,19 @@ public enum StoreError: Error, CustomStringConvertible, Equatable {
     /// read, for `reason`, that the scan didn't collect (M5); `snapshot`
     /// names the snapshot.
     case damagedCoverage(snapshot: String, reason: String)
+    /// The snapshot a scan would replace holds T1 results too damaged to
+    /// read, for `reason`, that the scan didn't collect (M7, design §9.4);
+    /// `snapshot` names the snapshot.
+    case damagedIndex(snapshot: String, reason: String)
     /// The snapshot a scan would replace holds mutation results too
     /// damaged to read, for `reason`, that the scan didn't collect (M6,
     /// design §6.4); `snapshot` names the snapshot.
     case damagedMutation(snapshot: String, reason: String)
+    /// The snapshot a scan would replace holds T1 results (the index
+    /// build's, the index's and outskirts'), collected at `collectedAt`,
+    /// that the scan didn't collect and can't carry, for `reason` (M7,
+    /// design §9.4); `snapshot` names the snapshot.
+    case indexNotKept(snapshot: String, collectedAt: String, reason: String)
     /// The snapshot a scan would replace holds mutation results, collected
     /// at `collectedAt`, that the scan didn't collect and can't carry, for
     /// `reason` (M6, design §6.4); `snapshot` names the snapshot.
@@ -66,6 +76,14 @@ public enum StoreError: Error, CustomStringConvertible, Equatable {
         case let .damagedCoverage(snapshot, reason):
             "the snapshot of \(snapshot) holds coverage too damaged to read (\(reason)); "
                 + "run scan --coverage to collect it again, or --drop-coverage to replace it without its coverage"
+
+        case let .indexNotKept(snapshot, collectedAt, reason):
+            "the snapshot of \(snapshot) holds index results from \(collectedAt) that this scan can't keep "
+                + "(\(reason)); run scan --index to collect them again, or --drop-index to replace them"
+
+        case let .damagedIndex(snapshot, reason):
+            "the snapshot of \(snapshot) holds index results too damaged to read (\(reason)); "
+                + "run scan --index to collect them again, or --drop-index to replace it without them"
 
         case let .mutationNotKept(snapshot, collectedAt, reason):
             "the snapshot of \(snapshot) holds mutation results from \(collectedAt) that this scan can't keep "

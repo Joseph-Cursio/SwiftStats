@@ -57,6 +57,36 @@ struct HeldResultsKeptTests {
     }
 
     @Test("""
+        a save refused after a run that ran, for held T1 results this build can't carry yet, advises adding \
+        --mutation --resume to either scan the refusal names, and --drop-index --mutation --resume stores the \
+        same results without running SwiftMutator
+        """)
+    func indexRefusalAdvised() throws {
+        let harness = try HeldResultsHarness()
+        defer { harness.remove() }
+        try harness.edit("Edit A.")
+        try harness.storeIndex()
+        let plain = try #require(try harness.plainRefusal())
+        let scanned = try harness.unchecked(RequestedTiers(mutation: .full), base: nil, acting: "full")
+
+        let refused = try harness.storeError { _ = try harness.workspace.storing(scanned, drop: []) }
+
+        #expect(plain.description.contains("holds index results from"))
+        #expect(refused == .mutationResultsKept(refusal: plain.description, advised: true))
+        #expect(refused?.description.hasSuffix(
+            "; this scan's SwiftMutator results are kept: add --mutation --resume to either scan to store them "
+                + "without running SwiftMutator again"
+        ) == true)
+
+        let stored = try harness.scan(RequestedTiers(mutation: .resume), drop: .index)
+
+        #expect(harness.since.runs() == 1)
+        #expect(stored.snapshot.report.mutation == scanned.report.mutation)
+        #expect(try harness.workspace.store.holdsIndex(id: stored.id) == false)
+        #expect(try harness.pending() == nil)
+    }
+
+    @Test("""
         the kept results of a --since run resume as its merge with the base, keeping SwiftMutator's selection, \
         without running it again
         """)

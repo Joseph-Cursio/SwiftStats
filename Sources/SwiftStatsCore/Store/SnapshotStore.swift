@@ -5,8 +5,8 @@
 //  The SQLite snapshot store (PRD §9, D9): one clean and one dirty snapshot
 //  per package and commit, each with its collector runs, function rows,
 //  finding rows, roll-up numbers, history, M4 rows (`SnapshotStore+Rows`),
-//  coverage rows (`CoverageRows`), mutation rows (`MutationRows`) and the
-//  whole scan report.
+//  coverage rows (`CoverageRows`), mutation rows (`MutationRows`), T1 rows
+//  (`SnapshotStore+Index`) and the whole scan report.
 //
 
 import Foundation
@@ -49,9 +49,10 @@ public struct SnapshotStore: Sendable {
         return try encoder.encode(report)
     }
 
-    /// Inserts `snapshot`'s collector runs, functions, findings, roll-up
-    /// numbers, coverage, collected at `coverageCollectedAt`, and mutation
-    /// results as rows of snapshot `snapshotId`.
+    /// Inserts `snapshot`'s collector runs, functions with their index and
+    /// timing columns, findings, roll-up numbers, coverage, collected at
+    /// `coverageCollectedAt`, and mutation results as rows of snapshot
+    /// `snapshotId`.
     private static func insertRows(
         of snapshot: ScannedSnapshot,
         metrics: [(Rollup, [RollupMetrics.Metric])],
@@ -63,8 +64,11 @@ public struct SnapshotStore: Sendable {
             try CollectorRunRow(run, snapshotId: snapshotId).insert(database)
         }
         let generated = Set(snapshot.report.files.filter(\.generated).map(\.path))
+        let indexed = snapshot.report.index.map(IndexRows.byKey) ?? [:]
+        let timed = snapshot.report.build.map(BuildRows.byKey) ?? [:]
         for record in snapshot.report.records {
-            try FunctionRow(record, snapshotId: snapshotId, generated: generated.contains(record.file)).insert(database)
+            try FunctionRow(record, snapshotId: snapshotId, generated: generated.contains(record.file))
+                .insert(database, index: indexed[record.key], timing: timed[record.key])
         }
         for location in snapshot.report.findings.flatMap({ FindingRow.rows(for: $0, snapshotId: snapshotId) }) {
             try location.insert(database)
@@ -96,6 +100,19 @@ public struct SnapshotStore: Sendable {
         }
     }
 
+    /// Deletes, in `database`, the snapshot `snapshot` replaces: the one of
+    /// the same package, commit and dirtiness, its rows going with it.
+    private static func deleteReplaced(by snapshot: ScannedSnapshot, in database: Database) throws {
+        let git = snapshot.info.git
+        try database.execute(
+            sql: """
+                DELETE FROM snapshot
+                WHERE package = ? AND packagePath = ? AND ifnull(commitHash, '') = ? AND isDirty = ?
+                """,
+            arguments: [snapshot.info.package, git.packagePath, git.commit ?? "", git.isDirty]
+        )
+    }
+
     /// The metadata of snapshot `id`, read in `database`.
     static func info(id: Int64, in database: Database) throws -> SnapshotInfo {
         guard let row = try SnapshotRow.fetchOne(database, key: id) else {
@@ -111,24 +128,22 @@ public struct SnapshotStore: Sendable {
     /// Stores `snapshot`, replacing any snapshot of the same package, commit
     /// and dirtiness (PRD §6.2), and returns its id. Its coverage, if any,
     /// is dated `coverageCollectedAt` when given (coverage carried from an
-    /// earlier scan), else the snapshot's own date. Its mutation results,
-    /// if any, keep the date they record.
+    /// earlier scan), else the snapshot's own date, and its T1 results, if
+    /// any, `indexCollectedAt` likewise. Its mutation results, if any,
+    /// keep the date they record.
     @discardableResult
-    public func save(_ snapshot: ScannedSnapshot, coverageCollectedAt: String? = nil) throws -> Int64 {
+    public func save(
+        _ snapshot: ScannedSnapshot,
+        coverageCollectedAt: String? = nil,
+        indexCollectedAt: String? = nil
+    ) throws -> Int64 {
         let json = try Self.encodeReport(snapshot.report)
         let compressed = try ReportCompression.deflate(json)
         let metrics = try snapshot.report.rollups.map { rollup in
             (rollup, try RollupMetrics.metrics(of: rollup))
         }
         return try queue.write { database in
-            let git = snapshot.info.git
-            try database.execute(
-                sql: """
-                    DELETE FROM snapshot
-                    WHERE package = ? AND packagePath = ? AND ifnull(commitHash, '') = ? AND isDirty = ?
-                    """,
-                arguments: [snapshot.info.package, git.packagePath, git.commit ?? "", git.isDirty]
-            )
+            try Self.deleteReplaced(by: snapshot, in: database)
             var row = SnapshotRow(snapshot.info, reportSchemaVersion: snapshot.report.schemaVersion)
             try row.insert(database)
             guard let id = row.id else {
@@ -138,6 +153,12 @@ public struct SnapshotStore: Sendable {
                 of: snapshot,
                 metrics: metrics,
                 coverageCollectedAt: coverageCollectedAt ?? snapshot.info.date,
+                snapshotId: id,
+                in: database
+            )
+            try Self.insertIndexRows(
+                of: snapshot.report,
+                collectedAt: indexCollectedAt ?? snapshot.info.date,
                 snapshotId: id,
                 in: database
             )
@@ -271,6 +292,18 @@ public struct SnapshotStore: Sendable {
     /// carry them (`SnapshotStore+Mutation`); nil when it holds none.
     func heldMutation(id: Int64) throws -> HeldMutation? {
         try queue.read { database in try Self.heldMutation(id: id, in: database) }
+    }
+
+    /// Whether snapshot `id` holds T1 results a rescan would have to carry
+    /// or drop, read without reading them (`SnapshotStore+Index`).
+    func holdsIndex(id: Int64) throws -> Bool {
+        try queue.read { database in try Self.holdsIndex(id: id, in: database) }
+    }
+
+    /// When the T1 results snapshot `id` holds were collected; nil when it
+    /// holds none (`SnapshotStore+Index`).
+    func indexCollectedAt(id: Int64) throws -> String? {
+        try queue.read { database in try Self.indexCollectedAt(id: id, in: database) }
     }
 
     /// The mutation results snapshot `id` holds, with its swiftmutator run,
