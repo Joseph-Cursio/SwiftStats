@@ -6,9 +6,11 @@ import Testing
 /// `build`, `index` and `periphery` statuses, they run only when the scan
 /// asks for them (`scan --index`), a requested group is skipped for each
 /// collector's own settings, the index and outskirts are skipped when the
-/// build is, `--drop-index` drops nothing yet, and the index and the dead
-/// code compare only when the build does. `IndexGroupTests` runs the
-/// build.
+/// build is, a `--drop-index` save drops only T1 results, so held coverage
+/// too damaged to read still stops it until `--drop-coverage`, and the
+/// index and the dead code compare only when the build does.
+/// `IndexGroupTests` runs the build; the carry suites check what
+/// `--drop-index` drops.
 @Suite("Index collectors")
 struct IndexCollectorTests {
     private static let files = ["Sources/Lib/Lib.swift": "public func one() -> Int { 1 }\n"]
@@ -176,8 +178,11 @@ struct IndexCollectorTests {
         #expect((askedRuns + plainRuns).allSatisfy { $0.identity == nil })
     }
 
-    @Test("--drop-index is accepted but lets nothing go yet: held coverage too damaged to read still stops the rescan")
-    func dropIndexDropsNothing() throws {
+    @Test("""
+        --drop-index drops only T1 results: held coverage too damaged to read still stops the rescan until \
+        --drop-coverage
+        """)
+    func dropIndexKeepsOtherRefusals() throws {
         let (package, workspace) = try CarrySamples.store()
         defer { package.remove() }
         let covered = try CarrySamples.covered(try CarrySamples.scan(git: CarrySamples.clean))

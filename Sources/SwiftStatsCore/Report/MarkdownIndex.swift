@@ -13,7 +13,8 @@
 //  `MarkdownIndex+TypeCheck.swift`; compiler warnings in
 //  `MarkdownIndex+Warnings.swift`. Lists print at most 50 rows, saying
 //  how many there are; the JSON lists all. When the build didn't run, the
-//  section says why.
+//  section says why, and when that status was carried from an earlier
+//  scan of the same tree, from when.
 //
 
 /// Renders the Build and index section.
@@ -30,14 +31,11 @@ enum MarkdownIndex {
     static func render(_ scan: ScanReport) -> [String] {
         let build = scan.collectors.first { $0.name == BuildAdapter.name }
         let index = scan.collectors.first { $0.name == IndexAdapter.name }
+        let carried = MarkdownCarry.lines(carried: MarkdownCarry.carried(build) ?? MarkdownCarry.carried(index))
         guard scan.build != nil || scan.index != nil else {
-            return ["Not collected: \(MarkdownCarry.state(build))."]
+            return ["Not collected: \(MarkdownCarry.state(build))."] + carried
         }
-        var lines = ["Status: build \(MarkdownCarry.state(build)); index \(MarkdownCarry.state(index))."]
-        if let carried = MarkdownCarry.carried(build) ?? MarkdownCarry.carried(index) {
-            lines.append("Carried from the scan of \(carried): the tree, its records, types and files are unchanged "
-                + "since.")
-        }
+        var lines = ["Status: build \(MarkdownCarry.state(build)); index \(MarkdownCarry.state(index))."] + carried
         if let options = build.map(options) {
             lines.append(options)
         }

@@ -4,14 +4,17 @@
 //
 //  `swiftstats trend --format markdown`: one row per point, with breaks
 //  marked where the numbers stop comparing, and for a type-check time
-//  (`typecheck.*`, M7) a footnote that it depends on the machine and its
-//  load, which no build identity names (design §10.4).
+//  (`typecheck.milliseconds.*` and `typecheck.slowestExpression.*`, M7) a
+//  footnote that it depends on the machine and its load, which no build
+//  identity names (design §10.4). `typecheck.functions.timed` counts
+//  records, so it has none.
 //
 
 /// Renders a trend as Markdown.
 public enum MarkdownTrend {
-    /// What the metrics of type-check times start with.
-    static let typeCheckPrefix = "typecheck."
+    /// What the metrics of type-check times start with: the figures in
+    /// milliseconds, not the count of records timed.
+    static let typeCheckPrefixes = ["typecheck.milliseconds.", "typecheck.slowestExpression."]
     /// The footnote under a type-check time's trend.
     static let typeCheckNote = "Type-check times depend on the machine and its load, which no build identity names, "
         + "and two builds' figures differ by a fifth to a third per function: read large moves only."
@@ -34,7 +37,7 @@ public enum MarkdownTrend {
         if report.offLine > 0 {
             lines += ["", "\(report.offLine) snapshots of commits off the first-parent line are not shown."]
         }
-        if report.metric.hasPrefix(typeCheckPrefix) {
+        if typeCheckPrefixes.contains(where: report.metric.hasPrefix) {
             lines += ["", typeCheckNote]
         }
         return lines.joined(separator: "\n") + "\n"

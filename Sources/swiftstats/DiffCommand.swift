@@ -9,11 +9,12 @@ struct DiffCommand: ParsableCommand {
         abstract: "Show what changed between two commits' snapshots.",
         discussion: """
         Compares functions (added, removed, moved, renamed, changed) and metrics, for collectors that ran \
-        in both snapshots with the same build and options; when both hold index results, a function whose \
-        key changed can be matched by its USR, and a USR change is listed. A commit with no snapshot is scanned first, \
-        from a copy of its tracked files checked out into a temporary directory, and stored. A rescan keeps \
-        the coverage, mutation and index results of the snapshot it replaces when the tree, the records and the \
-        mapping rule are the same, and otherwise stops; --drop-coverage replaces it without its coverage \
+        in both snapshots with the same build and options; when both hold index results that compare (the same \
+        SwiftStats build, and an index build and read with the same toolchain and options), a function whose \
+        key changed can be matched by its USR, and a USR change is listed. A commit with no snapshot is scanned \
+        first, from a copy of its tracked files checked out into a temporary directory, and stored. A rescan \
+        keeps the coverage, mutation and index results of the snapshot it replaces when the tree, the records \
+        and the mapping rule are the same, and otherwise stops; --drop-coverage replaces it without its coverage \
         instead, --drop-mutation without the mutation results it can't keep, and --drop-index without the \
         index results.
         """

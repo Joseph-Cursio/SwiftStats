@@ -33,6 +33,14 @@ enum MarkdownCarry {
         split(status?.reason).carried
     }
 
+    /// The line saying a T1 section's status was carried from the scan of
+    /// `carried`, an earlier scan of the same tree; none without a date.
+    static func lines(carried: String?) -> [String] {
+        carried.map { date in
+            ["Carried from the scan of \(date): the tree, its records, types and files are unchanged since."]
+        } ?? []
+    }
+
     /// `reason` with a carry's date taken apart: the date, and the
     /// reason the run gave, nil when it gave none.
     private static func split(_ reason: String?) -> (note: String?, carried: String?) {

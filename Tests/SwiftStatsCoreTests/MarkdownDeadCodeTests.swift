@@ -8,8 +8,9 @@
 //  retained modules, the unused production declarations by kind and one
 //  by one with how they cover records, the dead records and both ratios
 //  per production module, the results left out and outskirts' limits;
-//  then the other hints and a build's label, and the section when
-//  outskirts failed.
+//  then the other hints and a build's label, the section when outskirts
+//  failed, and a carried status, with results or without, which names the
+//  scan it was carried from.
 //
 
 import Foundation
@@ -176,6 +177,38 @@ struct MarkdownDeadCodeTests {
             let lines = MarkdownDeadCode.render(snapshot.report.with(deadCode: nil, status: failed), runs: [])
 
             #expect(lines == ["Not collected: failed, outskirts scan (roots) exited 1: boom."])
+        }
+    }
+
+    @Test("""
+        a carried status shows its date apart from the reason the carried run gave, with results and when \
+        outskirts didn't run
+        """)
+    func carried() async throws {
+        try await IndexHarness.scan(indexed: true) { snapshot in
+            let date = "2026-11-25T10:25:52Z"
+            let carriedLine = "Carried from the scan of \(date): the tree, its records, types and files are unchanged "
+                + "since."
+            let status = try #require(snapshot.report.collectors.first { $0.name == PeripheryAdapter.name })
+            let carried = { (state: CollectorState, reason: String) in
+                CollectorStatus(
+                    name: status.name,
+                    state: state,
+                    version: status.version,
+                    reason: CollectorRunInfo.carriedPrefix + date + "; " + reason,
+                    options: status.options
+                )
+            }
+            let ran = snapshot.report.with(
+                deadCode: snapshot.report.deadCode,
+                status: carried(.ran, "1 files changed during the scan")
+            )
+            let missing = "`outskirts` not found on PATH; set collectors.periphery.path"
+            let skipped = snapshot.report.with(deadCode: nil, status: carried(.skipped, missing))
+
+            #expect(Array(MarkdownDeadCode.render(ran, runs: []).prefix(2))
+                == ["Status: ran, 1 files changed during the scan.", carriedLine])
+            #expect(MarkdownDeadCode.render(skipped, runs: []) == ["Not collected: skipped, \(missing).", carriedLine])
         }
     }
 }

@@ -11,8 +11,8 @@ script reads them with its own line patterns, not design section 6.1's
 grammar, and accounts for every line. Run it as `python3 -I -B Scripts/index-check.py <mode> ...`, so it
 writes no bytecode cache beside itself.
 
-Modes: dump, build-lines, build, usr, rows, dead and signals (a later plan
-step adds `coverage-names`).
+Modes: dump, build-lines, build, usr, rows, dead, signals and the optional
+coverage-names (design 3.7; non-gating, done-when step 7).
 
 `dump` writes the reader's values for a store as JSON: the recorded
 `reader.json` the unit tests read through `RecordedIndexSource`, and the
@@ -169,9 +169,10 @@ own placement above and compares them with each roll-up scope of the scan
 JSON (`typecheck` in the scope object: `milliseconds.total`,
 `milliseconds.max`, `slowestExpression.max`, `functions.timed`) and, with
 `--store`, with the snapshot's `rollupMetric` rows named `typecheck.*`
-(which must name collector `build`). `--without-typecheck` skips both
-(SwiftStats doesn't build these roll-ups yet: until it does, they fail with
-"not built yet"). The reading, for the Swift side to match or argue:
+(which must name collector `build`). `--without-typecheck` skips both.
+SwiftStats builds these roll-ups (design 6.4), so a scan JSON or store
+without them is a plain failure. The reading, for the Swift side to match
+or argue:
   scopes   a module scope per target (`module`, the target name) and the two
            project parts (`project`, `production` and `tests`), as the T0
            roll-ups name them. An entry on a record counts for the record's
@@ -822,7 +823,7 @@ hidden-coupling part:
      number from 1 to 1,000,000 or a confidence outside 0 to 100 is bad
      input here, as SwiftStats must refuse it), and no limits for
      dead-but-tested or test-only-production (they take none). The report
-     schema is printed (5 before plan step 10 bumps it to 6), not failed.
+     schema is printed (6 since M7), not failed.
   n  names: the report's last three signals are hidden-coupling,
      dead-but-tested and test-only-production, in that order, each once,
      right after uneven-clone-mutation.
@@ -1052,6 +1053,62 @@ Inputs `signals` trusts:
     `history.coupling.min_support` keys, or `--set`.
 Not the report's signals or thresholds, which it checks.
 
+`coverage-names` is the optional llvm-cov USR join (design 3.7, not built
+into the scan; done-when step 7, non-gating). After `scan --coverage
+--index`, while the coverage export the run left beside the index is fresh,
+it checks that for every record with an `s:` USR some export function named
+`$s` + the USR without `s:` has its first region inside the record's range,
+the subscript's `usrAccessor` included:
+  names    an export function's name is its `name` in the export
+           (`functions[]`), with the `<file>:` prefix llvm-cov puts on a
+           file-local symbol dropped: the text after the last `:` when it
+           starts with `$s`. Several entries may share a name; any of them
+           may agree.
+  USRs     each record the scan JSON's `index.records` lists with a `usr`,
+           joined by `key` to the scan's `records` for its `file` and
+           `range`. A record agrees when its `usr`, or its `usrAccessor`
+           (the shorthand subscript's getter, design 3.3), starts with `s:`
+           and `$s` + the rest names an export function that agrees; the
+           agreements are counted by which of the two did. A `c:` USR (a
+           declaration exported to Objective-C, design 10.1) is skipped and
+           counted: llvm-cov names such functions by their C or Swift
+           symbol, not the USR. Any other prefix is listed.
+  region   an export function agrees when its first region (`regions[0]`)
+           is in the record's file (the export's `filenames` entry of the
+           region's file id and <package>/<file>, both by realpath(3), the
+           same) and inside the record's range: its start at or after the
+           range's start and its end at or before the range's end, the
+           record's end column being its last character's and the
+           region's end column one past its last (llvm's end is
+           exclusive), so the region may end at end column + 1. Lines and
+           columns compare as (line, column) pairs.
+Every record that doesn't agree is an exception, listed by class: no export
+function has any of its names; a function has one but its first region is
+in another file; or it is in the file but outside the range. Of the first
+class, three kinds are noted and counted (still exceptions): an initializer
+whose USR names the initializing entry (`…fc`) while the export holds only
+the allocating one (`…fC`, a struct's), which agrees; a subscript declared
+with explicit accessors, whose own USR (`…ip`) names no code while each
+accessor is a record of its own (a key starting with the subscript's key
+and ` / `); and a record in a file no export function's first region is in
+(an executable target's file, not linked into any test bundle). The export's
+`$s` functions of scanned files that no record's USR names (closures,
+implicit and synthesized functions, thunks) are counted, not checked.
+Both the scan's `coverage` and `index` collectors must have run in this
+scan (not carried from an earlier one), since a carried result doesn't
+come from the export beside it; otherwise the input is bad.
+
+Inputs `coverage-names` trusts:
+  - the export the coverage collector left in the package's coverage build
+    directory (`.swiftstats/coverage-build/swiftstats-export.json`, or
+    `--export`): llvm-cov's own output, `llvm.coverage.json.export`
+    3.0.1, its functions' `name`, `filenames` and `regions`;
+  - the scan JSON's `records` (`key`, `file`, `range`) as T0 wrote them,
+    and its `collectors` (`coverage` and `index` state and reason);
+  - realpath(3) of the package, its scanned files and the export's files.
+Not the scan JSON's `index.records` USRs, which it checks; nothing from
+SwiftStats' code.
+
 Usage:
     python3 -I -B Scripts/index-check.py dump <store> <libIndexStore.dylib>
                                          <describe.json> <root>
@@ -1112,6 +1169,8 @@ Usage:
                                          [--dump <path>] [--all]
                                          [--family-match key|key-and-file]
                                          [--owners package|own-module]
+    python3 -I -B Scripts/index-check.py coverage-names <package> <scan.json>
+                                         [--export <export.json>] [--all]
 
 For `dump`, <store> is the directory holding `v5/units` (for the T1 build,
 `<package>/.swiftstats/index-build/out`). The JSON goes to standard output,
@@ -1119,8 +1178,8 @@ or to `--output`; a summary (unit, record and occurrence counts) goes to
 standard error.
 
 Exit status: `dump` 0 when the dump is written, 2 on bad input or a store
-that doesn't read; `build-lines`, `build`, `usr`, `rows`, `dead` and `signals` 0
-when every check passes (`signals --own-only`: when the figures are
+that doesn't read; `build-lines`, `build`, `usr`, `rows`, `dead`, `signals`
+and `coverage-names` 0 when every check passes (`signals --own-only`: when the figures are
 printed), 1 when one fails, 2 on bad input or a store that doesn't read
 (for `dead`, also when outskirts can't be started).
 """
@@ -3211,8 +3270,7 @@ def compare_typecheck_scan(verdict, package, timings):
         theirs[key] = figures
     held = sum(1 for figures in theirs.values() if figures)
     verdict.result("the scan JSON's roll-up scopes hold typecheck.* figures", held > 0,
-                   f"{held} of {len(theirs)} scopes have any"
-                   + ("" if held else " (not built yet in SwiftStats: the expected failure until they are)"))
+                   f"{held} of {len(theirs)} scopes have any")
     verdict.result("no typecheck.* name other than design 6.4's four", not unknown, f"{len(unknown)} others")
     verdict.listing(unknown)
     differences = typecheck_differences(mine, theirs, "scan")
@@ -3250,8 +3308,7 @@ def compare_typecheck_store(verdict, package, timings, store_path, snapshot):
     mine = timings.rollups(scopes)
     rows = sum(len(v) for v in stored.values())
     verdict.result("the store holds typecheck.* rollupMetric rows", rows > 0,
-                   f"{rows} rows in {sum(1 for v in stored.values() if v)} of {len(stored)} scopes"
-                   + ("" if rows else " (not built yet in SwiftStats: the expected failure until they are)"))
+                   f"{rows} rows in {sum(1 for v in stored.values() if v)} of {len(stored)} scopes")
     wrong = {name: count for name, count in collectors.items() if name != "build"}
     verdict.result("typecheck.* rows are attributed to the build collector", not wrong,
                    ", ".join(f"{name} {count}" for name, count in sorted(wrong.items())))
@@ -9717,7 +9774,7 @@ def signals_mode(arguments):
         return 0
     verdict.section("t   thresholds: the report lists the hidden-coupling limits this check uses, and none for "
                     "dead but tested or test-only")
-    verdict.info(f"report schema {report.get('schemaVersion')} (5 before plan step 10, 6 after)")
+    verdict.info(f"report schema {report.get('schemaVersion')} (6 since M7)")
     listed_limits = (report.get("thresholds") or {}).get("limits") or {}
     verdict.result("hidden-coupling limits", listed_limits.get(HIDDEN_COUPLING) == limits,
                    f"expected {limits}, got {listed_limits.get(HIDDEN_COUPLING)}")
@@ -9742,6 +9799,198 @@ def signals_mode(arguments):
         verdict.result(f"{TEST_ONLY} listed", False, "the report has no such signal")
     else:
         compare_test_only(verdict, model, by_name[TEST_ONLY], expected)
+    print("\nRESULT: " + ("FAIL" if verdict.failed else "PASS"))
+    return 1 if verdict.failed else 0
+
+
+# --------------------------------------------------------------------------
+# coverage-names: the optional llvm-cov USR join (design 3.7; done-when
+# step 7, non-gating)
+
+COVERAGE_EXPORT = os.path.join(".swiftstats", "coverage-build", "swiftstats-export.json")
+CARRIED_LEAD = "carried from the scan of "
+INITIALIZER_NOTE = "an initializer: the export holds only its allocating entry (fC), which agrees"
+SUBSCRIPT_NOTE = "a subscript with explicit accessors, each a record of its own"
+UNEXPORTED_NOTE = "no export function's first region is in its file (not linked into any test bundle)"
+
+
+def export_symbol(name):
+    """An export function's name without llvm-cov's `<file>:` prefix on a
+    file-local symbol: the text after the last `:` when it starts with
+    `$s`, else the name as it is."""
+    tail = name.rsplit(":", 1)[-1]
+    return tail if ":" in name and tail.startswith("$s") else name
+
+
+def region_inside(region, start, end):
+    """Whether an export region (`[line, column, end line, end column, ...]`,
+    its end exclusive) lies inside a record's range from `start` to `end`
+    ((line, column), the end its last character's)."""
+    return (region[0], region[1]) >= start and (region[2], region[3]) <= (end[0], end[1] + 1)
+
+
+def coverage_names_mode(arguments):
+    root = real_path(os.path.abspath(arguments.package), "the package")
+    try:
+        with open(arguments.scan, encoding="utf-8") as handle:
+            scan = json.load(handle)
+    except (OSError, ValueError) as error:
+        fail(f"the scan JSON doesn't read: {error}")
+    export_path = arguments.export or os.path.join(root, COVERAGE_EXPORT)
+    try:
+        with open(export_path, encoding="utf-8") as handle:
+            document = json.load(handle)
+    except (OSError, ValueError) as error:
+        fail(f"the coverage export doesn't read: {error}")
+    if document.get("type") != "llvm.coverage.json.export" or document.get("version") != "3.0.1" \
+            or len(document.get("data") or []) != 1:
+        fail(f"{export_path} is not an llvm-cov 3.0.1 export with one data element")
+    runs = {c.get("name"): c for c in scan.get("collectors") or [] if isinstance(c, dict)}
+    for name in ("coverage", "index"):
+        run = runs.get(name) or {}
+        if run.get("state") != "ran" or (run.get("reason") or "").startswith(CARRIED_LEAD):
+            fail(f"the scan's {name} collector didn't run in this scan ({run.get('state')}: {run.get('reason')}); "
+                 "run `swiftstats scan --coverage --index --format json` right before")
+    index_records = (scan.get("index") or {}).get("records")
+    if not isinstance(index_records, list):
+        fail("the scan JSON has no index.records")
+    records = {r.get("key"): r for r in scan.get("records") or [] if isinstance(r, dict)}
+
+    def real_file(path):
+        try:
+            return real_path(path, "a file")
+        except ReadError:
+            return unicodedata.normalize("NFC", path)
+
+    entries = defaultdict(list)
+    real_files = {}
+    for function in document["data"][0].get("functions") or []:
+        entries[export_symbol(function.get("name", ""))].append(function)
+
+    def first_region(function):
+        regions = function.get("regions") or []
+        if not regions:
+            return None, None
+        region = regions[0]
+        filenames = function.get("filenames") or []
+        file_id = region[5] if len(region) > 5 else 0
+        if file_id >= len(filenames):
+            return region, None
+        name = filenames[file_id]
+        if name not in real_files:
+            real_files[name] = real_file(name)
+        return region, real_files[name]
+
+    verdict = Verdict(arguments.all)
+    print(f"package {root}\nscan JSON {arguments.scan}\nexport {export_path}")
+    counts = Counter()
+    exceptions = defaultdict(list)
+    notes = Counter()
+    named = set()
+    exported = set()
+    keys = [item.get("key") for item in index_records if isinstance(item.get("key"), str)]
+
+    def agrees(symbol, start, end, path):
+        return any(region is not None and region_file == path and region_inside(region, start, end)
+                   for region, region_file in map(first_region, entries.get(symbol, [])))
+
+    def unnamed_note(usr, key, start, end, path):
+        """Why a USR names no export function, when this check can tell:
+        an initializer whose USR is the initializing entry (`fc`) while the
+        export holds only the allocating one (`fC`), a subscript declared
+        with explicit accessors, each a record of its own, or a file no
+        export function's first region is in; None otherwise. Notes only:
+        the record is still an exception."""
+        if usr.endswith("fc") and agrees("$s" + usr[2:-2] + "fC", start, end, path):
+            return INITIALIZER_NOTE
+        if usr.endswith("ip") and any(other.startswith(f"{key} / ") for other in keys):
+            return SUBSCRIPT_NOTE
+        if path not in exported_files():
+            return UNEXPORTED_NOTE
+        return None
+
+    def exported_files():
+        if not exported:
+            exported.add(None)
+            exported.update(first_region(f)[1] for functions in entries.values() for f in functions)
+        return exported
+    for item in index_records:
+        usr = item.get("usr")
+        if not isinstance(usr, str):
+            counts["without a USR"] += 1
+            continue
+        if usr.startswith("c:"):
+            counts["c: USR, skipped"] += 1
+            continue
+        if not usr.startswith("s:"):
+            counts["other prefix"] += 1
+            exceptions["a USR that starts with neither s: nor c:"].append(f"{item.get('key')}: {usr}")
+            continue
+        record = records.get(item.get("key"))
+        if record is None:
+            counts["no scan record"] += 1
+            exceptions["no record of the scan JSON has the key"].append(str(item.get("key")))
+            continue
+        counts["s: USR"] += 1
+        start = (record["range"]["start"]["line"], record["range"]["start"]["column"])
+        end = (record["range"]["end"]["line"], record["range"]["end"]["column"])
+        path = real_file(os.path.join(root, record["file"]))
+        candidates = [("usr", usr)]
+        accessor = item.get("usrAccessor")
+        if isinstance(accessor, str) and accessor.startswith("s:"):
+            candidates.append(("usrAccessor", accessor))
+        outcome = None
+        for which, candidate in candidates:
+            symbol = "$s" + candidate[2:]
+            named.add(symbol)
+            for function in entries.get(symbol, []):
+                region, region_file = first_region(function)
+                if region is None:
+                    outcome = outcome or ("in another file", f"{symbol}: no regions")
+                elif region_file != path:
+                    outcome = outcome or ("in another file", f"{symbol}: {region_file}")
+                elif not region_inside(region, start, end):
+                    outcome = ("outside the range",
+                               f"{symbol}: first region {region[0]}:{region[1]}-{region[2]}:{region[3]}")
+                else:
+                    outcome = ("agrees", which)
+                    break
+            if outcome and outcome[0] == "agrees":
+                break
+        place = f"{item.get('key')} ({record['file']}:{start[0]}:{start[1]}-{end[0]}:{end[1]}; {usr})"
+        if outcome is None:
+            note = unnamed_note(usr, item.get("key"), start, end, path)
+            if note:
+                notes[note] += 1
+            exceptions["no export function has the name"].append(place + (f": {note}" if note else ""))
+        elif outcome[0] == "agrees":
+            counts[f"agrees by {outcome[1]}"] += 1
+        elif outcome[0] == "in another file":
+            exceptions["named, but the first region is in another file"].append(f"{place}: {outcome[1]}")
+        else:
+            exceptions["named, but the first region is outside the record's range"].append(f"{place}: {outcome[1]}")
+    scanned = {real_file(os.path.join(root, r["file"])) for r in records.values() if isinstance(r.get("file"), str)}
+    unnamed = 0
+    for symbol, functions in entries.items():
+        if symbol.startswith("$s") and symbol not in named \
+                and any(first_region(f)[1] in scanned for f in functions):
+            unnamed += 1
+
+    verdict.section("the scan's index records against llvm-cov's export function names (design 3.7)")
+    verdict.info(f"{len(index_records)} index records: " + ", ".join(f"{k} {v}" for k, v in sorted(counts.items())))
+    verdict.info(f"{sum(len(v) for v in entries.values())} export functions, {len(entries)} names; "
+                 f"{unnamed} `$s` names of scanned files no record's USR names (not checked)")
+    agreed = counts["agrees by usr"] + counts["agrees by usrAccessor"]
+    total = counts["s: USR"]
+    verdict.result("every record with an s: USR has an export function of that name whose first region is inside "
+                   "its range", agreed == total and not exceptions,
+                   f"{agreed} of {total} agree ({counts['agrees by usrAccessor']} by usrAccessor); "
+                   f"{counts['c: USR, skipped']} c: USRs skipped")
+    for note, count in sorted(notes.items()):
+        verdict.info(f"of the records no export function names, {count}: {note}")
+    for kind in sorted(exceptions):
+        verdict.info(f"exceptions: {kind} ({len(exceptions[kind])})")
+        verdict.listing(sorted(exceptions[kind]))
     print("\nRESULT: " + ("FAIL" if verdict.failed else "PASS"))
     return 1 if verdict.failed else 0
 
@@ -9882,10 +10131,17 @@ def main():
                                  "package type whose USR is the longest proper prefix of the root's Swift USR, else "
                                  "the package type at its own target, type path and type file; own-module takes the "
                                  "latter for every root")
+    naming = modes.add_parser("coverage-names", help="the optional llvm-cov USR join (design 3.7): each s: USR "
+                                                     "names an export function inside its record")
+    naming.add_argument("package", help="the scanned package (its .swiftstats/coverage-build holds the export)")
+    naming.add_argument("scan", help="`swiftstats scan --coverage --index --format json` of <package>, run right "
+                                     "before")
+    naming.add_argument("--export", help="the llvm-cov export (default: <package>/" + COVERAGE_EXPORT + ")")
+    naming.add_argument("--all", action="store_true", help="list every exception")
     arguments = parser.parse_args()
     return {"dump": dump_mode, "build-lines": build_lines_mode, "build": build_mode,
             "usr": usr_mode, "rows": rows_mode, "dead": dead_mode,
-            "signals": signals_mode}[arguments.mode](arguments)
+            "signals": signals_mode, "coverage-names": coverage_names_mode}[arguments.mode](arguments)
 
 
 if __name__ == "__main__":

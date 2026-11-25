@@ -11,7 +11,8 @@
 //  ratio both ways per production module, the results left out per class,
 //  the unused production declarations themselves (at most 50; the JSON
 //  lists all) and outskirts' known limits. When outskirts didn't run, the
-//  section says why.
+//  section says why, and when that status was carried from an earlier scan
+//  of the same tree, from when.
 //
 
 /// Renders the Dead code section.
@@ -38,14 +39,11 @@ enum MarkdownDeadCode {
     /// collector runs, which hold outskirts' build.
     static func render(_ scan: ScanReport, runs: [CollectorRunInfo]) -> [String] {
         let status = scan.collectors.first { $0.name == PeripheryAdapter.name }
+        let carried = MarkdownCarry.lines(carried: MarkdownCarry.carried(status))
         guard let dead = scan.deadCode else {
-            return ["Not collected: \(MarkdownCarry.state(status))."]
+            return ["Not collected: \(MarkdownCarry.state(status))."] + carried
         }
-        var lines = ["Status: \(MarkdownCarry.state(status))."]
-        if let carried = MarkdownCarry.carried(status) {
-            lines.append("Carried from the scan of \(carried): the tree, its records, types and files are unchanged "
-                + "since.")
-        }
+        var lines = ["Status: \(MarkdownCarry.state(status))."] + carried
         lines.append(tool(dead, run: runs.first { $0.name == PeripheryAdapter.name }))
         let results = DeadCodeRun.ordered.map { run in
             "\(run.rawValue) \(dead.runs.first { $0.name == run }?.results ?? 0)"

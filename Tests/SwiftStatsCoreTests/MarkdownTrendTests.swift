@@ -3,8 +3,9 @@
 //  SwiftStatsCoreTests
 //
 //  `trend`'s Markdown (design §10.4): a type-check time's trend
-//  (`typecheck.*`) ends with the footnote that it depends on the machine
-//  and its load; any other metric's doesn't.
+//  (`typecheck.milliseconds.*`, `typecheck.slowestExpression.*`) ends with
+//  the footnote that it depends on the machine and its load; any other
+//  metric's doesn't, the count of records timed included.
 //
 
 @testable import SwiftStatsCore
@@ -25,13 +26,17 @@ struct MarkdownTrendTests {
         )
     }
 
-    @Test("a type-check time's trend has the machine-and-load footnote; another metric's has none")
+    @Test("""
+        a type-check time's trend has the machine-and-load footnote; another metric's has none, nor has the count \
+        of records timed
+        """)
     func typeCheckFootnote() {
-        let timed = MarkdownTrend.render(Self.trend("typecheck.milliseconds.total"))
-        let counted = MarkdownTrend.render(Self.trend("index.withUSR"))
+        let timed = ["typecheck.milliseconds.total", "typecheck.milliseconds.max", "typecheck.slowestExpression.max"]
+            .map { MarkdownTrend.render(Self.trend($0)) }
+        let counted = ["index.withUSR", "typecheck.functions.timed"].map { MarkdownTrend.render(Self.trend($0)) }
 
-        #expect(timed.hasSuffix("\n\n" + MarkdownTrend.typeCheckNote + "\n"))
-        #expect(timed.contains("which no build identity names"))
-        #expect(counted.contains(MarkdownTrend.typeCheckNote) == false)
+        #expect(timed.allSatisfy { $0.hasSuffix("\n\n" + MarkdownTrend.typeCheckNote + "\n") })
+        #expect(timed.allSatisfy { $0.contains("which no build identity names") })
+        #expect(counted.allSatisfy { $0.contains(MarkdownTrend.typeCheckNote) == false })
     }
 }

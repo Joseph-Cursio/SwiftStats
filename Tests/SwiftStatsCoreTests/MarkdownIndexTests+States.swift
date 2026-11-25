@@ -355,7 +355,10 @@ extension MarkdownIndexTests {
         }
     }
 
-    @Test("without the build the section says why; with only the index failed it keeps the build's parts")
+    @Test("""
+        without the build the section says why, and when carried from when; with only the index failed it keeps \
+        the build's parts
+        """)
     func missing() async throws {
         try await IndexHarness.scan(indexed: true) { snapshot in
             let build = try Self.status(BuildAdapter.name, of: snapshot.report)
@@ -366,7 +369,19 @@ extension MarkdownIndexTests {
             let failed = snapshot.report.with(index: nil, status: Self.status(index, .failed, "the reader failed"))
             let lines = MarkdownIndex.render(failed)
 
+            let carriedSkip = snapshot.report
+                .with(
+                    build: nil,
+                    totals: .empty,
+                    status: Self.status(build, .skipped, CollectorRunInfo.carriedPrefix + Self.collectedAt + "; off")
+                )
+                .with(index: nil, status: Self.status(index, .skipped, BuildAdapter.needsBuildLead + "skipped"))
             #expect(MarkdownIndex.render(skipped) == ["Not collected: skipped, not requested; scan --index runs it."])
+            #expect(MarkdownIndex.render(carriedSkip) == [
+                "Not collected: skipped, off.",
+                "Carried from the scan of \(Self.collectedAt): the tree, its records, types and files are unchanged "
+                    + "since."
+            ])
             #expect(lines.first == "Status: build ran; index failed, the reader failed.")
             #expect(lines.contains("### USRs") == false)
             #expect(lines.contains("### Type-check time"))

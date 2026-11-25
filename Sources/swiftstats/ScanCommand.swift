@@ -13,8 +13,11 @@ struct ScanCommand: ParsableCommand {
         discussion: """
         The snapshot goes to the package's store (.swiftstats/stats.sqlite, or store: in .swiftstats.yml, \
         or --store), replacing any earlier snapshot of the same commit and dirtiness. --format json prints \
-        the scan's records, findings, test inventory, dependencies, law checks, property-test suggestions, \
-        clones, roll-ups and Sitrep-compatible counts; -o writes them to a file. SwiftProjectLint, SwiftLint, \
+        the scan's targets, records, types, files, findings, warnings and collector statuses, its test \
+        inventory, dependencies, side effects, law checks, property-test suggestions, clones, roll-ups and \
+        Sitrep-compatible counts, the git history's churn and fixes when it reads the history, the coverage and \
+        mutation results when it collects or keeps them, and the build, index and dead-code blocks when it \
+        collects or keeps index results; -o writes them to a file. SwiftProjectLint, SwiftLint, \
         SwiftInferProperties and SwiftCloneDetector run when found on PATH (as swiftprojectlint, swiftlint, \
         swift-infer and swift-clone-detector), or at collectors.<name>.path in .swiftstats.yml; \
         collectors.<name>.enabled: false turns one off. Side effects come from the linked SwiftEffectInference \
@@ -38,11 +41,11 @@ struct ScanCommand: ParsableCommand {
         without them instead. --index also builds the package once more, in .swiftstats/index-build, with the \
         coverage collector's swift, for type-check times, compiler warnings, USRs and references from the index \
         store, and dead code from outskirts (outskirts on PATH, or collectors.periphery.path); a scan without it \
-        lists those collectors as not requested. A scan without --index, or whose index build fails, keeps the \
-        index results of the snapshot it replaces when the tree, the records, the types, the files and the rules \
-        are the same, and otherwise stops without storing anything; --drop-index replaces the snapshot without \
-        them instead. A coverage, mutation or index run asked for that fails or is skipped doesn't fail the \
-        scan, which says so on standard error.
+        lists those collectors as not requested. A scan without --index, or whose index build fails or is \
+        skipped, keeps the index results of the snapshot it replaces when the tree, the records, the types, the \
+        files and the rules are the same, and otherwise stops without storing anything; --drop-index replaces \
+        the snapshot without them instead. A coverage, mutation or index run asked for that fails or is \
+        skipped doesn't fail the scan, which says so on standard error.
         """
     )
 
