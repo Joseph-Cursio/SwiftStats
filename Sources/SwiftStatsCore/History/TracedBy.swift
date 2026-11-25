@@ -21,6 +21,9 @@ public enum TracedBy: String, Codable, Hashable, Sendable {
     case similarBody = "similar-body"
     /// The family exists only in uncommitted changes, so it has no history.
     case uncommitted
+    /// The weakest link was the same USR (M7). History reads no index,
+    /// so only a lineage that one day does could have this link.
+    case usr
 
     /// The tracing that a link of `method` makes.
     init(_ method: MatchMethod) {
@@ -42,6 +45,9 @@ public enum TracedBy: String, Codable, Hashable, Sendable {
 
         case .similarBody:
             self = .similarBody
+
+        case .usr:
+            self = .usr
         }
     }
 }
