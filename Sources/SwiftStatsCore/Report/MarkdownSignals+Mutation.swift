@@ -125,7 +125,7 @@ extension MarkdownSignals {
 
     /// How many tests the kills name, and the first of them (Swift
     /// Testing's display names can be sentences; the JSON names five).
-    private static func killingTests(_ mutation: SignalItem.Mutation) -> String {
+    static func killingTests(_ mutation: SignalItem.Mutation) -> String {
         guard let first = mutation.firstKillingTests.first else {
             return String(mutation.killingTests)
         }

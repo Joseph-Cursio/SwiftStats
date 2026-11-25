@@ -214,9 +214,9 @@ struct TestOnlyProductionTests {
     }
 
     @Test("""
-        M7's three signals come last in report order with their titles and requirements; dead but tested and \
-        hidden coupling are left out for their requirements first, then as not built yet, stating their own \
-        rules either way
+        M7's three signals come last in report order with their titles and requirements; hidden coupling is \
+        left out for its requirements first, then as not built yet, and dead but tested for its requirements, \
+        then for the mutation rows it reads, each stating its own rule either way
         """)
     func names() throws {
         let made = try TemporaryStore("TestOnly")
@@ -259,7 +259,7 @@ struct TestOnlyProductionTests {
         #expect(try rules() == [HiddenCoupling.rule(thresholds: SignalThresholds()), DeadButTested.rule])
         try SnapshotHarness.sqlite(made.url, "UPDATE collectorRun SET state = 'ran', reason = NULL WHERE name = "
             + "'swiftmutator'")
-        #expect(try reasons() == [notBuilt, notBuilt])
+        #expect(try reasons() == [notBuilt, "the snapshot holds no mutation rows"])
         #expect(try rules() == [HiddenCoupling.rule(thresholds: SignalThresholds()), DeadButTested.rule])
         try SnapshotHarness.sqlite(made.url, "UPDATE snapshot SET reportSchemaVersion = 8")
         #expect(try reasons() == ["the snapshot predates M7", "the snapshot predates M7"])

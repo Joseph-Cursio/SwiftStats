@@ -155,7 +155,8 @@ struct MutationJudge {
             killingTests: tests.count,
             firstKillingTests: Array(tests.prefix(Self.namedKillingTests)),
             survivors: held.filter { Self.unchecked.contains($0.verdict) }.map(UncheckedMutant.init),
-            suspects: suspects(behind: held)
+            suspects: suspects(behind: held),
+            coverage: nil
         )
     }
 

@@ -12,7 +12,8 @@
 //  function's suggestions, its unkilled mutants and its resolved partners';
 //  and, for uneven clone testing's mutation part, each measured copy's
 //  mutants killed and scored, split into those that ran unchecked and those
-//  in code that never ran.
+//  in code that never ran. M7's dead but tested adds the coverage setting
+//  of a function's mutation run.
 //
 
 public extension SignalItem {
@@ -39,6 +40,27 @@ public extension SignalItem {
         /// file included; with no file in an entry, same-named tests
         /// suspect for the same reason with the same figures show as one.
         public let suspects: [Suspect]
+        /// Whether its file's mutation run had coverage on, for dead but
+        /// tested (M7), which counts only the kills of a run with coverage
+        /// off; nil, and left out of the JSON, for the other signals, and
+        /// for dead but tested when the setting isn't known (its file names
+        /// no run and its mutants' runs differ).
+        public let coverage: CoverageSetting?
+
+        /// These results with `setting` as their run's coverage setting,
+        /// nil when it isn't known.
+        func with(coverage setting: CoverageSetting?) -> Self {
+            Self(
+                counts: counts,
+                score: score,
+                functionScore: functionScore,
+                killingTests: killingTests,
+                firstKillingTests: firstKillingTests,
+                survivors: survivors,
+                suspects: suspects,
+                coverage: setting
+            )
+        }
     }
 
     /// A suspect test behind a suspect-only kill, matched to the kill by

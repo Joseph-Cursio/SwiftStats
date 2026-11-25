@@ -2,10 +2,14 @@
 //  SignalItem+Index.swift
 //  SwiftStatsCore
 //
-//  The payloads M7's signals fill from the T1 build's index (design §8):
-//  for test-only production code, a function's references from test
-//  targets, counted as distinct test containers with the first five
-//  named, and its module.
+//  The payloads M7's signals fill from the T1 build (design §8): for
+//  test-only production code, a function's references from test targets,
+//  counted as distinct test containers with the first five named, and its
+//  module; for dead but tested, the unused declaration outskirts' run with
+//  tests not counted as roots reports covering the function, by which
+//  rule, and whether the run with tests as roots covers it too; and the
+//  coverage setting of the mutation run a dead but tested function's
+//  mutants come from.
 //
 
 public extension SignalItem {
@@ -20,5 +24,37 @@ public extension SignalItem {
         public let testReferrers: [String]
         /// Its module, a target name.
         public let module: String
+    }
+
+    /// The unused declaration covering a production-dead function, as
+    /// outskirts' `production` run reports it.
+    struct Dead: Codable, Hashable, Sendable {
+        /// outskirts' kind of the declaration, such as `function.free` or
+        /// `struct`.
+        public let kind: String
+        /// The declaration's name.
+        public let name: String
+        /// Its file in the package; nil outside the root.
+        public let file: String?
+        /// The 1-based line of its name.
+        public let line: Int
+        /// The rule by which it covers the function: `usr` and `property`
+        /// need the index, `type` and `extension` apply with or without
+        /// it, and `location` only without it.
+        public let via: DeadCodeVia
+        /// Its accessibility, as outskirts writes it.
+        public let accessibility: String
+        /// Whether the `roots` run covers the function too: no test
+        /// references it statically either, so tests reach it dynamically.
+        public let deadWithTestsAsRoots: Bool
+    }
+
+    /// Whether a function's mutation run had coverage on: SwiftMutator
+    /// mutates only code tests ran, or, with coverage off, all of it.
+    enum CoverageSetting: String, Codable, Sendable {
+        /// Coverage off: a mutant in code no test runs reads as survived.
+        case disabled = "off"
+        /// Coverage on: mutants are made only in code tests ran.
+        case enabled = "on"
     }
 }

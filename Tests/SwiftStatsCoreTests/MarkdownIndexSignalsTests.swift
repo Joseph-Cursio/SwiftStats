@@ -6,7 +6,11 @@
 //  after the function and its score, the test referrers counted with the
 //  first three named, then the lines covered and the function score, a
 //  dash when the snapshot holds no coverage or the function has no
-//  mutants; on `TestOnlyHarness`' package and on hand-made items.
+//  mutants; on `TestOnlyHarness`' package and on hand-made items. Dead but
+//  tested shows the mutants killed of scored (the run's coverage setting
+//  when off), the killing tests, the covering declaration with its rule
+//  and whether tests as roots leave the function dead too, on hand-made
+//  items.
 //
 
 import Foundation
@@ -67,6 +71,64 @@ struct MarkdownIndexSignalsTests {
         )
         let signal = SignalResult(name: .testOnlyProduction, leftOut: nil, rule: "", candidates: 1, items: [item])
         return try #require(table(signal).last)
+    }
+
+    /// The table row of a dead but tested item scored `score` with `dead`
+    /// and `mutation`.
+    private static func deadRow(
+        score: Double,
+        dead: SignalItem.Dead?,
+        mutation: SignalItem.Mutation?
+    ) throws -> String {
+        let item = SignalItem(
+            SignalItem.Draft(subject: subject, file: file, line: 3, mutation: mutation, dead: dead),
+            rank: 1,
+            score: score,
+            member: true
+        )
+        let signal = SignalResult(name: .deadButTested, leftOut: nil, rule: "", candidates: 1, items: [item])
+        let lines = table(signal)
+        #expect(lines.prefix(2) == [
+            "| # | Function | Score | Killed / scored | Killing tests | Covering declaration | Dead with tests as "
+                + "roots |",
+            "| --- | --- | --- | --- | --- | --- | --- |"
+        ])
+        return try #require(lines.last)
+    }
+
+    @Test("""
+        dead but tested shows the mutants killed of scored with the run's coverage setting when off, the killing \
+        tests, the covering declaration with its rule and whether tests as roots leave it dead; a dash when a \
+        payload is absent
+        """)
+    func deadButTested() throws {
+        let mutation = try JSONDecoder().decode(SignalItem.Mutation.self, from: Data(Self.mutationJSON.utf8))
+        let byType = SignalItem.Dead(
+            kind: "struct",
+            name: "Unused",
+            file: "Sources/Lib/Unused.swift",
+            line: 3,
+            via: .type,
+            accessibility: "internal",
+            deadWithTestsAsRoots: true
+        )
+        let byLocation = SignalItem.Dead(
+            kind: "function.free",
+            name: "f(_:)",
+            file: Self.file,
+            line: 3,
+            via: .location,
+            accessibility: "internal",
+            deadWithTestsAsRoots: false
+        )
+        let place = "`func f(_: Int) -> Int` (Sources/Lib/F.swift:3)"
+
+        #expect(mutation.coverage == nil)
+        #expect(try Self.deadRow(score: 7, dead: byType, mutation: mutation.with(coverage: .disabled))
+            == "| 1 | \(place) | 7 | 2/7 (28.57%), coverage off | 1: a() | `struct Unused` via type | yes |")
+        #expect(try Self.deadRow(score: 7, dead: byLocation, mutation: mutation.with(coverage: .enabled))
+            == "| 1 | \(place) | 7 | 2/7 (28.57%) | 1: a() | `function.free f(_:)` via location | no |")
+        #expect(try Self.deadRow(score: 1, dead: nil, mutation: nil) == "| 1 | \(place) | 1 | — | — | — | — |")
     }
 
     @Test("""

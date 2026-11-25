@@ -6,10 +6,9 @@
 //  tested and test-only production code, computed from the T1 results a
 //  snapshot holds. Each names only its own missing inputs: the index rows
 //  for hidden coupling and test-only production code, the dead-code rows,
-//  then the mutation rows, for dead but tested. Dead but tested and
-//  hidden coupling, once their requirements hold, are left out as not
-//  built yet until their plan steps (9b, 9c) add them; a left-out M7
-//  signal states its rule either way.
+//  then the mutation rows, for dead but tested. Hidden coupling, once its
+//  requirements hold, is left out as not built yet until its plan step
+//  (9c) adds it; a left-out M7 signal states its rule either way.
 //
 
 extension SignalEngine {
@@ -19,13 +18,22 @@ extension SignalEngine {
     /// Why `signal`, whose requirements hold, is left out because this
     /// build doesn't compute it yet; nil for every signal it computes.
     static func unbuilt(_ signal: SignalName) -> String? {
-        signal == .deadButTested || signal == .hiddenCoupling ? notBuilt : nil
+        signal == .hiddenCoupling ? notBuilt : nil
     }
 
     /// M7's signal `signal` computed from `inputs`; nil when the input
     /// its requirements don't check is missing.
     static func indexComputation(_ signal: SignalName, inputs: SignalInputs) -> SignalComputation? {
-        signal == .testOnlyProduction ? TestOnlyProduction.compute(inputs) : nil
+        switch signal {
+        case .deadButTested:
+            DeadButTested.compute(inputs)
+
+        case .testOnlyProduction:
+            TestOnlyProduction.compute(inputs)
+
+        default:
+            nil
+        }
     }
 
     /// The rule M7's signal `signal` states when left out, with the limits

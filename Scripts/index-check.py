@@ -11,7 +11,7 @@ script reads them with its own line patterns, not design section 6.1's
 grammar, and accounts for every line. Run it as `python3 -I -B Scripts/index-check.py <mode> ...`, so it
 writes no bytecode cache beside itself.
 
-Modes (a later plan step adds `coverage-names`; plan steps 9b and 9c extend
+Modes (a later plan step adds `coverage-names`; plan step 9c extends
 `signals`):
 
 `dump` writes the reader's values for a store as JSON: the recorded
@@ -646,8 +646,8 @@ Not the scan JSON's `deadCode` block, `deadLines`, `deadCodeExcluded` or
 `swiftstats report --format json` of that snapshot (the snapshot the report
 names, by package, path, commit and dirtiness; `--snapshot` names another,
 the newest without a report). Plan step 9a writes its test-only part and
-the groundwork the three signals share; 9b and 9c add dead but tested and
-hidden coupling:
+the groundwork the three signals share, 9b its dead-but-tested part; 9c
+adds hidden coupling:
   t  thresholds: the report's `thresholds.limits` lists `hidden-coupling`
      with exactly the limits this check uses (support 3 and confidence 50
      unless `--config`'s `signals.hidden-coupling` or `--set` say otherwise;
@@ -658,8 +658,8 @@ hidden coupling:
      schema is printed (5 before plan step 10 bumps it to 6), not failed.
   n  names: the report's last three signals are hidden-coupling,
      dead-but-tested and test-only-production, in that order, each once,
-     right after uneven-clone-mutation. The other two's left-out reasons are
-     printed (9b and 9c check them).
+     right after uneven-clone-mutation. Hidden coupling's left-out reason is
+     printed (9c checks it).
   o  test-only production code (design 8.3):
      left out, first that applies: `the snapshot predates M7` (the
      snapshot's reportSchemaVersion below 9, or no collectorRun row for
@@ -700,8 +700,75 @@ hidden coupling:
      killingTests, firstKillingTests, survivors, suspects), built by
      Scripts/mutation-check.py's SignalModel, and for a function without
      mutants absent or that shape with zero counts; no other payload.
+  d  dead but tested (design 8.2; plan step 9b):
+     left out, first that applies: `the snapshot predates M7` (as for o);
+     `needs periphery: <state>[, <reason>]`, then `needs swiftmutator:
+     <state>[, <reason>]` (carried results read `ran`); `the snapshot holds
+     no dead-code rows` (no `deadScan` row); `the snapshot holds no mutation
+     rows` (no `mutationScan` row). `index` is never required (without it
+     outskirts' results are mapped by position, `via: location`). A
+     left-out signal lists nothing, has 0 candidates and states design
+     8.2's rule text (the funnels optional).
+     the runs' coverage of records, from the rows: a run's entries are its
+     `deadDeclaration` rows of hint `unused` and class `production`; a
+     record is covered by the entry its `deadRecord` row of that run names
+     when that entry is one of them, and also by an unused function entry
+     (`function.*`) whose `ids` hold the record's `usr` or `usrAccessor`
+     (design 5.4 rule 1; `deadRecord` keeps only the lowest ordinal, so a
+     lower entry of another hint could take a record's row: printed). A
+     record is production-dead when the `production` run covers it, dead
+     with tests as roots when the `roots` run does (design 5.4).
+     pool, in the store's row order: `function` rows of role production
+     whose `generated` is 0 (as for o: test-only's pool). Each is D
+     production-dead or A used. A production-dead record's mutants are the
+     `mutant` rows placed on it (`place` record, `owner` its key); its
+     file's run is its `mutationFile` row's `run` (the mutants' own run when
+     that is null and they share one), and that run had coverage off when
+     its `mutationRun` row's `skipCoverage` is true. A mutant ran when its
+     verdict is killed, survived or timedOut, or only killed when the run
+     had coverage off. Then, first that applies: L listed (a mutant ran);
+     F in a file whose `mutationFile` disposition is unresolved or
+     unlisted; else R, by its mutants: R3 none; R4 survived or timed out
+     in a run with coverage off; R1 not covered or no coverage; R2 build
+     errors; else R3 (mixed verdicts are printed with the term they got).
+     The declarations funnel, over the production run's unused production
+     entries (X): F a function entry that covers a record (a `deadRecord`
+     row names it, or its `ids` hold a record's USR), U one that covers
+     none; T a type entry (class, struct, enum, protocol); E an extension
+     entry (`extension*`); V a property entry (`var.*`) a `deadRecord` row
+     names; O any other. Its D = the distinct pool records F, T, E and V
+     entries cover (the count over records of every role is accepted too,
+     and printed).
+     The rule: design 8.2's text, then "; " and both funnels in its words
+     (`N production functions = D production-dead + A used; D = L listed
+     + R with no mutant that ran + F in files without full mutation
+     results (unresolved or unlisted); R = R1 ... + R2 only build errors +
+     R3 no mutant + R4 ...`; `X unused production declarations = F
+     function entries matching a record + U ... + T type entries + E
+     extension entries + V property entries with accessor records + O
+     others (parameters, imports, enum cases, stored properties,
+     typealiases); D = the distinct records F, T, E and V cover`), found
+     anywhere after the text, every number equal to this check's and
+     adding up as stated, both D's equal; the last clause may name its
+     four terms by letter or by number (then equal to F, T, E and V) or
+     otherwise (printed); text around the funnels is printed. `candidates`
+     is N (the pool) or D, and which is printed.
+     items: the L records, ordered by score (the mutants that ran)
+     descending, then their killing tests' count (distinct names in the
+     `killedBy` of their killed mutants) descending, then subject, file and
+     line; each with rank (from 1), member true, that score, and payloads:
+     `dead` {kind, name, file, line, accessibility of the covering
+     production entry, via (its `deadRecord` row's, `usr` for a record
+     matched only by USR), deadWithTestsAsRoots}, nulls left out;
+     `mutation`: M6's weak-tests shape (as for o, built by
+     Scripts/mutation-check.py's SignalModel) plus one more field holding
+     the run's coverage setting, "on" or "off" (design 8.2: `coverage:
+     on|off`; another field name is accepted and printed); `coverage`
+     exactly when the snapshot holds coverage rows (as for o); no other
+     payload.
 `--own-only` prints the figures without a report; `--dump` writes them as
-JSON (the signal in the report's shape, the funnel, the exclusions).
+JSON (the signals in the report's shape, the funnels, the exclusions and
+members, each production entry's term, the notes).
 
 Inputs `signals` trusts:
   - the store's rows, opened read-only, as design section 9.1 names them:
@@ -713,6 +780,13 @@ Inputs `signals` trusts:
     u7 and u8), `coverageRun`, `functionCoverage`, `mutationScan` and
     M6's mutation tables, and the stored report's `targets` (name, type)
     as T0 wrote them;
+  - for dead but tested (d): the `function` columns usrAccessor and the
+    usr of every row (any role), `deadScan` (present or not),
+    `deadDeclaration` (run, ordinal, hint, class, kind, name, ids, file,
+    line, accessibility) and `deadRecord` (run, key, declaration, via) of
+    both runs (checked against the scan by `dead --store`), `mutationFile`
+    (path, disposition, run), `mutationRun` (ordinal, skipCoverage) and
+    `mutant` (owner, place, verdict, killedBy, run) as M6 stores them;
   - Scripts/mutation-check.py (the M6 checker) for M6's `mutation` and
     `coverage` payload shapes, loaded without writing bytecode;
   - the configuration file's `signals.hidden-coupling` keys, or `--set`.
@@ -6865,6 +6939,50 @@ FUNNEL_TERMS = (("N", "production functions"), ("W", "without a USR"), ("K", "wi
                 ("L", "listed"), ("R", "with a production reference"), ("Z", "with no reference at all"))
 ENTRY_POINT = re.compile(r"(?:^|\s)static func main\(\)(?:\s|$)")
 
+# Dead but tested (design 8.2): the collectors it needs, in order, and the payloads an item carries.
+DEAD_BUT_TESTED_COLLECTORS = ("periphery", "swiftmutator")
+DEAD_BUT_TESTED_PAYLOADS = ("dead", "mutation", "coverage")
+# outskirts' kinds (design 5.4 rule 3: nominal types; rule 4: extensions; rule 5: functions; rule 2: properties).
+DEAD_TYPE_KINDS = ("class", "struct", "enum", "protocol")
+DEAD_VIA = ("usr", "property", "type", "extension", "location")
+# Verdicts that show a test executed the mutated code, with coverage on and off (design 8.2's "Ran").
+RAN_WITH_COVERAGE = ("killed", "survived", "timedOut")
+RAN_WITHOUT_COVERAGE = ("killed",)
+UNRUN_ONLY = ("notCovered", "noCoverage")
+WITHOUT_FULL_RESULTS = ("unresolved", "unlisted")
+# Design 8.2's rule text, before the funnels (a left-out signal states it alone).
+DEAD_BUT_TESTED_PROSE = (
+    "production functions no production code uses (outskirts with test targets not counted as roots; public API "
+    "of library-product modules, Codable and Equatable/Hashable/Comparable properties retained) whose mutants the "
+    "tests run (killed, survived or timed out; killed only, for files mutated with coverage off); delete the code "
+    "and its tests, which frees test and mutation time; a function called only from an inactive #if branch reads as "
+    "unused (outskirts' limit); types and properties aren't judged")
+# Design 8.2's two funnels with their numbers as groups. The functions funnel names R1 to R4; `RB` is its R2
+# (only build errors), and `D2`/`RR` the restated D and R. The declarations funnel's F is `FE` here (the
+# functions funnel has its own F); its last clause, "D = the distinct records F, T, E and V cover", may name the
+# four terms by letter, by number or in words (`cover`), which is checked apart.
+DEAD_FUNCTIONS_FUNNEL = re.compile(
+    r"(?P<N>\d+) production functions = (?P<D>\d+) production-dead \+ (?P<A>\d+) used; "
+    r"(?P<D2>\d+) = (?P<L>\d+) listed \+ (?P<R>\d+) with no mutant that ran \+ "
+    r"(?P<F>\d+) in files without full mutation results \(unresolved or unlisted\); "
+    r"(?P<RR>\d+) = (?P<R1>\d+) only not covered or no coverage \+ (?P<RB>\d+) only build errors \+ "
+    r"(?P<R3>\d+) no mutant \+ (?P<R4>\d+) only survived or timed out in a run with coverage off")
+DEAD_DECLARATIONS_FUNNEL = re.compile(
+    r"(?P<X>\d+) unused production declarations = (?P<FE>\d+) function entries matching a record \+ "
+    r"(?P<U>\d+) function entries matching no record \+ (?P<T>\d+) type entries \+ (?P<E>\d+) extension entries \+ "
+    r"(?P<V>\d+) property entries with accessor records \+ "
+    r"(?P<O>\d+) others \(parameters, imports, enum cases, stored properties, typealiases\); "
+    r"(?P<DD>\d+) = the distinct records (?P<cover>[^;]+?) cover(?=$|[;,.\s])")
+DEAD_FUNCTION_TERMS = (("N", "production functions"), ("D", "production-dead"), ("A", "used"),
+                       ("D2", "D restated"), ("L", "listed"), ("R", "with no mutant that ran"),
+                       ("F", "in files without full mutation results"), ("RR", "R restated"),
+                       ("R1", "only not covered or no coverage"), ("RB", "R2: only build errors"),
+                       ("R3", "no mutant"), ("R4", "only survived or timed out in a run with coverage off"))
+DEAD_DECLARATION_TERMS = (("X", "unused production declarations"), ("FE", "function entries matching a record"),
+                          ("U", "function entries matching no record"), ("T", "type entries"),
+                          ("E", "extension entries"), ("V", "property entries with accessor records"),
+                          ("O", "others"), ("DD", "D: the distinct records F, T, E and V cover"))
+
 
 def blind(text):
     """Text compared case- and punctuation-blind (reasons as a rule may spell them)."""
@@ -6887,6 +7005,11 @@ def load_mutation_check():
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
     return module
+
+
+def nfc_text(text):
+    """`text` in Unicode NFC (stored paths are NFC; a path compared with another is normalised first)."""
+    return unicodedata.normalize("NFC", text) if isinstance(text, str) else text
 
 
 def store_uri(path):
@@ -7037,6 +7160,29 @@ class SignalRows:
                                            "mutationScan"))
             self.coverage = {row["key"]: row for row in
                              rows("SELECT * FROM functionCoverage WHERE snapshotId = ?", "functionCoverage")}
+            # Dead but tested (design 8.2): every function row (any role) for the USR match of function entries,
+            # the dead-code rows of both runs, and the mutation rows by file, run and record.
+            self.all_functions = every
+            self.dead_scan_held = bool(rows("SELECT snapshotId FROM deadScan WHERE snapshotId = ?", "deadScan"))
+            self.dead_declarations = defaultdict(dict)    # run -> ordinal -> row
+            for row in rows("SELECT * FROM deadDeclaration WHERE snapshotId = ? ORDER BY run, ordinal",
+                            "deadDeclaration"):
+                self.dead_declarations[row["run"]][row["ordinal"]] = row
+            self.dead_records = defaultdict(list)         # run -> rows
+            for row in rows("SELECT run, key, declaration, via FROM deadRecord WHERE snapshotId = ? "
+                            "ORDER BY run, key", "deadRecord"):
+                self.dead_records[row["run"]].append(row)
+            self.mutation_files = {nfc_text(row["path"]): row for row in
+                                   rows("SELECT path, disposition, run FROM mutationFile WHERE snapshotId = ?",
+                                        "mutationFile")}
+            self.mutation_runs = {row["ordinal"]: row for row in
+                                  rows("SELECT ordinal, skipCoverage, carriedFrom FROM mutationRun "
+                                       "WHERE snapshotId = ?", "mutationRun")}
+            self.record_mutants = defaultdict(list)       # owner key -> mutant rows placed on that record
+            for row in rows("SELECT ordinal, owner, place, verdict, outcome, killedBy, run, path FROM mutant "
+                            "WHERE snapshotId = ? ORDER BY ordinal", "mutant"):
+                if row["place"] == "record" and row["owner"] is not None:
+                    self.record_mutants[row["owner"]].append(row)
             blob = database.execute("SELECT encoding, data FROM report WHERE snapshotId = ?", (self.id,)).fetchone()
             database.close()
         except sqlite3.Error as error:
@@ -7067,6 +7213,24 @@ class SignalRows:
             return f"needs {collector}: {run['state']}" + (f", {run['reason']}" if run["reason"] else "")
         if missing == "indexScan" and self.index_scan is None:
             return "the snapshot holds no index rows"
+        return None
+
+    def left_out_dead(self):
+        """Why dead but tested can't be computed (design 8's requirements, in order: `.m7Snapshot`; then each
+        collector it needs, periphery then swiftmutator, M6's wording; then its missing inputs, dead-code rows
+        then mutation rows); nil when it can. `index` is not required (design 8.2)."""
+        if self.schema < FIRST_M7_SCHEMA or "index" not in self.collectors:
+            return "the snapshot predates M7"
+        for collector in DEAD_BUT_TESTED_COLLECTORS:
+            run = self.collectors.get(collector)
+            if run is None:
+                return "the snapshot predates M4"
+            if run["state"] != "ran":
+                return f"needs {collector}: {run['state']}" + (f", {run['reason']}" if run["reason"] else "")
+        if not self.dead_scan_held:
+            return "the snapshot holds no dead-code rows"
+        if not self.mutation_held:
+            return "the snapshot holds no mutation rows"
         return None
 
 
@@ -7370,6 +7534,490 @@ def compare_test_only(verdict, model, signal, expected):
         verdict.info(f"accepted: {note} ({count})")
 
 
+def json_list(text):
+    """A JSON array stored as text (deadDeclaration's ids, a mutant's killedBy), as a list; [] when it isn't one."""
+    try:
+        value = json.loads(text) if isinstance(text, str) else text
+    except ValueError:
+        return []
+    return value if isinstance(value, list) else []
+
+
+class DeadRun:
+    """One outskirts run's coverage of records, read from the stored rows (design 5.4, 9.1): the run's `unused`
+    entries of class production, which records they cover, and each entry's term in design 8.2's declarations
+    funnel. `deadRecord` keeps one row per record, with the lowest entry ordinal that covers it (design 5.4), so a
+    function entry whose `ids` hold a record's primary or secondary USR (design 5.4 rule 1) is matched by USR too,
+    in case a lower entry with another hint took the record's row."""
+
+    def __init__(self, rows, run, by_usr):
+        self.run = run
+        self.notes = []
+        declarations = rows.dead_declarations.get(run, {})
+        self.unused = {ordinal: row for ordinal, row in declarations.items()
+                       if row["hint"] == "unused" and row["class"] == "production"}
+        self.covered = {}                          # record key -> (entry ordinal, via)
+        self.by_entry = defaultdict(list)          # entry ordinal -> deadRecord rows naming it
+        for record in rows.dead_records.get(run, []):
+            entry = declarations.get(record["declaration"])
+            if entry is None:
+                self.notes.append(f"deadRecord {record['key']!r} names entry {record['declaration']}, which no "
+                                  f"deadDeclaration row of the {run} run holds")
+                continue
+            if record["via"] not in DEAD_VIA:
+                self.notes.append(f"deadRecord {record['key']!r}: via {record['via']!r} is none of {DEAD_VIA}")
+            if record["declaration"] in self.unused:
+                self.by_entry[record["declaration"]].append(record)
+                self.covered[record["key"]] = (record["declaration"], record["via"])
+            else:
+                self.notes.append(f"{record['key']!r}: its deadRecord row names entry {record['declaration']} "
+                                  f"(hint {entry['hint']}, class {entry['class']}), so that row doesn't make it dead")
+        self.terms = {}                            # entry ordinal -> FE, U, T, E, V or O
+        self.matched = {}                          # function entry ordinal -> record keys its ids name
+        for ordinal in sorted(self.unused):
+            entry = self.unused[ordinal]
+            kind = entry["kind"] or ""
+            own = self.by_entry.get(ordinal, [])
+            if kind.startswith("function."):
+                matched = sorted({key for usr in json_list(entry["ids"]) for key in by_usr.get(usr, [])})
+                self.matched[ordinal] = matched
+                for key in matched:
+                    held = self.covered.get(key)
+                    if held is None:
+                        self.covered[key] = (ordinal, "usr")
+                        self.notes.append(f"{key!r}: no deadRecord row of the {run} run names an unused entry, but "
+                                          f"unused function entry {ordinal} holds its USR (counted dead, via usr)")
+                    elif held[0] > ordinal:
+                        self.notes.append(f"{key!r}: its deadRecord row names entry {held[0]}, but the lower "
+                                          f"unused function entry {ordinal} holds its USR (design 5.4: the lower "
+                                          "ordinal wins)")
+                term = "FE" if own or matched else "U"
+            elif kind in DEAD_TYPE_KINDS:
+                term = "T"
+            elif kind.startswith("extension"):
+                term = "E"
+            elif kind.startswith("var.") and own:
+                term = "V"
+                vias = sorted({record["via"] for record in own})
+                if vias != ["property"]:
+                    self.notes.append(f"property entry {ordinal} ({entry['name']}) covers records via {vias}, "
+                                      "not only property")
+            else:
+                term = "O"
+                if own:
+                    self.notes.append(f"entry {ordinal} ({kind} {entry['name']}) is none of design 8.2's F, T, E "
+                                      f"and V, yet covers {len(own)} records")
+            self.terms[ordinal] = term
+
+    def term_counts(self):
+        counts = Counter(self.terms.values())
+        counts["X"] = len(self.unused)
+        return counts
+
+    def keys_covered_by(self, terms):
+        return {key for key, (ordinal, _) in self.covered.items() if self.terms.get(ordinal) in terms}
+
+
+class DeadButTested:
+    """Design 8.2, by its words, over SignalRows."""
+
+    def __init__(self, rows):
+        self.rows = rows
+        self.left_out = rows.left_out_dead()
+        self.counts = Counter()                   # both funnels' terms
+        self.members = defaultdict(list)          # functions-funnel term -> record keys
+        self.facts = {}                           # record key -> its mutation facts (dead records)
+        self.notes = []
+        self.items = []
+        self.production = self.roots = None
+        if self.left_out is not None:
+            return
+        by_usr = defaultdict(list)
+        for row in rows.all_functions:
+            for column in ("usr", "usrAccessor"):
+                if row[column] is not None:
+                    by_usr[row[column]].append(row["key"])
+        self.production = DeadRun(rows, "production", by_usr)
+        self.roots = DeadRun(rows, "roots", by_usr)
+        self.notes += [f"production run: {note}" for note in self.production.notes]
+        self.notes += [f"roots run: {note}" for note in self.roots.notes]
+        self.counts.update(self.production.term_counts())
+        declared = self.production.keys_covered_by(("FE", "T", "E", "V"))
+        pool = set()
+        for row in rows.functions:
+            key = row["key"]
+            pool.add(key)
+            self.counts["N"] += 1
+            if key not in self.production.covered:
+                self.counts["A"] += 1
+                continue
+            self.counts["D"] += 1
+            facts = self.mutation_facts(row)
+            self.facts[key] = facts
+            if facts["ran"] > 0:
+                term = "L"
+                self.items.append(row)
+                if facts["disposition"] in WITHOUT_FULL_RESULTS:
+                    self.notes.append(f"{key!r}: listed (a mutant ran) in a file whose disposition is "
+                                      f"{facts['disposition']}")
+            elif facts["disposition"] in WITHOUT_FULL_RESULTS:
+                term = "F"
+            else:
+                self.counts["R"] += 1
+                term = facts["unrun"]
+            self.counts[term] += 1
+            self.members[term].append(key)
+        self.counts["DD"] = len(declared & pool)
+        self.declared_all = len(declared)
+        if self.declared_all != self.counts["DD"]:
+            self.notes.append(f"F, T, E and V entries cover {self.declared_all} distinct records, "
+                              f"{self.declared_all - self.counts['DD']} of them outside the pool (another role or a "
+                              "generated file)")
+        others = len(set(self.production.covered) & pool) - self.counts["DD"]
+        if others:
+            self.notes.append(f"{others} production-dead records are covered only by entries of design 8.2's O term")
+        self.items.sort(key=lambda row: (-self.facts[row["key"]]["ran"], -len(self.facts[row["key"]]["killing"]),
+                                         row["key"], row["file"], row["startLine"]))
+
+    def mutation_facts(self, row):
+        """The record's mutants (place record), its file's disposition and run, and what ran: each mutant judged by
+        mutationRun.skipCoverage through mutationFile.run, else through its own run (design 8.2); the record's
+        coverage setting is its file's run's, else the one its mutants' runs share, else unknown (None)."""
+        key = row["key"]
+        mutants = self.rows.record_mutants.get(key, [])
+        file_row = self.rows.mutation_files.get(nfc_text(row["file"]))
+        disposition = file_row["disposition"] if file_row is not None else None
+        run = file_row["run"] if file_row is not None else None
+        mutant_runs = sorted({mutant["run"] for mutant in mutants})
+        if run is None and len(mutant_runs) == 1:
+            run = mutant_runs[0]
+            self.notes.append(f"{key!r}: its file has no mutationFile run; its mutants' run {run} decides coverage")
+        elif run is None and len(mutant_runs) > 1:
+            self.notes.append(f"{key!r}: its file has no mutationFile run; its mutants' runs {mutant_runs} each "
+                              "judge their own mutants")
+        elif run is not None and mutant_runs and mutant_runs != [run]:
+            self.notes.append(f"{key!r}: its file's run is {run}, its mutants' runs {mutant_runs} (the file's decides)")
+
+        missing = set()
+
+        def skips(ordinal):
+            run_row = self.rows.mutation_runs.get(ordinal)
+            if run_row is None:
+                missing.add(ordinal)
+                return False
+            return bool(run_row["skipCoverage"])
+
+        judged = [(mutant, skips(mutant["run"] if run is None else run)) for mutant in mutants]
+        settings = {off for _, off in judged}
+        if run is not None and not mutants:
+            off = skips(run)
+        else:
+            off = next(iter(settings)) if len(settings) == 1 else None
+        if mutants and missing:
+            self.notes.append(f"{key!r}: no mutationRun row {sorted(missing, key=str)}; coverage read as on")
+        if len(settings) > 1:
+            self.notes.append(f"{key!r}: its mutants' runs differ in coverage; the setting is left out")
+        verdicts = Counter(mutant["verdict"] for mutant in mutants)
+        ran = sum(1 for mutant, skipped in judged
+                  if mutant["verdict"] in (RAN_WITHOUT_COVERAGE if skipped else RAN_WITH_COVERAGE))
+        unchecked = sum(1 for mutant, skipped in judged if skipped and mutant["verdict"] in ("survived", "timedOut"))
+        killing = sorted({name for mutant in mutants if mutant["verdict"] == "killed"
+                          for name in json_list(mutant["killedBy"])})
+        if not mutants:
+            unrun = "R3"
+        elif unchecked > 0:
+            unrun = "R4"
+        elif any(verdicts[verdict] for verdict in UNRUN_ONLY):
+            unrun = "R1"
+        elif verdicts["buildError"]:
+            unrun = "RB"
+        else:
+            unrun = "R3"
+        if ran == 0 and mutants and len(verdicts) > 1:
+            self.notes.append(f"{key!r}: no mutant ran, mixed verdicts {dict(sorted(verdicts.items()))}: counted "
+                              f"{unrun} (R4 before R1 before R2, as M6 puts not covered before build errors)")
+        return {"mutants": len(mutants), "verdicts": verdicts, "ran": ran, "killing": killing,
+                "coverageOff": off, "run": run, "disposition": disposition, "unrun": unrun}
+
+    def functions_funnel(self):
+        counts = self.counts
+        return (f"{counts['N']} production functions = {counts['D']} production-dead + {counts['A']} used; "
+                f"{counts['D']} = {counts['L']} listed + {counts['R']} with no mutant that ran + {counts['F']} in "
+                f"files without full mutation results (unresolved or unlisted); {counts['R']} = {counts['R1']} only "
+                f"not covered or no coverage + {counts['RB']} only build errors + {counts['R3']} no mutant + "
+                f"{counts['R4']} only survived or timed out in a run with coverage off")
+
+    def declarations_funnel(self):
+        counts = self.counts
+        return (f"{counts['X']} unused production declarations = {counts['FE']} function entries matching a record + "
+                f"{counts['U']} function entries matching no record + {counts['T']} type entries + {counts['E']} "
+                f"extension entries + {counts['V']} property entries with accessor records + {counts['O']} others "
+                f"(parameters, imports, enum cases, stored properties, typealiases); {counts['DD']} = the distinct "
+                "records F, T, E and V cover")
+
+    def rule(self):
+        if self.left_out is not None:
+            return DEAD_BUT_TESTED_PROSE
+        return DEAD_BUT_TESTED_PROSE + "; " + self.functions_funnel() + "; " + self.declarations_funnel()
+
+    def expected_function_numbers(self):
+        numbers = {term: self.counts[term] for term, _ in DEAD_FUNCTION_TERMS if term not in ("D2", "RR")}
+        numbers["D2"], numbers["RR"] = numbers["D"], numbers["R"]
+        return numbers
+
+    def expected_declaration_numbers(self):
+        return {term: self.counts[term] for term, _ in DEAD_DECLARATION_TERMS}
+
+    def payloads(self, row, mutation_model, mutation_check):
+        """Design 8.2's payloads: `dead` and `mutation` always, `coverage` when the snapshot holds coverage rows.
+        Returns (required, alternatives, setting): `setting` is the run's coverage, "on", "off" or None when unknown
+        (left out), which the `mutation` payload carries besides M6's weak-tests shape."""
+        key = row["key"]
+        ordinal, via = self.production.covered[key]
+        entry = self.production.unused[ordinal]
+        dead = mutation_check.without_nulls({
+            "kind": entry["kind"], "name": entry["name"], "file": entry["file"], "line": entry["line"],
+            "via": via, "accessibility": entry["accessibility"], "deadWithTestsAsRoots": key in self.roots.covered})
+        held = mutation_model.held.get(key) or []
+        mutation = mutation_check.without_nulls(mutation_model.payload(
+            {"function": row, "counts": mutation_check.record_counts(held)})["mutation"])
+        required = {"dead": dead, "mutation": mutation}
+        alternatives = {}
+        if self.rows.coverage_held:
+            stored = self.rows.coverage.get(key)
+            if stored is None:
+                required["coverage"] = {}
+                alternatives["coverage"] = [None]
+            else:
+                required["coverage"] = mutation_check.without_nulls({
+                    "lines": mutation_check.nonnegative_lines(stored["lineCovered"], stored["lineTotal"]),
+                    "regions": mutation_check.nonnegative_lines(stored["regionCovered"], stored["regionTotal"])})
+        return required, alternatives, coverage_setting(self.facts[key]["coverageOff"])
+
+
+def coverage_setting(off):
+    """A record's coverage setting as the `mutation` payload writes it: "off", "on", or None when unknown."""
+    return None if off is None else ("off" if off else "on")
+
+
+def dead_expected_items(model, mutation_model, mutation_check):
+    expected = []
+    for rank, row in enumerate(model.items, start=1):
+        required, alternatives, setting = model.payloads(row, mutation_model, mutation_check)
+        facts = model.facts[row["key"]]
+        expected.append({"rank": rank, "subject": row["key"], "file": row["file"], "line": row["startLine"],
+                         "score": facts["ran"], "killingTests": len(facts["killing"]), "member": True,
+                         "payloads": required, "alternatives": alternatives, "coverageSetting": setting})
+    return expected
+
+
+def report_dead_own(verdict, model, show_all):
+    verdict.section(f"{DEAD_BUT_TESTED}: this check's figures (design 8.2)")
+    rows = model.rows
+    if model.left_out is not None:
+        verdict.info(f"left out: {model.left_out}")
+        return
+    index = rows.collectors.get("index")
+    verdict.info(f"index collector: {index['state'] if index else 'absent'} (not required: without it outskirts' "
+                 "results are mapped by position, via location)")
+    verdict.info(f"dead-code rows: production run {len(model.production.unused)} unused production entries "
+                 f"of {len(rows.dead_declarations.get('production', {}))}, roots run {len(model.roots.unused)} of "
+                 f"{len(rows.dead_declarations.get('roots', {}))}; deadRecord rows production "
+                 f"{len(rows.dead_records.get('production', []))}, roots {len(rows.dead_records.get('roots', []))}")
+    runs = ", ".join(f"run {ordinal}: coverage {'off' if run['skipCoverage'] else 'on'}"
+                     + (f" (carried from {run['carriedFrom']})" if run["carriedFrom"] else "")
+                     for ordinal, run in sorted(rows.mutation_runs.items()))
+    verdict.info(f"mutation runs: {runs or 'none'}; coverage rows held: {rows.coverage_held}")
+    dispositions = Counter(row["disposition"] for row in rows.mutation_files.values())
+    verdict.info("mutation file dispositions: " + (", ".join(f"{name} {count}" for name, count in
+                                                            sorted(dispositions.items())) or "none"))
+    verdict.info("functions funnel: " + model.functions_funnel())
+    verdict.info("declarations funnel: " + model.declarations_funnel())
+    for ordinal in sorted(model.production.unused):
+        entry = model.production.unused[ordinal]
+        covered = sorted(key for key, (held, _) in model.production.covered.items() if held == ordinal)
+        verdict.info(f"  entry {ordinal} {model.production.terms[ordinal]}: {entry['kind']} {entry['name']} "
+                     f"({entry['file']}:{entry['line']}) covers {len(covered)}"
+                     + (f": {'; '.join(covered if show_all else covered[:3])}" if covered else ""))
+    for term in ("F", "R1", "RB", "R3", "R4"):
+        if model.members[term]:
+            shown = model.members[term] if show_all else model.members[term][:5]
+            more = len(model.members[term]) - len(shown)
+            verdict.info(f"{term}: " + "; ".join(shown) + (f" ... and {more} more" if more else ""))
+    if model.items:
+        verdict.info(f"listed ({len(model.items)}), in order:")
+        for rank, row in enumerate(model.items if show_all else model.items[:LISTED], start=1):
+            facts = model.facts[row["key"]]
+            ordinal, via = model.production.covered[row["key"]]
+            entry = model.production.unused[ordinal]
+            verdict.info(f"  #{rank} {facts['ran']} {row['key']} ({row['file']}:{row['startLine']}) killing tests "
+                         f"{len(facts['killing'])}, verdicts {dict(sorted(facts['verdicts'].items()))}, coverage "
+                         f"{coverage_setting(facts['coverageOff']) or 'unknown'}, by {entry['kind']} {entry['name']} "
+                         f"via {via}, "
+                         f"dead with tests as roots {row['key'] in model.roots.covered}")
+        if not show_all and len(model.items) > LISTED:
+            verdict.info(f"  ... and {len(model.items) - LISTED} more (--all lists them)")
+    else:
+        verdict.info("listed: none")
+    for note in model.notes if show_all else model.notes[:LISTED]:
+        verdict.info(f"note: {note}")
+    if not show_all and len(model.notes) > LISTED:
+        verdict.info(f"... and {len(model.notes) - LISTED} more notes (--all lists them)")
+
+
+def compare_funnel(verdict, label, text, pattern, terms, wanted, sums):
+    """One funnel found in `text` by `pattern`: every number equal to `wanted` and the parts adding up (`sums`
+    takes the match's numbers). Returns the match, or None."""
+    match = pattern.search(text)
+    verdict.result(f"{label} funnel in design 8.2's words", match is not None, "" if match else f"got {text[:400]!r}")
+    if match is None:
+        return None
+    differences = [f"{term} ({name}): expected {wanted[term]}, got {match.group(term)}"
+                   for term, name in terms if int(match.group(term)) != wanted[term]]
+    verdict.result(f"every {label} funnel number", not differences)
+    verdict.listing(differences)
+    numbers = {term: int(match.group(term)) for term, _ in terms}
+    verdict.result(f"the {label} funnel's parts add up as stated", sums(numbers))
+    return match
+
+
+def compare_dead_but_tested(verdict, model, signal, expected):
+    verdict.section(f"d   {DEAD_BUT_TESTED}: left-out reason, rule, both funnels, candidates, items, order and payloads")
+    actual_left = signal.get("leftOut")
+    verdict.result("left out", actual_left == model.left_out, f"expected {model.left_out!r}, got {actual_left!r}")
+    rule = signal.get("rule", "")
+    if model.left_out is not None:
+        verdict.result("rule states design 8.2's text", rule == DEAD_BUT_TESTED_PROSE or rule.startswith(
+            DEAD_BUT_TESTED_PROSE + "; "), f"got {rule!r}")
+        verdict.result("no items, no candidates", not signal.get("items") and signal.get("candidates", 0) == 0,
+                       f"{len(signal.get('items') or [])} items, candidates {signal.get('candidates')}")
+        return
+    verdict.result("rule's text before the funnels is design 8.2's", rule.startswith(DEAD_BUT_TESTED_PROSE + "; "),
+                   "" if rule.startswith(DEAD_BUT_TESTED_PROSE) else f"got {rule[:200]!r}...")
+    funnels = rule[len(DEAD_BUT_TESTED_PROSE) + 2:] if rule.startswith(DEAD_BUT_TESTED_PROSE + "; ") else rule
+    functions = compare_funnel(
+        verdict, "functions", funnels, DEAD_FUNCTIONS_FUNNEL, DEAD_FUNCTION_TERMS, model.expected_function_numbers(),
+        lambda n: n["N"] == n["D"] + n["A"] and n["D2"] == n["D"] and n["D"] == n["L"] + n["R"] + n["F"]
+        and n["RR"] == n["R"] and n["R"] == n["R1"] + n["RB"] + n["R3"] + n["R4"])
+    wanted = model.expected_declaration_numbers()
+    accepted_dd = {wanted["DD"], model.declared_all}
+    declarations = DEAD_DECLARATIONS_FUNNEL.search(funnels)
+    verdict.result("declarations funnel in design 8.2's words", declarations is not None,
+                   "" if declarations else f"got {funnels[:400]!r}")
+    if declarations is not None:
+        differences = [f"{term} ({name}): expected {wanted[term]}, got {declarations.group(term)}"
+                       for term, name in DEAD_DECLARATION_TERMS
+                       if term != "DD" and int(declarations.group(term)) != wanted[term]]
+        stated_dd = int(declarations.group("DD"))
+        if stated_dd not in accepted_dd:
+            differences.append(f"DD (the distinct records F, T, E and V cover): expected {wanted['DD']}"
+                               + (f" (or {model.declared_all} counting records outside the pool)"
+                                  if model.declared_all != wanted["DD"] else "") + f", got {stated_dd}")
+        elif stated_dd != wanted["DD"]:
+            verdict.info(f"the distinct records F, T, E and V cover: {stated_dd}, counting records outside the pool "
+                         f"(the pool's: {wanted['DD']})")
+        verdict.result("every declarations funnel number", not differences)
+        verdict.listing(differences)
+        n = {term: int(declarations.group(term)) for term, _ in DEAD_DECLARATION_TERMS}
+        verdict.result("the declarations funnel's parts add up as stated",
+                       n["X"] == n["FE"] + n["U"] + n["T"] + n["E"] + n["V"] + n["O"])
+        if functions is not None:
+            verdict.result("the declarations funnel's D is the functions funnel's D", n["DD"] == int(functions.group("D"))
+                           or n["DD"] == model.declared_all, f"{n['DD']} and {functions.group('D')}")
+        cover = declarations.group("cover").strip()
+        numbers = re.fullmatch(r"(\d+), (\d+), (\d+) and (\d+)", cover)
+        if cover == "F, T, E and V":
+            pass
+        elif numbers is not None:
+            stated = tuple(int(value) for value in numbers.groups())
+            mine = (n["FE"], n["T"], n["E"], n["V"])
+            verdict.result("the four terms D's clause names are F, T, E and V", stated == mine,
+                           f"expected {mine}, got {stated}")
+        else:
+            verdict.info(f"D's clause names its terms as {cover!r} (design 8.2: \"F, T, E and V\")")
+    if functions is not None and declarations is not None:
+        if declarations.start() < functions.start():
+            verdict.info("the declarations funnel comes before the functions funnel (design 8.2 lists it second)")
+        first, second = sorted((functions, declarations), key=lambda match: match.start())
+        between = [("before the first funnel", funnels[:first.start()]),
+                   ("between the funnels", funnels[first.end():second.start()]),
+                   ("after the last funnel", funnels[second.end():])]
+        for where, text in between:
+            if text and text != "; ":
+                verdict.info(f"text {where}: {text!r}")
+    candidates = signal.get("candidates")
+    if candidates == model.counts["N"]:
+        verdict.result("candidates", True, f"{candidates}: N, the pool (design 8.2's Pool)")
+    elif candidates == model.counts["D"]:
+        verdict.result("candidates", True, f"{candidates}: D, the production-dead functions")
+    else:
+        verdict.result("candidates", False, f"expected N {model.counts['N']} or D {model.counts['D']}, "
+                                            f"got {candidates}")
+    items = signal.get("items") or []
+    listed = [(item.get("subject"), item.get("file"), item.get("line")) for item in items]
+    wanted_items = [(entry["subject"], entry["file"], entry["line"]) for entry in expected]
+    verdict.result("listed items in order", listed == wanted_items, f"{len(wanted_items)} items")
+    if listed != wanted_items:
+        verdict.listing([f"#{rank}: expected {mine}, got {theirs}" for rank, (mine, theirs)
+                         in enumerate(zip(wanted_items, listed), start=1) if mine != theirs]
+                        + [f"missing {mine}" for mine in wanted_items[len(listed):]]
+                        + [f"extra {theirs}" for theirs in listed[len(wanted_items):]])
+    differences, notes = [], Counter()
+    for item, entry in zip(items, expected):
+        label = f"#{entry['rank']} {entry['subject']}"
+        if item.get("rank") != entry["rank"] or item.get("member") is not True:
+            differences.append(f"{label}: rank {item.get('rank')} member {item.get('member')}")
+        if not isinstance(item.get("score"), (int, float)) or float(item["score"]) != entry["score"]:
+            differences.append(f"{label}: score {item.get('score')} != {entry['score']} (mutants that ran)")
+        extra = sorted(key for key in item if key not in ITEM_KEYS and key not in DEAD_BUT_TESTED_PAYLOADS)
+        if extra:
+            unknown = [key for key in extra if key not in ITEM_PAYLOADS]
+            differences.append(f"{label}: payloads dead but tested doesn't fill: {extra}"
+                               + (f" ({unknown} no known payload)" if unknown else ""))
+        dead = item.get("dead")
+        wanted_dead = entry["payloads"]["dead"]
+        if not isinstance(dead, dict) or {key: value for key, value in dead.items() if value is not None} != wanted_dead:
+            differences.append(f"{label}: dead {json.dumps(dead, sort_keys=True)} != "
+                               f"{json.dumps(wanted_dead, sort_keys=True)}")
+        mutation = item.get("mutation")
+        wanted_mutation = entry["payloads"]["mutation"]
+        if not isinstance(mutation, dict):
+            differences.append(f"{label}: mutation {'absent' if mutation is None else json.dumps(mutation)}")
+        else:
+            mismatched = [name for name in wanted_mutation if mutation.get(name) != wanted_mutation[name]]
+            if mismatched:
+                differences.append(f"{label}: mutation's M6 fields differ: " + "; ".join(
+                    f"{name} {json.dumps(mutation.get(name), sort_keys=True)} != "
+                    f"{json.dumps(wanted_mutation[name], sort_keys=True)}" for name in mismatched))
+            added = {name: value for name, value in mutation.items() if name not in wanted_mutation}
+            setting = entry["coverageSetting"]
+            if setting is None and not [value for value in added.values() if value is not None]:
+                notes["the run's coverage setting left out, unknown (no file run; its mutants' runs differ)"] += 1
+            elif list(added.values()) != [setting]:
+                differences.append(f"{label}: mutation should add only its run's coverage setting {setting!r} to M6's "
+                                   f"weak-tests shape; it adds {json.dumps(added, sort_keys=True)}")
+            else:
+                notes[f"the run's coverage setting as mutation.{next(iter(added))}"
+                      + ("" if next(iter(added)) == "coverage" else " (design 8.2 writes `coverage: on|off`)")] += 1
+        value = item["coverage"] if "coverage" in item else None
+        accepted = entry["alternatives"].get("coverage", [])
+        if "coverage" in entry["payloads"]:
+            if "coverage" in item and value == entry["payloads"]["coverage"]:
+                pass
+            elif value in accepted:
+                notes[f"coverage {'absent' if value is None else json.dumps(value)} for a function without coverage "
+                      "data"] += 1
+            else:
+                differences.append(f"{label}: coverage {'absent' if value is None else json.dumps(value, sort_keys=True)}"
+                                   f" != {json.dumps(entry['payloads']['coverage'], sort_keys=True)}")
+        elif "coverage" in item:
+            differences.append(f"{label}: coverage given, but the snapshot holds no coverage rows")
+    verdict.result("ranks, members, scores and payloads", not differences, f"{len(expected)} items")
+    verdict.listing(differences)
+    for note, count in sorted(notes.items()):
+        verdict.info(f"accepted: {note} ({count})")
+
+
 def signals_mode(arguments):
     report = None
     if arguments.report:
@@ -7384,19 +8032,36 @@ def signals_mode(arguments):
     rows = SignalRows(arguments.store, arguments.snapshot, None if report is None else report.get("snapshot"))
     verdict = Verdict(arguments.all)
     model = TestOnlyProduction(rows)
-    mutation_model, mutation_check = mutation_payload_model(rows) if model.left_out is None else (None, None)
+    dead = DeadButTested(rows)
+    computed = model.left_out is None or dead.left_out is None
+    mutation_model, mutation_check = mutation_payload_model(rows) if computed else (None, None)
     expected = test_only_expected_items(model, mutation_model, mutation_check) if model.left_out is None else []
+    dead_expected = dead_expected_items(dead, mutation_model, mutation_check) if dead.left_out is None else []
     report_test_only_own(verdict, model, arguments.all)
+    report_dead_own(verdict, dead, arguments.all)
     verdict.info(f"hidden-coupling limits in force: {limits}")
     if arguments.dump:
+        dead_items = []
+        for entry in dead_expected:
+            item = dict({key: entry[key] for key in ITEM_KEYS}, **entry["payloads"])
+            if entry["coverageSetting"] is not None:
+                item["mutation"] = dict(item["mutation"], coverage=entry["coverageSetting"])
+            dead_items.append(item)
         write_json(arguments.dump, {
             "snapshot": rows.state, "snapshotId": rows.id, "limits": {HIDDEN_COUPLING: limits},
-            "signals": [{"name": TEST_ONLY, "leftOut": model.left_out, "rule": model.rule(),
+            "signals": [{"name": DEAD_BUT_TESTED, "leftOut": dead.left_out, "rule": dead.rule(),
+                         "candidates": dead.counts["N"] if dead.left_out is None else 0, "items": dead_items},
+                        {"name": TEST_ONLY, "leftOut": model.left_out, "rule": model.rule(),
                          "candidates": model.counts["N"] if model.left_out is None else 0,
                          "items": [dict({key: entry[key] for key in ITEM_KEYS}, **entry["payloads"])
                                    for entry in expected]}],
             "funnel": dict(model.counts), "withoutUSRByReason": dict(model.without_by_reason),
-            "excluded": {term: keys for term, keys in model.members.items()}, "problems": model.problems})
+            "excluded": {term: keys for term, keys in model.members.items()}, "problems": model.problems,
+            "deadButTested": {"funnel": dict(dead.counts), "members": {term: keys for term, keys in
+                                                                        dead.members.items()},
+                              "entryTerms": {} if dead.production is None else
+                              {str(ordinal): term for ordinal, term in sorted(dead.production.terms.items())},
+                              "notes": dead.notes}})
     if report is None:
         print("\nRESULT: own figures only (nothing compared)")
         return 0
@@ -7415,10 +8080,13 @@ def signals_mode(arguments):
         and names[-len(M7_SIGNALS) - 1] == LAST_M6_SIGNAL and all(names.count(name) == 1 for name in M7_SIGNALS)
     verdict.result("report order", in_order, f"last four: {names[-len(M7_SIGNALS) - 1:]}")
     by_name = {signal.get("name"): signal for signal in report.get("signals", [])}
-    for name in (HIDDEN_COUPLING, DEAD_BUT_TESTED):
-        if name in by_name:
-            verdict.info(f"{name}: left out {by_name[name].get('leftOut')!r} (not checked here before plan "
-                         f"step {'9c' if name == HIDDEN_COUPLING else '9b'})")
+    if HIDDEN_COUPLING in by_name:
+        verdict.info(f"{HIDDEN_COUPLING}: left out {by_name[HIDDEN_COUPLING].get('leftOut')!r} (not checked here "
+                     "before plan step 9c)")
+    if DEAD_BUT_TESTED not in by_name:
+        verdict.result(f"{DEAD_BUT_TESTED} listed", False, "the report has no such signal")
+    else:
+        compare_dead_but_tested(verdict, dead, by_name[DEAD_BUT_TESTED], dead_expected)
     if TEST_ONLY not in by_name:
         verdict.result(f"{TEST_ONLY} listed", False, "the report has no such signal")
     else:
@@ -7529,8 +8197,8 @@ def main():
                            "hint unused)")
     dead.add_argument("--ordinal-base", type=int, choices=(0, 1),
                       help="the first entry's ordinal (default: the scan's lowest declaration ordinal, else 1)")
-    signalling = modes.add_parser("signals", help="re-derive M7's signals from a store's rows (plan step 9a: "
-                                                  "test-only production)")
+    signalling = modes.add_parser("signals", help="re-derive M7's signals from a store's rows (plan steps 9a "
+                                                  "and 9b: test-only production, dead but tested)")
     signalling.add_argument("store", help="the store holding the snapshot (store v6)")
     signalling.add_argument("--report", help="`swiftstats report --format json` of the snapshot, compared")
     signalling.add_argument("--config", help="the configuration the report was made with (its signals: limits)")
