@@ -354,9 +354,12 @@ roll-ups `index.typeCycles`, `index.typesInCycles` and `index.moduleEdges`
       innermost type record, else the file. A container symbol that is a
       record's primary or secondary USR is that record; any other symbol
       stays a symbol, in the referencing file's target. A local variable
-      named as container stays a symbol (design 4.1 as written;
-      `--local-containers enclosing` follows its definition's childOf
-      chain to the enclosing declaration instead). A reference to a USR
+      named as container (the `local` property) that isn't a record is
+      followed up its definition's childOf chain to the enclosing
+      declaration (design 4.1 as built, adopted at the done-when; the
+      default, `--local-containers enclosing`); `--local-containers
+      symbol` keeps it a symbol instead (design 4.1's original text). A
+      reference to a USR
       counts for the record holding it as primary or secondary USR, and for
       the accessor records whose definition's accessorOf names it, by role:
       read for get, _read/read and unsafeAddress, write for set,
@@ -366,9 +369,13 @@ roll-ups `index.typeCycles`, `index.typesInCycles` and `index.moduleEdges`
       package definition's childOf is a protocol, or whose `swift demangle
       --tree-only` context is a protocol, or a `c:` USR with `(pl)`) also
       counts, the same two ways, for each symbol of an occurrence carrying
-      that overrideOf relation, via `requirement` (`--requirements package`
-      keeps only requirements of protocols the package declares,
-      `--requirements all` takes every overridden USR, class methods too).
+      that overrideOf relation, via `requirement`, when the requirement's
+      protocol is one the package declares (defined in a read unit; design
+      4.1 as built, adopted at the done-when; the default, `--requirements
+      package`); `--requirements protocol` expands every protocol
+      requirement, the standard library's included (design 4.1's original
+      text), and `--requirements all` every overridden USR, class methods
+      too.
       It doesn't count when the container is a record of the target
       record's own family (PRD 6.6 families: a record and its nested
       records, or a computed property's accessors, as FamilyIndex groups
@@ -427,7 +434,11 @@ roll-ups `index.typeCycles`, `index.typesInCycles` and `index.moduleEdges`
       non-test targets; project tests no cycles and the edges from test
       targets.
   Also checked: the index collector's options hold `references:` and
-  `types:` (text differing from design 4's is printed, not failed).
+  `types:`. Printed, not failed: a `references:` text that differs from
+  design 4.1's rule text for the readings in force (its as-built rule
+  string under the defaults, its original one under `--local-containers
+  symbol --requirements protocol`; a mix of the two is named, not
+  compared), and a `types:` text that differs from design 4.3's.
   Failed: a package type definition no compatible type record holds.
   Printed, not failed: the reading in force, how many references a local
   container, a requirement of a protocol the package doesn't declare, or a
@@ -702,9 +713,11 @@ JSON's `deadCode` block (design 9.2), its roll-ups and, with --store, the
            declaration's class is compared by ordinal (as a multiset with
            the decoded fields when no ordinals are given), and the dropped
            counts per class and run (every class but production);
-  mapping  each production entry (every hint, design 5.4's words; `--map-
-           hints unused` maps only hint unused) covers records, first rule
-           that applies:
+  mapping  each production entry with hint unused (design 5.4 as built,
+           adopted at the done-when, and its own `map:` rule string; the
+           default, `--map-hints unused`; `--map-hints all` maps every
+           production entry, whatever its hint, as design 5.4's original
+           body text reads) covers records, first rule that applies:
              usr       (index used) an `ids` USR is a record's primary or
                        secondary USR (my own u2 join) -> those records;
              property  (index used) a `var.*` entry whose `ids` USR some
@@ -1082,21 +1095,38 @@ the subscript's `usrAccessor` included:
            region's end column one past its last (llvm's end is
            exclusive), so the region may end at end column + 1. Lines and
            columns compare as (line, column) pairs.
-Every record that doesn't agree is an exception, listed by class: no export
-function has any of its names; a function has one but its first region is
-in another file; or it is in the file but outside the range. Of the first
-class, three kinds are noted and counted (still exceptions): an initializer
-whose USR names the initializing entry (`…fc`) while the export holds only
-the allocating one (`…fC`, a struct's), which agrees; a subscript declared
-with explicit accessors, whose own USR (`…ip`) names no code while each
-accessor is a record of its own (a key starting with the subscript's key
-and ` / `); and a record in a file no export function's first region is in
-(an executable target's file, not linked into any test bundle). The export's
-`$s` functions of scanned files that no record's USR names (closures,
-implicit and synthesized functions, thunks) are counted, not checked.
-Both the scan's `coverage` and `index` collectors must have run in this
-scan (not carried from an earlier one), since a carried result doesn't
-come from the export beside it; otherwise the input is bad.
+An initializer whose USR names the initializing entry (`…fc`), when no
+export function has that name but one named by the allocating entry
+(`…fC`, a struct's: the export holds only that one) agrees by the region
+rule, agrees too, counted apart (`agrees by fC`), not as an exception.
+Every other record that doesn't agree is an exception, listed by class: no
+export function has any of its names; a function has one but its first
+region is in another file; or it is in the file but outside the range. Of
+the first class, three kinds are explained, counted and listed with their
+note:
+  subscript    a subscript declared with explicit accessors, whose own
+               USR (`…ip`) names no code while each accessor is a record of
+               its own (a key starting with the subscript's key and ` / `);
+  unexported   a record in a file no export function's first region is in
+               (an executable target's file, not linked into any test
+               bundle);
+  ABI module   the USR names a type by its source module while the emitted
+               symbol uses its ABI module (`@_originallyDefinedIn`: the USR
+               says `_Concurrency.ContinuousClock`, the symbol
+               `Swift.ContinuousClock`): an export function whose first
+               region is in the record's file and range has a `swift
+               demangle --tree-only` tree equal to the USR's (or, for an
+               initializer's `…fc`, its `…fC`'s) once every Module node's
+               name is set aside, though not equal with them. Only records
+               that no other rule explains are demangled, in one run of the
+               package toolchain's swift-demangle (or `--demangle`).
+The export's `$s` functions of scanned files that no record's USR names
+(closures, implicit and synthesized functions, thunks) are counted, not
+checked. Both the scan's `coverage` and `index` collectors must have run in
+this scan (not carried from an earlier one), since a carried result doesn't
+come from the export beside it; otherwise the input is bad. The mode passes
+(exit 0) when every remaining exception is of an explained kind, still
+listing them, and fails (exit 1) when any unexplained one remains.
 
 Inputs `coverage-names` trusts:
   - the export the coverage collector left in the package's coverage build
@@ -1105,7 +1135,9 @@ Inputs `coverage-names` trusts:
     3.0.1, its functions' `name`, `filenames` and `regions`;
   - the scan JSON's `records` (`key`, `file`, `range`) as T0 wrote them,
     and its `collectors` (`coverage` and `index` state and reason);
-  - realpath(3) of the package, its scanned files and the export's files.
+  - realpath(3) of the package, its scanned files and the export's files;
+  - the toolchain's `swift-demangle` (located by `swift -print-target-info`
+    in the package, or `--demangle`), for the ABI-module kind only.
 Not the scan JSON's `index.records` USRs, which it checks; nothing from
 SwiftStats' code.
 
@@ -1140,8 +1172,8 @@ Usage:
                                          [--store <store>] [--snapshot <id>]
                                          [--dump <path>] [--all]
                                          [--without-u7]
-                                         [--local-containers symbol|enclosing]
-                                         [--requirements protocol|package|all]
+                                         [--local-containers enclosing|symbol]
+                                         [--requirements package|protocol|all]
     python3 -I -B Scripts/index-check.py rows <scan.json> --store <store>
                                          [--snapshot <id>] [--all]
     python3 -I -B Scripts/index-check.py dead <package> <scan.json>
@@ -1159,7 +1191,7 @@ Usage:
                                          [--without-mapping]
                                          [--index-mode auto|index|position]
                                          [--local-rule plan|literal]
-                                         [--map-hints all|unused]
+                                         [--map-hints unused|all]
                                          [--ordinal-base 0|1]
     python3 -I -B Scripts/index-check.py signals <store>
                                          [--report <report.json>]
@@ -1170,7 +1202,9 @@ Usage:
                                          [--family-match key|key-and-file]
                                          [--owners package|own-module]
     python3 -I -B Scripts/index-check.py coverage-names <package> <scan.json>
-                                         [--export <export.json>] [--all]
+                                         [--export <export.json>]
+                                         [--swift <swift>]
+                                         [--demangle <swift-demangle>] [--all]
 
 For `dump`, <store> is the directory holding `v5/units` (for the T1 build,
 `<package>/.swiftstats/index-build/out`). The JSON goes to standard output,
@@ -1180,8 +1214,10 @@ standard error.
 Exit status: `dump` 0 when the dump is written, 2 on bad input or a store
 that doesn't read; `build-lines`, `build`, `usr`, `rows`, `dead`, `signals`
 and `coverage-names` 0 when every check passes (`signals --own-only`: when the figures are
-printed), 1 when one fails, 2 on bad input or a store that doesn't read
-(for `dead`, also when outskirts can't be started).
+printed; `coverage-names`: when every exception left is of an explained
+kind), 1 when one fails, 2 on bad input or a store that doesn't read
+(for `dead`, also when outskirts can't be started; for `coverage-names`,
+also a scan whose coverage or index results were carried).
 """
 
 import argparse
@@ -4862,12 +4898,26 @@ TYPE_RECORD_KINDS = {"struct": {KIND_STRUCT}, "class": {KIND_CLASS}, "actor": {K
 # Design 4.1: which accessors a read and a write reference count for.
 READING_ACCESSORS = {"get", "_read", "read", "unsafeAddress"}
 WRITING_ACCESSORS = {"set", "_modify", "modify", "unsafeMutableAddress", "willSet", "didSet"}
-DESIGN_REFERENCES_RULE = (
+# Design 4.1's `references:` rule strings: the original text's (local
+# containers kept as symbols, every protocol requirement expanded), and the
+# as-built note's (step 5b's readings, adopted at the done-when), which the
+# default readings check.
+DESIGN_REFERENCES_RULE_ORIGINAL = (
     "distinct containers (calledBy or containedBy; else baseOf or extendedBy; else by position: top-level "
     "statement lines, innermost record, type, file) of non-family references, implicit included; a property's read "
     "references count for its reading accessors and write references for its writing ones; a requirement's "
     "references count for its witnesses (any occurrence with overrideOf); split by the container's target: same "
     "production target, other production targets, test targets")
+DESIGN_REFERENCES_RULE_AS_BUILT = (
+    "distinct containers (calledBy or containedBy, a local variable followed to the declaration enclosing it; else "
+    "baseOf or extendedBy; else by position: top-level statement lines, innermost record, type, file) of non-family "
+    "references, implicit included; a property's read references count for its reading accessors and write "
+    "references for its writing ones; a requirement of a package-declared protocol counts its references for its "
+    "witnesses (any occurrence with overrideOf); split by the container's target: same production target, other "
+    "production targets, test targets")
+# The readings each rule string states: (local containers, requirements).
+DESIGN_REFERENCES_READINGS = {("enclosing", "package"): ("as-built", DESIGN_REFERENCES_RULE_AS_BUILT),
+                              ("symbol", "protocol"): ("original", DESIGN_REFERENCES_RULE_ORIGINAL)}
 DESIGN_TYPES_RULE = (
     "package-declared nominal types by USR; an extension's members belong to the package type its head extends, "
     "none for an external type; fan-in by distinct referring types or free functions per target; cycles over "
@@ -4988,7 +5038,7 @@ def requirement_context(tree):
 class Coupling:
     """Design section 4 reimplemented over the join's read (check u7)."""
 
-    def __init__(self, join, demangler, local_containers="symbol", requirements="protocol"):
+    def __init__(self, join, demangler, local_containers="enclosing", requirements="package"):
         self.join = join
         self.package = join.package
         self.described = join.described
@@ -5222,10 +5272,11 @@ class Coupling:
         """Protocol requirements among the USRs some occurrence overrides: a
         package definition whose childOf is a protocol, an `s:` USR whose
         demangled context is a protocol, a `c:` USR naming one with `(pl)`
-        (design 4.1 as written: `--requirements protocol`). `--requirements
-        package` keeps only requirements of protocols the package declares
-        (defined in a read unit); `--requirements all` takes every overridden
-        USR, class methods included."""
+        (design 4.1's original text: `--requirements protocol`).
+        `--requirements package`, the default (design 4.1 as built), keeps
+        only requirements of protocols the package declares (defined in a
+        read unit); `--requirements all` takes every overridden USR, class
+        methods included."""
         self.requirements = set()
         to_demangle = []
         for usr in sorted(self.overriding):
@@ -5270,6 +5321,9 @@ class Coupling:
             usr, name, properties = symbol["usr"], symbol["name"], symbol["properties"]
             if self.local_containers == "enclosing":
                 walked = set()
+                if usr not in self.record_by_usr and properties & PROPERTY_LOCAL:
+                    self.notes["references whose container is a local symbol that isn't a record (followed to "
+                               "its enclosing declaration)"] += 1
                 while usr not in self.record_by_usr and properties & PROPERTY_LOCAL and usr not in walked:
                     walked.add(usr)
                     parent = self.child_of.get(usr)
@@ -5523,10 +5577,13 @@ class Coupling:
 
 def report_coupling_own(verdict, coupling):
     verdict.section("u7 references, types, cycles and family references, by this check's own rules (design 4)")
-    verdict.info(f"reading: local containers {coupling.local_containers!r}; requirements "
-                 f"{coupling.requirement_reading!r} ("
-                 + {"protocol": "every protocol requirement expands to its witnesses, design 4.1 as written",
-                    "package": "only requirements of package-declared protocols expand",
+    verdict.info(f"reading: local containers {coupling.local_containers!r} ("
+                 + {"enclosing": "followed to the enclosing declaration, design 4.1 as built, the default",
+                    "symbol": "kept as symbols, design 4.1's original text"}[coupling.local_containers]
+                 + f"); requirements {coupling.requirement_reading!r} ("
+                 + {"protocol": "every protocol requirement expands to its witnesses, design 4.1's original text",
+                    "package": "only requirements of package-declared protocols expand, design 4.1 as built, "
+                               "the default",
                     "all": "every overridden USR expands, class methods included"}[coupling.requirement_reading]
                  + ")")
     external = sorted(u for u in coupling.requirements if u not in coupling.child_of)
@@ -5603,12 +5660,27 @@ def compare_coupling(verdict, coupling):
                    f"mine {len(coupling.unplaced_types)}; the scan's warnings {stated or 'none'}")
     verdict.section("u7 the index collector's rule options")
     options = run.get("options", []) if run else []
-    for name, text in (("references", DESIGN_REFERENCES_RULE), ("types", DESIGN_TYPES_RULE)):
+    readings = (coupling.local_containers, coupling.requirement_reading)
+    which, references_rule = DESIGN_REFERENCES_READINGS.get(readings, (None, None))
+    for name, text in (("references", references_rule), ("types", DESIGN_TYPES_RULE)):
         given = next((o[len(name) + 2:] for o in options if isinstance(o, str) and o.startswith(name + ": ")), None)
         verdict.result(f"the index collector's options hold `{name}:`", given is not None,
                        "absent" if given is None else "")
-        if given is not None and " ".join(given.split()) != " ".join(text.split()):
-            verdict.info(f"`{name}:` differs from design 4's text (a deviation the step should explain): {given!r}")
+        if given is None:
+            continue
+        if text is None:
+            verdict.info(f"`{name}:` not compared: the readings in force ({readings[0]}, {readings[1]}) are "
+                         "neither design 4.1's as-built ones (the defaults) nor its original text's")
+        elif " ".join(given.split()) != " ".join(text.split()):
+            if name == "types":
+                verdict.info(f"`types:` differs from design 4.3's text (a deviation the step should explain): "
+                             f"{given!r}")
+            elif which == "as-built":
+                verdict.info(f"`references:` differs from design 4.1's as-built rule string (a deviation the step "
+                             f"should explain): {given!r}")
+            else:
+                verdict.info(f"`references:` differs from design 4.1's original text, which these non-default "
+                             f"readings check (the scan states the as-built rule instead): {given!r}")
 
     verdict.section("u7 referrers and witness per record")
     rows = lookup(block, "records")
@@ -9809,9 +9881,14 @@ def signals_mode(arguments):
 
 COVERAGE_EXPORT = os.path.join(".swiftstats", "coverage-build", "swiftstats-export.json")
 CARRIED_LEAD = "carried from the scan of "
-INITIALIZER_NOTE = "an initializer: the export holds only its allocating entry (fC), which agrees"
 SUBSCRIPT_NOTE = "a subscript with explicit accessors, each a record of its own"
 UNEXPORTED_NOTE = "no export function's first region is in its file (not linked into any test bundle)"
+ABI_MODULE_NOTE = ("the USR names a type by its source module where the emitted symbol uses its ABI module "
+                   "(@_originallyDefinedIn): an export function inside the range demangles alike once module names "
+                   "are set aside")
+# The kinds of exception this check explains: an exit status of 0 when every
+# remaining exception is one of them.
+EXPLAINED_NOTES = (ABI_MODULE_NOTE, SUBSCRIPT_NOTE, UNEXPORTED_NOTE)
 
 
 def export_symbol(name):
@@ -9827,6 +9904,16 @@ def region_inside(region, start, end):
     its end exclusive) lies inside a record's range from `start` to `end`
     ((line, column), the end its last character's)."""
     return (region[0], region[1]) >= start and (region[2], region[3]) <= (end[0], end[1] + 1)
+
+
+def tree_shape(node, with_modules):
+    """A demangled tree (parse_trees' node) as nested tuples; without
+    modules, a Module node's text is left out, so a type named by another
+    module compares alike."""
+    if node is None:
+        return None
+    text = node["text"] if with_modules or node["kind"] != "Module" else None
+    return node["kind"], text, tuple(tree_shape(c, with_modules) for c in node["children"])
 
 
 def coverage_names_mode(arguments):
@@ -9885,35 +9972,45 @@ def coverage_names_mode(arguments):
     print(f"package {root}\nscan JSON {arguments.scan}\nexport {export_path}")
     counts = Counter()
     exceptions = defaultdict(list)
-    notes = Counter()
+    explained = Counter()
+    pending = []
     named = set()
     exported = set()
+    by_file = {}
     keys = [item.get("key") for item in index_records if isinstance(item.get("key"), str)]
 
     def agrees(symbol, start, end, path):
         return any(region is not None and region_file == path and region_inside(region, start, end)
                    for region, region_file in map(first_region, entries.get(symbol, [])))
 
-    def unnamed_note(usr, key, start, end, path):
-        """Why a USR names no export function, when this check can tell:
-        an initializer whose USR is the initializing entry (`fc`) while the
-        export holds only the allocating one (`fC`), a subscript declared
-        with explicit accessors, each a record of its own, or a file no
-        export function's first region is in; None otherwise. Notes only:
-        the record is still an exception."""
-        if usr.endswith("fc") and agrees("$s" + usr[2:-2] + "fC", start, end, path):
-            return INITIALIZER_NOTE
-        if usr.endswith("ip") and any(other.startswith(f"{key} / ") for other in keys):
-            return SUBSCRIPT_NOTE
-        if path not in exported_files():
-            return UNEXPORTED_NOTE
-        return None
-
     def exported_files():
         if not exported:
             exported.add(None)
             exported.update(first_region(f)[1] for functions in entries.values() for f in functions)
         return exported
+
+    def inside(start, end, path):
+        """The `$s` export names whose first region is in `path`, inside the range."""
+        if not by_file:
+            by_file[None] = []
+            for symbol, functions in entries.items():
+                if symbol.startswith("$s"):
+                    for function in functions:
+                        region, region_file = first_region(function)
+                        if region is not None:
+                            by_file.setdefault(region_file, []).append((symbol, region))
+        return sorted({symbol for symbol, region in by_file.get(path, []) if region_inside(region, start, end)})
+
+    def unnamed_note(usr, key, path):
+        """Why a USR names no export function, when this check can tell
+        without demangling: a subscript declared with explicit accessors,
+        each a record of its own, or a file no export function's first
+        region is in; None otherwise."""
+        if usr.endswith("ip") and any(other.startswith(f"{key} / ") for other in keys):
+            return SUBSCRIPT_NOTE
+        if path not in exported_files():
+            return UNEXPORTED_NOTE
+        return None
     for item in index_records:
         usr = item.get("usr")
         if not isinstance(usr, str):
@@ -9958,17 +10055,58 @@ def coverage_names_mode(arguments):
             if outcome and outcome[0] == "agrees":
                 break
         place = f"{item.get('key')} ({record['file']}:{start[0]}:{start[1]}-{end[0]}:{end[1]}; {usr})"
-        if outcome is None:
-            note = unnamed_note(usr, item.get("key"), start, end, path)
+        if outcome is None and usr.endswith("fc") and agrees("$s" + usr[2:-2] + "fC", start, end, path):
+            # An initializer whose USR names the initializing entry while the
+            # export holds only the allocating one (a struct's): it agrees.
+            named.add("$s" + usr[2:-2] + "fC")
+            counts["agrees by fC"] += 1
+        elif outcome is None:
+            note = unnamed_note(usr, item.get("key"), path)
             if note:
-                notes[note] += 1
-            exceptions["no export function has the name"].append(place + (f": {note}" if note else ""))
+                explained[note] += 1
+                exceptions["no export function has the name"].append(f"{place}: {note}")
+            else:
+                pending.append((place, [usr] + ([accessor] if len(candidates) > 1 else []), inside(start, end, path)))
         elif outcome[0] == "agrees":
             counts[f"agrees by {outcome[1]}"] += 1
         elif outcome[0] == "in another file":
             exceptions["named, but the first region is in another file"].append(f"{place}: {outcome[1]}")
         else:
             exceptions["named, but the first region is outside the record's range"].append(f"{place}: {outcome[1]}")
+    if pending:
+        # A type the USR names by its source module where the emitted symbol
+        # names its ABI module (`@_originallyDefinedIn`, such as
+        # _Concurrency.ContinuousClock, emitted as Swift.ContinuousClock):
+        # an export function inside the range whose demangled tree equals
+        # the USR's (or, for an initializer's `fc`, its `fC`'s) once module
+        # names are set aside, though not with them.
+        demangler = arguments.demangle or os.path.join(
+            os.path.dirname(os.path.dirname(toolchain_of(root, arguments.swift))), "bin", "swift-demangle")
+        names = set()
+        for _, usrs, inside_names in pending:
+            for usr in usrs:
+                names.add("$s" + usr[2:])
+                if usr.endswith("fc"):
+                    names.add("$s" + usr[2:-2] + "fC")
+            names.update(inside_names)
+        trees = parse_trees(demangle_all(sorted("s:" + name[2:] for name in names), demangler, "--tree-only"))
+        for place, usrs, inside_names in pending:
+            wanted = set()
+            for usr in usrs:
+                wanted.add("$s" + usr[2:])
+                if usr.endswith("fc"):
+                    wanted.add("$s" + usr[2:-2] + "fC")
+            shapes = {(tree_shape(trees.get(name), False), tree_shape(trees.get(name), True))
+                      for name in wanted if trees.get(name) is not None}
+            match = next((name for name in inside_names for loose, strict in shapes
+                          if trees.get(name) is not None and tree_shape(trees[name], False) == loose
+                          and tree_shape(trees[name], True) != strict), None)
+            if match:
+                named.add(match)
+                explained[ABI_MODULE_NOTE] += 1
+                exceptions["no export function has the name"].append(f"{place}: {ABI_MODULE_NOTE}: {match}")
+            else:
+                exceptions["no export function has the name"].append(place)
     scanned = {real_file(os.path.join(root, r["file"])) for r in records.values() if isinstance(r.get("file"), str)}
     unnamed = 0
     for symbol, functions in entries.items():
@@ -9980,14 +10118,19 @@ def coverage_names_mode(arguments):
     verdict.info(f"{len(index_records)} index records: " + ", ".join(f"{k} {v}" for k, v in sorted(counts.items())))
     verdict.info(f"{sum(len(v) for v in entries.values())} export functions, {len(entries)} names; "
                  f"{unnamed} `$s` names of scanned files no record's USR names (not checked)")
-    agreed = counts["agrees by usr"] + counts["agrees by usrAccessor"]
+    agreed = counts["agrees by usr"] + counts["agrees by usrAccessor"] + counts["agrees by fC"]
     total = counts["s: USR"]
-    verdict.result("every record with an s: USR has an export function of that name whose first region is inside "
-                   "its range", agreed == total and not exceptions,
-                   f"{agreed} of {total} agree ({counts['agrees by usrAccessor']} by usrAccessor); "
-                   f"{counts['c: USR, skipped']} c: USRs skipped")
-    for note, count in sorted(notes.items()):
-        verdict.info(f"of the records no export function names, {count}: {note}")
+    listed = sum(len(v) for v in exceptions.values())
+    unexplained = listed - sum(explained.values())
+    verdict.result("every record with an s: USR agrees (by its usr, its usrAccessor or, for an initializer's fc, "
+                   "its fC), or is an exception of an explained kind", unexplained == 0,
+                   f"{agreed} of {total} agree ({counts['agrees by usr']} by usr, {counts['agrees by usrAccessor']} "
+                   f"by usrAccessor, {counts['agrees by fC']} initializers by fC: the export holds only the "
+                   f"allocating entry); exceptions {listed}: {listed - unexplained} of explained kinds, "
+                   f"{unexplained} unexplained; {counts['c: USR, skipped']} c: USRs skipped")
+    for note in EXPLAINED_NOTES:
+        if explained[note]:
+            verdict.info(f"explained exceptions, {explained[note]}: {note}")
     for kind in sorted(exceptions):
         verdict.info(f"exceptions: {kind} ({len(exceptions[kind])})")
         verdict.listing(sorted(exceptions[kind]))
@@ -10057,13 +10200,15 @@ def main():
     joining.add_argument("--all", action="store_true", help="list every difference")
     joining.add_argument("--without-u7", action="store_true",
                          help="skip u7 (references, edges, types, cycles, family references)")
-    joining.add_argument("--local-containers", choices=("symbol", "enclosing"), default="symbol",
-                         help="u7: a local variable named as a reference's container is kept as a symbol (design "
-                              "4.1 as written, the default) or replaced by its enclosing declaration")
-    joining.add_argument("--requirements", choices=("protocol", "package", "all"), default="protocol",
-                         help="u7: which overridden USRs' references count for their witnesses: protocol "
-                              "requirements (design 4.1 as written, the default), only those of protocols the "
-                              "package declares, or every overridden USR (class methods too)")
+    joining.add_argument("--local-containers", choices=("enclosing", "symbol"), default="enclosing",
+                         help="u7: a local variable named as a reference's container is replaced by its enclosing "
+                              "declaration (enclosing: design 4.1 as built, the default) or kept as a symbol "
+                              "(symbol: design 4.1's original text)")
+    joining.add_argument("--requirements", choices=("package", "protocol", "all"), default="package",
+                         help="u7: which overridden USRs' references count for their witnesses: only requirements "
+                              "of protocols the package declares (package: design 4.1 as built, the default), every "
+                              "protocol requirement (protocol: design 4.1's original text), or every overridden USR "
+                              "(all: class methods too)")
     rowing = modes.add_parser("rows", help="check u8 whole: every M7 row of a snapshot against the scan JSON "
                                             "that saved it")
     rowing.add_argument("scan", help="`swiftstats scan --format json` output of the scan that saved --store's snapshot")
@@ -10103,9 +10248,9 @@ def main():
                            "position inside a function record (plan: step 6a's adopted reading, which design 13's "
                            "6b tests need), or design 5.3 word for word (any kind by the index, any variable by "
                            "position)")
-    dead.add_argument("--map-hints", choices=("all", "unused"), default="all",
-                      help="which production entries are mapped to records (design 5.4: every entry; unused: only "
-                           "hint unused)")
+    dead.add_argument("--map-hints", choices=("unused", "all"), default="unused",
+                      help="which production entries are mapped to records (unused: only hint unused, design 5.4 "
+                           "as built, the default; all: every entry, design 5.4's original body text)")
     dead.add_argument("--ordinal-base", type=int, choices=(0, 1),
                       help="the first entry's ordinal (default: the scan's lowest declaration ordinal, else 1)")
     signalling = modes.add_parser("signals", help="re-derive M7's signals from a store's rows (plan steps 9a, "
@@ -10137,6 +10282,11 @@ def main():
     naming.add_argument("scan", help="`swiftstats scan --coverage --index --format json` of <package>, run right "
                                      "before")
     naming.add_argument("--export", help="the llvm-cov export (default: <package>/" + COVERAGE_EXPORT + ")")
+    naming.add_argument("--swift", default="swift",
+                        help="the swift asked for -print-target-info in <package>, to find swift-demangle (default: "
+                             "swift on PATH)")
+    naming.add_argument("--demangle", help="swift-demangle, for the ABI-module kind (default: the package "
+                                           "toolchain's)")
     naming.add_argument("--all", action="store_true", help="list every exception")
     arguments = parser.parse_args()
     return {"dump": dump_mode, "build-lines": build_lines_mode, "build": build_mode,
