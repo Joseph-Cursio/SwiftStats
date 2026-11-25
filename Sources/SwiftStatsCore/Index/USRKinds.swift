@@ -56,6 +56,12 @@ enum USRKinds {
             || propertyKinds.contains(occurrence.kind) && occurrence.subkind == IndexSymbolKind.Subkind.swiftSubscript
     }
 
+    /// Whether `kind` is a property kind: an instance, class or static
+    /// property, or a subscript.
+    static func isProperty(_ kind: Int) -> Bool {
+        propertyKinds.contains(kind)
+    }
+
     /// Whether a definition of `occurrence`'s symbol can be `record`'s
     /// primary USR (design §3.2).
     static func isCompatible(_ record: FunctionRecord, with occurrence: IndexOccurrenceFact) -> Bool {

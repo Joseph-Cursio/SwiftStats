@@ -273,7 +273,9 @@ compares the result with the scan JSON's `index` block (design 9.2) and the
       record takes a function or method kind of its accessor's subkind,
       1016 for `init`; the function kind is allowed for global and local
       computed variables' accessors); a getter whose innermost record is a
-      subscript record with no accessor records, whose accessorOf relation
+      subscript record with no accessor records of its own (children of kind
+      accessor named `subscript`; a local computed property's getter in its
+      body doesn't count), whose accessorOf relation
       names that record's primary USR, becomes its secondary USR; a record
       with several USRs, or a USR on several records, keeps none. The
       definition counts compared: joined (distinct definitions assigned,
@@ -286,8 +288,10 @@ compares the result with the scan JSON's `index` block (design 9.2) and the
       keyword or name must end there);
   u4  the reason of every record without a primary USR, first that applies
       (design 3.4): top-level code; plugin target; inactive #if branch (an
-      `ifConfig` and no definition of any kind, implicit included, in its
-      range); file changed during the scan; target not built (no unit of any
+      `ifConfig`, the file a read unit's main file under the record's
+      module, and no definition of any kind, implicit included, in its
+      range; so a file no unit read reads target not built or file not
+      indexed); file changed during the scan; target not built (no unit of any
       class names the target's module and the build's -v log holds no
       `-module-name <module>`); file not indexed (the target has kept or
       variant units, none for the file); disagreement; unexplained. Target
@@ -296,17 +300,22 @@ compares the result with the scan JSON's `index` block (design 9.2) and the
   u5  the disagreements (severalUSRs and sharedUSR rows: kind, key, USR, and
       the definition's place when the scan gives one), the definitions with
       no record (requirement when no record holds it and a childOf relation
-      names a protocol, incompatibleKind naming the innermost record,
-      outsideRecords) and the collisions the USR separates (records whose
-      keys a collision suffix tells apart, as the scan's warnings name the
-      collided keys, with differing USRs) equal the scan's; incompatibleKind
-      and outsideRecords must be 0;
+      names a protocol, or a childOf or accessorOf relation names a property
+      or subscript that the same file defines as a child of a protocol: a
+      property or subscript requirement's getter or setter; incompatibleKind
+      naming the innermost record, outsideRecords) and the collisions the
+      USR separates (records whose keys a collision suffix tells apart, as
+      the scan's warnings name the collided keys, with differing USRs) equal
+      the scan's; incompatibleKind and outsideRecords must be 0;
   u6  `swift demangle --tree-only` of `$s` + each `s:` USR (primary and
       secondary) agrees with its record's key: type path (T0's `typePath`
       when the record has one, else the type part of the key's last
-      segment; local types start the path), base name, argument labels
-      (operands counted only, for operators) and accessor kind (the
-      secondary one a subscript getter). `c:` USRs are skipped and counted.
+      segment; local types start the path; a sugared component of the key
+      reads as the type it names, `[T]` Array, `[K: V]` Dictionary, `T?`
+      and `T!` Optional, as in SIP's `extension [OracleDiscoverBead]`),
+      base name, argument labels (operands counted only, for operators)
+      and accessor kind (the secondary one a subscript getter). `c:` USRs
+      are skipped and counted.
 Also compared: `index.files` (every scanned file, each hash the file's bytes
 now), the records read and occurrences when the scan gives them,
 `libraryModules` when present, and each roll-up scope's `index.withUSR`,
@@ -529,8 +538,10 @@ Inputs `usr` trusts:
     absence put back afterwards), or `--describe`: target names, C99 names
     (computed when absent), paths, sources, types, library products, path
     dependencies;
-  - the scan JSON's `records` (`key`, `file`, `kind`, `accessorKind`,
-    `range`, `parentKey`, `module`, `ifConfig`, `role`, `typePath`),
+  - the scan JSON's `records` (`key`, `file`, `kind`, `name`,
+    `accessorKind`, `range`, `parentKey`, `module`, `ifConfig`, `role`,
+    `typePath`; `name` only to tell a subscript's explicit accessors,
+    named `subscript`, from other accessor records nested in it),
     `files` (`path`, `sha256`), `targets` (`name`, `type`) and `warnings`
     (the collided keys), and the T0 roll-up scopes, as T0 wrote them;
   - the package's sources on disk (bytes for u3; hashes now, since the check
@@ -3497,6 +3508,19 @@ def parameter_labels(group):
 # ---- the key side (u6)
 
 
+def desugared(component):
+    """The nominal type a sugared type path component spells: `[T]` is
+    `Array`, `[K: V]` `Dictionary`, `T?` and `T!` `Optional` (a key keeps
+    the source's spelling, design 3.6; the demangled tree names the type).
+    Any other component is returned as given."""
+    component = component.strip()
+    if component.startswith("[") and balanced(component, 0) == len(component):
+        return "Dictionary" if len(split_top(component[1:-1], ":")) > 1 else "Array"
+    if len(component) > 1 and component[-1] in "?!":
+        return "Optional"
+    return component
+
+
 def key_facts(record, by_key):
     """(type path, base name, labels, accessor kind) from a record's key, or a
     string saying why the key wasn't understood."""
@@ -3521,12 +3545,12 @@ def key_facts(record, by_key):
     if record.get("typePath"):
         # T0's own type path (the key's type part without an extension's
         # where clause, which can't be split from a nested type's name).
-        path = [component.strip("`") for component in split_top(record["typePath"], ".")]
+        path = [desugared(component).strip("`") for component in split_top(record["typePath"], ".")]
         parts = parts[-1:]
     for part in parts[:-1]:
         part = re.split(r"\s+where\s+", part.strip())[0]
         for component in split_top(part, "."):
-            component = component.strip()
+            component = desugared(component)
             if "<" in component:
                 component = component[:component.index("<")]
             path.append(component.strip("`"))
@@ -4081,6 +4105,13 @@ class UsrJoin:
         joined = set()
         seen = set()
         for path in sorted(self.occurrences_by_file):
+            # USRs this file defines as children of a protocol (design 3.5's
+            # requirement test, as corrected by review C6: a property or
+            # subscript requirement's accessors name the property).
+            protocol_members = {o["usr"] for o in self.occurrences_by_file[path]
+                                if o["roles"] & ROLE_DEFINITION
+                                and any(rel["roles"] & RELATION_CHILD_OF and rel["kind"] == KIND_PROTOCOL
+                                        for rel in o["relations"])}
             for occurrence in self.occurrences_by_file[path]:
                 if not occurrence["roles"] & ROLE_DEFINITION:
                     continue
@@ -4101,7 +4132,9 @@ class UsrJoin:
                 holding = [r for r in package.records_by_file.get(path, [])
                            if holds(r, occurrence["line"], occurrence["column"])]
                 if not holding:
-                    requirement = any(rel["roles"] & RELATION_CHILD_OF and rel["kind"] == KIND_PROTOCOL
+                    requirement = any((rel["roles"] & RELATION_CHILD_OF and rel["kind"] == KIND_PROTOCOL)
+                                      or (rel["roles"] & (RELATION_CHILD_OF | RELATION_ACCESSOR_OF)
+                                          and rel["kind"] in PROPERTY_KINDS and rel["usr"] in protocol_members)
                                       for rel in occurrence["relations"])
                     self.no_record.append(dict(definition, subreason="requirement" if requirement else "outsideRecords",
                                                key=None))
@@ -4150,7 +4183,11 @@ class UsrJoin:
         self.secondary_definitions = {}
         self.several_secondaries = []
         for definition, record in pending:
-            has_accessors = any(child["kind"] == "accessor" for child in self.package.children.get(record["key"], []))
+            # The subscript's own accessors only: explicit ones, named
+            # `subscript`; a local computed property's getter nested in its
+            # body has the subscript as parent too, but its own name (C8).
+            has_accessors = any(child["kind"] == "accessor" and child.get("name") == "subscript"
+                                for child in self.package.children.get(record["key"], []))
             names_primary = any(rel["roles"] & RELATION_ACCESSOR_OF and rel["usr"] == self.primary.get(record["key"])
                                 for rel in definition["relations"])
             if not has_accessors and names_primary:
@@ -4189,7 +4226,10 @@ class UsrJoin:
                 reason = "top-level code"
             elif target_type == "plugin":
                 reason = "plugin target"
-            elif record.get("ifConfig") and not any(holds(record, line, column) for line, column in definitions):
+            elif (record.get("ifConfig") and path in self.kept_files_by_module.get(module, set())
+                  and not any(holds(record, line, column) for line, column in definitions)):
+                # Only in a file a read unit names: with no unit read for
+                # it, no definition is no evidence (review C9).
                 reason = "inactive #if branch"
             elif path in self.package.changed:
                 reason = "file changed during the scan"

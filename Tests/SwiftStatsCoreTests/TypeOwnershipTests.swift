@@ -50,7 +50,7 @@ struct TypeOwnershipTests {
         #expect(ownership.owner(of: entry) == Self.ledgerIndex)
         let index = try harness.usr(of: "IndexCore::Ledger::func index(at: Int) -> Index")
         #expect(ownership.owner(of: index) == Self.ledger)
-        #expect(ownership.types.count == 24 && ownership.types.values.count(where: \.isProduction) == 22)
+        #expect(ownership.types.count == 26 && ownership.types.values.count(where: \.isProduction) == 24)
         #expect(ownership.unplaced == 0)
         #expect(ownership.types[Self.ledgerIndex]?.identity == TypeIdentity(
             module: "IndexCore",
@@ -134,7 +134,7 @@ struct TypeOwnershipTests {
         #expect(types["Threshold"].map { [$0.referrersSameModule, $0.referrersTests] } == [1, 1])
         #expect(types["Shape"]?.referrersSameModule == 3)
         #expect(types["Tool"]?.module == "IndexTool")
-        #expect(types.count == 22 && types["IndexCoreTests"] == nil)
+        #expect(types.count == 24 && types["IndexCoreTests"] == nil)
     }
 
     @Test("""
@@ -156,7 +156,8 @@ struct TypeOwnershipTests {
         let typesOf: (String) -> [String] = { family in
             coupling.familyTypeReferences.filter { $0.family == family }.map(\.typePath)
         }
-        #expect(coupling.familyTypeReferences.count == 39)
+        #expect(coupling.familyTypeReferences.count == 41)
+        #expect(typesOf("IndexCore::Storage::subscript(doubled: Int) -> Int") == ["Offset", "Storage"])
         #expect(typesOf("IndexCore::func cycle() -> Int") == ["Alpha", "Beta"])
         #expect(typesOf("IndexCore::Ledger.Index::func entry(in: Ledger) -> Int") == ["Ledger", "Ledger.Index"])
         #expect(typesOf("IndexCore::func arrayUse() -> Int").isEmpty)

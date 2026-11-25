@@ -5,12 +5,15 @@
 //  Why a record has no primary USR (M7, design §3.4): the first reason
 //  that applies, in this order. Top-level code has no symbol;
 //  a plugin target is never compiled into the store; a record under `#if`
-//  with no definition of any kind in its range is taken to be in an
-//  inactive branch (SwiftStats never evaluates conditions); a file that
-//  changed during the scan isn't joined; a target is not built when no
-//  unit of any class names its module and the build's task log names no
-//  compile of it; a file is not indexed when its target has units read
-//  but none for it; then a disagreement; anything else is unexplained.
+//  in a file a unit read names as its main file (under the record's
+//  target), with no definition of any kind in its range, is taken to be in
+//  an inactive branch (SwiftStats never evaluates conditions; in a file no
+//  unit read, the absence of definitions is no evidence, so the fault
+//  reasons below come first); a file that changed during the scan isn't
+//  joined; a target is not built when no unit of any class names its
+//  module and the build's task log names no compile of it; a file is not
+//  indexed when its target has units read but none for it; then a
+//  disagreement; anything else is unexplained.
 //  The last five are faults the done-when doesn't accept. The scan JSON
 //  writes a reason as its raw value (`IndexRecordUSR`).
 //
@@ -23,7 +26,8 @@ public enum USRReason: String, CaseIterable, Sendable {
     case fileChanged
     /// A record of a file its target's units don't index.
     case fileNotIndexed
-    /// A record under `#if` with no definition in its range.
+    /// A record under `#if`, in a file a unit read, with no definition in
+    /// its range.
     case inactiveIfBranch
     /// A record of a plugin target, which the build never indexes.
     case pluginTarget
@@ -93,7 +97,7 @@ public enum USRReason: String, CaseIterable, Sendable {
         if evidence.pluginTargets.contains(record.module) {
             return .pluginTarget
         }
-        if record.ifConfig != nil,
+        if record.ifConfig != nil, evidence.readFiles[record.module, default: []].contains(record.file),
            evidence.definitions[record.file, default: []].contains(where: record.range.contains) == false {
             return .inactiveIfBranch
         }

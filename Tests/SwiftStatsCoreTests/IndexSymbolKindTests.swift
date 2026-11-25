@@ -62,7 +62,7 @@ struct IndexSymbolKindTests {
     @Test("the recording defines the init accessor of a stored property as an instance method of subkind 1016")
     func initAccessor() throws {
         let source = try RecordedIndexSource(recording: IndexFixture.data("reader.json"), restoring: [:])
-        let record = try source.record(named: "Accessors.swift-2G2AHM629N5IG")
+        let record = try source.record(named: "Accessors.swift-8ROXMIAYDKZA")
         let accessors = record.occurrences.filter { $0.subkind == IndexSymbolKind.Subkind.swiftAccessorInit }
         let definition = try #require(accessors.first { $0.roles & IndexSymbolKind.Role.definition != 0 })
 

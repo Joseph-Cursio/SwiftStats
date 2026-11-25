@@ -46,3 +46,16 @@ public func welcome() -> String {
     let host: any Greeter = Host()
     return host.greet()
 }
+
+/// A protocol with body-less property and subscript requirements: the index
+/// defines their getters and setters, which no record holds.
+public protocol Labeled {
+    /// A read-only label.
+    var label: String { get }
+    /// A settable rank.
+    var rank: Int { get set }
+    /// A shared default.
+    static var fallback: Self { get }
+    /// A settable part of the label.
+    subscript(part: Int) -> String { get set }
+}

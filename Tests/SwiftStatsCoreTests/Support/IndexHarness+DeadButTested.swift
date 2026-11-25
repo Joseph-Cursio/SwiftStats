@@ -3,7 +3,7 @@
 //  SwiftStatsCoreTests
 //
 //  What dead but tested states on the Index fixture (M7, design §8.2):
-//  its rule with the functions funnel of the fixture's 93 production
+//  its rule with the functions funnel of the fixture's 96 production
 //  functions, the declarations funnel of the `production` run's eight
 //  unused production entries (five functions, the type `Unused`, its
 //  extension, the unused computed property), and outskirts entries made
@@ -24,7 +24,7 @@ extension IndexHarness {
     /// The declarations funnel's D clause, which states no sum of numbers.
     static let coveredClause = "9 = the distinct records F, T, E and V cover"
     /// The fixture's production functions.
-    private static let productionFunctions = 93
+    private static let productionFunctions = 96
     /// Of those, the functions the `production` run's entries cover with
     /// the index.
     private static let productionDead = 9

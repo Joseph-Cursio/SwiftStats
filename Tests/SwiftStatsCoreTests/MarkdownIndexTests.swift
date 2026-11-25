@@ -26,17 +26,17 @@ struct MarkdownIndexTests {
             + "intermediates.",
         "",
         "Index store units: 22 kept, 0 variants, 0 duplicates; 0 stale and 0 other-module units (0 moved out of "
-            + "the store); 0 system and 4 other-package units not read. Index records read: 22, with 1123 "
+            + "the store); 0 system and 4 other-package units not read. Index records read: 22, with 1166 "
             + "occurrences.",
         "",
         "### USRs",
         "",
         "|  | Records with a USR | Secondary accessor USRs | `c:` USRs |",
         "| --- | --- | --- | --- |",
-        "| production | 90 of 93 | 2 | 0 |",
+        "| production | 93 of 96 | 3 | 0 |",
         "| tests | 7 of 7 | 0 | 1 |",
         "| IndexApp | 0 of 1 | 0 | 0 |",
-        "| IndexCore | 83 of 85 | 2 | 0 |",
+        "| IndexCore | 86 of 88 | 3 | 0 |",
         "| IndexCoreTests | 6 of 6 | 0 | 0 |",
         "| IndexTool | 1 of 1 | 0 | 0 |",
         "| IndexXCTests | 1 of 1 | 0 | 1 |",
@@ -61,7 +61,7 @@ struct MarkdownIndexTests {
         "",
         "No USR and key disagree.",
         "",
-        "Definitions with no record: 2 (2 requirement without a body).",
+        "Definitions with no record: 9 (9 requirement without a body).",
         "",
         "| Why | Symbol | USR | Place | Innermost record |",
         "| --- | --- | --- | --- | --- |",
@@ -69,6 +69,20 @@ struct MarkdownIndexTests {
             + "Sources/IndexCore/Protocols.swift:4:10 | — |",
         "| requirement without a body | `greet()` | `s:9IndexCore7GreeterP5greetSSyF` | "
             + "Sources/IndexCore/Protocols.swift:21:10 | — |",
+        "| requirement without a body | `getter:label` | `s:9IndexCore7LabeledP5labelSSvg` | "
+            + "Sources/IndexCore/Protocols.swift:54:25 | — |",
+        "| requirement without a body | `getter:rank` | `s:9IndexCore7LabeledP4rankSivg` | "
+            + "Sources/IndexCore/Protocols.swift:56:21 | — |",
+        "| requirement without a body | `setter:rank` | `s:9IndexCore7LabeledP4rankSivs` | "
+            + "Sources/IndexCore/Protocols.swift:56:25 | — |",
+        "| requirement without a body | `getter:fallback` | `s:9IndexCore7LabeledP8fallbackxvgZ` | "
+            + "Sources/IndexCore/Protocols.swift:58:33 | — |",
+        "| requirement without a body | `subscript(_:)` | `s:9IndexCore7LabeledPySSSicip` | "
+            + "Sources/IndexCore/Protocols.swift:60:5 | — |",
+        "| requirement without a body | `getter:subscript(_:)` | `s:9IndexCore7LabeledPySSSicig` | "
+            + "Sources/IndexCore/Protocols.swift:60:38 | — |",
+        "| requirement without a body | `setter:subscript(_:)` | `s:9IndexCore7LabeledPySSSicis` | "
+            + "Sources/IndexCore/Protocols.swift:60:42 | — |",
         "",
         "Key collisions the USR separates:",
         "",
@@ -154,7 +168,7 @@ struct MarkdownIndexTests {
     /// The scope column and the functions-timed column of the type-check
     /// table: counts and names only, which a re-recording keeps.
     private static let timedRecords = [
-        "production 90", "tests 7", "IndexApp 0", "IndexCore 83", "IndexCoreTests 6", "IndexTool 1",
+        "production 93", "tests 7", "IndexApp 0", "IndexCore 86", "IndexCoreTests 6", "IndexTool 1",
         "IndexXCTests 1", "index-kit 2", "index-support 4"
     ]
 
@@ -183,8 +197,8 @@ struct MarkdownIndexTests {
             }
 
             #expect(scopes == Self.timedRecords)
-            #expect(part.contains("(first 20 of 97; the JSON lists all)"))
-            #expect(part.contains("(first 10 of 94; the JSON lists all)"))
+            #expect(part.contains("(first 20 of 100; the JSON lists all)"))
+            #expect(part.contains("(first 10 of 97; the JSON lists all)"))
             // Header rows, 9 scopes, 20 functions and 10 expressions.
             #expect(rows.count == 3 + Self.timedRecords.count + 20 + 10)
             #expect(part.contains { $0.hasPrefix("On no record: 37 entries (") })

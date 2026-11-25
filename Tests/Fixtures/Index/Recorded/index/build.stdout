@@ -10,25 +10,25 @@ Discovering version info for libtool
 Discovering version info for ld
 [Planning deferred tasks]
 Create build description
-Create build directory $(DERIVED_DATA_DIR)/CompilationCache.noindex
+Create build directory $(OBJROOT)
     cd @PARENT@
-    builtin-create-build-directory @BUILD@/out/CompilationCache.noindex
-
-Create build directory $(DERIVED_DATA_DIR)/SDKExplicitPrecompiledModules
-    cd @PARENT@
-    builtin-create-build-directory @BUILD@/out/SDKExplicitPrecompiledModules
+    builtin-create-build-directory @BUILD@/out/Intermediates.noindex
 
 Create build directory $(DERIVED_DATA_DIR)/ModuleCache.noindex
     cd @PARENT@
     builtin-create-build-directory @BUILD@/out/ModuleCache.noindex
 
-Create build directory $(OBJROOT)
+Create build directory $(DERIVED_DATA_DIR)/SDKExplicitPrecompiledModules
     cd @PARENT@
-    builtin-create-build-directory @BUILD@/out/Intermediates.noindex
+    builtin-create-build-directory @BUILD@/out/SDKExplicitPrecompiledModules
 
 Create build directory $(DERIVED_DATA_DIR)/PCH
     cd @PARENT@
     builtin-create-build-directory @BUILD@/out/PCH
+
+Create build directory $(DERIVED_DATA_DIR)/CompilationCache.noindex
+    cd @PARENT@
+    builtin-create-build-directory @BUILD@/out/CompilationCache.noindex
 
 Create build directory $(TARGET_BUILD_DIR)
     cd @PARENT@
@@ -38,13 +38,13 @@ Create build directory $(OBJROOT)/SwiftExplicitPrecompiledModules
     cd @PARENT@
     builtin-create-build-directory @BUILD@/out/Intermediates.noindex/SwiftExplicitPrecompiledModules
 
-Create build directory $(OBJROOT)/ExplicitPrecompiledModules
-    cd @PARENT@
-    builtin-create-build-directory @BUILD@/out/Intermediates.noindex/ExplicitPrecompiledModules
-
 Create build directory $(OBJROOT)/EagerLinkingTBDs/Debug
     cd @PARENT@
     builtin-create-build-directory @BUILD@/out/Intermediates.noindex/EagerLinkingTBDs/Debug
+
+Create build directory $(OBJROOT)/ExplicitPrecompiledModules
+    cd @PARENT@
+    builtin-create-build-directory @BUILD@/out/Intermediates.noindex/ExplicitPrecompiledModules
 
 Create build directory $(TARGET_BUILD_DIR)/Debug
     cd @PARENT@
@@ -78,49 +78,29 @@ Write index-support.LinkFileList (arm64)
     cd @ROOT@
     write-file @BUILD@/out/Intermediates.noindex/IndexFixture.build/Debug/index-support-t.build/Objects-normal/arm64/index-support.LinkFileList
 
-Write index-kit.SwiftFileList (arm64)
-    cd @ROOT@
-    write-file @BUILD@/out/Intermediates.noindex/IndexFixture.build/Debug/index-kit-t.build/Objects-normal/arm64/index-kit.SwiftFileList
-
 Write index-kit.LinkFileList (arm64)
     cd @ROOT@
     write-file @BUILD@/out/Intermediates.noindex/IndexFixture.build/Debug/index-kit-t.build/Objects-normal/arm64/index-kit.LinkFileList
+
+Write index-kit.SwiftFileList (arm64)
+    cd @ROOT@
+    write-file @BUILD@/out/Intermediates.noindex/IndexFixture.build/Debug/index-kit-t.build/Objects-normal/arm64/index-kit.SwiftFileList
 
 Write index-kit-OutputFileMap.json (arm64)
     cd @ROOT@
     write-file @BUILD@/out/Intermediates.noindex/IndexFixture.build/Debug/index-kit-t.build/Objects-normal/arm64/index-kit-OutputFileMap.json
 
-Write IndexXCTests_const_extract_protocols.json (arm64)
+Write IndexTool.SwiftFileList (arm64)
     cd @ROOT@
-    write-file @BUILD@/out/Intermediates.noindex/IndexFixture.build/Debug/IndexXCTests-p.build/Objects-normal/arm64/IndexXCTests_const_extract_protocols.json
-
-Write empty-IndexXCTests.plist
-    cd @ROOT@
-    write-file @BUILD@/out/Intermediates.noindex/IndexFixture.build/Debug/IndexXCTests-p.build/empty-IndexXCTests.plist
-
-Write IndexXCTests.SwiftFileList (arm64)
-    cd @ROOT@
-    write-file @BUILD@/out/Intermediates.noindex/IndexFixture.build/Debug/IndexXCTests-p.build/Objects-normal/arm64/IndexXCTests.SwiftFileList
-
-Write IndexXCTests-OutputFileMap.json (arm64)
-    cd @ROOT@
-    write-file @BUILD@/out/Intermediates.noindex/IndexFixture.build/Debug/IndexXCTests-p.build/Objects-normal/arm64/IndexXCTests-OutputFileMap.json
-
-Write IndexXCTests.LinkFileList (arm64)
-    cd @ROOT@
-    write-file @BUILD@/out/Intermediates.noindex/IndexFixture.build/Debug/IndexXCTests-p.build/Objects-normal/arm64/IndexXCTests.LinkFileList
-
-Write Entitlements.plist
-    cd @ROOT@
-    write-file @BUILD@/out/Intermediates.noindex/IndexFixture.build/Debug/IndexXCTests-p.build/DerivedSources/Entitlements.plist
+    write-file @BUILD@/out/Intermediates.noindex/IndexFixture.build/Debug/IndexTool-p.build/Objects-normal/arm64/IndexTool.SwiftFileList
 
 Write IndexTool_const_extract_protocols.json (arm64)
     cd @ROOT@
     write-file @BUILD@/out/Intermediates.noindex/IndexFixture.build/Debug/IndexTool-p.build/Objects-normal/arm64/IndexTool_const_extract_protocols.json
 
-Write IndexTool.SwiftFileList (arm64)
+Write Entitlements.plist
     cd @ROOT@
-    write-file @BUILD@/out/Intermediates.noindex/IndexFixture.build/Debug/IndexTool-p.build/Objects-normal/arm64/IndexTool.SwiftFileList
+    write-file @BUILD@/out/Intermediates.noindex/IndexFixture.build/Debug/IndexTool-p.build/DerivedSources/Entitlements.plist
 
 Write IndexTool.LinkFileList (arm64)
     cd @ROOT@
@@ -129,34 +109,6 @@ Write IndexTool.LinkFileList (arm64)
 Write IndexTool-OutputFileMap.json (arm64)
     cd @ROOT@
     write-file @BUILD@/out/Intermediates.noindex/IndexFixture.build/Debug/IndexTool-p.build/Objects-normal/arm64/IndexTool-OutputFileMap.json
-
-Copy index-kit.modulemap
-    cd @ROOT@
-    builtin-copy -exclude .DS_Store -exclude CVS -exclude .svn -exclude .git -exclude .hg -resolve-src-symlinks @BUILD@/out/Intermediates.noindex/IndexFixture.build/Debug/index-kit-t.build/index-kit.modulemap @BUILD@/out/Intermediates.noindex/GeneratedModuleMaps
-
-Write Entitlements.plist
-    cd @ROOT@
-    write-file @BUILD@/out/Intermediates.noindex/IndexFixture.build/Debug/IndexTool-p.build/DerivedSources/Entitlements.plist
-
-Write IndexKit.LinkFileList (arm64)
-    cd @ROOT@
-    write-file @BUILD@/out/Intermediates.noindex/IndexFixture.build/Debug/IndexKit-product-p.build/Objects-normal/arm64/IndexKit.LinkFileList
-
-Create directory Contents
-    cd @ROOT@
-    /bin/mkdir -p @BUILD@/out/Products/Debug/IndexXCTests.xctest/Contents
-
-Create directory IndexXCTests.xctest
-    cd @ROOT@
-    /bin/mkdir -p @BUILD@/out/Products/Debug/IndexXCTests.xctest
-
-Create directory MacOS
-    cd @ROOT@
-    /bin/mkdir -p @BUILD@/out/Products/Debug/IndexXCTests.xctest/Contents/MacOS
-
-Copy index-support.modulemap
-    cd @ROOT@
-    builtin-copy -exclude .DS_Store -exclude CVS -exclude .svn -exclude .git -exclude .hg -resolve-src-symlinks @BUILD@/out/Intermediates.noindex/IndexFixture.build/Debug/index-support-t.build/index-support.modulemap @BUILD@/out/Intermediates.noindex/GeneratedModuleMaps
 
 Write IndexDepKit.SwiftFileList (arm64)
     cd @DEP@
@@ -170,37 +122,29 @@ Write IndexDepKit-OutputFileMap.json (arm64)
     cd @DEP@
     write-file @BUILD@/out/Intermediates.noindex/IndexDep.build/Debug/IndexDepKit-t.build/Objects-normal/arm64/IndexDepKit-OutputFileMap.json
 
-Write IndexDepKit.modulemap
-    cd @DEP@
-    write-file @BUILD@/out/Intermediates.noindex/IndexDep.build/Debug/IndexDepKit-t.build/IndexDepKit.modulemap
+Write IndexKit.LinkFileList (arm64)
+    cd @ROOT@
+    write-file @BUILD@/out/Intermediates.noindex/IndexFixture.build/Debug/IndexKit-product-p.build/Objects-normal/arm64/IndexKit.LinkFileList
 
 Write IndexDepKit.LinkFileList (arm64)
     cd @DEP@
     write-file @BUILD@/out/Intermediates.noindex/IndexDep.build/Debug/IndexDepKit-t.build/Objects-normal/arm64/IndexDepKit.LinkFileList
 
-Write empty-IndexCoreTests.plist
-    cd @ROOT@
-    write-file @BUILD@/out/Intermediates.noindex/IndexFixture.build/Debug/IndexCoreTests-p.build/empty-IndexCoreTests.plist
+Write IndexDepKit.modulemap
+    cd @DEP@
+    write-file @BUILD@/out/Intermediates.noindex/IndexDep.build/Debug/IndexDepKit-t.build/IndexDepKit.modulemap
 
-Write IndexCoreTests_const_extract_protocols.json (arm64)
+Copy index-kit.modulemap
     cd @ROOT@
-    write-file @BUILD@/out/Intermediates.noindex/IndexFixture.build/Debug/IndexCoreTests-p.build/Objects-normal/arm64/IndexCoreTests_const_extract_protocols.json
+    builtin-copy -exclude .DS_Store -exclude CVS -exclude .svn -exclude .git -exclude .hg -resolve-src-symlinks @BUILD@/out/Intermediates.noindex/IndexFixture.build/Debug/index-kit-t.build/index-kit.modulemap @BUILD@/out/Intermediates.noindex/GeneratedModuleMaps
 
-Write IndexCoreTests.LinkFileList (arm64)
+Copy index-support.modulemap
     cd @ROOT@
-    write-file @BUILD@/out/Intermediates.noindex/IndexFixture.build/Debug/IndexCoreTests-p.build/Objects-normal/arm64/IndexCoreTests.LinkFileList
+    builtin-copy -exclude .DS_Store -exclude CVS -exclude .svn -exclude .git -exclude .hg -resolve-src-symlinks @BUILD@/out/Intermediates.noindex/IndexFixture.build/Debug/index-support-t.build/index-support.modulemap @BUILD@/out/Intermediates.noindex/GeneratedModuleMaps
 
-Write IndexCoreTests.SwiftFileList (arm64)
+Write IndexCore.LinkFileList (arm64)
     cd @ROOT@
-    write-file @BUILD@/out/Intermediates.noindex/IndexFixture.build/Debug/IndexCoreTests-p.build/Objects-normal/arm64/IndexCoreTests.SwiftFileList
-
-Write IndexCoreTests-OutputFileMap.json (arm64)
-    cd @ROOT@
-    write-file @BUILD@/out/Intermediates.noindex/IndexFixture.build/Debug/IndexCoreTests-p.build/Objects-normal/arm64/IndexCoreTests-OutputFileMap.json
-
-Write Entitlements.plist
-    cd @ROOT@
-    write-file @BUILD@/out/Intermediates.noindex/IndexFixture.build/Debug/IndexCoreTests-p.build/DerivedSources/Entitlements.plist
+    write-file @BUILD@/out/Intermediates.noindex/IndexFixture.build/Debug/IndexCore-t.build/Objects-normal/arm64/IndexCore.LinkFileList
 
 Write IndexCore.SwiftFileList (arm64)
     cd @ROOT@
@@ -210,37 +154,21 @@ Write IndexCore.LinkFileList (arm64)
     cd @ROOT@
     write-file @BUILD@/out/Intermediates.noindex/IndexFixture.build/Debug/IndexCore-product-p.build/Objects-normal/arm64/IndexCore.LinkFileList
 
-Write IndexCore_const_extract_protocols.json (arm64)
-    cd @ROOT@
-    write-file @BUILD@/out/Intermediates.noindex/IndexFixture.build/Debug/IndexCore-t.build/Objects-normal/arm64/IndexCore_const_extract_protocols.json
-
-Write IndexCore.LinkFileList (arm64)
-    cd @ROOT@
-    write-file @BUILD@/out/Intermediates.noindex/IndexFixture.build/Debug/IndexCore-t.build/Objects-normal/arm64/IndexCore.LinkFileList
-
 Write IndexCore-OutputFileMap.json (arm64)
     cd @ROOT@
     write-file @BUILD@/out/Intermediates.noindex/IndexFixture.build/Debug/IndexCore-t.build/Objects-normal/arm64/IndexCore-OutputFileMap.json
 
-Create directory Contents
+Write IndexCore_const_extract_protocols.json (arm64)
     cd @ROOT@
-    /bin/mkdir -p @BUILD@/out/Products/Debug/IndexCoreTests.xctest/Contents
+    write-file @BUILD@/out/Intermediates.noindex/IndexFixture.build/Debug/IndexCore-t.build/Objects-normal/arm64/IndexCore_const_extract_protocols.json
 
 Write IndexCore.modulemap
     cd @ROOT@
     write-file @BUILD@/out/Intermediates.noindex/IndexFixture.build/Debug/IndexCore-t.build/IndexCore.modulemap
 
-Create directory MacOS
+Write IndexApp.LinkFileList (arm64)
     cd @ROOT@
-    /bin/mkdir -p @BUILD@/out/Products/Debug/IndexCoreTests.xctest/Contents/MacOS
-
-Create directory IndexCoreTests.xctest
-    cd @ROOT@
-    /bin/mkdir -p @BUILD@/out/Products/Debug/IndexCoreTests.xctest
-
-Copy IndexDepKit.modulemap
-    cd @DEP@
-    builtin-copy -exclude .DS_Store -exclude CVS -exclude .svn -exclude .git -exclude .hg -resolve-src-symlinks @BUILD@/out/Intermediates.noindex/IndexDep.build/Debug/IndexDepKit-t.build/IndexDepKit.modulemap @BUILD@/out/Intermediates.noindex/GeneratedModuleMaps
+    write-file @BUILD@/out/Intermediates.noindex/IndexFixture.build/Debug/IndexApp-p.build/Objects-normal/arm64/IndexApp.LinkFileList
 
 Write IndexApp_const_extract_protocols.json (arm64)
     cd @ROOT@
@@ -250,21 +178,97 @@ Write IndexApp.SwiftFileList (arm64)
     cd @ROOT@
     write-file @BUILD@/out/Intermediates.noindex/IndexFixture.build/Debug/IndexApp-p.build/Objects-normal/arm64/IndexApp.SwiftFileList
 
-Write IndexApp.LinkFileList (arm64)
+Write IndexApp-OutputFileMap.json (arm64)
     cd @ROOT@
-    write-file @BUILD@/out/Intermediates.noindex/IndexFixture.build/Debug/IndexApp-p.build/Objects-normal/arm64/IndexApp.LinkFileList
+    write-file @BUILD@/out/Intermediates.noindex/IndexFixture.build/Debug/IndexApp-p.build/Objects-normal/arm64/IndexApp-OutputFileMap.json
 
 Write Entitlements.plist
     cd @ROOT@
     write-file @BUILD@/out/Intermediates.noindex/IndexFixture.build/Debug/IndexApp-p.build/DerivedSources/Entitlements.plist
 
-Write IndexApp-OutputFileMap.json (arm64)
+Copy IndexDepKit.modulemap
+    cd @DEP@
+    builtin-copy -exclude .DS_Store -exclude CVS -exclude .svn -exclude .git -exclude .hg -resolve-src-symlinks @BUILD@/out/Intermediates.noindex/IndexDep.build/Debug/IndexDepKit-t.build/IndexDepKit.modulemap @BUILD@/out/Intermediates.noindex/GeneratedModuleMaps
+
+Write empty-IndexXCTests.plist
     cd @ROOT@
-    write-file @BUILD@/out/Intermediates.noindex/IndexFixture.build/Debug/IndexApp-p.build/Objects-normal/arm64/IndexApp-OutputFileMap.json
+    write-file @BUILD@/out/Intermediates.noindex/IndexFixture.build/Debug/IndexXCTests-p.build/empty-IndexXCTests.plist
+
+Write IndexXCTests_const_extract_protocols.json (arm64)
+    cd @ROOT@
+    write-file @BUILD@/out/Intermediates.noindex/IndexFixture.build/Debug/IndexXCTests-p.build/Objects-normal/arm64/IndexXCTests_const_extract_protocols.json
+
+Write IndexXCTests.LinkFileList (arm64)
+    cd @ROOT@
+    write-file @BUILD@/out/Intermediates.noindex/IndexFixture.build/Debug/IndexXCTests-p.build/Objects-normal/arm64/IndexXCTests.LinkFileList
 
 Copy IndexCore.modulemap
     cd @ROOT@
     builtin-copy -exclude .DS_Store -exclude CVS -exclude .svn -exclude .git -exclude .hg -resolve-src-symlinks @BUILD@/out/Intermediates.noindex/IndexFixture.build/Debug/IndexCore-t.build/IndexCore.modulemap @BUILD@/out/Intermediates.noindex/GeneratedModuleMaps
+
+Create directory IndexXCTests.xctest
+    cd @ROOT@
+    /bin/mkdir -p @BUILD@/out/Products/Debug/IndexXCTests.xctest
+
+Create directory Contents
+    cd @ROOT@
+    /bin/mkdir -p @BUILD@/out/Products/Debug/IndexXCTests.xctest/Contents
+
+Write IndexXCTests.SwiftFileList (arm64)
+    cd @ROOT@
+    write-file @BUILD@/out/Intermediates.noindex/IndexFixture.build/Debug/IndexXCTests-p.build/Objects-normal/arm64/IndexXCTests.SwiftFileList
+
+Write Entitlements.plist
+    cd @ROOT@
+    write-file @BUILD@/out/Intermediates.noindex/IndexFixture.build/Debug/IndexXCTests-p.build/DerivedSources/Entitlements.plist
+
+Write IndexXCTests-OutputFileMap.json (arm64)
+    cd @ROOT@
+    write-file @BUILD@/out/Intermediates.noindex/IndexFixture.build/Debug/IndexXCTests-p.build/Objects-normal/arm64/IndexXCTests-OutputFileMap.json
+
+Create directory MacOS
+    cd @ROOT@
+    /bin/mkdir -p @BUILD@/out/Products/Debug/IndexXCTests.xctest/Contents/MacOS
+
+Write empty-IndexCoreTests.plist
+    cd @ROOT@
+    write-file @BUILD@/out/Intermediates.noindex/IndexFixture.build/Debug/IndexCoreTests-p.build/empty-IndexCoreTests.plist
+
+Write IndexCoreTests.SwiftFileList (arm64)
+    cd @ROOT@
+    write-file @BUILD@/out/Intermediates.noindex/IndexFixture.build/Debug/IndexCoreTests-p.build/Objects-normal/arm64/IndexCoreTests.SwiftFileList
+
+Write IndexCoreTests_const_extract_protocols.json (arm64)
+    cd @ROOT@
+    write-file @BUILD@/out/Intermediates.noindex/IndexFixture.build/Debug/IndexCoreTests-p.build/Objects-normal/arm64/IndexCoreTests_const_extract_protocols.json
+
+Write IndexCoreTests-OutputFileMap.json (arm64)
+    cd @ROOT@
+    write-file @BUILD@/out/Intermediates.noindex/IndexFixture.build/Debug/IndexCoreTests-p.build/Objects-normal/arm64/IndexCoreTests-OutputFileMap.json
+
+Create directory Contents
+    cd @ROOT@
+    /bin/mkdir -p @BUILD@/out/Products/Debug/IndexCoreTests.xctest/Contents
+
+Create directory IndexCoreTests.xctest
+    cd @ROOT@
+    /bin/mkdir -p @BUILD@/out/Products/Debug/IndexCoreTests.xctest
+
+Write Entitlements.plist
+    cd @ROOT@
+    write-file @BUILD@/out/Intermediates.noindex/IndexFixture.build/Debug/IndexCoreTests-p.build/DerivedSources/Entitlements.plist
+
+Create directory MacOS
+    cd @ROOT@
+    /bin/mkdir -p @BUILD@/out/Products/Debug/IndexCoreTests.xctest/Contents/MacOS
+
+Write IndexCoreTests.LinkFileList (arm64)
+    cd @ROOT@
+    write-file @BUILD@/out/Intermediates.noindex/IndexFixture.build/Debug/IndexCoreTests-p.build/Objects-normal/arm64/IndexCoreTests.LinkFileList
+
+Create build directory $(TARGET_BUILD_DIR)/Debug/PackageFrameworks
+    cd @PARENT@
+    builtin-create-build-directory @BUILD@/out/Products/Debug/PackageFrameworks
 
 Process product packaging
     cd @ROOT@
@@ -277,10 +281,6 @@ Process product packaging
     
     builtin-productPackagingUtility -entitlements -format xml -o @BUILD@/out/Intermediates.noindex/IndexFixture.build/Debug/IndexTool-p.build/IndexTool.xcent
 
-Create build directory $(TARGET_BUILD_DIR)/Debug/PackageFrameworks
-    cd @PARENT@
-    builtin-create-build-directory @BUILD@/out/Products/Debug/PackageFrameworks
-
 Generate DER entitlements
     cd @ROOT@
     /usr/bin/derq query -f xml -i @BUILD@/out/Intermediates.noindex/IndexFixture.build/Debug/IndexTool-p.build/IndexTool.xcent -o @BUILD@/out/Intermediates.noindex/IndexFixture.build/Debug/IndexTool-p.build/IndexTool.xcent.der --raw
@@ -290,6 +290,10 @@ Build stat cache for @DEVELOPER@/Platforms/MacOSX.platform/Developer/SDKs/MacOSX
     @TOOLCHAIN@/usr/bin/clang-stat-cache @DEVELOPER@/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.2.sdk -o @BUILD@/out/SDKStatCaches.noindex/macosx27.2-26B118-d56355c2f463f349a93388c94f7bc0b5a7ff82d74745d5ef33555b35c4238456.sdkstatcache
 
 [68 / 144]
+Planning Swift module IndexDepKit (arm64)
+    cd @PARENT@
+    builtin-SwiftDriver -- @TOOLCHAIN@/usr/bin/swiftc -parse-as-library -module-name IndexDepKit -Onone @@BUILD@/out/Intermediates.noindex/IndexDep.build/Debug/IndexDepKit-t.build/Objects-normal/arm64/IndexDepKit.SwiftFileList -DSWIFT_PACKAGE -DDEBUG -DSWIFT_MODULE_RESOURCE_BUNDLE_UNAVAILABLE -DXcode -index-include-locals -Xfrontend -debug-time-function-bodies -Xfrontend -debug-time-expression-type-checking -Xfrontend -debug-diagnostic-names -plugin-path @TOOLCHAIN@/usr/lib/swift/host/plugins/testing -enable-experimental-feature DebugDescriptionMacro -sdk @DEVELOPER@/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.2.sdk -target arm64-apple-macos14.0 -g -module-cache-path @BUILD@/out/ModuleCache.noindex -Xfrontend -serialize-debugging-options -enable-testing -index-store-path @BUILD@/out -Xcc -D_LIBCPP_HARDENING_MODE\=_LIBCPP_HARDENING_MODE_DEBUG -swift-version 6 -I @BUILD@/out/Products/Debug -Isystem @DEVELOPER@/Platforms/MacOSX.platform/Developer/usr/lib -F @BUILD@/out/Products/Debug -F @DEVELOPER@/Platforms/MacOSX.platform/Developer/Library/Frameworks -c -j8 -enable-batch-mode -incremental -Xcc -ivfsstatcache -Xcc @BUILD@/out/SDKStatCaches.noindex/macosx27.2-26B118-d56355c2f463f349a93388c94f7bc0b5a7ff82d74745d5ef33555b35c4238456.sdkstatcache -output-file-map @BUILD@/out/Intermediates.noindex/IndexDep.build/Debug/IndexDepKit-t.build/Objects-normal/arm64/IndexDepKit-OutputFileMap.json -save-temps -no-color-diagnostics -explicit-module-build -module-cache-path @BUILD@/out/Intermediates.noindex/SwiftExplicitPrecompiledModules -clang-scanner-module-cache-path @BUILD@/out/ModuleCache.noindex -sdk-module-cache-path @BUILD@/out/SDKExplicitPrecompiledModules -emit-dependencies -emit-module -emit-module-path @BUILD@/out/Intermediates.noindex/IndexDep.build/Debug/IndexDepKit-t.build/Objects-normal/arm64/IndexDepKit.swiftmodule -serialize-diagnostics -dependency-scan-serialize-diagnostics-path @BUILD@/out/Intermediates.noindex/IndexDep.build/Debug/IndexDepKit-t.build/Objects-normal/arm64/IndexDepKit-dependency-scan.dia -validate-clang-modules-once -clang-build-session-file @BUILD@/out/ModuleCache.noindex/Session.modulevalidation -Xcc -fmodules-prune-interval\=86400 -Xcc -fmodules-prune-after\=345600 -package-name indexdep -emit-const-values -const-gather-protocols-list @BUILD@/out/Intermediates.noindex/IndexDep.build/Debug/IndexDepKit-t.build/Objects-normal/arm64/IndexDepKit_const_extract_protocols.json -Xcc -I@BUILD@/out/Products/Debug/include -Xcc -I@BUILD@/out/Intermediates.noindex/IndexDep.build/Debug/IndexDepKit-t.build/DerivedSources-normal/arm64 -Xcc -I@BUILD@/out/Intermediates.noindex/IndexDep.build/Debug/IndexDepKit-t.build/DerivedSources/arm64 -Xcc -I@BUILD@/out/Intermediates.noindex/IndexDep.build/Debug/IndexDepKit-t.build/DerivedSources -Xcc -DSWIFT_PACKAGE -Xcc -DDEBUG\=1 -emit-objc-header -emit-objc-header-path @BUILD@/out/Intermediates.noindex/IndexDep.build/Debug/IndexDepKit-t.build/Objects-normal/arm64/IndexDepKit-Swift.h -working-directory @PARENT@ -experimental-emit-module-separately -disable-cmo
+
 Planning Swift module index_kit (arm64)
     cd @PARENT@
     builtin-SwiftDriver -- @TOOLCHAIN@/usr/bin/swiftc -parse-as-library -module-name index_kit -Onone @@BUILD@/out/Intermediates.noindex/IndexFixture.build/Debug/index-kit-t.build/Objects-normal/arm64/index-kit.SwiftFileList -DSWIFT_PACKAGE -DDEBUG -DSWIFT_MODULE_RESOURCE_BUNDLE_UNAVAILABLE -DXcode -index-include-locals -Xfrontend -debug-time-function-bodies -Xfrontend -debug-time-expression-type-checking -Xfrontend -debug-diagnostic-names -plugin-path @TOOLCHAIN@/usr/lib/swift/host/plugins/testing -enable-experimental-feature DebugDescriptionMacro -sdk @DEVELOPER@/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.2.sdk -target arm64-apple-macos14.0 -g -module-cache-path @BUILD@/out/ModuleCache.noindex -Xfrontend -serialize-debugging-options -enable-testing -index-store-path @BUILD@/out -Xcc -D_LIBCPP_HARDENING_MODE\=_LIBCPP_HARDENING_MODE_DEBUG -swift-version 6 -I @BUILD@/out/Products/Debug -Isystem @DEVELOPER@/Platforms/MacOSX.platform/Developer/usr/lib -F @BUILD@/out/Products/Debug -F @DEVELOPER@/Platforms/MacOSX.platform/Developer/Library/Frameworks -c -j8 -enable-batch-mode -incremental -Xcc -ivfsstatcache -Xcc @BUILD@/out/SDKStatCaches.noindex/macosx27.2-26B118-d56355c2f463f349a93388c94f7bc0b5a7ff82d74745d5ef33555b35c4238456.sdkstatcache -output-file-map @BUILD@/out/Intermediates.noindex/IndexFixture.build/Debug/index-kit-t.build/Objects-normal/arm64/index-kit-OutputFileMap.json -save-temps -no-color-diagnostics -explicit-module-build -module-cache-path @BUILD@/out/Intermediates.noindex/SwiftExplicitPrecompiledModules -clang-scanner-module-cache-path @BUILD@/out/ModuleCache.noindex -sdk-module-cache-path @BUILD@/out/SDKExplicitPrecompiledModules -emit-dependencies -emit-module -emit-module-path @BUILD@/out/Intermediates.noindex/IndexFixture.build/Debug/index-kit-t.build/Objects-normal/arm64/index_kit.swiftmodule -serialize-diagnostics -dependency-scan-serialize-diagnostics-path @BUILD@/out/Intermediates.noindex/IndexFixture.build/Debug/index-kit-t.build/Objects-normal/arm64/index_kit-dependency-scan.dia -validate-clang-modules-once -clang-build-session-file @BUILD@/out/ModuleCache.noindex/Session.modulevalidation -Xcc -fmodules-prune-interval\=86400 -Xcc -fmodules-prune-after\=345600 -package-name index -emit-const-values -const-gather-protocols-list @BUILD@/out/Intermediates.noindex/IndexFixture.build/Debug/index-kit-t.build/Objects-normal/arm64/index-kit_const_extract_protocols.json -Xcc -I@BUILD@/out/Products/Debug/include -Xcc -I@BUILD@/out/Intermediates.noindex/IndexFixture.build/Debug/index-kit-t.build/DerivedSources-normal/arm64 -Xcc -I@BUILD@/out/Intermediates.noindex/IndexFixture.build/Debug/index-kit-t.build/DerivedSources/arm64 -Xcc -I@BUILD@/out/Intermediates.noindex/IndexFixture.build/Debug/index-kit-t.build/DerivedSources -Xcc -DSWIFT_PACKAGE -Xcc -DDEBUG\=1 -emit-objc-header -emit-objc-header-path @BUILD@/out/Intermediates.noindex/IndexFixture.build/Debug/index-kit-t.build/Objects-normal/arm64/index-kit-Swift.h -working-directory @PARENT@ -experimental-emit-module-separately -disable-cmo
@@ -298,71 +302,43 @@ Planning Swift module IndexTool (arm64)
     cd @PARENT@
     builtin-SwiftDriver -- @TOOLCHAIN@/usr/bin/swiftc -parse-as-library -module-name IndexTool -Onone @@BUILD@/out/Intermediates.noindex/IndexFixture.build/Debug/IndexTool-p.build/Objects-normal/arm64/IndexTool.SwiftFileList -DSWIFT_PACKAGE -DDEBUG -DXcode -index-include-locals -Xfrontend -debug-time-function-bodies -Xfrontend -debug-time-expression-type-checking -Xfrontend -debug-diagnostic-names -plugin-path @TOOLCHAIN@/usr/lib/swift/host/plugins/testing -enable-experimental-feature DebugDescriptionMacro -sdk @DEVELOPER@/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.2.sdk -target arm64-apple-macos14.0 -g -module-cache-path @BUILD@/out/ModuleCache.noindex -Xfrontend -serialize-debugging-options -enable-testing -index-store-path @BUILD@/out -Xcc -D_LIBCPP_HARDENING_MODE\=_LIBCPP_HARDENING_MODE_DEBUG -swift-version 6 -I @BUILD@/out/Products/Debug -Isystem @DEVELOPER@/Platforms/MacOSX.platform/Developer/usr/lib -F @BUILD@/out/Products/Debug -F @DEVELOPER@/Platforms/MacOSX.platform/Developer/Library/Frameworks -c -j8 -enable-batch-mode -incremental -Xcc -ivfsstatcache -Xcc @BUILD@/out/SDKStatCaches.noindex/macosx27.2-26B118-d56355c2f463f349a93388c94f7bc0b5a7ff82d74745d5ef33555b35c4238456.sdkstatcache -output-file-map @BUILD@/out/Intermediates.noindex/IndexFixture.build/Debug/IndexTool-p.build/Objects-normal/arm64/IndexTool-OutputFileMap.json -save-temps -no-color-diagnostics -explicit-module-build -module-cache-path @BUILD@/out/Intermediates.noindex/SwiftExplicitPrecompiledModules -clang-scanner-module-cache-path @BUILD@/out/ModuleCache.noindex -sdk-module-cache-path @BUILD@/out/SDKExplicitPrecompiledModules -emit-dependencies -emit-module -emit-module-path @BUILD@/out/Intermediates.noindex/IndexFixture.build/Debug/IndexTool-p.build/Objects-normal/arm64/IndexTool.swiftmodule -serialize-diagnostics -dependency-scan-serialize-diagnostics-path @BUILD@/out/Intermediates.noindex/IndexFixture.build/Debug/IndexTool-p.build/Objects-normal/arm64/IndexTool-dependency-scan.dia -validate-clang-modules-once -clang-build-session-file @BUILD@/out/ModuleCache.noindex/Session.modulevalidation -Xcc -fmodules-prune-interval\=86400 -Xcc -fmodules-prune-after\=345600 -package-name index -emit-const-values -const-gather-protocols-list @BUILD@/out/Intermediates.noindex/IndexFixture.build/Debug/IndexTool-p.build/Objects-normal/arm64/IndexTool_const_extract_protocols.json -Xcc -I@BUILD@/out/Products/Debug/include -Xcc -I@BUILD@/out/Intermediates.noindex/IndexFixture.build/Debug/IndexTool-p.build/DerivedSources-normal/arm64 -Xcc -I@BUILD@/out/Intermediates.noindex/IndexFixture.build/Debug/IndexTool-p.build/DerivedSources/arm64 -Xcc -I@BUILD@/out/Intermediates.noindex/IndexFixture.build/Debug/IndexTool-p.build/DerivedSources -Xcc -DSWIFT_PACKAGE -Xcc -DDEBUG\=1 -working-directory @PARENT@ -experimental-emit-module-separately -disable-cmo
 
-Planning Swift module IndexDepKit (arm64)
-    cd @PARENT@
-    builtin-SwiftDriver -- @TOOLCHAIN@/usr/bin/swiftc -parse-as-library -module-name IndexDepKit -Onone @@BUILD@/out/Intermediates.noindex/IndexDep.build/Debug/IndexDepKit-t.build/Objects-normal/arm64/IndexDepKit.SwiftFileList -DSWIFT_PACKAGE -DDEBUG -DSWIFT_MODULE_RESOURCE_BUNDLE_UNAVAILABLE -DXcode -index-include-locals -Xfrontend -debug-time-function-bodies -Xfrontend -debug-time-expression-type-checking -Xfrontend -debug-diagnostic-names -plugin-path @TOOLCHAIN@/usr/lib/swift/host/plugins/testing -enable-experimental-feature DebugDescriptionMacro -sdk @DEVELOPER@/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.2.sdk -target arm64-apple-macos14.0 -g -module-cache-path @BUILD@/out/ModuleCache.noindex -Xfrontend -serialize-debugging-options -enable-testing -index-store-path @BUILD@/out -Xcc -D_LIBCPP_HARDENING_MODE\=_LIBCPP_HARDENING_MODE_DEBUG -swift-version 6 -I @BUILD@/out/Products/Debug -Isystem @DEVELOPER@/Platforms/MacOSX.platform/Developer/usr/lib -F @BUILD@/out/Products/Debug -F @DEVELOPER@/Platforms/MacOSX.platform/Developer/Library/Frameworks -c -j8 -enable-batch-mode -incremental -Xcc -ivfsstatcache -Xcc @BUILD@/out/SDKStatCaches.noindex/macosx27.2-26B118-d56355c2f463f349a93388c94f7bc0b5a7ff82d74745d5ef33555b35c4238456.sdkstatcache -output-file-map @BUILD@/out/Intermediates.noindex/IndexDep.build/Debug/IndexDepKit-t.build/Objects-normal/arm64/IndexDepKit-OutputFileMap.json -save-temps -no-color-diagnostics -explicit-module-build -module-cache-path @BUILD@/out/Intermediates.noindex/SwiftExplicitPrecompiledModules -clang-scanner-module-cache-path @BUILD@/out/ModuleCache.noindex -sdk-module-cache-path @BUILD@/out/SDKExplicitPrecompiledModules -emit-dependencies -emit-module -emit-module-path @BUILD@/out/Intermediates.noindex/IndexDep.build/Debug/IndexDepKit-t.build/Objects-normal/arm64/IndexDepKit.swiftmodule -serialize-diagnostics -dependency-scan-serialize-diagnostics-path @BUILD@/out/Intermediates.noindex/IndexDep.build/Debug/IndexDepKit-t.build/Objects-normal/arm64/IndexDepKit-dependency-scan.dia -validate-clang-modules-once -clang-build-session-file @BUILD@/out/ModuleCache.noindex/Session.modulevalidation -Xcc -fmodules-prune-interval\=86400 -Xcc -fmodules-prune-after\=345600 -package-name indexdep -emit-const-values -const-gather-protocols-list @BUILD@/out/Intermediates.noindex/IndexDep.build/Debug/IndexDepKit-t.build/Objects-normal/arm64/IndexDepKit_const_extract_protocols.json -Xcc -I@BUILD@/out/Products/Debug/include -Xcc -I@BUILD@/out/Intermediates.noindex/IndexDep.build/Debug/IndexDepKit-t.build/DerivedSources-normal/arm64 -Xcc -I@BUILD@/out/Intermediates.noindex/IndexDep.build/Debug/IndexDepKit-t.build/DerivedSources/arm64 -Xcc -I@BUILD@/out/Intermediates.noindex/IndexDep.build/Debug/IndexDepKit-t.build/DerivedSources -Xcc -DSWIFT_PACKAGE -Xcc -DDEBUG\=1 -emit-objc-header -emit-objc-header-path @BUILD@/out/Intermediates.noindex/IndexDep.build/Debug/IndexDepKit-t.build/Objects-normal/arm64/IndexDepKit-Swift.h -working-directory @PARENT@ -experimental-emit-module-separately -disable-cmo
-
 Compiling Clang module _SwiftConcurrencyShims
 Compiling Clang module SwiftShims
-[74 / 158]
 Compile
     cd @PARENT@
     
 
-Emitting module for IndexTool
-Discovering Swift tasks after 'Emitting module for IndexTool'
+Emitting module for index_kit
+[82 / 158] IndexDepKit
+Discovering Swift tasks after 'Emitting module for index_kit'
 Compile
     cd @PARENT@
     
 
 Emitting module for IndexDepKit
 Discovering Swift tasks after 'Emitting module for IndexDepKit'
-Unblock downstream dependents of IndexTool (arm64)
+Unblock downstream dependents of index-kit (arm64)
     cd @PARENT@
-    builtin-Swift-Compilation-Requirements -- @TOOLCHAIN@/usr/bin/swiftc -parse-as-library -module-name IndexTool -Onone @@BUILD@/out/Intermediates.noindex/IndexFixture.build/Debug/IndexTool-p.build/Objects-normal/arm64/IndexTool.SwiftFileList -DSWIFT_PACKAGE -DDEBUG -DXcode -index-include-locals -Xfrontend -debug-time-function-bodies -Xfrontend -debug-time-expression-type-checking -Xfrontend -debug-diagnostic-names -plugin-path @TOOLCHAIN@/usr/lib/swift/host/plugins/testing -enable-experimental-feature DebugDescriptionMacro -sdk @DEVELOPER@/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.2.sdk -target arm64-apple-macos14.0 -g -module-cache-path @BUILD@/out/ModuleCache.noindex -Xfrontend -serialize-debugging-options -enable-testing -index-store-path @BUILD@/out -Xcc -D_LIBCPP_HARDENING_MODE\=_LIBCPP_HARDENING_MODE_DEBUG -swift-version 6 -I @BUILD@/out/Products/Debug -Isystem @DEVELOPER@/Platforms/MacOSX.platform/Developer/usr/lib -F @BUILD@/out/Products/Debug -F @DEVELOPER@/Platforms/MacOSX.platform/Developer/Library/Frameworks -c -j8 -enable-batch-mode -incremental -Xcc -ivfsstatcache -Xcc @BUILD@/out/SDKStatCaches.noindex/macosx27.2-26B118-d56355c2f463f349a93388c94f7bc0b5a7ff82d74745d5ef33555b35c4238456.sdkstatcache -output-file-map @BUILD@/out/Intermediates.noindex/IndexFixture.build/Debug/IndexTool-p.build/Objects-normal/arm64/IndexTool-OutputFileMap.json -save-temps -no-color-diagnostics -explicit-module-build -module-cache-path @BUILD@/out/Intermediates.noindex/SwiftExplicitPrecompiledModules -clang-scanner-module-cache-path @BUILD@/out/ModuleCache.noindex -sdk-module-cache-path @BUILD@/out/SDKExplicitPrecompiledModules -emit-dependencies -emit-module -emit-module-path @BUILD@/out/Intermediates.noindex/IndexFixture.build/Debug/IndexTool-p.build/Objects-normal/arm64/IndexTool.swiftmodule -serialize-diagnostics -dependency-scan-serialize-diagnostics-path @BUILD@/out/Intermediates.noindex/IndexFixture.build/Debug/IndexTool-p.build/Objects-normal/arm64/IndexTool-dependency-scan.dia -validate-clang-modules-once -clang-build-session-file @BUILD@/out/ModuleCache.noindex/Session.modulevalidation -Xcc -fmodules-prune-interval\=86400 -Xcc -fmodules-prune-after\=345600 -package-name index -emit-const-values -const-gather-protocols-list @BUILD@/out/Intermediates.noindex/IndexFixture.build/Debug/IndexTool-p.build/Objects-normal/arm64/IndexTool_const_extract_protocols.json -Xcc -I@BUILD@/out/Products/Debug/include -Xcc -I@BUILD@/out/Intermediates.noindex/IndexFixture.build/Debug/IndexTool-p.build/DerivedSources-normal/arm64 -Xcc -I@BUILD@/out/Intermediates.noindex/IndexFixture.build/Debug/IndexTool-p.build/DerivedSources/arm64 -Xcc -I@BUILD@/out/Intermediates.noindex/IndexFixture.build/Debug/IndexTool-p.build/DerivedSources -Xcc -DSWIFT_PACKAGE -Xcc -DDEBUG\=1 -working-directory @PARENT@ -experimental-emit-module-separately -disable-cmo
+    builtin-Swift-Compilation-Requirements -- @TOOLCHAIN@/usr/bin/swiftc -parse-as-library -module-name index_kit -Onone @@BUILD@/out/Intermediates.noindex/IndexFixture.build/Debug/index-kit-t.build/Objects-normal/arm64/index-kit.SwiftFileList -DSWIFT_PACKAGE -DDEBUG -DSWIFT_MODULE_RESOURCE_BUNDLE_UNAVAILABLE -DXcode -index-include-locals -Xfrontend -debug-time-function-bodies -Xfrontend -debug-time-expression-type-checking -Xfrontend -debug-diagnostic-names -plugin-path @TOOLCHAIN@/usr/lib/swift/host/plugins/testing -enable-experimental-feature DebugDescriptionMacro -sdk @DEVELOPER@/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.2.sdk -target arm64-apple-macos14.0 -g -module-cache-path @BUILD@/out/ModuleCache.noindex -Xfrontend -serialize-debugging-options -enable-testing -index-store-path @BUILD@/out -Xcc -D_LIBCPP_HARDENING_MODE\=_LIBCPP_HARDENING_MODE_DEBUG -swift-version 6 -I @BUILD@/out/Products/Debug -Isystem @DEVELOPER@/Platforms/MacOSX.platform/Developer/usr/lib -F @BUILD@/out/Products/Debug -F @DEVELOPER@/Platforms/MacOSX.platform/Developer/Library/Frameworks -c -j8 -enable-batch-mode -incremental -Xcc -ivfsstatcache -Xcc @BUILD@/out/SDKStatCaches.noindex/macosx27.2-26B118-d56355c2f463f349a93388c94f7bc0b5a7ff82d74745d5ef33555b35c4238456.sdkstatcache -output-file-map @BUILD@/out/Intermediates.noindex/IndexFixture.build/Debug/index-kit-t.build/Objects-normal/arm64/index-kit-OutputFileMap.json -save-temps -no-color-diagnostics -explicit-module-build -module-cache-path @BUILD@/out/Intermediates.noindex/SwiftExplicitPrecompiledModules -clang-scanner-module-cache-path @BUILD@/out/ModuleCache.noindex -sdk-module-cache-path @BUILD@/out/SDKExplicitPrecompiledModules -emit-dependencies -emit-module -emit-module-path @BUILD@/out/Intermediates.noindex/IndexFixture.build/Debug/index-kit-t.build/Objects-normal/arm64/index_kit.swiftmodule -serialize-diagnostics -dependency-scan-serialize-diagnostics-path @BUILD@/out/Intermediates.noindex/IndexFixture.build/Debug/index-kit-t.build/Objects-normal/arm64/index_kit-dependency-scan.dia -validate-clang-modules-once -clang-build-session-file @BUILD@/out/ModuleCache.noindex/Session.modulevalidation -Xcc -fmodules-prune-interval\=86400 -Xcc -fmodules-prune-after\=345600 -package-name index -emit-const-values -const-gather-protocols-list @BUILD@/out/Intermediates.noindex/IndexFixture.build/Debug/index-kit-t.build/Objects-normal/arm64/index-kit_const_extract_protocols.json -Xcc -I@BUILD@/out/Products/Debug/include -Xcc -I@BUILD@/out/Intermediates.noindex/IndexFixture.build/Debug/index-kit-t.build/DerivedSources-normal/arm64 -Xcc -I@BUILD@/out/Intermediates.noindex/IndexFixture.build/Debug/index-kit-t.build/DerivedSources/arm64 -Xcc -I@BUILD@/out/Intermediates.noindex/IndexFixture.build/Debug/index-kit-t.build/DerivedSources -Xcc -DSWIFT_PACKAGE -Xcc -DDEBUG\=1 -emit-objc-header -emit-objc-header-path @BUILD@/out/Intermediates.noindex/IndexFixture.build/Debug/index-kit-t.build/Objects-normal/arm64/index-kit-Swift.h -working-directory @PARENT@ -experimental-emit-module-separately -disable-cmo
 
 Unblock downstream dependents of IndexDepKit (arm64)
     cd @PARENT@
     builtin-Swift-Compilation-Requirements -- @TOOLCHAIN@/usr/bin/swiftc -parse-as-library -module-name IndexDepKit -Onone @@BUILD@/out/Intermediates.noindex/IndexDep.build/Debug/IndexDepKit-t.build/Objects-normal/arm64/IndexDepKit.SwiftFileList -DSWIFT_PACKAGE -DDEBUG -DSWIFT_MODULE_RESOURCE_BUNDLE_UNAVAILABLE -DXcode -index-include-locals -Xfrontend -debug-time-function-bodies -Xfrontend -debug-time-expression-type-checking -Xfrontend -debug-diagnostic-names -plugin-path @TOOLCHAIN@/usr/lib/swift/host/plugins/testing -enable-experimental-feature DebugDescriptionMacro -sdk @DEVELOPER@/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.2.sdk -target arm64-apple-macos14.0 -g -module-cache-path @BUILD@/out/ModuleCache.noindex -Xfrontend -serialize-debugging-options -enable-testing -index-store-path @BUILD@/out -Xcc -D_LIBCPP_HARDENING_MODE\=_LIBCPP_HARDENING_MODE_DEBUG -swift-version 6 -I @BUILD@/out/Products/Debug -Isystem @DEVELOPER@/Platforms/MacOSX.platform/Developer/usr/lib -F @BUILD@/out/Products/Debug -F @DEVELOPER@/Platforms/MacOSX.platform/Developer/Library/Frameworks -c -j8 -enable-batch-mode -incremental -Xcc -ivfsstatcache -Xcc @BUILD@/out/SDKStatCaches.noindex/macosx27.2-26B118-d56355c2f463f349a93388c94f7bc0b5a7ff82d74745d5ef33555b35c4238456.sdkstatcache -output-file-map @BUILD@/out/Intermediates.noindex/IndexDep.build/Debug/IndexDepKit-t.build/Objects-normal/arm64/IndexDepKit-OutputFileMap.json -save-temps -no-color-diagnostics -explicit-module-build -module-cache-path @BUILD@/out/Intermediates.noindex/SwiftExplicitPrecompiledModules -clang-scanner-module-cache-path @BUILD@/out/ModuleCache.noindex -sdk-module-cache-path @BUILD@/out/SDKExplicitPrecompiledModules -emit-dependencies -emit-module -emit-module-path @BUILD@/out/Intermediates.noindex/IndexDep.build/Debug/IndexDepKit-t.build/Objects-normal/arm64/IndexDepKit.swiftmodule -serialize-diagnostics -dependency-scan-serialize-diagnostics-path @BUILD@/out/Intermediates.noindex/IndexDep.build/Debug/IndexDepKit-t.build/Objects-normal/arm64/IndexDepKit-dependency-scan.dia -validate-clang-modules-once -clang-build-session-file @BUILD@/out/ModuleCache.noindex/Session.modulevalidation -Xcc -fmodules-prune-interval\=86400 -Xcc -fmodules-prune-after\=345600 -package-name indexdep -emit-const-values -const-gather-protocols-list @BUILD@/out/Intermediates.noindex/IndexDep.build/Debug/IndexDepKit-t.build/Objects-normal/arm64/IndexDepKit_const_extract_protocols.json -Xcc -I@BUILD@/out/Products/Debug/include -Xcc -I@BUILD@/out/Intermediates.noindex/IndexDep.build/Debug/IndexDepKit-t.build/DerivedSources-normal/arm64 -Xcc -I@BUILD@/out/Intermediates.noindex/IndexDep.build/Debug/IndexDepKit-t.build/DerivedSources/arm64 -Xcc -I@BUILD@/out/Intermediates.noindex/IndexDep.build/Debug/IndexDepKit-t.build/DerivedSources -Xcc -DSWIFT_PACKAGE -Xcc -DDEBUG\=1 -emit-objc-header -emit-objc-header-path @BUILD@/out/Intermediates.noindex/IndexDep.build/Debug/IndexDepKit-t.build/Objects-normal/arm64/IndexDepKit-Swift.h -working-directory @PARENT@ -experimental-emit-module-separately -disable-cmo
 
 Merge Objective-C generated interface headers
-    cd @DEP@
-    builtin-swiftHeaderTool -arch arm64 @BUILD@/out/Intermediates.noindex/IndexDep.build/Debug/IndexDepKit-t.build/Objects-normal/arm64/IndexDepKit-Swift.h -o @BUILD@/out/Intermediates.noindex/GeneratedModuleMaps/IndexDepKit-Swift.h
-
-Compile
-    cd @PARENT@
-    
-
-Emitting module for index_kit
-Discovering Swift tasks after 'Emitting module for index_kit'
-Copy IndexDepKit.swiftmodule (arm64)
-    cd @DEP@
-    builtin-copy -exclude .DS_Store -exclude CVS -exclude .svn -exclude .git -exclude .hg -resolve-src-symlinks -rename @BUILD@/out/Intermediates.noindex/IndexDep.build/Debug/IndexDepKit-t.build/Objects-normal/arm64/IndexDepKit.swiftmodule @BUILD@/out/Products/Debug/IndexDepKit.swiftmodule/arm64-apple-macos.swiftmodule
-
-Copy IndexDepKit.swiftdoc (arm64)
-    cd @DEP@
-    builtin-copy -exclude .DS_Store -exclude CVS -exclude .svn -exclude .git -exclude .hg -resolve-src-symlinks -rename @BUILD@/out/Intermediates.noindex/IndexDep.build/Debug/IndexDepKit-t.build/Objects-normal/arm64/IndexDepKit.swiftdoc @BUILD@/out/Products/Debug/IndexDepKit.swiftmodule/arm64-apple-macos.swiftdoc
-
-Unblock downstream dependents of index-kit (arm64)
-    cd @PARENT@
-    builtin-Swift-Compilation-Requirements -- @TOOLCHAIN@/usr/bin/swiftc -parse-as-library -module-name index_kit -Onone @@BUILD@/out/Intermediates.noindex/IndexFixture.build/Debug/index-kit-t.build/Objects-normal/arm64/index-kit.SwiftFileList -DSWIFT_PACKAGE -DDEBUG -DSWIFT_MODULE_RESOURCE_BUNDLE_UNAVAILABLE -DXcode -index-include-locals -Xfrontend -debug-time-function-bodies -Xfrontend -debug-time-expression-type-checking -Xfrontend -debug-diagnostic-names -plugin-path @TOOLCHAIN@/usr/lib/swift/host/plugins/testing -enable-experimental-feature DebugDescriptionMacro -sdk @DEVELOPER@/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.2.sdk -target arm64-apple-macos14.0 -g -module-cache-path @BUILD@/out/ModuleCache.noindex -Xfrontend -serialize-debugging-options -enable-testing -index-store-path @BUILD@/out -Xcc -D_LIBCPP_HARDENING_MODE\=_LIBCPP_HARDENING_MODE_DEBUG -swift-version 6 -I @BUILD@/out/Products/Debug -Isystem @DEVELOPER@/Platforms/MacOSX.platform/Developer/usr/lib -F @BUILD@/out/Products/Debug -F @DEVELOPER@/Platforms/MacOSX.platform/Developer/Library/Frameworks -c -j8 -enable-batch-mode -incremental -Xcc -ivfsstatcache -Xcc @BUILD@/out/SDKStatCaches.noindex/macosx27.2-26B118-d56355c2f463f349a93388c94f7bc0b5a7ff82d74745d5ef33555b35c4238456.sdkstatcache -output-file-map @BUILD@/out/Intermediates.noindex/IndexFixture.build/Debug/index-kit-t.build/Objects-normal/arm64/index-kit-OutputFileMap.json -save-temps -no-color-diagnostics -explicit-module-build -module-cache-path @BUILD@/out/Intermediates.noindex/SwiftExplicitPrecompiledModules -clang-scanner-module-cache-path @BUILD@/out/ModuleCache.noindex -sdk-module-cache-path @BUILD@/out/SDKExplicitPrecompiledModules -emit-dependencies -emit-module -emit-module-path @BUILD@/out/Intermediates.noindex/IndexFixture.build/Debug/index-kit-t.build/Objects-normal/arm64/index_kit.swiftmodule -serialize-diagnostics -dependency-scan-serialize-diagnostics-path @BUILD@/out/Intermediates.noindex/IndexFixture.build/Debug/index-kit-t.build/Objects-normal/arm64/index_kit-dependency-scan.dia -validate-clang-modules-once -clang-build-session-file @BUILD@/out/ModuleCache.noindex/Session.modulevalidation -Xcc -fmodules-prune-interval\=86400 -Xcc -fmodules-prune-after\=345600 -package-name index -emit-const-values -const-gather-protocols-list @BUILD@/out/Intermediates.noindex/IndexFixture.build/Debug/index-kit-t.build/Objects-normal/arm64/index-kit_const_extract_protocols.json -Xcc -I@BUILD@/out/Products/Debug/include -Xcc -I@BUILD@/out/Intermediates.noindex/IndexFixture.build/Debug/index-kit-t.build/DerivedSources-normal/arm64 -Xcc -I@BUILD@/out/Intermediates.noindex/IndexFixture.build/Debug/index-kit-t.build/DerivedSources/arm64 -Xcc -I@BUILD@/out/Intermediates.noindex/IndexFixture.build/Debug/index-kit-t.build/DerivedSources -Xcc -DSWIFT_PACKAGE -Xcc -DDEBUG\=1 -emit-objc-header -emit-objc-header-path @BUILD@/out/Intermediates.noindex/IndexFixture.build/Debug/index-kit-t.build/Objects-normal/arm64/index-kit-Swift.h -working-directory @PARENT@ -experimental-emit-module-separately -disable-cmo
-
-Copy IndexDepKit.abi.json (arm64)
-    cd @DEP@
-    builtin-copy -exclude .DS_Store -exclude CVS -exclude .svn -exclude .git -exclude .hg -resolve-src-symlinks -rename @BUILD@/out/Intermediates.noindex/IndexDep.build/Debug/IndexDepKit-t.build/Objects-normal/arm64/IndexDepKit.abi.json @BUILD@/out/Products/Debug/IndexDepKit.swiftmodule/arm64-apple-macos.abi.json
-
-Merge Objective-C generated interface headers
     cd @ROOT@
     builtin-swiftHeaderTool -arch arm64 @BUILD@/out/Intermediates.noindex/IndexFixture.build/Debug/index-kit-t.build/Objects-normal/arm64/index-kit-Swift.h -o @BUILD@/out/Intermediates.noindex/GeneratedModuleMaps/index-kit-Swift.h
-
-Copy IndexDepKit.swiftsourceinfo (arm64)
-    cd @DEP@
-    builtin-copy -exclude .DS_Store -exclude CVS -exclude .svn -exclude .git -exclude .hg -resolve-src-symlinks -rename @BUILD@/out/Intermediates.noindex/IndexDep.build/Debug/IndexDepKit-t.build/Objects-normal/arm64/IndexDepKit.swiftsourceinfo @BUILD@/out/Products/Debug/IndexDepKit.swiftmodule/Project/arm64-apple-macos.swiftsourceinfo
 
 Copy index_kit.swiftmodule (arm64)
     cd @ROOT@
     builtin-copy -exclude .DS_Store -exclude CVS -exclude .svn -exclude .git -exclude .hg -resolve-src-symlinks -rename @BUILD@/out/Intermediates.noindex/IndexFixture.build/Debug/index-kit-t.build/Objects-normal/arm64/index_kit.swiftmodule @BUILD@/out/Products/Debug/index_kit.swiftmodule/arm64-apple-macos.swiftmodule
 
+Compile
+    cd @PARENT@
+    
+
+Emitting module for IndexTool
+Discovering Swift tasks after 'Emitting module for IndexTool'
 Copy index_kit.swiftdoc (arm64)
     cd @ROOT@
     builtin-copy -exclude .DS_Store -exclude CVS -exclude .svn -exclude .git -exclude .hg -resolve-src-symlinks -rename @BUILD@/out/Intermediates.noindex/IndexFixture.build/Debug/index-kit-t.build/Objects-normal/arm64/index_kit.swiftdoc @BUILD@/out/Products/Debug/index_kit.swiftmodule/arm64-apple-macos.swiftdoc
@@ -375,22 +351,62 @@ Copy index_kit.swiftsourceinfo (arm64)
     cd @ROOT@
     builtin-copy -exclude .DS_Store -exclude CVS -exclude .svn -exclude .git -exclude .hg -resolve-src-symlinks -rename @BUILD@/out/Intermediates.noindex/IndexFixture.build/Debug/index-kit-t.build/Objects-normal/arm64/index_kit.swiftsourceinfo @BUILD@/out/Products/Debug/index_kit.swiftmodule/Project/arm64-apple-macos.swiftsourceinfo
 
-Compile Kit.swift
+Unblock downstream dependents of IndexTool (arm64)
     cd @PARENT@
-    builtin-SwiftPerFileCompile Kit.swift
+    builtin-Swift-Compilation-Requirements -- @TOOLCHAIN@/usr/bin/swiftc -parse-as-library -module-name IndexTool -Onone @@BUILD@/out/Intermediates.noindex/IndexFixture.build/Debug/IndexTool-p.build/Objects-normal/arm64/IndexTool.SwiftFileList -DSWIFT_PACKAGE -DDEBUG -DXcode -index-include-locals -Xfrontend -debug-time-function-bodies -Xfrontend -debug-time-expression-type-checking -Xfrontend -debug-diagnostic-names -plugin-path @TOOLCHAIN@/usr/lib/swift/host/plugins/testing -enable-experimental-feature DebugDescriptionMacro -sdk @DEVELOPER@/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.2.sdk -target arm64-apple-macos14.0 -g -module-cache-path @BUILD@/out/ModuleCache.noindex -Xfrontend -serialize-debugging-options -enable-testing -index-store-path @BUILD@/out -Xcc -D_LIBCPP_HARDENING_MODE\=_LIBCPP_HARDENING_MODE_DEBUG -swift-version 6 -I @BUILD@/out/Products/Debug -Isystem @DEVELOPER@/Platforms/MacOSX.platform/Developer/usr/lib -F @BUILD@/out/Products/Debug -F @DEVELOPER@/Platforms/MacOSX.platform/Developer/Library/Frameworks -c -j8 -enable-batch-mode -incremental -Xcc -ivfsstatcache -Xcc @BUILD@/out/SDKStatCaches.noindex/macosx27.2-26B118-d56355c2f463f349a93388c94f7bc0b5a7ff82d74745d5ef33555b35c4238456.sdkstatcache -output-file-map @BUILD@/out/Intermediates.noindex/IndexFixture.build/Debug/IndexTool-p.build/Objects-normal/arm64/IndexTool-OutputFileMap.json -save-temps -no-color-diagnostics -explicit-module-build -module-cache-path @BUILD@/out/Intermediates.noindex/SwiftExplicitPrecompiledModules -clang-scanner-module-cache-path @BUILD@/out/ModuleCache.noindex -sdk-module-cache-path @BUILD@/out/SDKExplicitPrecompiledModules -emit-dependencies -emit-module -emit-module-path @BUILD@/out/Intermediates.noindex/IndexFixture.build/Debug/IndexTool-p.build/Objects-normal/arm64/IndexTool.swiftmodule -serialize-diagnostics -dependency-scan-serialize-diagnostics-path @BUILD@/out/Intermediates.noindex/IndexFixture.build/Debug/IndexTool-p.build/Objects-normal/arm64/IndexTool-dependency-scan.dia -validate-clang-modules-once -clang-build-session-file @BUILD@/out/ModuleCache.noindex/Session.modulevalidation -Xcc -fmodules-prune-interval\=86400 -Xcc -fmodules-prune-after\=345600 -package-name index -emit-const-values -const-gather-protocols-list @BUILD@/out/Intermediates.noindex/IndexFixture.build/Debug/IndexTool-p.build/Objects-normal/arm64/IndexTool_const_extract_protocols.json -Xcc -I@BUILD@/out/Products/Debug/include -Xcc -I@BUILD@/out/Intermediates.noindex/IndexFixture.build/Debug/IndexTool-p.build/DerivedSources-normal/arm64 -Xcc -I@BUILD@/out/Intermediates.noindex/IndexFixture.build/Debug/IndexTool-p.build/DerivedSources/arm64 -Xcc -I@BUILD@/out/Intermediates.noindex/IndexFixture.build/Debug/IndexTool-p.build/DerivedSources -Xcc -DSWIFT_PACKAGE -Xcc -DDEBUG\=1 -working-directory @PARENT@ -experimental-emit-module-separately -disable-cmo
 
-Compiling Kit.swift
+Merge Objective-C generated interface headers
+    cd @DEP@
+    builtin-swiftHeaderTool -arch arm64 @BUILD@/out/Intermediates.noindex/IndexDep.build/Debug/IndexDepKit-t.build/Objects-normal/arm64/IndexDepKit-Swift.h -o @BUILD@/out/Intermediates.noindex/GeneratedModuleMaps/IndexDepKit-Swift.h
+
+Copy IndexDepKit.swiftdoc (arm64)
+    cd @DEP@
+    builtin-copy -exclude .DS_Store -exclude CVS -exclude .svn -exclude .git -exclude .hg -resolve-src-symlinks -rename @BUILD@/out/Intermediates.noindex/IndexDep.build/Debug/IndexDepKit-t.build/Objects-normal/arm64/IndexDepKit.swiftdoc @BUILD@/out/Products/Debug/IndexDepKit.swiftmodule/arm64-apple-macos.swiftdoc
+
+Copy IndexDepKit.swiftmodule (arm64)
+    cd @DEP@
+    builtin-copy -exclude .DS_Store -exclude CVS -exclude .svn -exclude .git -exclude .hg -resolve-src-symlinks -rename @BUILD@/out/Intermediates.noindex/IndexDep.build/Debug/IndexDepKit-t.build/Objects-normal/arm64/IndexDepKit.swiftmodule @BUILD@/out/Products/Debug/IndexDepKit.swiftmodule/arm64-apple-macos.swiftmodule
+
+Copy IndexDepKit.swiftsourceinfo (arm64)
+    cd @DEP@
+    builtin-copy -exclude .DS_Store -exclude CVS -exclude .svn -exclude .git -exclude .hg -resolve-src-symlinks -rename @BUILD@/out/Intermediates.noindex/IndexDep.build/Debug/IndexDepKit-t.build/Objects-normal/arm64/IndexDepKit.swiftsourceinfo @BUILD@/out/Products/Debug/IndexDepKit.swiftmodule/Project/arm64-apple-macos.swiftsourceinfo
+
+Copy IndexDepKit.abi.json (arm64)
+    cd @DEP@
+    builtin-copy -exclude .DS_Store -exclude CVS -exclude .svn -exclude .git -exclude .hg -resolve-src-symlinks -rename @BUILD@/out/Intermediates.noindex/IndexDep.build/Debug/IndexDepKit-t.build/Objects-normal/arm64/IndexDepKit.abi.json @BUILD@/out/Products/Debug/IndexDepKit.swiftmodule/arm64-apple-macos.abi.json
+
+Compile Relay.swift
+    cd @PARENT@
+    builtin-SwiftPerFileCompile Relay.swift
+
+Compiling Relay.swift
 [96 / 159] index-kit
-Discovering Swift tasks after 'Compiling Kit.swift'
+Compile DepKit.swift
+    cd @PARENT@
+    builtin-SwiftPerFileCompile DepKit.swift
+
+Compiling DepKit.swift
+Discovering Swift tasks after 'Compiling Relay.swift'
+Discovering Swift tasks after 'Compiling DepKit.swift'
 Compile Tool.swift
     cd @PARENT@
     builtin-SwiftPerFileCompile Tool.swift
 
 Compiling Tool.swift
+Compile Kit.swift
+    cd @PARENT@
+    builtin-SwiftPerFileCompile Kit.swift
+
+Compiling Kit.swift
 Discovering Swift tasks after 'Compiling Tool.swift'
+Discovering Swift tasks after 'Compiling Kit.swift'
 Compile IndexTool (arm64)
     cd @PARENT@
     builtin-Swift-Compilation -- @TOOLCHAIN@/usr/bin/swiftc -parse-as-library -module-name IndexTool -Onone @@BUILD@/out/Intermediates.noindex/IndexFixture.build/Debug/IndexTool-p.build/Objects-normal/arm64/IndexTool.SwiftFileList -DSWIFT_PACKAGE -DDEBUG -DXcode -index-include-locals -Xfrontend -debug-time-function-bodies -Xfrontend -debug-time-expression-type-checking -Xfrontend -debug-diagnostic-names -plugin-path @TOOLCHAIN@/usr/lib/swift/host/plugins/testing -enable-experimental-feature DebugDescriptionMacro -sdk @DEVELOPER@/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.2.sdk -target arm64-apple-macos14.0 -g -module-cache-path @BUILD@/out/ModuleCache.noindex -Xfrontend -serialize-debugging-options -enable-testing -index-store-path @BUILD@/out -Xcc -D_LIBCPP_HARDENING_MODE\=_LIBCPP_HARDENING_MODE_DEBUG -swift-version 6 -I @BUILD@/out/Products/Debug -Isystem @DEVELOPER@/Platforms/MacOSX.platform/Developer/usr/lib -F @BUILD@/out/Products/Debug -F @DEVELOPER@/Platforms/MacOSX.platform/Developer/Library/Frameworks -c -j8 -enable-batch-mode -incremental -Xcc -ivfsstatcache -Xcc @BUILD@/out/SDKStatCaches.noindex/macosx27.2-26B118-d56355c2f463f349a93388c94f7bc0b5a7ff82d74745d5ef33555b35c4238456.sdkstatcache -output-file-map @BUILD@/out/Intermediates.noindex/IndexFixture.build/Debug/IndexTool-p.build/Objects-normal/arm64/IndexTool-OutputFileMap.json -save-temps -no-color-diagnostics -explicit-module-build -module-cache-path @BUILD@/out/Intermediates.noindex/SwiftExplicitPrecompiledModules -clang-scanner-module-cache-path @BUILD@/out/ModuleCache.noindex -sdk-module-cache-path @BUILD@/out/SDKExplicitPrecompiledModules -emit-dependencies -emit-module -emit-module-path @BUILD@/out/Intermediates.noindex/IndexFixture.build/Debug/IndexTool-p.build/Objects-normal/arm64/IndexTool.swiftmodule -serialize-diagnostics -dependency-scan-serialize-diagnostics-path @BUILD@/out/Intermediates.noindex/IndexFixture.build/Debug/IndexTool-p.build/Objects-normal/arm64/IndexTool-dependency-scan.dia -validate-clang-modules-once -clang-build-session-file @BUILD@/out/ModuleCache.noindex/Session.modulevalidation -Xcc -fmodules-prune-interval\=86400 -Xcc -fmodules-prune-after\=345600 -package-name index -emit-const-values -const-gather-protocols-list @BUILD@/out/Intermediates.noindex/IndexFixture.build/Debug/IndexTool-p.build/Objects-normal/arm64/IndexTool_const_extract_protocols.json -Xcc -I@BUILD@/out/Products/Debug/include -Xcc -I@BUILD@/out/Intermediates.noindex/IndexFixture.build/Debug/IndexTool-p.build/DerivedSources-normal/arm64 -Xcc -I@BUILD@/out/Intermediates.noindex/IndexFixture.build/Debug/IndexTool-p.build/DerivedSources/arm64 -Xcc -I@BUILD@/out/Intermediates.noindex/IndexFixture.build/Debug/IndexTool-p.build/DerivedSources -Xcc -DSWIFT_PACKAGE -Xcc -DDEBUG\=1 -working-directory @PARENT@ -experimental-emit-module-separately -disable-cmo
+
+Compile index-kit (arm64)
+    cd @PARENT@
+    builtin-Swift-Compilation -- @TOOLCHAIN@/usr/bin/swiftc -parse-as-library -module-name index_kit -Onone @@BUILD@/out/Intermediates.noindex/IndexFixture.build/Debug/index-kit-t.build/Objects-normal/arm64/index-kit.SwiftFileList -DSWIFT_PACKAGE -DDEBUG -DSWIFT_MODULE_RESOURCE_BUNDLE_UNAVAILABLE -DXcode -index-include-locals -Xfrontend -debug-time-function-bodies -Xfrontend -debug-time-expression-type-checking -Xfrontend -debug-diagnostic-names -plugin-path @TOOLCHAIN@/usr/lib/swift/host/plugins/testing -enable-experimental-feature DebugDescriptionMacro -sdk @DEVELOPER@/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.2.sdk -target arm64-apple-macos14.0 -g -module-cache-path @BUILD@/out/ModuleCache.noindex -Xfrontend -serialize-debugging-options -enable-testing -index-store-path @BUILD@/out -Xcc -D_LIBCPP_HARDENING_MODE\=_LIBCPP_HARDENING_MODE_DEBUG -swift-version 6 -I @BUILD@/out/Products/Debug -Isystem @DEVELOPER@/Platforms/MacOSX.platform/Developer/usr/lib -F @BUILD@/out/Products/Debug -F @DEVELOPER@/Platforms/MacOSX.platform/Developer/Library/Frameworks -c -j8 -enable-batch-mode -incremental -Xcc -ivfsstatcache -Xcc @BUILD@/out/SDKStatCaches.noindex/macosx27.2-26B118-d56355c2f463f349a93388c94f7bc0b5a7ff82d74745d5ef33555b35c4238456.sdkstatcache -output-file-map @BUILD@/out/Intermediates.noindex/IndexFixture.build/Debug/index-kit-t.build/Objects-normal/arm64/index-kit-OutputFileMap.json -save-temps -no-color-diagnostics -explicit-module-build -module-cache-path @BUILD@/out/Intermediates.noindex/SwiftExplicitPrecompiledModules -clang-scanner-module-cache-path @BUILD@/out/ModuleCache.noindex -sdk-module-cache-path @BUILD@/out/SDKExplicitPrecompiledModules -emit-dependencies -emit-module -emit-module-path @BUILD@/out/Intermediates.noindex/IndexFixture.build/Debug/index-kit-t.build/Objects-normal/arm64/index_kit.swiftmodule -serialize-diagnostics -dependency-scan-serialize-diagnostics-path @BUILD@/out/Intermediates.noindex/IndexFixture.build/Debug/index-kit-t.build/Objects-normal/arm64/index_kit-dependency-scan.dia -validate-clang-modules-once -clang-build-session-file @BUILD@/out/ModuleCache.noindex/Session.modulevalidation -Xcc -fmodules-prune-interval\=86400 -Xcc -fmodules-prune-after\=345600 -package-name index -emit-const-values -const-gather-protocols-list @BUILD@/out/Intermediates.noindex/IndexFixture.build/Debug/index-kit-t.build/Objects-normal/arm64/index-kit_const_extract_protocols.json -Xcc -I@BUILD@/out/Products/Debug/include -Xcc -I@BUILD@/out/Intermediates.noindex/IndexFixture.build/Debug/index-kit-t.build/DerivedSources-normal/arm64 -Xcc -I@BUILD@/out/Intermediates.noindex/IndexFixture.build/Debug/index-kit-t.build/DerivedSources/arm64 -Xcc -I@BUILD@/out/Intermediates.noindex/IndexFixture.build/Debug/index-kit-t.build/DerivedSources -Xcc -DSWIFT_PACKAGE -Xcc -DDEBUG\=1 -emit-objc-header -emit-objc-header-path @BUILD@/out/Intermediates.noindex/IndexFixture.build/Debug/index-kit-t.build/Objects-normal/arm64/index-kit-Swift.h -working-directory @PARENT@ -experimental-emit-module-separately -disable-cmo
 
 Compile Payload.swift
     cd @PARENT@
@@ -398,22 +414,6 @@ Compile Payload.swift
 
 Compiling Payload.swift
 Discovering Swift tasks after 'Compiling Payload.swift'
-Compile Relay.swift
-    cd @PARENT@
-    builtin-SwiftPerFileCompile Relay.swift
-
-Compiling Relay.swift
-Discovering Swift tasks after 'Compiling Relay.swift'
-Compile index-kit (arm64)
-    cd @PARENT@
-    builtin-Swift-Compilation -- @TOOLCHAIN@/usr/bin/swiftc -parse-as-library -module-name index_kit -Onone @@BUILD@/out/Intermediates.noindex/IndexFixture.build/Debug/index-kit-t.build/Objects-normal/arm64/index-kit.SwiftFileList -DSWIFT_PACKAGE -DDEBUG -DSWIFT_MODULE_RESOURCE_BUNDLE_UNAVAILABLE -DXcode -index-include-locals -Xfrontend -debug-time-function-bodies -Xfrontend -debug-time-expression-type-checking -Xfrontend -debug-diagnostic-names -plugin-path @TOOLCHAIN@/usr/lib/swift/host/plugins/testing -enable-experimental-feature DebugDescriptionMacro -sdk @DEVELOPER@/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.2.sdk -target arm64-apple-macos14.0 -g -module-cache-path @BUILD@/out/ModuleCache.noindex -Xfrontend -serialize-debugging-options -enable-testing -index-store-path @BUILD@/out -Xcc -D_LIBCPP_HARDENING_MODE\=_LIBCPP_HARDENING_MODE_DEBUG -swift-version 6 -I @BUILD@/out/Products/Debug -Isystem @DEVELOPER@/Platforms/MacOSX.platform/Developer/usr/lib -F @BUILD@/out/Products/Debug -F @DEVELOPER@/Platforms/MacOSX.platform/Developer/Library/Frameworks -c -j8 -enable-batch-mode -incremental -Xcc -ivfsstatcache -Xcc @BUILD@/out/SDKStatCaches.noindex/macosx27.2-26B118-d56355c2f463f349a93388c94f7bc0b5a7ff82d74745d5ef33555b35c4238456.sdkstatcache -output-file-map @BUILD@/out/Intermediates.noindex/IndexFixture.build/Debug/index-kit-t.build/Objects-normal/arm64/index-kit-OutputFileMap.json -save-temps -no-color-diagnostics -explicit-module-build -module-cache-path @BUILD@/out/Intermediates.noindex/SwiftExplicitPrecompiledModules -clang-scanner-module-cache-path @BUILD@/out/ModuleCache.noindex -sdk-module-cache-path @BUILD@/out/SDKExplicitPrecompiledModules -emit-dependencies -emit-module -emit-module-path @BUILD@/out/Intermediates.noindex/IndexFixture.build/Debug/index-kit-t.build/Objects-normal/arm64/index_kit.swiftmodule -serialize-diagnostics -dependency-scan-serialize-diagnostics-path @BUILD@/out/Intermediates.noindex/IndexFixture.build/Debug/index-kit-t.build/Objects-normal/arm64/index_kit-dependency-scan.dia -validate-clang-modules-once -clang-build-session-file @BUILD@/out/ModuleCache.noindex/Session.modulevalidation -Xcc -fmodules-prune-interval\=86400 -Xcc -fmodules-prune-after\=345600 -package-name index -emit-const-values -const-gather-protocols-list @BUILD@/out/Intermediates.noindex/IndexFixture.build/Debug/index-kit-t.build/Objects-normal/arm64/index-kit_const_extract_protocols.json -Xcc -I@BUILD@/out/Products/Debug/include -Xcc -I@BUILD@/out/Intermediates.noindex/IndexFixture.build/Debug/index-kit-t.build/DerivedSources-normal/arm64 -Xcc -I@BUILD@/out/Intermediates.noindex/IndexFixture.build/Debug/index-kit-t.build/DerivedSources/arm64 -Xcc -I@BUILD@/out/Intermediates.noindex/IndexFixture.build/Debug/index-kit-t.build/DerivedSources -Xcc -DSWIFT_PACKAGE -Xcc -DDEBUG\=1 -emit-objc-header -emit-objc-header-path @BUILD@/out/Intermediates.noindex/IndexFixture.build/Debug/index-kit-t.build/Objects-normal/arm64/index-kit-Swift.h -working-directory @PARENT@ -experimental-emit-module-separately -disable-cmo
-
-Compile DepKit.swift
-    cd @PARENT@
-    builtin-SwiftPerFileCompile DepKit.swift
-
-Compiling DepKit.swift
-Discovering Swift tasks after 'Compiling DepKit.swift'
 Compile IndexDepKit (arm64)
     cd @PARENT@
     builtin-Swift-Compilation -- @TOOLCHAIN@/usr/bin/swiftc -parse-as-library -module-name IndexDepKit -Onone @@BUILD@/out/Intermediates.noindex/IndexDep.build/Debug/IndexDepKit-t.build/Objects-normal/arm64/IndexDepKit.SwiftFileList -DSWIFT_PACKAGE -DDEBUG -DSWIFT_MODULE_RESOURCE_BUNDLE_UNAVAILABLE -DXcode -index-include-locals -Xfrontend -debug-time-function-bodies -Xfrontend -debug-time-expression-type-checking -Xfrontend -debug-diagnostic-names -plugin-path @TOOLCHAIN@/usr/lib/swift/host/plugins/testing -enable-experimental-feature DebugDescriptionMacro -sdk @DEVELOPER@/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.2.sdk -target arm64-apple-macos14.0 -g -module-cache-path @BUILD@/out/ModuleCache.noindex -Xfrontend -serialize-debugging-options -enable-testing -index-store-path @BUILD@/out -Xcc -D_LIBCPP_HARDENING_MODE\=_LIBCPP_HARDENING_MODE_DEBUG -swift-version 6 -I @BUILD@/out/Products/Debug -Isystem @DEVELOPER@/Platforms/MacOSX.platform/Developer/usr/lib -F @BUILD@/out/Products/Debug -F @DEVELOPER@/Platforms/MacOSX.platform/Developer/Library/Frameworks -c -j8 -enable-batch-mode -incremental -Xcc -ivfsstatcache -Xcc @BUILD@/out/SDKStatCaches.noindex/macosx27.2-26B118-d56355c2f463f349a93388c94f7bc0b5a7ff82d74745d5ef33555b35c4238456.sdkstatcache -output-file-map @BUILD@/out/Intermediates.noindex/IndexDep.build/Debug/IndexDepKit-t.build/Objects-normal/arm64/IndexDepKit-OutputFileMap.json -save-temps -no-color-diagnostics -explicit-module-build -module-cache-path @BUILD@/out/Intermediates.noindex/SwiftExplicitPrecompiledModules -clang-scanner-module-cache-path @BUILD@/out/ModuleCache.noindex -sdk-module-cache-path @BUILD@/out/SDKExplicitPrecompiledModules -emit-dependencies -emit-module -emit-module-path @BUILD@/out/Intermediates.noindex/IndexDep.build/Debug/IndexDepKit-t.build/Objects-normal/arm64/IndexDepKit.swiftmodule -serialize-diagnostics -dependency-scan-serialize-diagnostics-path @BUILD@/out/Intermediates.noindex/IndexDep.build/Debug/IndexDepKit-t.build/Objects-normal/arm64/IndexDepKit-dependency-scan.dia -validate-clang-modules-once -clang-build-session-file @BUILD@/out/ModuleCache.noindex/Session.modulevalidation -Xcc -fmodules-prune-interval\=86400 -Xcc -fmodules-prune-after\=345600 -package-name indexdep -emit-const-values -const-gather-protocols-list @BUILD@/out/Intermediates.noindex/IndexDep.build/Debug/IndexDepKit-t.build/Objects-normal/arm64/IndexDepKit_const_extract_protocols.json -Xcc -I@BUILD@/out/Products/Debug/include -Xcc -I@BUILD@/out/Intermediates.noindex/IndexDep.build/Debug/IndexDepKit-t.build/DerivedSources-normal/arm64 -Xcc -I@BUILD@/out/Intermediates.noindex/IndexDep.build/Debug/IndexDepKit-t.build/DerivedSources/arm64 -Xcc -I@BUILD@/out/Intermediates.noindex/IndexDep.build/Debug/IndexDepKit-t.build/DerivedSources -Xcc -DSWIFT_PACKAGE -Xcc -DDEBUG\=1 -emit-objc-header -emit-objc-header-path @BUILD@/out/Intermediates.noindex/IndexDep.build/Debug/IndexDepKit-t.build/Objects-normal/arm64/IndexDepKit-Swift.h -working-directory @PARENT@ -experimental-emit-module-separately -disable-cmo
@@ -422,29 +422,29 @@ Link index-kit.o (arm64)
     cd @ROOT@
     @TOOLCHAIN@/usr/bin/clang -Xlinker -reproducible -target arm64-apple-macos14.0 -r -isysroot @DEVELOPER@/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.2.sdk -O0 -Xlinker -no_warn_duplicate_libraries -F@BUILD@/out/Intermediates.noindex/EagerLinkingTBDs/Debug -F@BUILD@/out/Products/Debug -iframework @DEVELOPER@/Platforms/MacOSX.platform/Developer/Library/Frameworks -filelist @BUILD@/out/Intermediates.noindex/IndexFixture.build/Debug/index-kit-t.build/Objects-normal/arm64/index-kit.LinkFileList -nostdlib -Xlinker -object_path_lto -Xlinker @BUILD@/out/Intermediates.noindex/IndexFixture.build/Debug/index-kit-t.build/Objects-normal/arm64/index-kit_lto.o -Xlinker -no_deduplicate -Xlinker -dependency_info -Xlinker @BUILD@/out/Intermediates.noindex/IndexFixture.build/Debug/index-kit-t.build/Objects-normal/arm64/index-kit_dependency_info.dat -fobjc-link-runtime -L@TOOLCHAIN@/usr/lib/swift/macosx -L/usr/lib/swift -Xlinker -add_ast_path -Xlinker @BUILD@/out/Intermediates.noindex/IndexFixture.build/Debug/index-kit-t.build/Objects-normal/arm64/index_kit.swiftmodule -o @BUILD@/out/Products/Debug/index-kit.o
 
-Planning Swift module index_support (arm64)
-    cd @PARENT@
-    builtin-SwiftDriver -- @TOOLCHAIN@/usr/bin/swiftc -parse-as-library -module-name index_support -Onone @@BUILD@/out/Intermediates.noindex/IndexFixture.build/Debug/index-support-t.build/Objects-normal/arm64/index-support.SwiftFileList -DSWIFT_PACKAGE -DDEBUG -DSWIFT_MODULE_RESOURCE_BUNDLE_UNAVAILABLE -DXcode -index-include-locals -Xfrontend -debug-time-function-bodies -Xfrontend -debug-time-expression-type-checking -Xfrontend -debug-diagnostic-names -plugin-path @TOOLCHAIN@/usr/lib/swift/host/plugins/testing -enable-experimental-feature DebugDescriptionMacro -sdk @DEVELOPER@/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.2.sdk -target arm64-apple-macos14.0 -g -module-cache-path @BUILD@/out/ModuleCache.noindex -Xfrontend -serialize-debugging-options -enable-testing -index-store-path @BUILD@/out -Xcc -D_LIBCPP_HARDENING_MODE\=_LIBCPP_HARDENING_MODE_DEBUG -swift-version 6 -I @BUILD@/out/Products/Debug -Isystem @DEVELOPER@/Platforms/MacOSX.platform/Developer/usr/lib -F @BUILD@/out/Products/Debug -F @DEVELOPER@/Platforms/MacOSX.platform/Developer/Library/Frameworks -c -j8 -enable-batch-mode -incremental -Xcc -ivfsstatcache -Xcc @BUILD@/out/SDKStatCaches.noindex/macosx27.2-26B118-d56355c2f463f349a93388c94f7bc0b5a7ff82d74745d5ef33555b35c4238456.sdkstatcache -output-file-map @BUILD@/out/Intermediates.noindex/IndexFixture.build/Debug/index-support-t.build/Objects-normal/arm64/index-support-OutputFileMap.json -save-temps -no-color-diagnostics -explicit-module-build -module-cache-path @BUILD@/out/Intermediates.noindex/SwiftExplicitPrecompiledModules -clang-scanner-module-cache-path @BUILD@/out/ModuleCache.noindex -sdk-module-cache-path @BUILD@/out/SDKExplicitPrecompiledModules -emit-dependencies -emit-module -emit-module-path @BUILD@/out/Intermediates.noindex/IndexFixture.build/Debug/index-support-t.build/Objects-normal/arm64/index_support.swiftmodule -serialize-diagnostics -dependency-scan-serialize-diagnostics-path @BUILD@/out/Intermediates.noindex/IndexFixture.build/Debug/index-support-t.build/Objects-normal/arm64/index_support-dependency-scan.dia -validate-clang-modules-once -clang-build-session-file @BUILD@/out/ModuleCache.noindex/Session.modulevalidation -Xcc -fmodules-prune-interval\=86400 -Xcc -fmodules-prune-after\=345600 -package-name index -emit-const-values -const-gather-protocols-list @BUILD@/out/Intermediates.noindex/IndexFixture.build/Debug/index-support-t.build/Objects-normal/arm64/index-support_const_extract_protocols.json -Xcc -I@BUILD@/out/Products/Debug/include -Xcc -I@BUILD@/out/Intermediates.noindex/IndexFixture.build/Debug/index-support-t.build/DerivedSources-normal/arm64 -Xcc -I@BUILD@/out/Intermediates.noindex/IndexFixture.build/Debug/index-support-t.build/DerivedSources/arm64 -Xcc -I@BUILD@/out/Intermediates.noindex/IndexFixture.build/Debug/index-support-t.build/DerivedSources -Xcc -DSWIFT_PACKAGE -Xcc -DDEBUG\=1 -emit-objc-header -emit-objc-header-path @BUILD@/out/Intermediates.noindex/IndexFixture.build/Debug/index-support-t.build/Objects-normal/arm64/index-support-Swift.h -working-directory @PARENT@ -experimental-emit-module-separately -disable-cmo
+Create static library libIndexKit.a (arm64)
+    cd @ROOT@
+    @TOOLCHAIN@/usr/bin/libtool -static -arch_only arm64 -D -syslibroot @DEVELOPER@/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.2.sdk -L@BUILD@/out/Products/Debug -L@DEVELOPER@/Platforms/MacOSX.platform/Developer/usr/lib -filelist @BUILD@/out/Intermediates.noindex/IndexFixture.build/Debug/IndexKit-product-p.build/Objects-normal/arm64/IndexKit.LinkFileList -no_warning_for_no_symbols -dependency_info @BUILD@/out/Intermediates.noindex/IndexFixture.build/Debug/IndexKit-product-p.build/Objects-normal/arm64/IndexKit_libtool_dependency_info.dat -o @BUILD@/out/Products/Debug/libIndexKit.a
 
 Link IndexDepKit.o (arm64)
     cd @DEP@
     @TOOLCHAIN@/usr/bin/clang -Xlinker -reproducible -target arm64-apple-macos14.0 -r -isysroot @DEVELOPER@/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.2.sdk -O0 -Xlinker -no_warn_duplicate_libraries -F@BUILD@/out/Intermediates.noindex/EagerLinkingTBDs/Debug -F@BUILD@/out/Products/Debug -iframework @DEVELOPER@/Platforms/MacOSX.platform/Developer/Library/Frameworks -filelist @BUILD@/out/Intermediates.noindex/IndexDep.build/Debug/IndexDepKit-t.build/Objects-normal/arm64/IndexDepKit.LinkFileList -nostdlib -Xlinker -object_path_lto -Xlinker @BUILD@/out/Intermediates.noindex/IndexDep.build/Debug/IndexDepKit-t.build/Objects-normal/arm64/IndexDepKit_lto.o -Xlinker -no_deduplicate -Xlinker -dependency_info -Xlinker @BUILD@/out/Intermediates.noindex/IndexDep.build/Debug/IndexDepKit-t.build/Objects-normal/arm64/IndexDepKit_dependency_info.dat -fobjc-link-runtime -L@TOOLCHAIN@/usr/lib/swift/macosx -L/usr/lib/swift -Xlinker -add_ast_path -Xlinker @BUILD@/out/Intermediates.noindex/IndexDep.build/Debug/IndexDepKit-t.build/Objects-normal/arm64/IndexDepKit.swiftmodule -o @BUILD@/out/Products/Debug/IndexDepKit.o
 
-Compiling Clang module _Builtin_float
-Compiling Clang module _Builtin_stdbool
-[109 / 193] IndexDepKit
-Compiling Clang module ptrcheck
-Compiling Clang module _Builtin_stdarg
-Create static library libIndexKit.a (arm64)
-    cd @ROOT@
-    @TOOLCHAIN@/usr/bin/libtool -static -arch_only arm64 -D -syslibroot @DEVELOPER@/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.2.sdk -L@BUILD@/out/Products/Debug -L@DEVELOPER@/Platforms/MacOSX.platform/Developer/usr/lib -filelist @BUILD@/out/Intermediates.noindex/IndexFixture.build/Debug/IndexKit-product-p.build/Objects-normal/arm64/IndexKit.LinkFileList -no_warning_for_no_symbols -dependency_info @BUILD@/out/Intermediates.noindex/IndexFixture.build/Debug/IndexKit-product-p.build/Objects-normal/arm64/IndexKit_libtool_dependency_info.dat -o @BUILD@/out/Products/Debug/libIndexKit.a
+Planning Swift module index_support (arm64)
+    cd @PARENT@
+    builtin-SwiftDriver -- @TOOLCHAIN@/usr/bin/swiftc -parse-as-library -module-name index_support -Onone @@BUILD@/out/Intermediates.noindex/IndexFixture.build/Debug/index-support-t.build/Objects-normal/arm64/index-support.SwiftFileList -DSWIFT_PACKAGE -DDEBUG -DSWIFT_MODULE_RESOURCE_BUNDLE_UNAVAILABLE -DXcode -index-include-locals -Xfrontend -debug-time-function-bodies -Xfrontend -debug-time-expression-type-checking -Xfrontend -debug-diagnostic-names -plugin-path @TOOLCHAIN@/usr/lib/swift/host/plugins/testing -enable-experimental-feature DebugDescriptionMacro -sdk @DEVELOPER@/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.2.sdk -target arm64-apple-macos14.0 -g -module-cache-path @BUILD@/out/ModuleCache.noindex -Xfrontend -serialize-debugging-options -enable-testing -index-store-path @BUILD@/out -Xcc -D_LIBCPP_HARDENING_MODE\=_LIBCPP_HARDENING_MODE_DEBUG -swift-version 6 -I @BUILD@/out/Products/Debug -Isystem @DEVELOPER@/Platforms/MacOSX.platform/Developer/usr/lib -F @BUILD@/out/Products/Debug -F @DEVELOPER@/Platforms/MacOSX.platform/Developer/Library/Frameworks -c -j8 -enable-batch-mode -incremental -Xcc -ivfsstatcache -Xcc @BUILD@/out/SDKStatCaches.noindex/macosx27.2-26B118-d56355c2f463f349a93388c94f7bc0b5a7ff82d74745d5ef33555b35c4238456.sdkstatcache -output-file-map @BUILD@/out/Intermediates.noindex/IndexFixture.build/Debug/index-support-t.build/Objects-normal/arm64/index-support-OutputFileMap.json -save-temps -no-color-diagnostics -explicit-module-build -module-cache-path @BUILD@/out/Intermediates.noindex/SwiftExplicitPrecompiledModules -clang-scanner-module-cache-path @BUILD@/out/ModuleCache.noindex -sdk-module-cache-path @BUILD@/out/SDKExplicitPrecompiledModules -emit-dependencies -emit-module -emit-module-path @BUILD@/out/Intermediates.noindex/IndexFixture.build/Debug/index-support-t.build/Objects-normal/arm64/index_support.swiftmodule -serialize-diagnostics -dependency-scan-serialize-diagnostics-path @BUILD@/out/Intermediates.noindex/IndexFixture.build/Debug/index-support-t.build/Objects-normal/arm64/index_support-dependency-scan.dia -validate-clang-modules-once -clang-build-session-file @BUILD@/out/ModuleCache.noindex/Session.modulevalidation -Xcc -fmodules-prune-interval\=86400 -Xcc -fmodules-prune-after\=345600 -package-name index -emit-const-values -const-gather-protocols-list @BUILD@/out/Intermediates.noindex/IndexFixture.build/Debug/index-support-t.build/Objects-normal/arm64/index-support_const_extract_protocols.json -Xcc -I@BUILD@/out/Products/Debug/include -Xcc -I@BUILD@/out/Intermediates.noindex/IndexFixture.build/Debug/index-support-t.build/DerivedSources-normal/arm64 -Xcc -I@BUILD@/out/Intermediates.noindex/IndexFixture.build/Debug/index-support-t.build/DerivedSources/arm64 -Xcc -I@BUILD@/out/Intermediates.noindex/IndexFixture.build/Debug/index-support-t.build/DerivedSources -Xcc -DSWIFT_PACKAGE -Xcc -DDEBUG\=1 -emit-objc-header -emit-objc-header-path @BUILD@/out/Intermediates.noindex/IndexFixture.build/Debug/index-support-t.build/Objects-normal/arm64/index-support-Swift.h -working-directory @PARENT@ -experimental-emit-module-separately -disable-cmo
 
 Planning Swift module IndexCore (arm64)
     cd @PARENT@
     builtin-SwiftDriver -- @TOOLCHAIN@/usr/bin/swiftc -parse-as-library -module-name IndexCore -Onone @@BUILD@/out/Intermediates.noindex/IndexFixture.build/Debug/IndexCore-t.build/Objects-normal/arm64/IndexCore.SwiftFileList -DSWIFT_PACKAGE -DDEBUG -DSWIFT_MODULE_RESOURCE_BUNDLE_UNAVAILABLE -DXcode -index-include-locals -Xfrontend -debug-time-function-bodies -Xfrontend -debug-time-expression-type-checking -Xfrontend -debug-diagnostic-names -plugin-path @TOOLCHAIN@/usr/lib/swift/host/plugins/testing -enable-experimental-feature DebugDescriptionMacro -sdk @DEVELOPER@/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.2.sdk -target arm64-apple-macos14.0 -g -module-cache-path @BUILD@/out/ModuleCache.noindex -Xfrontend -serialize-debugging-options -enable-testing -index-store-path @BUILD@/out -Xcc -D_LIBCPP_HARDENING_MODE\=_LIBCPP_HARDENING_MODE_DEBUG -swift-version 6 -I @BUILD@/out/Products/Debug -Isystem @DEVELOPER@/Platforms/MacOSX.platform/Developer/usr/lib -F @BUILD@/out/Products/Debug/PackageFrameworks -F @BUILD@/out/Products/Debug -F @DEVELOPER@/Platforms/MacOSX.platform/Developer/Library/Frameworks -c -j8 -enable-batch-mode -incremental -Xcc -ivfsstatcache -Xcc @BUILD@/out/SDKStatCaches.noindex/macosx27.2-26B118-d56355c2f463f349a93388c94f7bc0b5a7ff82d74745d5ef33555b35c4238456.sdkstatcache -output-file-map @BUILD@/out/Intermediates.noindex/IndexFixture.build/Debug/IndexCore-t.build/Objects-normal/arm64/IndexCore-OutputFileMap.json -save-temps -no-color-diagnostics -explicit-module-build -module-cache-path @BUILD@/out/Intermediates.noindex/SwiftExplicitPrecompiledModules -clang-scanner-module-cache-path @BUILD@/out/ModuleCache.noindex -sdk-module-cache-path @BUILD@/out/SDKExplicitPrecompiledModules -emit-dependencies -emit-module -emit-module-path @BUILD@/out/Intermediates.noindex/IndexFixture.build/Debug/IndexCore-t.build/Objects-normal/arm64/IndexCore.swiftmodule -serialize-diagnostics -dependency-scan-serialize-diagnostics-path @BUILD@/out/Intermediates.noindex/IndexFixture.build/Debug/IndexCore-t.build/Objects-normal/arm64/IndexCore-dependency-scan.dia -validate-clang-modules-once -clang-build-session-file @BUILD@/out/ModuleCache.noindex/Session.modulevalidation -Xcc -fmodules-prune-interval\=86400 -Xcc -fmodules-prune-after\=345600 -package-name index -emit-const-values -const-gather-protocols-list @BUILD@/out/Intermediates.noindex/IndexFixture.build/Debug/IndexCore-t.build/Objects-normal/arm64/IndexCore_const_extract_protocols.json -Xcc -I@BUILD@/out/Products/Debug/include -Xcc -I@BUILD@/out/Intermediates.noindex/IndexFixture.build/Debug/IndexCore-t.build/DerivedSources-normal/arm64 -Xcc -I@BUILD@/out/Intermediates.noindex/IndexFixture.build/Debug/IndexCore-t.build/DerivedSources/arm64 -Xcc -I@BUILD@/out/Intermediates.noindex/IndexFixture.build/Debug/IndexCore-t.build/DerivedSources -Xcc -DSWIFT_PACKAGE -Xcc -DDEBUG\=1 -emit-objc-header -emit-objc-header-path @BUILD@/out/Intermediates.noindex/IndexFixture.build/Debug/IndexCore-t.build/Objects-normal/arm64/IndexCore-Swift.h -working-directory @PARENT@ -experimental-emit-module-separately -disable-cmo
 
 Compiling Clang module _Builtin_stddef
+[110 / 202]
 Compiling Clang module _AvailabilityInternal
+Compiling Clang module ptrcheck
+Compiling Clang module _Builtin_float
+Compiling Clang module _Builtin_stdbool
+Compiling Clang module _Builtin_stdarg
 Compiling Clang module ptrauth
 Compiling Clang module _DarwinFoundation1
 Link IndexTool (arm64)
@@ -462,20 +462,20 @@ Register execution policy exception for IndexTool
     cd @ROOT@
     builtin-RegisterExecutionPolicyException @BUILD@/out/Products/Debug/IndexTool
 
-[115 / 202] IndexTool-product
 Compiling Clang module _Builtin_limits
 Compiling Clang module _DarwinFoundation2
+[115 / 202]
 Compiling Clang module sys_types
 Compiling Clang module _Builtin_stdint
 Compiling Clang module string_h
 Compiling Clang module libDER
-[120 / 202]
 Compiling Clang module _DarwinFoundation3
+[120 / 202]
 Compiling Clang module _Builtin_inttypes
 Compiling Clang module Darwin
 [122 / 202]
-Compiling Clang module launch
 Compiling Clang module libkern
+Compiling Clang module launch
 Compiling Clang module MachO
 Compiling Clang module ObjectiveC
 [126 / 202]
@@ -501,27 +501,31 @@ Compile
 
 Emitting module for index_support
 Discovering Swift tasks after 'Emitting module for index_support'
+Compile Unused+Extra.swift
+    cd @PARENT@
+    builtin-SwiftPerFileCompile Unused+Extra.swift
+
+Compile Unused.swift
+    cd @PARENT@
+    builtin-SwiftPerFileCompile Unused.swift
+
+Compiling Unused+Extra.swift, Unused.swift
+Unblock downstream dependents of index-support (arm64)
+    cd @PARENT@
+    builtin-Swift-Compilation-Requirements -- @TOOLCHAIN@/usr/bin/swiftc -parse-as-library -module-name index_support -Onone @@BUILD@/out/Intermediates.noindex/IndexFixture.build/Debug/index-support-t.build/Objects-normal/arm64/index-support.SwiftFileList -DSWIFT_PACKAGE -DDEBUG -DSWIFT_MODULE_RESOURCE_BUNDLE_UNAVAILABLE -DXcode -index-include-locals -Xfrontend -debug-time-function-bodies -Xfrontend -debug-time-expression-type-checking -Xfrontend -debug-diagnostic-names -plugin-path @TOOLCHAIN@/usr/lib/swift/host/plugins/testing -enable-experimental-feature DebugDescriptionMacro -sdk @DEVELOPER@/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.2.sdk -target arm64-apple-macos14.0 -g -module-cache-path @BUILD@/out/ModuleCache.noindex -Xfrontend -serialize-debugging-options -enable-testing -index-store-path @BUILD@/out -Xcc -D_LIBCPP_HARDENING_MODE\=_LIBCPP_HARDENING_MODE_DEBUG -swift-version 6 -I @BUILD@/out/Products/Debug -Isystem @DEVELOPER@/Platforms/MacOSX.platform/Developer/usr/lib -F @BUILD@/out/Products/Debug -F @DEVELOPER@/Platforms/MacOSX.platform/Developer/Library/Frameworks -c -j8 -enable-batch-mode -incremental -Xcc -ivfsstatcache -Xcc @BUILD@/out/SDKStatCaches.noindex/macosx27.2-26B118-d56355c2f463f349a93388c94f7bc0b5a7ff82d74745d5ef33555b35c4238456.sdkstatcache -output-file-map @BUILD@/out/Intermediates.noindex/IndexFixture.build/Debug/index-support-t.build/Objects-normal/arm64/index-support-OutputFileMap.json -save-temps -no-color-diagnostics -explicit-module-build -module-cache-path @BUILD@/out/Intermediates.noindex/SwiftExplicitPrecompiledModules -clang-scanner-module-cache-path @BUILD@/out/ModuleCache.noindex -sdk-module-cache-path @BUILD@/out/SDKExplicitPrecompiledModules -emit-dependencies -emit-module -emit-module-path @BUILD@/out/Intermediates.noindex/IndexFixture.build/Debug/index-support-t.build/Objects-normal/arm64/index_support.swiftmodule -serialize-diagnostics -dependency-scan-serialize-diagnostics-path @BUILD@/out/Intermediates.noindex/IndexFixture.build/Debug/index-support-t.build/Objects-normal/arm64/index_support-dependency-scan.dia -validate-clang-modules-once -clang-build-session-file @BUILD@/out/ModuleCache.noindex/Session.modulevalidation -Xcc -fmodules-prune-interval\=86400 -Xcc -fmodules-prune-after\=345600 -package-name index -emit-const-values -const-gather-protocols-list @BUILD@/out/Intermediates.noindex/IndexFixture.build/Debug/index-support-t.build/Objects-normal/arm64/index-support_const_extract_protocols.json -Xcc -I@BUILD@/out/Products/Debug/include -Xcc -I@BUILD@/out/Intermediates.noindex/IndexFixture.build/Debug/index-support-t.build/DerivedSources-normal/arm64 -Xcc -I@BUILD@/out/Intermediates.noindex/IndexFixture.build/Debug/index-support-t.build/DerivedSources/arm64 -Xcc -I@BUILD@/out/Intermediates.noindex/IndexFixture.build/Debug/index-support-t.build/DerivedSources -Xcc -DSWIFT_PACKAGE -Xcc -DDEBUG\=1 -emit-objc-header -emit-objc-header-path @BUILD@/out/Intermediates.noindex/IndexFixture.build/Debug/index-support-t.build/Objects-normal/arm64/index-support-Swift.h -working-directory @PARENT@ -experimental-emit-module-separately -disable-cmo
+
+Discovering Swift tasks after 'Compiling Unused+Extra.swift, Unused.swift'
 Compile Warnings.swift
     cd @PARENT@
     builtin-SwiftPerFileCompile Warnings.swift
 
 Compiling Warnings.swift
-[147 / 202] index-support
+[149 / 202] index-support
 Discovering Swift tasks after 'Compiling Warnings.swift'
-Unblock downstream dependents of index-support (arm64)
-    cd @PARENT@
-    builtin-Swift-Compilation-Requirements -- @TOOLCHAIN@/usr/bin/swiftc -parse-as-library -module-name index_support -Onone @@BUILD@/out/Intermediates.noindex/IndexFixture.build/Debug/index-support-t.build/Objects-normal/arm64/index-support.SwiftFileList -DSWIFT_PACKAGE -DDEBUG -DSWIFT_MODULE_RESOURCE_BUNDLE_UNAVAILABLE -DXcode -index-include-locals -Xfrontend -debug-time-function-bodies -Xfrontend -debug-time-expression-type-checking -Xfrontend -debug-diagnostic-names -plugin-path @TOOLCHAIN@/usr/lib/swift/host/plugins/testing -enable-experimental-feature DebugDescriptionMacro -sdk @DEVELOPER@/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.2.sdk -target arm64-apple-macos14.0 -g -module-cache-path @BUILD@/out/ModuleCache.noindex -Xfrontend -serialize-debugging-options -enable-testing -index-store-path @BUILD@/out -Xcc -D_LIBCPP_HARDENING_MODE\=_LIBCPP_HARDENING_MODE_DEBUG -swift-version 6 -I @BUILD@/out/Products/Debug -Isystem @DEVELOPER@/Platforms/MacOSX.platform/Developer/usr/lib -F @BUILD@/out/Products/Debug -F @DEVELOPER@/Platforms/MacOSX.platform/Developer/Library/Frameworks -c -j8 -enable-batch-mode -incremental -Xcc -ivfsstatcache -Xcc @BUILD@/out/SDKStatCaches.noindex/macosx27.2-26B118-d56355c2f463f349a93388c94f7bc0b5a7ff82d74745d5ef33555b35c4238456.sdkstatcache -output-file-map @BUILD@/out/Intermediates.noindex/IndexFixture.build/Debug/index-support-t.build/Objects-normal/arm64/index-support-OutputFileMap.json -save-temps -no-color-diagnostics -explicit-module-build -module-cache-path @BUILD@/out/Intermediates.noindex/SwiftExplicitPrecompiledModules -clang-scanner-module-cache-path @BUILD@/out/ModuleCache.noindex -sdk-module-cache-path @BUILD@/out/SDKExplicitPrecompiledModules -emit-dependencies -emit-module -emit-module-path @BUILD@/out/Intermediates.noindex/IndexFixture.build/Debug/index-support-t.build/Objects-normal/arm64/index_support.swiftmodule -serialize-diagnostics -dependency-scan-serialize-diagnostics-path @BUILD@/out/Intermediates.noindex/IndexFixture.build/Debug/index-support-t.build/Objects-normal/arm64/index_support-dependency-scan.dia -validate-clang-modules-once -clang-build-session-file @BUILD@/out/ModuleCache.noindex/Session.modulevalidation -Xcc -fmodules-prune-interval\=86400 -Xcc -fmodules-prune-after\=345600 -package-name index -emit-const-values -const-gather-protocols-list @BUILD@/out/Intermediates.noindex/IndexFixture.build/Debug/index-support-t.build/Objects-normal/arm64/index-support_const_extract_protocols.json -Xcc -I@BUILD@/out/Products/Debug/include -Xcc -I@BUILD@/out/Intermediates.noindex/IndexFixture.build/Debug/index-support-t.build/DerivedSources-normal/arm64 -Xcc -I@BUILD@/out/Intermediates.noindex/IndexFixture.build/Debug/index-support-t.build/DerivedSources/arm64 -Xcc -I@BUILD@/out/Intermediates.noindex/IndexFixture.build/Debug/index-support-t.build/DerivedSources -Xcc -DSWIFT_PACKAGE -Xcc -DDEBUG\=1 -emit-objc-header -emit-objc-header-path @BUILD@/out/Intermediates.noindex/IndexFixture.build/Debug/index-support-t.build/Objects-normal/arm64/index-support-Swift.h -working-directory @PARENT@ -experimental-emit-module-separately -disable-cmo
-
-Compile
-    cd @PARENT@
-    
-
-Emitting module for IndexCore
 Merge Objective-C generated interface headers
     cd @ROOT@
     builtin-swiftHeaderTool -arch arm64 @BUILD@/out/Intermediates.noindex/IndexFixture.build/Debug/index-support-t.build/Objects-normal/arm64/index-support-Swift.h -o @BUILD@/out/Intermediates.noindex/GeneratedModuleMaps/index-support-Swift.h
 
-Discovering Swift tasks after 'Emitting module for IndexCore'
 Copy index_support.swiftmodule (arm64)
     cd @ROOT@
     builtin-copy -exclude .DS_Store -exclude CVS -exclude .svn -exclude .git -exclude .hg -resolve-src-symlinks -rename @BUILD@/out/Intermediates.noindex/IndexFixture.build/Debug/index-support-t.build/Objects-normal/arm64/index_support.swiftmodule @BUILD@/out/Products/Debug/index_support.swiftmodule/arm64-apple-macos.swiftmodule
@@ -530,10 +534,26 @@ Copy index_support.swiftdoc (arm64)
     cd @ROOT@
     builtin-copy -exclude .DS_Store -exclude CVS -exclude .svn -exclude .git -exclude .hg -resolve-src-symlinks -rename @BUILD@/out/Intermediates.noindex/IndexFixture.build/Debug/index-support-t.build/Objects-normal/arm64/index_support.swiftdoc @BUILD@/out/Products/Debug/index_support.swiftmodule/arm64-apple-macos.swiftdoc
 
+Compile Formatting.swift
+    cd @PARENT@
+    builtin-SwiftPerFileCompile Formatting.swift
+
+Compile Lifecycle.swift
+    cd @PARENT@
+    builtin-SwiftPerFileCompile Lifecycle.swift
+
+Compiling Formatting.swift, Lifecycle.swift
 Copy index_support.abi.json (arm64)
     cd @ROOT@
     builtin-copy -exclude .DS_Store -exclude CVS -exclude .svn -exclude .git -exclude .hg -resolve-src-symlinks -rename @BUILD@/out/Intermediates.noindex/IndexFixture.build/Debug/index-support-t.build/Objects-normal/arm64/index_support.abi.json @BUILD@/out/Products/Debug/index_support.swiftmodule/arm64-apple-macos.abi.json
 
+Compile
+    cd @PARENT@
+    
+
+Emitting module for IndexCore
+Discovering Swift tasks after 'Compiling Formatting.swift, Lifecycle.swift'
+Discovering Swift tasks after 'Emitting module for IndexCore'
 Copy index_support.swiftsourceinfo (arm64)
     cd @ROOT@
     builtin-copy -exclude .DS_Store -exclude CVS -exclude .svn -exclude .git -exclude .hg -resolve-src-symlinks -rename @BUILD@/out/Intermediates.noindex/IndexFixture.build/Debug/index-support-t.build/Objects-normal/arm64/index_support.swiftsourceinfo @BUILD@/out/Products/Debug/index_support.swiftmodule/Project/arm64-apple-macos.swiftsourceinfo
@@ -550,38 +570,18 @@ Copy IndexCore.swiftmodule (arm64)
     cd @ROOT@
     builtin-copy -exclude .DS_Store -exclude CVS -exclude .svn -exclude .git -exclude .hg -resolve-src-symlinks -rename @BUILD@/out/Intermediates.noindex/IndexFixture.build/Debug/IndexCore-t.build/Objects-normal/arm64/IndexCore.swiftmodule @BUILD@/out/Products/Debug/IndexCore.swiftmodule/arm64-apple-macos.swiftmodule
 
-Compile Accessors.swift
-    cd @PARENT@
-    builtin-SwiftPerFileCompile Accessors.swift
-
-Compile Bom.swift
-    cd @PARENT@
-    builtin-SwiftPerFileCompile Bom.swift
-
-Compiling Accessors.swift, Bom.swift
 Copy IndexCore.swiftdoc (arm64)
     cd @ROOT@
     builtin-copy -exclude .DS_Store -exclude CVS -exclude .svn -exclude .git -exclude .hg -resolve-src-symlinks -rename @BUILD@/out/Intermediates.noindex/IndexFixture.build/Debug/IndexCore-t.build/Objects-normal/arm64/IndexCore.swiftdoc @BUILD@/out/Products/Debug/IndexCore.swiftmodule/arm64-apple-macos.swiftdoc
 
-Discovering Swift tasks after 'Compiling Accessors.swift, Bom.swift'
-Copy IndexCore.swiftsourceinfo (arm64)
-    cd @ROOT@
-    builtin-copy -exclude .DS_Store -exclude CVS -exclude .svn -exclude .git -exclude .hg -resolve-src-symlinks -rename @BUILD@/out/Intermediates.noindex/IndexFixture.build/Debug/IndexCore-t.build/Objects-normal/arm64/IndexCore.swiftsourceinfo @BUILD@/out/Products/Debug/IndexCore.swiftmodule/Project/arm64-apple-macos.swiftsourceinfo
-
-Compile References.swift
-    cd @PARENT@
-    builtin-SwiftPerFileCompile References.swift
-
-Compile Ring.swift
-    cd @PARENT@
-    builtin-SwiftPerFileCompile Ring.swift
-
-Compiling References.swift, Ring.swift
 Copy IndexCore.abi.json (arm64)
     cd @ROOT@
     builtin-copy -exclude .DS_Store -exclude CVS -exclude .svn -exclude .git -exclude .hg -resolve-src-symlinks -rename @BUILD@/out/Intermediates.noindex/IndexFixture.build/Debug/IndexCore-t.build/Objects-normal/arm64/IndexCore.abi.json @BUILD@/out/Products/Debug/IndexCore.swiftmodule/arm64-apple-macos.abi.json
 
-Discovering Swift tasks after 'Compiling References.swift, Ring.swift'
+Copy IndexCore.swiftsourceinfo (arm64)
+    cd @ROOT@
+    builtin-copy -exclude .DS_Store -exclude CVS -exclude .svn -exclude .git -exclude .hg -resolve-src-symlinks -rename @BUILD@/out/Intermediates.noindex/IndexFixture.build/Debug/IndexCore-t.build/Objects-normal/arm64/IndexCore.swiftsourceinfo @BUILD@/out/Products/Debug/IndexCore.swiftmodule/Project/arm64-apple-macos.swiftsourceinfo
+
 Process product packaging
     cd @ROOT@
     
@@ -604,24 +604,26 @@ Process product packaging
     
     builtin-productPackagingUtility -entitlements -format xml -o @BUILD@/out/Intermediates.noindex/IndexFixture.build/Debug/IndexCoreTests-p.build/IndexCoreTests.xctest.xcent
 
-Compile Locals.swift
+Compile Accessors.swift
     cd @PARENT@
-    builtin-SwiftPerFileCompile Locals.swift
+    builtin-SwiftPerFileCompile Accessors.swift
 
-Compile Protocols.swift
+Compile Bom.swift
     cd @PARENT@
-    builtin-SwiftPerFileCompile Protocols.swift
+    builtin-SwiftPerFileCompile Bom.swift
 
-Compiling Locals.swift, Protocols.swift
-Generate DER entitlements
-    cd @ROOT@
-    /usr/bin/derq query -f xml -i @BUILD@/out/Intermediates.noindex/IndexFixture.build/Debug/IndexXCTests-p.build/IndexXCTests.xctest.xcent -o @BUILD@/out/Intermediates.noindex/IndexFixture.build/Debug/IndexXCTests-p.build/IndexXCTests.xctest.xcent.der --raw
+Compiling Accessors.swift, Bom.swift
+Compile TestOnly.swift
+    cd @PARENT@
+    builtin-SwiftPerFileCompile TestOnly.swift
 
-Generate DER entitlements
-    cd @ROOT@
-    /usr/bin/derq query -f xml -i @BUILD@/out/Intermediates.noindex/IndexFixture.build/Debug/IndexCoreTests-p.build/IndexCoreTests.xctest.xcent -o @BUILD@/out/Intermediates.noindex/IndexFixture.build/Debug/IndexCoreTests-p.build/IndexCoreTests.xctest.xcent.der --raw
+Compile Types.swift
+    cd @PARENT@
+    builtin-SwiftPerFileCompile Types.swift
 
-Discovering Swift tasks after 'Compiling Locals.swift, Protocols.swift'
+Compiling TestOnly.swift, Types.swift
+Discovering Swift tasks after 'Compiling Accessors.swift, Bom.swift'
+Discovering Swift tasks after 'Compiling TestOnly.swift, Types.swift'
 Process product packaging
     cd @ROOT@
     
@@ -635,39 +637,37 @@ Process product packaging
 
 Generate DER entitlements
     cd @ROOT@
+    /usr/bin/derq query -f xml -i @BUILD@/out/Intermediates.noindex/IndexFixture.build/Debug/IndexXCTests-p.build/IndexXCTests.xctest.xcent -o @BUILD@/out/Intermediates.noindex/IndexFixture.build/Debug/IndexXCTests-p.build/IndexXCTests.xctest.xcent.der --raw
+
+Generate DER entitlements
+    cd @ROOT@
+    /usr/bin/derq query -f xml -i @BUILD@/out/Intermediates.noindex/IndexFixture.build/Debug/IndexCoreTests-p.build/IndexCoreTests.xctest.xcent -o @BUILD@/out/Intermediates.noindex/IndexFixture.build/Debug/IndexCoreTests-p.build/IndexCoreTests.xctest.xcent.der --raw
+
+Generate DER entitlements
+    cd @ROOT@
     /usr/bin/derq query -f xml -i @BUILD@/out/Intermediates.noindex/IndexFixture.build/Debug/IndexApp-p.build/IndexApp.xcent -o @BUILD@/out/Intermediates.noindex/IndexFixture.build/Debug/IndexApp-p.build/IndexApp.xcent.der --raw
 
-Compile Unused+Extra.swift
+Compile Locals.swift
     cd @PARENT@
-    builtin-SwiftPerFileCompile Unused+Extra.swift
+    builtin-SwiftPerFileCompile Locals.swift
 
-Compile Unused.swift
+Compile Protocols.swift
     cd @PARENT@
-    builtin-SwiftPerFileCompile Unused.swift
+    builtin-SwiftPerFileCompile Protocols.swift
 
-Compiling Unused+Extra.swift, Unused.swift
-Discovering Swift tasks after 'Compiling Unused+Extra.swift, Unused.swift'
-Compile Formatting.swift
+Compiling Locals.swift, Protocols.swift
+Discovering Swift tasks after 'Compiling Locals.swift, Protocols.swift'
+Compile References.swift
     cd @PARENT@
-    builtin-SwiftPerFileCompile Formatting.swift
+    builtin-SwiftPerFileCompile References.swift
 
-Compile Lifecycle.swift
+Compile Ring.swift
     cd @PARENT@
-    builtin-SwiftPerFileCompile Lifecycle.swift
+    builtin-SwiftPerFileCompile Ring.swift
 
-Compiling Formatting.swift, Lifecycle.swift
+Compiling References.swift, Ring.swift
 [167 / 203] IndexCore
-Discovering Swift tasks after 'Compiling Formatting.swift, Lifecycle.swift'
-Compile TestOnly.swift
-    cd @PARENT@
-    builtin-SwiftPerFileCompile TestOnly.swift
-
-Compile Types.swift
-    cd @PARENT@
-    builtin-SwiftPerFileCompile Types.swift
-
-Compiling TestOnly.swift, Types.swift
-Discovering Swift tasks after 'Compiling TestOnly.swift, Types.swift'
+Discovering Swift tasks after 'Compiling References.swift, Ring.swift'
 Planning Swift module IndexApp (arm64)
     cd @PARENT@
     builtin-SwiftDriver -- @TOOLCHAIN@/usr/bin/swiftc -module-name IndexApp -Onone @@BUILD@/out/Intermediates.noindex/IndexFixture.build/Debug/IndexApp-p.build/Objects-normal/arm64/IndexApp.SwiftFileList -DSWIFT_PACKAGE -DDEBUG -DXcode -index-include-locals -Xfrontend -debug-time-function-bodies -Xfrontend -debug-time-expression-type-checking -Xfrontend -debug-diagnostic-names -plugin-path @TOOLCHAIN@/usr/lib/swift/host/plugins/testing -enable-experimental-feature DebugDescriptionMacro -sdk @DEVELOPER@/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.2.sdk -target arm64-apple-macos14.0 -g -module-cache-path @BUILD@/out/ModuleCache.noindex -Xfrontend -serialize-debugging-options -enable-testing -index-store-path @BUILD@/out -Xcc -D_LIBCPP_HARDENING_MODE\=_LIBCPP_HARDENING_MODE_DEBUG -swift-version 6 -I @BUILD@/out/Products/Debug -Isystem @DEVELOPER@/Platforms/MacOSX.platform/Developer/usr/lib -F @BUILD@/out/Products/Debug/PackageFrameworks -F @BUILD@/out/Products/Debug -F @DEVELOPER@/Platforms/MacOSX.platform/Developer/Library/Frameworks -c -j8 -enable-batch-mode -incremental -Xcc -ivfsstatcache -Xcc @BUILD@/out/SDKStatCaches.noindex/macosx27.2-26B118-d56355c2f463f349a93388c94f7bc0b5a7ff82d74745d5ef33555b35c4238456.sdkstatcache -output-file-map @BUILD@/out/Intermediates.noindex/IndexFixture.build/Debug/IndexApp-p.build/Objects-normal/arm64/IndexApp-OutputFileMap.json -save-temps -no-color-diagnostics -explicit-module-build -module-cache-path @BUILD@/out/Intermediates.noindex/SwiftExplicitPrecompiledModules -clang-scanner-module-cache-path @BUILD@/out/ModuleCache.noindex -sdk-module-cache-path @BUILD@/out/SDKExplicitPrecompiledModules -emit-dependencies -emit-module -emit-module-path @BUILD@/out/Intermediates.noindex/IndexFixture.build/Debug/IndexApp-p.build/Objects-normal/arm64/IndexApp.swiftmodule -serialize-diagnostics -dependency-scan-serialize-diagnostics-path @BUILD@/out/Intermediates.noindex/IndexFixture.build/Debug/IndexApp-p.build/Objects-normal/arm64/IndexApp-dependency-scan.dia -validate-clang-modules-once -clang-build-session-file @BUILD@/out/ModuleCache.noindex/Session.modulevalidation -Xcc -fmodules-prune-interval\=86400 -Xcc -fmodules-prune-after\=345600 -package-name index -emit-const-values -const-gather-protocols-list @BUILD@/out/Intermediates.noindex/IndexFixture.build/Debug/IndexApp-p.build/Objects-normal/arm64/IndexApp_const_extract_protocols.json -Xcc -I@BUILD@/out/Products/Debug/include -Xcc -I@BUILD@/out/Intermediates.noindex/IndexFixture.build/Debug/IndexApp-p.build/DerivedSources-normal/arm64 -Xcc -I@BUILD@/out/Intermediates.noindex/IndexFixture.build/Debug/IndexApp-p.build/DerivedSources/arm64 -Xcc -I@BUILD@/out/Intermediates.noindex/IndexFixture.build/Debug/IndexApp-p.build/DerivedSources -Xcc -DSWIFT_PACKAGE -Xcc -DDEBUG\=1 -working-directory @PARENT@ -experimental-emit-module-separately -disable-cmo
@@ -771,43 +771,44 @@ Planning Swift module IndexXCTests (arm64)
     builtin-SwiftDriver -- @TOOLCHAIN@/usr/bin/swiftc -parse-as-library -module-name IndexXCTests -Onone @@BUILD@/out/Intermediates.noindex/IndexFixture.build/Debug/IndexXCTests-p.build/Objects-normal/arm64/IndexXCTests.SwiftFileList -DSWIFT_PACKAGE -DDEBUG -DXcode -index-include-locals -Xfrontend -debug-time-function-bodies -Xfrontend -debug-time-expression-type-checking -Xfrontend -debug-diagnostic-names -plugin-path @TOOLCHAIN@/usr/lib/swift/host/plugins/testing -enable-experimental-feature DebugDescriptionMacro -sdk @DEVELOPER@/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.2.sdk -target arm64-apple-macos14.0 -g -module-cache-path @BUILD@/out/ModuleCache.noindex -Xfrontend -serialize-debugging-options -enable-testing -index-store-path @BUILD@/out -Xcc -D_LIBCPP_HARDENING_MODE\=_LIBCPP_HARDENING_MODE_DEBUG -swift-version 6 -I @BUILD@/out/Products/Debug -Isystem @DEVELOPER@/Platforms/MacOSX.platform/Developer/usr/lib -F @BUILD@/out/Products/Debug/PackageFrameworks -F @BUILD@/out/Products/Debug -F @DEVELOPER@/Platforms/MacOSX.platform/Developer/Library/Frameworks -c -j8 -enable-batch-mode -incremental -Xcc -ivfsstatcache -Xcc @BUILD@/out/SDKStatCaches.noindex/macosx27.2-26B118-d56355c2f463f349a93388c94f7bc0b5a7ff82d74745d5ef33555b35c4238456.sdkstatcache -output-file-map @BUILD@/out/Intermediates.noindex/IndexFixture.build/Debug/IndexXCTests-p.build/Objects-normal/arm64/IndexXCTests-OutputFileMap.json -save-temps -no-color-diagnostics -explicit-module-build -module-cache-path @BUILD@/out/Intermediates.noindex/SwiftExplicitPrecompiledModules -clang-scanner-module-cache-path @BUILD@/out/ModuleCache.noindex -sdk-module-cache-path @BUILD@/out/SDKExplicitPrecompiledModules -emit-dependencies -emit-module -emit-module-path @BUILD@/out/Intermediates.noindex/IndexFixture.build/Debug/IndexXCTests-p.build/Objects-normal/arm64/IndexXCTests.swiftmodule -serialize-diagnostics -dependency-scan-serialize-diagnostics-path @BUILD@/out/Intermediates.noindex/IndexFixture.build/Debug/IndexXCTests-p.build/Objects-normal/arm64/IndexXCTests-dependency-scan.dia -validate-clang-modules-once -clang-build-session-file @BUILD@/out/ModuleCache.noindex/Session.modulevalidation -Xcc -fmodules-prune-interval\=86400 -Xcc -fmodules-prune-after\=345600 -package-name index -emit-const-values -const-gather-protocols-list @BUILD@/out/Intermediates.noindex/IndexFixture.build/Debug/IndexXCTests-p.build/Objects-normal/arm64/IndexXCTests_const_extract_protocols.json -Xcc -I@BUILD@/out/Products/Debug/include -Xcc -I@BUILD@/out/Intermediates.noindex/IndexFixture.build/Debug/IndexXCTests-p.build/DerivedSources-normal/arm64 -Xcc -I@BUILD@/out/Intermediates.noindex/IndexFixture.build/Debug/IndexXCTests-p.build/DerivedSources/arm64 -Xcc -I@BUILD@/out/Intermediates.noindex/IndexFixture.build/Debug/IndexXCTests-p.build/DerivedSources -Xcc -DSWIFT_PACKAGE -Xcc -DDEBUG\=1 -working-directory @PARENT@ -experimental-emit-module-separately -disable-cmo
 
 [186 / 211] IndexXCTests-product
-Compiling Swift module Testing
-Compiling Clang module DeveloperToolsSupport
-Compiling Clang module CoreTransferable
-Compiling Clang module _Builtin_tgmath
-Compiling Clang module IOSurface
-Compiling Clang module DataDetection
-Compiling Clang module ColorSync
-[200 / 246]
-Compiling Clang module CoreGraphics
-Compiling Clang module UniformTypeIdentifiers
-Compiling Clang module CUPS
-Compiling Clang module CoreData
-[204 / 246]
 Compiling Clang module _Builtin_stdatomic
-Compiling Clang module _Builtin_intrinsics
+Compiling Clang module DataDetection
+Compiling Clang module _Builtin_tgmath
+Compiling Clang module UniformTypeIdentifiers
+Compiling Swift module Testing
+Compiling Clang module ColorSync
+Compiling Clang module DeveloperToolsSupport
+[199 / 246]
+Compiling Clang module CoreGraphics
+Compiling Clang module CoreTransferable
+Compiling Clang module os
+Compiling Clang module Symbols
+Compiling Clang module CUPS
+Compiling Clang module IOSurface
+Compiling Clang module CoreText
+[207 / 246]
+Compiling Clang module ImageIO
+Compiling Clang module Accessibility
+Compiling Clang module OSLog
 Compile
     cd @PARENT@
     
 
 Emitting module for IndexCoreTests
 Discovering Swift tasks after 'Emitting module for IndexCoreTests'
-Compiling Clang module OpenGL
 Unblock downstream dependents of IndexCoreTests (arm64)
     cd @PARENT@
     builtin-Swift-Compilation-Requirements -- @TOOLCHAIN@/usr/bin/swiftc -parse-as-library -module-name IndexCoreTests -Onone @@BUILD@/out/Intermediates.noindex/IndexFixture.build/Debug/IndexCoreTests-p.build/Objects-normal/arm64/IndexCoreTests.SwiftFileList -DSWIFT_PACKAGE -DDEBUG -DXcode -index-include-locals -Xfrontend -debug-time-function-bodies -Xfrontend -debug-time-expression-type-checking -Xfrontend -debug-diagnostic-names -plugin-path @TOOLCHAIN@/usr/lib/swift/host/plugins/testing -enable-experimental-feature DebugDescriptionMacro -sdk @DEVELOPER@/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.2.sdk -target arm64-apple-macos14.0 -g -module-cache-path @BUILD@/out/ModuleCache.noindex -Xfrontend -serialize-debugging-options -enable-testing -index-store-path @BUILD@/out -Xcc -D_LIBCPP_HARDENING_MODE\=_LIBCPP_HARDENING_MODE_DEBUG -swift-version 6 -I @BUILD@/out/Products/Debug -Isystem @DEVELOPER@/Platforms/MacOSX.platform/Developer/usr/lib -F @BUILD@/out/Products/Debug/PackageFrameworks -F @BUILD@/out/Products/Debug -F @DEVELOPER@/Platforms/MacOSX.platform/Developer/Library/Frameworks -c -j8 -enable-batch-mode -incremental -Xcc -ivfsstatcache -Xcc @BUILD@/out/SDKStatCaches.noindex/macosx27.2-26B118-d56355c2f463f349a93388c94f7bc0b5a7ff82d74745d5ef33555b35c4238456.sdkstatcache -output-file-map @BUILD@/out/Intermediates.noindex/IndexFixture.build/Debug/IndexCoreTests-p.build/Objects-normal/arm64/IndexCoreTests-OutputFileMap.json -save-temps -no-color-diagnostics -explicit-module-build -module-cache-path @BUILD@/out/Intermediates.noindex/SwiftExplicitPrecompiledModules -clang-scanner-module-cache-path @BUILD@/out/ModuleCache.noindex -sdk-module-cache-path @BUILD@/out/SDKExplicitPrecompiledModules -emit-dependencies -emit-module -emit-module-path @BUILD@/out/Intermediates.noindex/IndexFixture.build/Debug/IndexCoreTests-p.build/Objects-normal/arm64/IndexCoreTests.swiftmodule -serialize-diagnostics -dependency-scan-serialize-diagnostics-path @BUILD@/out/Intermediates.noindex/IndexFixture.build/Debug/IndexCoreTests-p.build/Objects-normal/arm64/IndexCoreTests-dependency-scan.dia -validate-clang-modules-once -clang-build-session-file @BUILD@/out/ModuleCache.noindex/Session.modulevalidation -Xcc -fmodules-prune-interval\=86400 -Xcc -fmodules-prune-after\=345600 -package-name index -emit-const-values -const-gather-protocols-list @BUILD@/out/Intermediates.noindex/IndexFixture.build/Debug/IndexCoreTests-p.build/Objects-normal/arm64/IndexCoreTests_const_extract_protocols.json -Xcc -I@BUILD@/out/Products/Debug/include -Xcc -I@BUILD@/out/Intermediates.noindex/IndexFixture.build/Debug/IndexCoreTests-p.build/DerivedSources-normal/arm64 -Xcc -I@BUILD@/out/Intermediates.noindex/IndexFixture.build/Debug/IndexCoreTests-p.build/DerivedSources/arm64 -Xcc -I@BUILD@/out/Intermediates.noindex/IndexFixture.build/Debug/IndexCoreTests-p.build/DerivedSources -Xcc -DSWIFT_PACKAGE -Xcc -DDEBUG\=1 -working-directory @PARENT@ -experimental-emit-module-separately -disable-cmo
 
-Compiling Clang module ImageIO
 Copy IndexCoreTests.swiftmodule (arm64)
     cd @ROOT@
     builtin-copy -exclude .DS_Store -exclude CVS -exclude .svn -exclude .git -exclude .hg -resolve-src-symlinks -rename @BUILD@/out/Intermediates.noindex/IndexFixture.build/Debug/IndexCoreTests-p.build/Objects-normal/arm64/IndexCoreTests.swiftmodule @BUILD@/out/Products/Debug/IndexCoreTests.swiftmodule/arm64-apple-macos.swiftmodule
 
+Compiling Clang module CoreData
 Copy IndexCoreTests.swiftdoc (arm64)
     cd @ROOT@
     builtin-copy -exclude .DS_Store -exclude CVS -exclude .svn -exclude .git -exclude .hg -resolve-src-symlinks -rename @BUILD@/out/Intermediates.noindex/IndexFixture.build/Debug/IndexCoreTests-p.build/Objects-normal/arm64/IndexCoreTests.swiftdoc @BUILD@/out/Products/Debug/IndexCoreTests.swiftmodule/arm64-apple-macos.swiftdoc
 
-Compiling Clang module CoreText
-Compiling Clang module Metal
 Copy IndexCoreTests.abi.json (arm64)
     cd @ROOT@
     builtin-copy -exclude .DS_Store -exclude CVS -exclude .svn -exclude .git -exclude .hg -resolve-src-symlinks -rename @BUILD@/out/Intermediates.noindex/IndexFixture.build/Debug/IndexCoreTests-p.build/Objects-normal/arm64/IndexCoreTests.abi.json @BUILD@/out/Products/Debug/IndexCoreTests.swiftmodule/arm64-apple-macos.abi.json
@@ -816,36 +817,35 @@ Copy IndexCoreTests.swiftsourceinfo (arm64)
     cd @ROOT@
     builtin-copy -exclude .DS_Store -exclude CVS -exclude .svn -exclude .git -exclude .hg -resolve-src-symlinks -rename @BUILD@/out/Intermediates.noindex/IndexFixture.build/Debug/IndexCoreTests-p.build/Objects-normal/arm64/IndexCoreTests.swiftsourceinfo @BUILD@/out/Products/Debug/IndexCoreTests.swiftmodule/Project/arm64-apple-macos.swiftsourceinfo
 
-Compiling Clang module Accessibility
-Compiling Clang module Symbols
-Compiling Clang module os
-Compiling Clang module CoreVideo
-[217 / 246]
-Compiling Clang module OSLog
+Compiling Clang module _Builtin_intrinsics
 Compiling Clang module ApplicationServices
+[216 / 246]
 Compile test_entry_point.swift
     cd @PARENT@
     builtin-SwiftPerFileCompile test_entry_point.swift
 
 Compiling test_entry_point.swift
 Discovering Swift tasks after 'Compiling test_entry_point.swift'
-Compiling Clang module QuartzCore
-Compiling Clang module CoreImage
-[220 / 246]
-Compiling Clang module SwiftUICore
+Compiling Clang module OpenGL
+Compiling Clang module Metal
+Compiling Clang module CoreVideo
+[217 / 246]
 Compile IndexCoreTests.swift
     cd @PARENT@
     builtin-SwiftPerFileCompile IndexCoreTests.swift
 
 Compiling IndexCoreTests.swift
-Compiling Clang module simd
 Discovering Swift tasks after 'Compiling IndexCoreTests.swift'
 Compile IndexCoreTests (arm64)
     cd @PARENT@
     builtin-Swift-Compilation -- @TOOLCHAIN@/usr/bin/swiftc -parse-as-library -module-name IndexCoreTests -Onone @@BUILD@/out/Intermediates.noindex/IndexFixture.build/Debug/IndexCoreTests-p.build/Objects-normal/arm64/IndexCoreTests.SwiftFileList -DSWIFT_PACKAGE -DDEBUG -DXcode -index-include-locals -Xfrontend -debug-time-function-bodies -Xfrontend -debug-time-expression-type-checking -Xfrontend -debug-diagnostic-names -plugin-path @TOOLCHAIN@/usr/lib/swift/host/plugins/testing -enable-experimental-feature DebugDescriptionMacro -sdk @DEVELOPER@/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.2.sdk -target arm64-apple-macos14.0 -g -module-cache-path @BUILD@/out/ModuleCache.noindex -Xfrontend -serialize-debugging-options -enable-testing -index-store-path @BUILD@/out -Xcc -D_LIBCPP_HARDENING_MODE\=_LIBCPP_HARDENING_MODE_DEBUG -swift-version 6 -I @BUILD@/out/Products/Debug -Isystem @DEVELOPER@/Platforms/MacOSX.platform/Developer/usr/lib -F @BUILD@/out/Products/Debug/PackageFrameworks -F @BUILD@/out/Products/Debug -F @DEVELOPER@/Platforms/MacOSX.platform/Developer/Library/Frameworks -c -j8 -enable-batch-mode -incremental -Xcc -ivfsstatcache -Xcc @BUILD@/out/SDKStatCaches.noindex/macosx27.2-26B118-d56355c2f463f349a93388c94f7bc0b5a7ff82d74745d5ef33555b35c4238456.sdkstatcache -output-file-map @BUILD@/out/Intermediates.noindex/IndexFixture.build/Debug/IndexCoreTests-p.build/Objects-normal/arm64/IndexCoreTests-OutputFileMap.json -save-temps -no-color-diagnostics -explicit-module-build -module-cache-path @BUILD@/out/Intermediates.noindex/SwiftExplicitPrecompiledModules -clang-scanner-module-cache-path @BUILD@/out/ModuleCache.noindex -sdk-module-cache-path @BUILD@/out/SDKExplicitPrecompiledModules -emit-dependencies -emit-module -emit-module-path @BUILD@/out/Intermediates.noindex/IndexFixture.build/Debug/IndexCoreTests-p.build/Objects-normal/arm64/IndexCoreTests.swiftmodule -serialize-diagnostics -dependency-scan-serialize-diagnostics-path @BUILD@/out/Intermediates.noindex/IndexFixture.build/Debug/IndexCoreTests-p.build/Objects-normal/arm64/IndexCoreTests-dependency-scan.dia -validate-clang-modules-once -clang-build-session-file @BUILD@/out/ModuleCache.noindex/Session.modulevalidation -Xcc -fmodules-prune-interval\=86400 -Xcc -fmodules-prune-after\=345600 -package-name index -emit-const-values -const-gather-protocols-list @BUILD@/out/Intermediates.noindex/IndexFixture.build/Debug/IndexCoreTests-p.build/Objects-normal/arm64/IndexCoreTests_const_extract_protocols.json -Xcc -I@BUILD@/out/Products/Debug/include -Xcc -I@BUILD@/out/Intermediates.noindex/IndexFixture.build/Debug/IndexCoreTests-p.build/DerivedSources-normal/arm64 -Xcc -I@BUILD@/out/Intermediates.noindex/IndexFixture.build/Debug/IndexCoreTests-p.build/DerivedSources/arm64 -Xcc -I@BUILD@/out/Intermediates.noindex/IndexFixture.build/Debug/IndexCoreTests-p.build/DerivedSources -Xcc -DSWIFT_PACKAGE -Xcc -DDEBUG\=1 -working-directory @PARENT@ -experimental-emit-module-separately -disable-cmo
 
-Compiling Clang module Spatial
+Compiling Clang module simd
+Compiling Clang module QuartzCore
+Compiling Clang module CoreImage
+Compiling Clang module SwiftUICore
 [224 / 246]
+Compiling Clang module Spatial
 Link IndexCoreTests (arm64)
     cd @ROOT@
     @TOOLCHAIN@/usr/bin/swiftc -Xlinker -reproducible -target arm64-apple-macos14.0 -Xlinker -bundle -sdk @DEVELOPER@/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.2.sdk -Xlinker -no_warn_duplicate_libraries -L@BUILD@/out/Intermediates.noindex/EagerLinkingTBDs/Debug -L@BUILD@/out/Products/Debug -L@DEVELOPER@/Platforms/MacOSX.platform/Developer/usr/lib -F@BUILD@/out/Intermediates.noindex/EagerLinkingTBDs/Debug -F@BUILD@/out/Products/Debug/PackageFrameworks -F@BUILD@/out/Products/Debug -Fsystem @DEVELOPER@/Platforms/MacOSX.platform/Developer/Library/Frameworks @@BUILD@/out/Intermediates.noindex/IndexFixture.build/Debug/IndexCoreTests-p.build/Objects-normal/arm64/IndexCoreTests.LinkFileList -Xlinker -rpath -Xlinker /usr/lib/swift -Xlinker -rpath -Xlinker @loader_path -Xlinker -rpath -Xlinker @BUILD@/out/Products/Debug/PackageFrameworks -Xlinker -rpath -Xlinker @loader_path/../../.. -Xlinker -rpath -Xlinker @loader_path/Frameworks -Xlinker -rpath -Xlinker @loader_path/../Frameworks -Xlinker -rpath -Xlinker /var/run/com.apple.security.cryptexd/mnt/com.apple.MobileAsset.MetalToolchain-v27.2.47.0.33Jup1/Metal.xctoolchain/usr/lib/swift-6.2/macosx -Xlinker -rpath -Xlinker @TOOLCHAIN@/usr/lib/swift-6.2/macosx -Xlinker -dead_strip -Xlinker -object_path_lto -Xlinker @BUILD@/out/Intermediates.noindex/IndexFixture.build/Debug/IndexCoreTests-p.build/Objects-normal/arm64/IndexCoreTests_lto.o -Xclang-linker -rdynamic -Xlinker -no_deduplicate -Xlinker -dependency_info -Xlinker @BUILD@/out/Intermediates.noindex/IndexFixture.build/Debug/IndexCoreTests-p.build/Objects-normal/arm64/IndexCoreTests_dependency_info.dat -link-objc-runtime -L@TOOLCHAIN@/usr/lib/swift/macosx -L/usr/lib/swift -Xlinker -add_ast_path -Xlinker @BUILD@/out/Intermediates.noindex/IndexFixture.build/Debug/IndexCoreTests-p.build/Objects-normal/arm64/IndexCoreTests.swiftmodule -index-include-locals -Xfrontend -debug-time-function-bodies -Xfrontend -debug-time-expression-type-checking -Xfrontend -debug-diagnostic-names -Xlinker -needed_framework -Xlinker XCTest -framework XCTest -Xlinker -needed-lXCTestSwiftSupport -lXCTestSwiftSupport -Xlinker -no_adhoc_codesign -o @BUILD@/out/Products/Debug/IndexCoreTests.xctest/Contents/MacOS/IndexCoreTests -no-stdlib-rpath
@@ -854,6 +854,7 @@ Copy Swift standard libraries into IndexCoreTests.xctest
     cd @ROOT@
     builtin-swiftStdLibTool --copy --verbose --sign - --scan-executable @BUILD@/out/Products/Debug/IndexCoreTests.xctest/Contents/MacOS/IndexCoreTests --scan-folder @BUILD@/out/Products/Debug/IndexCoreTests.xctest/Contents/Frameworks --scan-folder @BUILD@/out/Products/Debug/IndexCoreTests.xctest/Contents/PlugIns --scan-folder @BUILD@/out/Products/Debug/IndexCoreTests.xctest/Contents/Library/SystemExtensions --scan-folder @BUILD@/out/Products/Debug/IndexCoreTests.xctest/Contents/Extensions --platform macosx --toolchain /var/run/com.apple.security.cryptexd/mnt/com.apple.MobileAsset.MetalToolchain-v27.2.47.0.33Jup1/Metal.xctoolchain --toolchain @TOOLCHAIN@ --destination @BUILD@/out/Products/Debug/IndexCoreTests.xctest/Contents/Frameworks --strip-bitcode --scan-executable @DEVELOPER@/Platforms/MacOSX.platform/Developer/usr/lib/libXCTestSwiftSupport.dylib --strip-bitcode-tool @TOOLCHAIN@/usr/bin/bitcode_strip --emit-dependency-info @BUILD@/out/Intermediates.noindex/IndexFixture.build/Debug/IndexCoreTests-p.build/SwiftStdLibToolInputDependencies.dep --filter-for-swift-os --back-deploy-swift-span
 
+[225 / 246] IndexCoreTests-product
 Sign IndexCoreTests.xctest
     cd @ROOT@
     
@@ -887,21 +888,21 @@ Unblock downstream dependents of IndexXCTests (arm64)
     cd @PARENT@
     builtin-Swift-Compilation-Requirements -- @TOOLCHAIN@/usr/bin/swiftc -parse-as-library -module-name IndexXCTests -Onone @@BUILD@/out/Intermediates.noindex/IndexFixture.build/Debug/IndexXCTests-p.build/Objects-normal/arm64/IndexXCTests.SwiftFileList -DSWIFT_PACKAGE -DDEBUG -DXcode -index-include-locals -Xfrontend -debug-time-function-bodies -Xfrontend -debug-time-expression-type-checking -Xfrontend -debug-diagnostic-names -plugin-path @TOOLCHAIN@/usr/lib/swift/host/plugins/testing -enable-experimental-feature DebugDescriptionMacro -sdk @DEVELOPER@/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.2.sdk -target arm64-apple-macos14.0 -g -module-cache-path @BUILD@/out/ModuleCache.noindex -Xfrontend -serialize-debugging-options -enable-testing -index-store-path @BUILD@/out -Xcc -D_LIBCPP_HARDENING_MODE\=_LIBCPP_HARDENING_MODE_DEBUG -swift-version 6 -I @BUILD@/out/Products/Debug -Isystem @DEVELOPER@/Platforms/MacOSX.platform/Developer/usr/lib -F @BUILD@/out/Products/Debug/PackageFrameworks -F @BUILD@/out/Products/Debug -F @DEVELOPER@/Platforms/MacOSX.platform/Developer/Library/Frameworks -c -j8 -enable-batch-mode -incremental -Xcc -ivfsstatcache -Xcc @BUILD@/out/SDKStatCaches.noindex/macosx27.2-26B118-d56355c2f463f349a93388c94f7bc0b5a7ff82d74745d5ef33555b35c4238456.sdkstatcache -output-file-map @BUILD@/out/Intermediates.noindex/IndexFixture.build/Debug/IndexXCTests-p.build/Objects-normal/arm64/IndexXCTests-OutputFileMap.json -save-temps -no-color-diagnostics -explicit-module-build -module-cache-path @BUILD@/out/Intermediates.noindex/SwiftExplicitPrecompiledModules -clang-scanner-module-cache-path @BUILD@/out/ModuleCache.noindex -sdk-module-cache-path @BUILD@/out/SDKExplicitPrecompiledModules -emit-dependencies -emit-module -emit-module-path @BUILD@/out/Intermediates.noindex/IndexFixture.build/Debug/IndexXCTests-p.build/Objects-normal/arm64/IndexXCTests.swiftmodule -serialize-diagnostics -dependency-scan-serialize-diagnostics-path @BUILD@/out/Intermediates.noindex/IndexFixture.build/Debug/IndexXCTests-p.build/Objects-normal/arm64/IndexXCTests-dependency-scan.dia -validate-clang-modules-once -clang-build-session-file @BUILD@/out/ModuleCache.noindex/Session.modulevalidation -Xcc -fmodules-prune-interval\=86400 -Xcc -fmodules-prune-after\=345600 -package-name index -emit-const-values -const-gather-protocols-list @BUILD@/out/Intermediates.noindex/IndexFixture.build/Debug/IndexXCTests-p.build/Objects-normal/arm64/IndexXCTests_const_extract_protocols.json -Xcc -I@BUILD@/out/Products/Debug/include -Xcc -I@BUILD@/out/Intermediates.noindex/IndexFixture.build/Debug/IndexXCTests-p.build/DerivedSources-normal/arm64 -Xcc -I@BUILD@/out/Intermediates.noindex/IndexFixture.build/Debug/IndexXCTests-p.build/DerivedSources/arm64 -Xcc -I@BUILD@/out/Intermediates.noindex/IndexFixture.build/Debug/IndexXCTests-p.build/DerivedSources -Xcc -DSWIFT_PACKAGE -Xcc -DDEBUG\=1 -working-directory @PARENT@ -experimental-emit-module-separately -disable-cmo
 
-Copy IndexXCTests.swiftdoc (arm64)
+Copy IndexXCTests.swiftmodule (arm64)
     cd @ROOT@
-    builtin-copy -exclude .DS_Store -exclude CVS -exclude .svn -exclude .git -exclude .hg -resolve-src-symlinks -rename @BUILD@/out/Intermediates.noindex/IndexFixture.build/Debug/IndexXCTests-p.build/Objects-normal/arm64/IndexXCTests.swiftdoc @BUILD@/out/Products/Debug/IndexXCTests.swiftmodule/arm64-apple-macos.swiftdoc
+    builtin-copy -exclude .DS_Store -exclude CVS -exclude .svn -exclude .git -exclude .hg -resolve-src-symlinks -rename @BUILD@/out/Intermediates.noindex/IndexFixture.build/Debug/IndexXCTests-p.build/Objects-normal/arm64/IndexXCTests.swiftmodule @BUILD@/out/Products/Debug/IndexXCTests.swiftmodule/arm64-apple-macos.swiftmodule
 
 Copy IndexXCTests.abi.json (arm64)
     cd @ROOT@
     builtin-copy -exclude .DS_Store -exclude CVS -exclude .svn -exclude .git -exclude .hg -resolve-src-symlinks -rename @BUILD@/out/Intermediates.noindex/IndexFixture.build/Debug/IndexXCTests-p.build/Objects-normal/arm64/IndexXCTests.abi.json @BUILD@/out/Products/Debug/IndexXCTests.swiftmodule/arm64-apple-macos.abi.json
 
+Copy IndexXCTests.swiftdoc (arm64)
+    cd @ROOT@
+    builtin-copy -exclude .DS_Store -exclude CVS -exclude .svn -exclude .git -exclude .hg -resolve-src-symlinks -rename @BUILD@/out/Intermediates.noindex/IndexFixture.build/Debug/IndexXCTests-p.build/Objects-normal/arm64/IndexXCTests.swiftdoc @BUILD@/out/Products/Debug/IndexXCTests.swiftmodule/arm64-apple-macos.swiftdoc
+
 Copy IndexXCTests.swiftsourceinfo (arm64)
     cd @ROOT@
     builtin-copy -exclude .DS_Store -exclude CVS -exclude .svn -exclude .git -exclude .hg -resolve-src-symlinks -rename @BUILD@/out/Intermediates.noindex/IndexFixture.build/Debug/IndexXCTests-p.build/Objects-normal/arm64/IndexXCTests.swiftsourceinfo @BUILD@/out/Products/Debug/IndexXCTests.swiftmodule/Project/arm64-apple-macos.swiftsourceinfo
-
-Copy IndexXCTests.swiftmodule (arm64)
-    cd @ROOT@
-    builtin-copy -exclude .DS_Store -exclude CVS -exclude .svn -exclude .git -exclude .hg -resolve-src-symlinks -rename @BUILD@/out/Intermediates.noindex/IndexFixture.build/Debug/IndexXCTests-p.build/Objects-normal/arm64/IndexXCTests.swiftmodule @BUILD@/out/Products/Debug/IndexXCTests.swiftmodule/arm64-apple-macos.swiftmodule
 
 Compile test_entry_point.swift
     cd @PARENT@
@@ -947,4 +948,4 @@ Touch IndexXCTests.xctest
 Prune stale explicit modules at @BUILD@/out/Intermediates.noindex/SwiftExplicitPrecompiledModules
 Prune stale explicit modules at @BUILD@/out/SDKExplicitPrecompiledModules
 Prune stale explicit modules at @BUILD@/out/Intermediates.noindex/ExplicitPrecompiledModules
-Build complete! (6.70 sec)
+Build complete! (7.08 sec)

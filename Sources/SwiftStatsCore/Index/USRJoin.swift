@@ -12,12 +12,18 @@
 //  column (the latest start, then the earliest end, then the key), when
 //  that record's kind and accessor kind are compatible. A shorthand
 //  subscript's getter, defined at the `{`, becomes its subscript record's
-//  secondary accessor USR when the subscript has no accessor records and
-//  the getter is an accessor of the subscript's USR. A record with several
+//  secondary accessor USR when the subscript has no accessor records of
+//  its own (explicit `get`/`set`, not a local computed property's getter
+//  nested in its body) and the getter is an accessor of the subscript's
+//  USR. A record with several
 //  distinct primary USRs keeps none, nor does any record sharing a USR
 //  with another; both are listed as disagreements. A definition no record
-//  takes is listed apart: a protocol requirement without a body, a kind
-//  the innermost record doesn't match, or outside every record.
+//  takes is listed apart: a protocol requirement without a body (its
+//  `childOf` relation names a protocol, or, for a property or subscript
+//  requirement's getter or setter, its `childOf` or `accessorOf` relation
+//  names a property or subscript whose own definition in the file is a
+//  child of a protocol), a kind the innermost record doesn't match, or
+//  outside every record.
 //
 //  A record is read once, but each unit naming it files its occurrences
 //  under that unit's main file (two files with one name and the same bytes
@@ -125,7 +131,7 @@ struct USRJoin {
         secondary = Self.secondaries(
             &assignments,
             primary: settled.primary,
-            hasAccessors: Set(records.filter { $0.kind == .accessor }.compactMap(\.parentKey))
+            hasAccessors: Self.subscriptsWithAccessors(records)
         )
         withoutRecord = assignments.withoutRecord.sorted { lhs, rhs in
             (lhs.file, lhs.line, lhs.column, lhs.usr ?? "") < (rhs.file, rhs.line, rhs.column, rhs.usr ?? "")
@@ -170,6 +176,7 @@ struct USRJoin {
         let byFile = Dictionary(grouping: records, by: \.file)
         var assignments = Assignments()
         for (file, occurrences) in filed.sorted(by: { $0.key < $1.key }) {
+            let members = protocolMembers(in: occurrences)
             var seen: Set<[String]> = []
             for occurrence in occurrences where occurrence.roles & IndexSymbolKind.Role.definition != 0 {
                 let identity = [
@@ -185,6 +192,7 @@ struct USRJoin {
                     assign(
                         Definition(file: file, position: position, occurrence: occurrence),
                         among: byFile[file, default: []],
+                        protocolMembers: members,
                         to: &assignments
                     )
                 }
@@ -194,8 +202,8 @@ struct USRJoin {
     }
 
     /// The secondary accessor USRs of `assignments`' getters, by subscript
-    /// key: a getter whose subscript has no accessor records (keys in
-    /// `hasAccessors` have) and whose `accessorOf` relation names the
+    /// key: a getter whose subscript has no accessor records of its own
+    /// (keys in `hasAccessors` have) and whose `accessorOf` relation names the
     /// subscript's `primary` USR, the first in source order; every other
     /// getter is set aside as an incompatible kind.
     private static func secondaries(
@@ -219,10 +227,12 @@ struct USRJoin {
     }
 
     /// Assigns `definition` to the innermost compatible record among
-    /// `records` (its file's), or notes why none takes it.
+    /// `records` (its file's), or notes why none takes it, a requirement
+    /// judged by `protocolMembers` (its file's).
     private static func assign(
         _ definition: Definition,
         among records: [FunctionRecord],
+        protocolMembers: Set<String>,
         to assignments: inout Assignments
     ) {
         let occurrence = definition.occurrence
@@ -232,11 +242,9 @@ struct USRJoin {
             return
         }
         guard let record = innermost(of: records, holding: definition.position) else {
-            let isRequirement = occurrence.relations.contains { relation in
-                relation.roles & IndexSymbolKind.RelationRole.childOf != 0 && relation.kind == IndexSymbolKind.protocol
-            }
+            let requirement = isRequirement(occurrence, protocolMembers: protocolMembers)
             assignments.withoutRecord.append(
-                definition.listing(.noRecord, key: nil, subreason: isRequirement ? .requirement : .outsideRecords)
+                definition.listing(.noRecord, key: nil, subreason: requirement ? .requirement : .outsideRecords)
             )
             return
         }

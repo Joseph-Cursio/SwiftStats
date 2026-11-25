@@ -21,7 +21,7 @@ struct USRReasonTests {
 
     /// `source` with the units whose names start with one of `prefixes`
     /// taken out.
-    private static func without(_ prefixes: [String], in source: RecordedIndexSource) -> RecordedIndexSource {
+    static func without(_ prefixes: [String], in source: RecordedIndexSource) -> RecordedIndexSource {
         RecordedIndexSource(
             units: source.units.values.filter { unit in prefixes.contains { unit.name.hasPrefix($0) } == false },
             records: Array(source.records.values)
@@ -44,20 +44,22 @@ struct USRReasonTests {
     }
 
     /// Evidence for `record` in which every reason after top-level code
-    /// applies; `record` is under `#if` in module `IndexCore`.
-    private static func evidence(
+    /// applies; `record` is under `#if` in module `IndexCore`, and `units`
+    /// says which units read name its module.
+    static func evidence(
         for record: FunctionRecord,
         plugin: Bool,
         definitionInside: Bool,
         changed: Bool,
-        unitModule: Bool
+        units: EvidenceUnits
     ) -> USRReason.Evidence {
-        USRReason.Evidence(
+        let read = units == .own ? record.file : "Sources/IndexCore/Other.swift"
+        return USRReason.Evidence(
             pluginTargets: plugin ? [record.module] : [],
             changedFiles: changed ? [record.file] : [],
             definitions: definitionInside ? [record.file: [record.range.start]] : [:],
-            unitModules: unitModule ? [record.module] : [],
-            readFiles: unitModule ? [record.module: ["Sources/IndexCore/Other.swift"]] : [:],
+            unitModules: units == .absent ? [] : [record.module],
+            readFiles: units == .absent ? [:] : [record.module: [read]],
             inDisagreement: [record.key]
         ) { _ in false }
     }
@@ -72,10 +74,10 @@ struct USRReasonTests {
         let records = fixture.measured.records
         let flagged = try #require(records.first { $0.ifConfig?.contains("INDEX_FIXTURE_FLAG") == true })
         let topLevel = try #require(records.first { $0.kind == .topLevelCode })
-        let all = Self.evidence(for: topLevel, plugin: true, definitionInside: false, changed: true, unitModule: false)
+        let all = Self.evidence(for: topLevel, plugin: true, definitionInside: false, changed: true, units: .absent)
         #expect(USRReason.first(for: topLevel, evidence: all) == .topLevelCode)
 
-        func reason(plugin: Bool, inside: Bool, changed: Bool, unit: Bool) -> USRReason {
+        func reason(plugin: Bool, inside: Bool, changed: Bool, unit: EvidenceUnits) -> USRReason {
             USRReason.first(
                 for: flagged,
                 evidence: Self.evidence(
@@ -83,17 +85,17 @@ struct USRReasonTests {
                     plugin: plugin,
                     definitionInside: inside,
                     changed: changed,
-                    unitModule: unit
+                    units: unit
                 )
             )
         }
-        #expect(reason(plugin: true, inside: false, changed: true, unit: false) == .pluginTarget)
-        #expect(reason(plugin: false, inside: false, changed: true, unit: false) == .inactiveIfBranch)
-        #expect(reason(plugin: false, inside: true, changed: true, unit: false) == .fileChanged)
-        #expect(reason(plugin: false, inside: true, changed: false, unit: false) == .targetNotBuilt)
-        #expect(reason(plugin: false, inside: true, changed: false, unit: true) == .fileNotIndexed)
+        #expect(reason(plugin: true, inside: false, changed: true, unit: .absent) == .pluginTarget)
+        #expect(reason(plugin: false, inside: false, changed: true, unit: .own) == .inactiveIfBranch)
+        #expect(reason(plugin: false, inside: true, changed: true, unit: .own) == .fileChanged)
+        #expect(reason(plugin: false, inside: true, changed: false, unit: .absent) == .targetNotBuilt)
+        #expect(reason(plugin: false, inside: true, changed: false, unit: .other) == .fileNotIndexed)
 
-        var known = Self.evidence(for: flagged, plugin: false, definitionInside: true, changed: false, unitModule: true)
+        var known = Self.evidence(for: flagged, plugin: false, definitionInside: true, changed: false, units: .other)
         known = USRReason.Evidence(
             pluginTargets: [],
             changedFiles: [],
@@ -133,7 +135,7 @@ struct USRReasonTests {
             let parsed = try #require(fixture.measured.files.first { $0.path == "Sources/IndexCore/TestOnly.swift" })
             let hashed = try #require(index.files.first { $0.path == parsed.path })
             #expect(hashed.sha256 != nil && hashed.sha256 != parsed.sha256)
-            #expect(index.records.count { $0.usr != nil } == 97 - 5)
+            #expect(index.records.count { $0.usr != nil } == 100 - 5)
         }
     }
 
@@ -272,10 +274,10 @@ struct USRReasonTests {
             #expect(bom.usr == "s:9IndexCore8bomFirstSiyF")
             let storage = try Self.record("IndexCore::Storage::subscript(_: Int) -> Int", in: outcome)
             #expect(storage.usrAccessor == "s:9IndexCore7StorageVyS2icig")
-            #expect(index.definitions == IndexDefinitions(joined: 99, implicit: 120, secondary: 2, objc: 1))
+            #expect(index.definitions == IndexDefinitions(joined: 103, implicit: 121, secondary: 3, objc: 1))
             #expect(index.withoutRecord.map { $0.usr ?? "" } == [
                 "s:9IndexCore5ShapeP4areaSiyF", "s:9IndexCore7GreeterP5greetSSyF"
-            ])
+            ] + USRRequirementTests.labeledRequirements.map { $0.usr ?? "" })
         }
     }
 }

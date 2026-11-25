@@ -33,7 +33,7 @@ struct DeadButTestedFixtureTests {
         #expect(signal.leftOut == nil)
         #expect(signal.rule == Harness.deadButTestedRule(listed: 1, partial: 0, unrun: [0, 0, 8, 0]))
         #expect(MutationSignalHarness.unbalanced(signal.rule) == [Harness.coveredClause])
-        #expect(signal.candidates == 93)
+        #expect(signal.candidates == 96)
         let item = try #require(signal.items.first)
         #expect(signal.items.count == 1)
         #expect(item.subject == Harness.onlyTestsCall)
@@ -97,7 +97,7 @@ struct DeadButTestedFixtureTests {
         #expect(verdicts[Harness.unusedSecond] == .notCovered)
         #expect(verdicts[Harness.relay] == .buildErrors)
         #expect(verdicts[Harness.unusedHelper] == .noMutant)
-        #expect(verdicts.values.count { $0 == .used } == 84)
+        #expect(verdicts.values.count { $0 == .used } == 87)
     }
 
     @Test("""

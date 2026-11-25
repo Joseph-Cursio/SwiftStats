@@ -96,7 +96,7 @@ struct USRJoinTests {
                 "USRs differ from IndexUSRs.golden.txt; to accept, set SWIFTSTATS_UPDATE_GOLDEN=1"
             )
             #expect(index.records.map(\.key) == outcome.report.records.map(\.key))
-            #expect(index.records.count { $0.usr != nil } == 97)
+            #expect(index.records.count { $0.usr != nil } == 100)
         }
     }
 
@@ -155,7 +155,7 @@ struct USRJoinTests {
                 == "s:9IndexCore7StorageV4slotS2i_tcig")
             #expect(records["IndexCore::Storage::subscript(slot: Int) -> Int / { set }"]?.usr
                 == "s:9IndexCore7StorageV4slotS2i_tcis")
-            #expect(index.records.count { $0.usrAccessor != nil } == 2)
+            #expect(index.records.count { $0.usrAccessor != nil } == 3)
         }
     }
 
@@ -166,14 +166,14 @@ struct USRJoinTests {
     func listsAndCounts() async throws {
         try await IndexFixtureScan().run { _, outcome in
             let index = try #require(outcome.report.index)
-            #expect(index.definitions == IndexDefinitions(joined: 99, implicit: 120, secondary: 2, objc: 1))
+            #expect(index.definitions == IndexDefinitions(joined: 103, implicit: 121, secondary: 3, objc: 1))
             #expect(index.disagreements.isEmpty)
             let tests = index.records.filter { $0.key.hasPrefix("IndexCoreTests::") }
             #expect(tests.count == 6 && tests.allSatisfy { $0.usr?.hasPrefix("s:14IndexCoreTests") == true })
             #expect(index.withoutRecord == [
                 Self.requirement("s:9IndexCore5ShapeP4areaSiyF", name: "area()", line: 4),
                 Self.requirement("s:9IndexCore7GreeterP5greetSSyF", name: "greet()", line: 21)
-            ])
+            ] + USRRequirementTests.labeledRequirements)
             let collided = "IndexCore::func measure(_: Data) -> Int @ Sources/IndexCore/"
             #expect(index.collisions.map(\.kind) == [.collision, .collision])
             #expect(index.collisions.map { $0.key ?? "" } == [collided + "Bytes.swift", collided + "Dependency.swift"])
@@ -232,7 +232,7 @@ struct USRJoinTests {
             let rollups = outcome.report.rollups
             #expect(rollups.allSatisfy { $0.index != nil })
             let core = try #require(rollups.first { $0.scope == .module && $0.name == "IndexCore" }?.index)
-            #expect(core.withUSR == 83)
+            #expect(core.withUSR == 86)
             #expect(core.withoutUSR["inactiveIfBranch"] == 2)
             #expect(core.withoutUSR.count == USRReason.allCases.count)
             #expect(core.withoutUSR.values.reduce(0, +) == 2)
@@ -240,7 +240,7 @@ struct USRJoinTests {
             #expect(app.withUSR == 0 && app.withoutUSR["topLevelCode"] == 1)
             let production = try #require(rollups.first { $0.scope == .project && $0.name == "production" }?.index)
             let tests = try #require(rollups.first { $0.scope == .project && $0.name == "tests" }?.index)
-            #expect(production.withUSR + tests.withUSR == 97)
+            #expect(production.withUSR + tests.withUSR == 100)
             #expect(tests.withUSR == 7 && tests.disagreements == 0)
             let metrics = try rollups.flatMap(RollupMetrics.metrics(of:)).filter { $0.path.hasPrefix("index.") }
             #expect(metrics.isEmpty == false && metrics.allSatisfy { $0.collector == "index" })

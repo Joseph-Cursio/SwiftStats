@@ -112,3 +112,21 @@ public struct Initialized {
         self.value = value
     }
 }
+
+extension Storage {
+    /// A shorthand subscript whose body declares a local computed property
+    /// and a local type with one: their getter records are nested in the
+    /// subscript but aren't its accessors, so its getter is still its
+    /// secondary accessor USR.
+    public subscript(doubled position: Int) -> Int {
+        var twice: Int {
+            values[position] * 2
+        }
+        struct Offset {
+            var amount: Int {
+                1
+            }
+        }
+        return twice + Offset().amount
+    }
+}

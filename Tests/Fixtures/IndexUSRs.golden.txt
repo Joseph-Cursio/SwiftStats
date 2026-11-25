@@ -19,6 +19,9 @@ IndexCore::Initialized::var value: Int { init }	s:9IndexCore11InitializedV5value
 IndexCore::Initialized::var value: Int { get }	s:9IndexCore11InitializedV5valueSivg	-	-
 IndexCore::Initialized::var value: Int { set }	s:9IndexCore11InitializedV5valueSivs	-	-
 IndexCore::Initialized::init(value: Int)	s:9IndexCore11InitializedV5valueACSi_tcfc	-	-
+IndexCore::Storage::subscript(doubled: Int) -> Int	s:9IndexCore7StorageV7doubledS2i_tcip	s:9IndexCore7StorageV7doubledS2i_tcig	-
+IndexCore::Storage::subscript(doubled: Int) -> Int / var twice: Int { get }	s:9IndexCore7StorageV7doubledS2i_tcig5twiceL_Sivg	-	-
+IndexCore::Storage::subscript(doubled: Int) -> Int / Offset::var amount: Int { get }	s:9IndexCore7StorageV7doubledS2i_tcig6OffsetL_V6amountSivg	-	-
 IndexCore::func bomFirst() -> Int	s:9IndexCore8bomFirstSiyF	-	-
 IndexCore::func bomSecond() -> Int	s:9IndexCore9bomSecondSiyF	-	-
 IndexCore::func measure(_: Data) -> Int @ Sources/IndexCore/Bytes.swift	s:9IndexCore7measureySi10Foundation4DataVF	-	-

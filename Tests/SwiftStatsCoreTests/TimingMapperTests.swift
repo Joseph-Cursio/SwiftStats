@@ -90,8 +90,8 @@ struct TimingMapperTests {
         #expect(mapped.dropped.outsideRoot.entries == 7)
         #expect(mapped.dropped.unscanned.entries == 0)
         #expect(mapped.dropped.fileChanged.entries == 0)
-        #expect(mapped.totals.functionEntries == 213)
-        #expect(mapped.totals.expressionEntries == 377)
+        #expect(mapped.totals.functionEntries == 226)
+        #expect(mapped.totals.expressionEntries == 381)
         #expect(Set(mapped.attachments.map(\.attachedTo)) == [.type, .file])
     }
 

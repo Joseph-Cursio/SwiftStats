@@ -66,9 +66,9 @@ struct MarkdownDeadCodeTests {
         "|  | Dead with tests as roots | Production-dead | Dead lines | Test / production | Test / (production − "
             + "dead) | Unused declarations without a line count |",
         "| --- | --- | --- | --- | --- | --- | --- |",
-        "| production | 7 | 9 | 25 | 0.08 | 0.09 | 0 |",
+        "| production | 7 | 9 | 25 | 0.08 | 0.08 | 0 |",
         "| IndexApp | 0 | 0 | 0 | 0 | 0 | 0 |",
-        "| IndexCore | 6 | 7 | 22 | 0.09 | 0.10 | 0 |",
+        "| IndexCore | 6 | 7 | 22 | 0.08 | 0.09 | 0 |",
         "| IndexTool | 0 | 0 | 0 | 0 | 0 | 0 |",
         "| index-kit | 1 | 1 | 3 | 4.50 | 9 | 0 |",
         "| index-support | 0 | 1 | 0 | 1.23 | 1.23 | 0 |",

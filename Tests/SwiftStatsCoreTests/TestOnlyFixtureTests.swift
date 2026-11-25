@@ -16,10 +16,10 @@ import Testing
 struct TestOnlyFixtureTests {
     /// The funnel the fixture gives, as the checker counts it on a real
     /// scan of the fixture.
-    private static let funnel = "93 production functions = 3 without a USR (2 inactive #if branch, 1 top-level "
-        + "code) + 90 with one; 90 = 57 public API of a library product + 2 witnesses or overrides + 0 @objc + 1 "
-        + "entry points + 1 deinitializers + 29 "
-        + "candidates; 29 = 3 listed + 15 with a production reference + 11 with no reference at all (not listed: "
+    private static let funnel = "96 production functions = 3 without a USR (2 inactive #if branch, 1 top-level "
+        + "code) + 93 with one; 93 = 58 public API of a library product + 2 witnesses or overrides + 0 @objc + 1 "
+        + "entry points + 1 deinitializers + 31 "
+        + "candidates; 31 = 3 listed + 15 with a production reference + 13 with no reference at all (not listed: "
         + "fan-in 0 isn't dead, PRD §7.6a)"
 
     /// Checks the signal and the verdicts on `snapshot`, the fixture's

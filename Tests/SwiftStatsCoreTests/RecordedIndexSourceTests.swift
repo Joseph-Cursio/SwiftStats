@@ -36,7 +36,7 @@ struct RecordedIndexSourceTests {
         #expect(names.count == 26)
         #expect(names == names.sorted())
         #expect(source.records.count == 24)
-        #expect(occurrences == 1_265)
+        #expect(occurrences == 1_308)
         #expect(source.units.values.allSatisfy { $0.isSystem == false })
         #expect(Set(underRoot.flatMap(\.records)) == Set(source.records.keys))
     }
@@ -60,7 +60,7 @@ struct RecordedIndexSourceTests {
         #expect(unit.module == "IndexCoreTests")
         #expect(unit.mainFile == "/run/work/Index/Tests/IndexCoreTests/IndexCoreTests.swift")
         #expect(unit.target == "arm64-apple-macos14.0")
-        #expect(unit.modified == IndexUnitFact.ModificationDate(seconds: 1_795_534_099, nanoseconds: 984_582_638))
+        #expect(unit.modified == IndexUnitFact.ModificationDate(seconds: 1_795_607_287, nanoseconds: 651_432_637))
         #expect(unit.records == ["IndexCoreTests.swift-PTEX7T57Z9VP"])
         #expect(unit.moduleDependencies.filter { $0.isSystem == false }.map(\.module) == [
             "IndexCore", "index_kit", "index_support"
@@ -70,11 +70,11 @@ struct RecordedIndexSourceTests {
 
     @Test("a record reads its file and occurrences with their relations as recorded")
     func recordFields() throws {
-        let record = try Self.fresh().record(named: "Accessors.swift-2G2AHM629N5IG")
+        let record = try Self.fresh().record(named: "Accessors.swift-8ROXMIAYDKZA")
         let getter = try #require(record.occurrences.first { $0.name == "getter:values" })
 
         #expect(record.file == "/run/work/Index/Sources/IndexCore/Accessors.swift")
-        #expect(record.occurrences.count == 132)
+        #expect(record.occurrences.count == 159)
         #expect(getter.line == 4)
         #expect(getter.column == 9)
         #expect(getter.usr == "s:9IndexCore7StorageV6valuesSaySiGvg")

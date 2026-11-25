@@ -125,8 +125,8 @@ struct BuildOutputReaderTests {
         let fixture = try BuildFixture()
         defer { fixture.remove() }
         let output = try fixture.output()
-        #expect(output.entries.count { $0.kind == .function } == 213)
-        #expect(output.entries.count { $0.kind == .expression } == 377)
+        #expect(output.entries.count { $0.kind == .function } == 226)
+        #expect(output.entries.count { $0.kind == .expression } == 381)
         #expect(output.unparsedTimingLines == 0)
         #expect(output.escapedLines == 0)
         // Two manifest commands, two SwiftPM package warnings, one summary form.
