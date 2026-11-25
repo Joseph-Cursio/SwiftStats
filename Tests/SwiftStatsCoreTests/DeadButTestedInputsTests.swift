@@ -27,10 +27,11 @@ struct DeadButTestedInputsTests {
     /// unused computed property covers no accessor), one listed, and the
     /// computed property's entry among the others.
     private static let positionRule = DeadButTested.rule + "; "
-        + Harness.functionsFunnel(listed: 1, partial: 0, unrun: [0, 0, 7, 0], dead: 8) + "; 8 unused production "
-        + "declarations = 5 function entries matching a record + 0 function entries matching no record + 1 type "
-        + "entries + 1 extension entries + 0 property entries with accessor records + 1 others (parameters, "
-        + "imports, enum cases, stored properties, typealiases); 8 = the distinct records F, T, E and V cover"
+        + Harness.functionsFunnel(listed: 1, partial: 0, unrun: [0, 0, 7, 0], dead: 8, nested: 0)
+        + "; 8 unused production declarations = 5 function entries matching a record + 0 function entries "
+        + "matching no record + 1 type entries + 1 extension entries + 0 property entries with accessor records + "
+        + "1 others (parameters, imports, enum cases, stored properties, typealiases); 8 = the distinct records F, T, "
+        + "E and V cover"
 
     /// The entries the declarations funnel test adds, `usr` being
     /// `onlyTestsCall()`'s USR: a function matching no record, one matching

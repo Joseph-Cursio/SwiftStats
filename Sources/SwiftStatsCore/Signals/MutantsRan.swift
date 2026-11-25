@@ -12,8 +12,10 @@
 //  executed it; with coverage off it mutates code no test runs too, and
 //  such a mutant reads as survived, so only a kill shows it. A record's
 //  setting is its file's run's, else the one its mutants' runs share, and
-//  unknown when they differ or it has none. Paths are compared in NFC, as
-//  the mapping compares them.
+//  unknown when they differ or it has none. Several records of one file
+//  can be judged together (a production-dead function and the records
+//  nested in it), their mutants taken as one record's. Paths are compared
+//  in NFC, as the mapping compares them.
 //
 
 /// The mutants the tests ran, per record.
@@ -60,7 +62,14 @@ struct MutantsRan {
     /// mutant judged by its file's run, else by its own; a run the results
     /// don't list reads as coverage on.
     func facts(key: String, path: String) -> Facts {
-        let held = mutants[key] ?? []
+        facts(keys: [key], path: path)
+    }
+
+    /// What the results show of the records keyed `keys`, all in `path`,
+    /// taken together: their mutants judged as `facts(key:path:)` judges
+    /// one record's.
+    func facts(keys: [String], path: String) -> Facts {
+        let held = keys.flatMap { mutants[$0] ?? [] }
         let file = files[NFCPath(path)]
         let skips = { (mutant: Mutant) in skipsCoverage[file?.run ?? mutant.run] ?? false }
         let unchecked = held.count { mutant in

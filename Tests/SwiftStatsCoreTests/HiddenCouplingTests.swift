@@ -120,7 +120,7 @@ struct HiddenCouplingTests {
         target's type aren't shared; an extension's member is owned by the package type its USR names, by a \
         plain, qualified or typealias head and whichever target declares it, and by none when it extends \
         another module's type of a name one target declares; a root without a Swift USR is owned by its own \
-        target's type; Array extension methods share none
+        target's type; Array extension methods share none; a private type nested in a plain one shares it
         """)
     func owners() throws {
         let made = try TemporaryStore("HiddenCoupling")
@@ -129,7 +129,8 @@ struct HiddenCouplingTests {
         var facts = Harness.Facts()
         facts.pairs = try Self.pairs([
             ("alpha", "delta"), ("epsilon", "zeta"), ("eta", "theta"), ("iota", "kappa"), ("kappa", "lambda"),
-            ("firstPart", "secondPart"), ("audit", "theta"), ("mu", "theta"), ("nu", "eta"), ("bridged", "alpha")
+            ("firstPart", "secondPart"), ("audit", "theta"), ("mu", "theta"), ("nu", "eta"), ("bridged", "alpha"),
+            ("alpha", "omega")
         ], in: plain)
         facts.typeReferences = [
             Harness.typeReference("delta", "Lib", "Holder"), Harness.typeReference("lambda", "Other", "Holder.Inside")
@@ -154,19 +155,32 @@ struct HiddenCouplingTests {
         #expect(try owner("firstPart") == nil)
         #expect(try owner("loneOne") == nil)
         #expect(try owner("unseen") == nil)
+        #expect(try owner("omega") == "Lib::Shared.Hidden")
         #expect(snapshot.functions.first { $0.name == "mu" }?.typePath == "Lib.Box")
         #expect(snapshot.functions.first { $0.name == "nu" }?.typePath == "Crate")
         #expect(try Harness.verdicts(snapshot, thresholds: SignalThresholds()) == [
             .listed, .listed, .sharedType, .sharedType, .listed, .listed, .listed, .sharedType, .sharedType,
-            .sharedType
+            .sharedType, .sharedType
         ])
+    }
+
+    @Test("""
+        one type is nested in another of its target when its path continues the other's: a private type nested in \
+        a plain one counts, though only the inner one is file-scoped; one in another file's private type, or \
+        whose name merely starts with the other's, doesn't
+        """)
+    func nesting() {
         #expect(CouplingOwners.isNested(
             TypeIdentity(module: "Lib", typePath: "Shared.Nested", typeFile: ""),
             TypeIdentity(module: "Lib", typePath: "Shared", typeFile: "")
         ))
         #expect(CouplingOwners.isNested(
-            TypeIdentity(module: "Lib", typePath: "Shared.Nested", typeFile: "Sources/Lib/Lib.swift"),
-            TypeIdentity(module: "Lib", typePath: "Shared", typeFile: "")
+            TypeIdentity(module: "Lib", typePath: "Shared", typeFile: ""),
+            TypeIdentity(module: "Lib", typePath: "Shared.Hidden", typeFile: "Sources/Lib/Lib.swift")
+        ))
+        #expect(CouplingOwners.isNested(
+            TypeIdentity(module: "Lib", typePath: "Shared.Hidden", typeFile: "Sources/Lib/Lib.swift"),
+            TypeIdentity(module: "Lib", typePath: "Shared", typeFile: "Sources/Lib/Other.swift")
         ) == false)
         #expect(CouplingOwners.isNested(
             TypeIdentity(module: "Lib", typePath: "SharedMore", typeFile: ""),

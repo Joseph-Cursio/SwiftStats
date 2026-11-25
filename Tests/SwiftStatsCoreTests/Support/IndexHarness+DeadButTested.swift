@@ -11,6 +11,7 @@
 //
 
 @testable import SwiftStatsCore
+import Testing
 
 extension IndexHarness {
     /// The fixture's unused production declarations, as the `production`
@@ -41,14 +42,15 @@ extension IndexHarness {
     /// of them production-dead, with `listed` listed, `partial` in files
     /// without full results and the rest counted in `unrun`'s order (only
     /// not covered or no coverage, only build errors, no mutant, only
-    /// survived or timed out with coverage off).
-    static func functionsFunnel(listed: Int, partial: Int, unrun: [Int], dead: Int) -> String {
+    /// survived or timed out with coverage off), `nested` nested in one of
+    /// those.
+    static func functionsFunnel(listed: Int, partial: Int, unrun: [Int], dead: Int, nested: Int) -> String {
         let total = unrun.reduce(0, +)
         let parts = zip(unrun, unrunTerms).map { "\($0) \($1)" }.joined(separator: " + ")
         let used = productionFunctions - dead
         return "\(productionFunctions) production functions = \(dead) production-dead + \(used) used; \(dead) = "
             + "\(listed) listed + \(total) with no mutant that ran + \(partial) in files without full mutation "
-            + "results (unresolved or unlisted); \(total) = " + parts
+            + "results (unresolved or unlisted) + \(nested) nested in one of those, judged with it; \(total) = " + parts
     }
 
     /// Dead but tested's rule with the index: the fixture's nine
@@ -56,7 +58,7 @@ extension IndexHarness {
     /// without full results and the rest counted in `unrun`'s order, and
     /// the fixture's declarations funnel.
     static func deadButTestedRule(listed: Int, partial: Int, unrun: [Int]) -> String {
-        let functions = functionsFunnel(listed: listed, partial: partial, unrun: unrun, dead: productionDead)
+        let functions = functionsFunnel(listed: listed, partial: partial, unrun: unrun, dead: productionDead, nested: 0)
         return DeadButTested.rule + "; " + functions + "; " + declarationsFunnel
     }
 
@@ -83,6 +85,56 @@ extension IndexHarness {
             owner: nil,
             module: "IndexCore",
             strippedLines: nil
+        )
+    }
+
+    /// `scanned` with the record keyed `key` covered by USR by a new unused
+    /// production entry of `run` at `ordinal`, of `kind` and named as the
+    /// key, at the record's start, as the mapping covers the outermost
+    /// unused declaration outskirts lists.
+    static func covering(
+        _ key: String,
+        run: DeadCodeRun,
+        ordinal: Int,
+        kind: String,
+        in scanned: ScannedSnapshot
+    ) throws -> ScannedSnapshot {
+        let record = try #require(scanned.report.records.first { $0.key == key })
+        let usr = try #require(scanned.report.index?.records.first { $0.key == key }?.usr)
+        let entry = DeadCodeDeclaration(
+            run: run,
+            ordinal: ordinal,
+            hint: DeadCodeMapper.unusedHint,
+            hintText: nil,
+            kind: kind,
+            name: key,
+            accessibility: "public",
+            attributes: [],
+            modifiers: [],
+            ids: [usr],
+            modules: [record.module],
+            entryClass: .production,
+            file: record.file,
+            line: record.range.start.line,
+            column: record.range.start.column,
+            place: .function,
+            owner: key,
+            module: record.module,
+            strippedLines: record.strippedLines
+        )
+        let dead = try #require(scanned.report.deadCode)
+        let report = DeadCodeReport(
+            version: dead.version,
+            runs: dead.runs,
+            declarations: dead.declarations + [entry],
+            records: dead.records + [DeadCodeRecord(key: key, run: run, declaration: ordinal, via: .usr)],
+            dropped: dead.dropped,
+            deadLines: dead.deadLines
+        )
+        let status = try #require(scanned.report.collectors.first { $0.name == PeripheryAdapter.name })
+        return ScannedSnapshot(
+            info: scanned.info,
+            report: scanned.report.with(deadCode: DeadCodeRows.normalized(report), status: status)
         )
     }
 

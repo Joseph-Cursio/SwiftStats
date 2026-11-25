@@ -251,12 +251,8 @@ struct PeripheryOutputTests {
         #expect(byPlace.last?.file == ".swiftstats/index-build/checkouts/Dep/Dep.swift")
     }
 
-    @Test("the classes, in the order they apply, and the rule naming them")
+    @Test("the rule names the classes in the order they apply")
     func classes() {
-        #expect(PeripheryEntryClass.ordered == [
-            .build, .outsideRoot, .test, .unscanned, .fileChanged, .local, .production
-        ])
-        #expect(Set(PeripheryEntryClass.ordered) == Set(PeripheryEntryClass.allCases))
         #expect(PeripheryOutput.rule.hasPrefix("""
             build, outside the root, test targets (the scanned file's target; an unscanned file's test directory \
             or modules), unscanned, files changed

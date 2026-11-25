@@ -51,7 +51,7 @@ struct TypeOwnershipTests {
         let index = try harness.usr(of: "IndexCore::Ledger::func index(at: Int) -> Index")
         #expect(ownership.owner(of: index) == Self.ledger)
         #expect(ownership.types.count == 26 && ownership.types.values.count(where: \.isProduction) == 24)
-        #expect(ownership.unplaced == 0)
+        #expect(ownership.unplaced.isEmpty)
         #expect(ownership.types[Self.ledgerIndex]?.identity == TypeIdentity(
             module: "IndexCore",
             typePath: "Ledger.Index",
@@ -90,6 +90,63 @@ struct TypeOwnershipTests {
         ))
         #expect(topLevel.recordKey == "IndexApp::<top-level code> @ Sources/IndexApp/main.swift")
         #expect(topLevel.owner == nil && topLevel.target == "IndexApp")
+    }
+
+    @Test("""
+        a reference with no container relation outside every record is contained by the innermost type record \
+        holding it, owned by that type, which gives a type edge and a fan-in referrer by owner; outside every \
+        type record too, by the file, with no owner, which gives no edge and a fan-in referrer by container
+        """)
+    func positionalContainers() throws {
+        let harness = try CouplingHarness()
+        defer { harness.remove() }
+        let input = harness.input
+        let file = "Sources/IndexCore/Types.swift"
+        let reference = { (line: Int, column: Int) in
+            OccurrenceFacts.Located(file: file, occurrence: IndexOccurrenceFact(
+                line: line,
+                column: column,
+                roles: IndexSymbolKind.Role.reference,
+                usr: Self.alpha,
+                name: "Alpha",
+                kind: IndexSymbolKind.struct,
+                subkind: IndexSymbolKind.Subkind.plain,
+                properties: 0,
+                relations: []
+            ))
+        }
+        // `var entries: [Int]` in `Ledger`, a stored property: no record
+        // holds it; and the blank line between `Alpha` and `Beta`.
+        let inLedger = reference(26, 20)
+        let between = reference(7, 1)
+
+        let typed = harness.resolver.container(of: inLedger)
+        #expect(typed.identity == .type(TypeIdentity(module: "IndexCore", typePath: "Ledger", typeFile: "")))
+        #expect(typed.owner == Self.ledger && typed.target == "IndexCore" && typed.name == "Ledger")
+        let filed = harness.resolver.container(of: between)
+        #expect(filed.identity == .file(file) && filed.owner == nil && filed.target == "IndexCore")
+
+        var occurrences = input.join.filedOccurrences
+        occurrences[file, default: []] += [inLedger.occurrence, between.occurrence]
+        let facts = OccurrenceFacts(
+            occurrences: occurrences,
+            targets: input.targetOfFile,
+            joinable: Set(harness.fixture.measured.files.map(\.path))
+        )
+        let graph = ReferenceGraph(ReferenceGraph.Input(
+            join: input.join,
+            records: input.records,
+            facts: facts,
+            ownership: input.ownership,
+            topLevelLines: input.topLevelLines,
+            testModules: input.testModules,
+            targetOfFile: input.targetOfFile
+        ))
+        #expect(harness.graph.typeEdges[Self.ledger]?.contains(Self.alpha) != true)
+        #expect(graph.typeEdges[Self.ledger]?.contains(Self.alpha) == true)
+        let referrers = graph.typeReferrers[Self.alpha]?.sameModule ?? []
+        let before = harness.graph.typeReferrers[Self.alpha]?.sameModule ?? []
+        #expect(referrers.subtracting(before) == [.owner(Self.ledger), .container(.file(file))])
     }
 
     @Test("""

@@ -46,8 +46,9 @@ public extension SignalItem {
         public let via: DeadCodeVia
         /// Its accessibility, as outskirts writes it.
         public let accessibility: String
-        /// Whether the `roots` run covers the function too: no test
-        /// references it statically either, so tests reach it dynamically.
+        /// Whether the `roots` run covers the function too, or a function
+        /// it is nested in: no test references it statically either, so
+        /// tests reach it dynamically.
         public let deadWithTestsAsRoots: Bool
     }
 

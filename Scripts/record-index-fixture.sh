@@ -30,7 +30,8 @@
 #    3. `python3 -I -B Scripts/index-check.py dump` of the store;
 #    4. outskirts' two runs, the command lines of design §5.2, with
 #       `--retain-public-modules` the C99 names of the targets the describe's
-#       library products list;
+#       library products list (the fixture re-exports no package target with
+#       `@_exported import`, so design §5.2's re-exported targets add none);
 #    5. removes the root package's intermediates
 #       (out/Intermediates.noindex/<manifest name>.build) and builds again;
 #    6. renames Sources/IndexCore/Formatting.swift to LineFormatting.swift

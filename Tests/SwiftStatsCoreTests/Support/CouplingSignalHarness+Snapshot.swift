@@ -97,7 +97,7 @@ extension CouplingSignalHarness {
                 IndexTypeRow(
                     module: type.0,
                     typePath: type.1,
-                    typeFile: nil,
+                    typeFile: typeFiles["\(type.0) \(type.1)"],
                     usr: typeUSR(type.0, type.1),
                     referrersSameModule: 0,
                     referrersOtherModules: 0,

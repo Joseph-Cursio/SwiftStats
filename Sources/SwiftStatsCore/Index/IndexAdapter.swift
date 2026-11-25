@@ -47,6 +47,8 @@ enum IndexAdapter {
         let localUSRs: Set<String>
         /// What the dead-code mapping reads.
         let deadCode: DeadCodeIndex
+        /// The warnings describing the results.
+        let warnings: [ScanWarning]
     }
 
     /// What a read of the store needs from the scan.
@@ -68,6 +70,9 @@ enum IndexAdapter {
         let fileScopedTypes: [String: Set<String>]
         /// The scan's warnings, which name its key collisions.
         let warnings: [ScanWarning]
+        /// The modules each target's parsed files re-export
+        /// (`@_exported import`), by target name.
+        var exportedImports: [String: Set<String>] = [:]
     }
 
     /// A read that can't go on.
@@ -96,7 +101,7 @@ enum IndexAdapter {
     /// The kind of target the build never compiles.
     private static let pluginType = "plugin"
     /// The product kind whose targets are library modules.
-    private static let libraryKind = "library"
+    static let libraryKind = "library"
     /// How an Objective-C USR starts.
     private static let objcPrefix = "c:"
     /// The compiler option naming the module a task log's command compiles.
@@ -116,7 +121,7 @@ enum IndexAdapter {
         }
         let result: AdapterResult
         switch outcome {
-        case .success:
+        case .success(let read):
             result = AdapterResult(
                 status: CollectorStatus(
                     name: name,
@@ -126,7 +131,7 @@ enum IndexAdapter {
                     options: options
                 ),
                 findings: [],
-                warnings: []
+                warnings: read.warnings
             )
 
         case .failure(let error):
@@ -185,18 +190,14 @@ enum IndexAdapter {
             joinable: files.subtracting(changed),
             packageTargets: Set(filter.modules.values)
         )
-        let evidence = USRReason.Evidence(
-            pluginTargets: plugins,
-            changedFiles: changed,
-            definitions: join.definitionPositions,
-            unitModules: Set(snapshot.units.map(\.module)),
-            readFiles: readFiles(of: snapshot),
-            inDisagreement: join.inDisagreement,
-            compiles: compiled(scan.records, snapshot: snapshot, products: products).contains
-        )
+        let evidence = evidence(snapshot, join: join, plugins: plugins, records: scan.records, products: products)
         let report = IndexReport(
             store: summary(of: snapshot, quarantined: quarantined.count),
-            libraryModules: libraryModules(products.package, reading: Set(snapshot.readUnits.map(\.module))),
+            libraryModules: libraryModules(
+                products.package,
+                reading: Set(snapshot.readUnits.map(\.module)),
+                exports: scan.exportedImports
+            ),
             records: recordUSRs(scan.records, join: join, coupling: coupling, evidence: evidence),
             definitions: definitions(of: join),
             disagreements: join.disagreements,
@@ -208,16 +209,33 @@ enum IndexAdapter {
             familyTypeReferences: coupling.familyTypeReferences,
             files: scan.files.map(\.path).sorted().map { IndexFileHash(path: $0, sha256: products.hashes[$0]) }
         )
-        return Read(report: report, localUSRs: localUSRs(in: snapshot), deadCode: coupling.deadCode)
+        return Read(
+            report: report,
+            localUSRs: localUSRs(in: snapshot),
+            deadCode: coupling.deadCode,
+            warnings: coupling.warnings
+        )
     }
 
-    /// The library-product targets of `package` among `read`, the targets
-    /// with a kept or variant unit, in code point order: the modules whose
-    /// public declarations outskirts retains (design §5.2).
-    static func libraryModules(_ package: DescribedPackage, reading read: Set<String>) -> [String] {
-        Set(package.products.filter { $0.kind == libraryKind }.flatMap(\.targets))
-            .intersection(read)
-            .sorted(by: CodePointOrder.precedes)
+    /// What tells why a record of `records` has no USR: `snapshot`'s units
+    /// and read files, `join`'s definitions and disagreements, the
+    /// `plugins` targets and what `products`' build changed and compiled.
+    private static func evidence(
+        _ snapshot: IndexSnapshot,
+        join: USRJoin,
+        plugins: Set<String>,
+        records: [FunctionRecord],
+        products: BuildSession.Products
+    ) -> USRReason.Evidence {
+        USRReason.Evidence(
+            pluginTargets: plugins,
+            changedFiles: Set(products.changedFiles),
+            definitions: join.definitionPositions,
+            unitModules: Set(snapshot.units.map(\.module)),
+            readFiles: readFiles(of: snapshot),
+            inDisagreement: join.inDisagreement,
+            compiles: compiled(records, snapshot: snapshot, products: products).contains
+        )
     }
 
     /// The USRs that `snapshot`'s records define with the local property.

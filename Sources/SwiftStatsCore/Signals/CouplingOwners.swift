@@ -50,14 +50,13 @@ struct CouplingOwners {
         }
     }
 
-    /// Whether one of `first` and `second` is nested in the other: in the
-    /// same target and type file, one type path the other's followed by
-    /// `.` (design §8.1).
+    /// Whether one of `first` and `second` is nested in the other (design
+    /// §8.1's Y), as the type cycles read nesting (`TypeIdentity.isNested(in:)`):
+    /// in the same target, one type path the other's followed by `.`, the
+    /// outer type not file-scoped or file-scoped in the inner one's file, so
+    /// a `private` type nested in a plain one is nested in it.
     static func isNested(_ first: TypeIdentity, _ second: TypeIdentity) -> Bool {
-        guard first.module == second.module, first.typeFile == second.typeFile else {
-            return false
-        }
-        return first.typePath.hasPrefix(second.typePath + ".") || second.typePath.hasPrefix(first.typePath + ".")
+        first.isNested(in: second) || second.isNested(in: first)
     }
 
     /// The owning type of `family`'s root (a computed property's first

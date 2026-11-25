@@ -18,7 +18,7 @@
 /// outskirts' unused production declarations and the records they cover.
 struct DeadDeclarations {
     /// What the declarations funnel counts an unused production entry as.
-    enum Term: CaseIterable, Hashable {
+    enum Term: Hashable {
         /// An extension entry.
         case extensionEntry
         /// A function entry matching a record.

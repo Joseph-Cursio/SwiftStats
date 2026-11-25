@@ -111,6 +111,19 @@ extension PackageScanner {
         let findings: [RawFinding]
     }
 
+    /// The modules each target's `parsed` files re-export (`@_exported
+    /// import`), by target name; a target that re-exports none is absent.
+    static func exportedImports(of parsed: [(module: String, file: ParsedFile)]) -> [String: Set<String>] {
+        var exports: [String: Set<String>] = [:]
+        for (module, file) in parsed {
+            let modules = ExportedImports.modules(in: file.tree)
+            if modules.isEmpty == false {
+                exports[module, default: []].formUnion(modules)
+            }
+        }
+        return exports
+    }
+
     /// The real path of `url`, symbolic links resolved (realpath(3)); its
     /// path when it can't be resolved.
     private static func realPath(_ url: URL) -> String {
@@ -304,7 +317,8 @@ extension PackageScanner {
                 targets: targets,
                 topLevelLines: measured.topLevelLines,
                 fileScopedTypes: measured.fileScopedTypes,
-                warnings: measured.warnings
+                warnings: measured.warnings,
+                exportedImports: Self.exportedImports(of: measured.parsed)
             )
             let index = index(after: mapped.run, configuration: configuration, scan: scan)
             let periphery = periphery(after: mapped.run, index: index, configuration: configuration, scan: scan)

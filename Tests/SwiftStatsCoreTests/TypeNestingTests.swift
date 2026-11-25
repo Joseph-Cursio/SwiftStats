@@ -73,7 +73,7 @@ struct TypeNestingTests {
         """)
     func privateNestedType() throws {
         let ownership = try Self.ownership()
-        #expect(ownership.types.count == Self.definitions.count && ownership.unplaced == 0)
+        #expect(ownership.types.count == Self.definitions.count && ownership.unplaced.isEmpty)
         let outer = try #require(ownership.types["s:3Lib5OuterV"]?.identity)
         let visitor = try #require(ownership.types["s:3Lib5OuterV7Visitor"]?.identity)
         #expect(outer.typeFile.isEmpty && visitor.typePath == "Outer.Visitor" && visitor.typeFile.isEmpty == false)
@@ -81,6 +81,46 @@ struct TypeNestingTests {
         #expect(ownership.isNested("s:3Lib5OuterV7Visitor", "s:3Lib5OuterV"))
         #expect(ownership.isNested("s:3Lib5OuterV", "s:3Lib5OuterV6Helper"))
         #expect(ownership.isNested("s:3Lib6HiddenV6Inside", "s:3Lib6HiddenV"))
+    }
+
+    @Test("""
+        a type inside a macro's closure, which the scan doesn't measure, finds no type record: it is no package \
+        type, and the index collector's warning names it with its place, the first five of many
+        """)
+    func unplacedTypes() throws {
+        let macroSource = """
+            struct Shown {}
+            #Preview {
+                struct Demo {}
+            }
+            """
+        let records = CollectorHarness.types(macroSource)
+        let file = try #require(records.first?.file)
+        let macroDefinitions = [
+            Self.definition("s:3Lib5ShownV", IndexSymbolKind.struct, at: SourcePosition(line: 1, column: 8)),
+            Self.definition("s:3Lib4DemoV", IndexSymbolKind.struct, at: SourcePosition(line: 3, column: 12))
+        ]
+        let ownership = TypeOwnership(
+            facts: OccurrenceFacts(occurrences: [file: macroDefinitions], targets: [file: "Lib"], joinable: [file]),
+            records: records,
+            fileScopedTypes: [:],
+            testModules: [],
+            joinable: [file]
+        )
+
+        #expect(Array(ownership.types.keys) == ["s:3Lib5ShownV"])
+        #expect(ownership.unplaced.map(\.occurrence.usr) == ["s:3Lib4DemoV"])
+        let warning = try #require(IndexCoupling.unplacedWarning(ownership.unplaced))
+        #expect(warning.file == nil)
+        #expect(warning.message == "index: 1 package type definitions found no type record of their kind (a type "
+            + "the scan doesn't measure, such as one inside a macro's closure), so they have no type row, fan-in or "
+            + "cycle: s:3Lib4DemoV (\(file):3)")
+        #expect(IndexCarry.describesResults(warning))
+        #expect(IndexCoupling.unplacedWarning([]) == nil)
+        let many = Array(repeating: ownership.unplaced[0], count: 7)
+        #expect(IndexCoupling.unplacedWarning(many)?.message.hasSuffix(
+            Array(repeating: "s:3Lib4DemoV (\(file):3)", count: 5).joined(separator: ", ") + "; and 2 more"
+        ) == true)
     }
 
     @Test("siblings, unrelated types and a type whose name only starts with another's aren't nested")

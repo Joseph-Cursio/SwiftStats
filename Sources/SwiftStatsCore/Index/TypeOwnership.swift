@@ -14,7 +14,9 @@
 //  when it extends a type the package doesn't declare; anything else
 //  follows its definition's `childOf` chain to the first of those, so a
 //  nested type's members belong to the nested type and an extension's
-//  members to the extended type.
+//  members to the extended type. A definition no type record of a
+//  matching kind holds (a type inside a macro's closure, which the scan
+//  doesn't measure) is kept apart, for the index collector's warning.
 //
 
 /// The package's types and the owners of declarations.
@@ -52,8 +54,9 @@ struct TypeOwnership {
     let types: [String: PackageType]
     /// The scan's type records.
     let records: [TypeRecord]
-    /// How many type definitions found no type record of a matching kind.
-    let unplaced: Int
+    /// The type definitions that found no type record of a matching kind,
+    /// in definition order (by file, position, USR, then kind).
+    let unplaced: [OccurrenceFacts.Located]
     /// Each type record's identity, by index.
     private let identities: [TypeIdentity]
     /// The type records of each file, by index.
@@ -81,7 +84,7 @@ struct TypeOwnership {
         recordsByFile = Dictionary(grouping: records.indices) { records[$0].file }
         var placed: [String: PackageType] = [:]
         var typeRecords: [Int: String] = [:]
-        var missed = 0
+        var missed: [OccurrenceFacts.Located] = []
         for located in facts.typeDefinitions.sorted(by: Self.definitionOrder) {
             let occurrence = located.occurrence
             guard placed[occurrence.usr] == nil else {
@@ -90,7 +93,7 @@ struct TypeOwnership {
             let position = SourcePosition(line: occurrence.line, column: occurrence.column)
             guard let index = Self.innermost(in: located.file, at: position, records: records, byFile: recordsByFile),
                   Self.indexKinds[records[index].kind] == occurrence.kind else {
-                missed += 1
+                missed.append(located)
                 continue
             }
             placed[occurrence.usr] = PackageType(

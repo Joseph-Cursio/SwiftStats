@@ -9,14 +9,18 @@
 //  the scan JSON's `index` block writes them: each record's witness flag
 //  and referrers (records with a primary USR only), the edges, the
 //  production types with their fan-in and cycle number, and the family
-//  references, each list in a fixed order; and the facts the dead-code
-//  mapping reads from the same join and ownership (`DeadCodeIndex`).
+//  references, each list in a fixed order; the facts the dead-code
+//  mapping reads from the same join and ownership (`DeadCodeIndex`); and
+//  a warning naming the package type definitions no type record holds,
+//  which have no type row, fan-in or cycle.
 //
 
 /// The coupling the T1 build's index gives a scan.
 struct IndexCoupling {
     /// How many test referrer names a record keeps.
     static let testReferrersKept = 5
+    /// How many unplaced type definitions the warning names.
+    static let unplacedNamed = 5
 
     /// Each record's witness flag and referrers, by key; records without a
     /// primary USR are absent.
@@ -34,6 +38,9 @@ struct IndexCoupling {
     /// What the dead-code mapping reads from the index: the records by
     /// USR, the properties' accessor records and the types' ownership.
     let deadCode: DeadCodeIndex
+    /// The warning naming the package type definitions no type record of
+    /// a matching kind holds; empty when there are none.
+    let warnings: [ScanWarning]
 
     /// The coupling of `snapshot` for `scan`, its records joined by
     /// `join`, references and types read only from `joinable` files
@@ -48,6 +55,7 @@ struct IndexCoupling {
         let input = Self.input(snapshot: snapshot, join: join, scan: scan, joinable: joinable)
         let graph = ReferenceGraph(input)
         deadCode = DeadCodeIndex(join: join, records: scan.records, ownership: input.ownership)
+        warnings = Self.unplacedWarning(input.ownership.unplaced).map { [$0] } ?? []
         records = Self.records(graph, join: join)
         moduleEdges = ModuleEdges.edges(
             of: snapshot,
@@ -106,6 +114,25 @@ struct IndexCoupling {
             topLevelLines: scan.topLevelLines,
             testModules: testModules,
             targetOfFile: targetOfFile
+        )
+    }
+
+    /// The warning naming `unplaced`, the package type definitions no type
+    /// record of a matching kind holds, the first five by name and place;
+    /// nil when there are none.
+    static func unplacedWarning(_ unplaced: [OccurrenceFacts.Located]) -> ScanWarning? {
+        guard unplaced.isEmpty == false else {
+            return nil
+        }
+        let named = unplaced.prefix(unplacedNamed).map { located in
+            "\(located.occurrence.name) (\(located.file):\(located.occurrence.line))"
+        }
+        let more = unplaced.count > unplacedNamed ? "; and \(unplaced.count - unplacedNamed) more" : ""
+        return ScanWarning(
+            file: nil,
+            message: "\(IndexAdapter.name): \(unplaced.count) package type definitions found no type record of their "
+                + "kind (a type the scan doesn't measure, such as one inside a macro's closure), so they have no "
+                + "type row, fan-in or cycle: " + named.joined(separator: ", ") + more
         )
     }
 

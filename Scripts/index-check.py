@@ -319,7 +319,9 @@ compares the result with the scan JSON's `index` block (design 9.2) and the
       are skipped and counted.
 Also compared: `index.files` (every scanned file, each hash the file's bytes
 now), the records read and occurrences when the scan gives them,
-`libraryModules` when present, and each roll-up scope's `index.withUSR`,
+`libraryModules` when present (the library-product targets and the package
+targets they re-export, transitively, with kept units; review C14), and each
+roll-up scope's `index.withUSR`,
 `index.withoutUSR.<reason>` and `index.disagreements` (records whose reason
 is disagreement), with the T0 scopes (module by the record's module;
 project production by role production, tests by the other roles). The
@@ -338,7 +340,10 @@ compares it with the index block's `records` (`witness`, `references`),
 `moduleEdges`, `types`, `familyReferences` and `familyTypeReferences` and the
 roll-ups `index.typeCycles`, `index.typesInCycles` and `index.moduleEdges`
 (`--without-u7` skips it):
-  u7  references: occurrences with the reference role, implicit included,
+  u7  (also: the scan JSON's `warnings` hold one led by `index: <n> package
+      type definitions found no type record of their kind ` exactly when
+      this check leaves n > 0 definitions unplaced, review C12)
+      references: occurrences with the reference role, implicit included,
       in scanned files whose bytes still have the scan's hash, each distinct
       occurrence once. A reference's container, first that applies: the
       symbol of its calledBy relation, else of its containedBy relation;
@@ -539,12 +544,15 @@ Inputs `usr` trusts:
     absence put back afterwards), or `--describe`: target names, C99 names
     (computed when absent), paths, sources, types, library products, path
     dependencies;
+  - the scanned files' text (the scan JSON's `files`, read from disk), for
+    the `@_exported import` lines u1's libraryModules follows;
   - the scan JSON's `records` (`key`, `file`, `kind`, `name`,
     `accessorKind`, `range`, `parentKey`, `module`, `ifConfig`, `role`,
     `typePath`; `name` only to tell a subscript's explicit accessors,
     named `subscript`, from other accessor records nested in it),
     `files` (`path`, `sha256`), `targets` (`name`, `type`) and `warnings`
-    (the collided keys), and the T0 roll-up scopes, as T0 wrote them;
+    (the collided keys; for u7, the index collector's unplaced-type warning,
+    only compared), and the T0 roll-up scopes, as T0 wrote them;
   - the package's sources on disk (bytes for u3; hashes now, since the check
     runs right after the scan);
   - `<build>/swiftstats-build.log` (or `--log`) for the `-module-name`
@@ -580,10 +588,12 @@ kept and stored (design sections 5.1 to 5.3, 9.1, 9.2 and 11):
            `roots` without --exclude-tests, `production` with it; <build>
            the real path of <package>/.swiftstats/index-build. The retained
            modules are the C99 names of the targets the describe's library
-           products list that have at least one unit of class kept or
-           variant in the store (this script's design 2.3 filter, as `usr`
-           u1 classes units), in byte order, the flag left out when there
-           are none. Each run must exit 0 and its stderr must not hold
+           products list and of the package targets those re-export with
+           `@_exported import`, transitively (read from the scanned files
+           by `retained_targets`' own pattern; review C14), that have at
+           least one unit of class kept or variant in the store (this
+           script's design 2.3 filter, as `usr` u1 classes units), in byte
+           order, the flag left out when there are none. Each run must exit 0 and its stderr must not hold
            outskirts' "retain_public_modules lists modules that are not
            scanned" warning; it must leave the package's `git status
            --porcelain --ignored`, its `.build` (absent or present), its
@@ -631,7 +641,7 @@ kept and stored (design sections 5.1 to 5.3, 9.1, 9.2 and 11):
            SwiftStats was checked against (3.28.0)" exactly when that output
            isn't 3.28.0; its options hold a `retain-public-modules:` line
            naming this script's retained modules by target name, sorted (or
-           `none`), and the outskirts command lines among its options name
+           `none`), then the rule in parentheses (RETAIN_RULE), and the outskirts command lines among its options name
            the same flags as this script's runs (placeholder spellings of
            paths aren't compared); <build>/swiftstats-outskirts.yml exists
            and is empty, and <build>/swiftstats-describe.json describes the
@@ -653,6 +663,9 @@ Inputs `dead` (run part) trusts:
     target names, C99 names, types, sources and library products;
   - the index store at <build>/out read through libIndexStore's C API (as
     `usr`), for which library-product targets have kept or variant units;
+  - the scanned files' text (the scan JSON's `files`, `path` and `module`,
+    read from disk), for the `@_exported import` lines that retain the
+    package targets a library-product target re-exports;
   - realpath(3), git (`status`, `rev-parse`, `describe`) and the file
     system;
   - the scan JSON's `files` (`path`, `module`), whose real paths come
@@ -842,8 +855,10 @@ hidden-coupling part:
      doesn't count, printed); else K judged, then, first that holds: R a
      `familyReference` with via direct, either way; Q one with via
      requirement, either way; Y both roots' owning types known and equal,
-     or one nested in the other (same target and type file, one type path
-     the other's followed by `.`); X a `familyTypeReference` from one
+     or one nested in the other, read as u7 reads nesting for cycles (same
+     target, the inner type path the outer's followed by `.`, the outer's
+     typeFile '' or the inner's, so a private type nested in a plain one is
+     nested in it; review C10); X a `familyTypeReference` from one
      family to the other root's owning type (module, typePath, typeFile);
      else C, which is L listed when support >= the support limit and
      support * 100 >= confidence * min(changesA, changesB) (exact
@@ -937,12 +952,20 @@ hidden-coupling part:
      (`function.*`) whose `ids` hold the record's `usr` or `usrAccessor`
      (design 5.4 rule 1; `deadRecord` keeps only the lowest ordinal, so a
      lower entry of another hint could take a record's row: printed). A
-     record is production-dead when the `production` run covers it, dead
-     with tests as roots when the `roots` run does (design 5.4).
+     record is covered when the `production` run covers it, dead with
+     tests as roots when the `roots` run does (design 5.4).
      pool, in the store's row order: `function` rows of role production
-     whose `generated` is 0 (as for o: test-only's pool). Each is D
-     production-dead or A used. A production-dead record's mutants are the
-     `mutant` rows placed on it (`place` record, `owner` its key); its
+     whose `generated` is 0 (as for o: test-only's pool). Nesting (design
+     8.2 as built, review C23): a record's chain is itself, then its
+     `parentKey` chain while the parent is a pool record; a record is D
+     production-dead when a record of its chain is covered (its cover the
+     nearest one's), else A used; dead with tests as roots when the roots
+     run covers a record of its chain. Of the production-dead, I those
+     whose chain's outermost covered record isn't themselves (nested in
+     it) are counted apart; the others are judged, each with the mutants
+     of itself and every record nested in it. A judged record's mutants
+     are the `mutant` rows placed on it or on a record nested in it
+     (`place` record, `owner` their keys, in ordinal order); its
      file's run is its `mutationFile` row's `run` (the mutants' own run when
      that is null and they share one), and that run had coverage off when
      its `mutationRun` row's `skipCoverage` is true. A mutant ran when its
@@ -963,14 +986,16 @@ hidden-coupling part:
      The rule: design 8.2's text, then "; " and both funnels in its words
      (`N production functions = D production-dead + A used; D = L listed
      + R with no mutant that ran + F in files without full mutation
-     results (unresolved or unlisted); R = R1 ... + R2 only build errors +
+     results (unresolved or unlisted) + I nested in one of those, judged
+     with it; R = R1 ... + R2 only build errors +
      R3 no mutant + R4 ...`; `X unused production declarations = F
      function entries matching a record + U ... + T type entries + E
      extension entries + V property entries with accessor records + O
      others (parameters, imports, enum cases, stored properties,
      typealiases); D = the distinct records F, T, E and V cover`), found
      anywhere after the text, every number equal to this check's and
-     adding up as stated, both D's equal; the last clause may name its
+     adding up as stated, the functions funnel's D the declarations
+     funnel's plus the records dead only through a covered ancestor; the last clause may name its
      four terms by letter or by number (then equal to F, T, E and V) or
      otherwise (printed); text around the funnels is printed. `candidates`
      is N (the pool) or D, and which is printed.
@@ -982,7 +1007,8 @@ hidden-coupling part:
      production entry, via (its `deadRecord` row's, `usr` for a record
      matched only by USR), deadWithTestsAsRoots}, nulls left out;
      `mutation`: M6's weak-tests shape (as for o, built by
-     Scripts/mutation-check.py's SignalModel) plus one more field holding
+     Scripts/mutation-check.py's SignalModel over the mutants of the record
+     and those nested in it, in ordinal order) plus one more field holding
      the run's coverage setting, "on" or "off" (design 8.2: `coverage:
      on|off`; another field name is accepted and printed); `coverage`
      exactly when the snapshot holds coverage rows (as for o); no other
@@ -3885,6 +3911,41 @@ class Described:
                     self.dependency_roots.append(location)
 
 
+EXPORTED_IMPORT = re.compile(
+    r"^[ \t]*(?:@[A-Za-z_]\w*(?:\([^()\n]*\))?\s+)*@_exported\s+(?:@[A-Za-z_]\w*(?:\([^()\n]*\))?\s+)*"
+    r"(?:(?:open|public|package|internal|fileprivate|private)\s+)?"
+    r"import[ \t]+(?:(?:typealias|struct|class|enum|protocol|let|var|func)[ \t]+)?`?([A-Za-z_][A-Za-z0-9_]*)`?",
+    re.M)
+
+
+def retained_targets(package, described, with_units):
+    """Design 5.2's retained targets as built (review C14): the targets the describe's library products list and
+    the package targets they re-export, transitively, each among `with_units` (targets with a kept or variant unit).
+    A target re-exports the module each `@_exported import` line of its scanned files names (the scan JSON's `files`
+    by `module`, read from disk with this script's own pattern: a line starting with attributes, `@_exported` among
+    them, on that line or spread over the lines that follow, then an optional access level (`@_exported public import
+    X`, the usual spelling with Swift 6's internal imports), `import`, an optional declaration kind and the module,
+    backticks dropped; a line inside a block comment or a multi-line string, or a comment between the attributes and
+    `import`, isn't told apart). A module names a package target by its C99 name."""
+    exports = defaultdict(set)
+    for path, entry in package.files.items():
+        try:
+            with open(os.path.join(package.root, path), encoding="utf-8", errors="replace") as handle:
+                text = handle.read()
+        except OSError:
+            continue
+        exports[entry.get("module")].update(match.group(1) for match in EXPORTED_IMPORT.finditer(text))
+    retained = {name for name in described.library_targets if name in described.targets}
+    pending = sorted(retained)
+    while pending:
+        for module in exports.get(pending.pop(), ()):
+            entry = described.by_module.get(module)
+            if entry is not None and entry["name"] not in retained:
+                retained.add(entry["name"])
+                pending.append(entry["name"])
+    return retained & set(with_units)
+
+
 # ---- units and records
 
 
@@ -4519,9 +4580,11 @@ def compare_index(verdict, join, problems_u3, problems_u6):
             same(f"{name} read (each record once)", mine_value, theirs)
     library = lookup(block, "libraryModules", "store.libraryModules")
     if library is not MISSING:
-        own_library = sorted(t for t in join.described.library_targets
-                             if join.kept_files_by_module.get(join.described.targets.get(t, {}).get("module")))
-        same("libraryModules (library-product targets with kept units)", own_library, sorted(library))
+        with_units = {name for name, entry in join.described.targets.items()
+                      if join.kept_files_by_module.get(entry.get("module"))}
+        own_library = sorted(retained_targets(join.package, join.described, with_units))
+        same("libraryModules (library-product targets and the package targets they re-export, with kept units)",
+             own_library, sorted(library))
 
     # u2: USRs.
     verdict.section("u2 USRs: primary and secondary per record")
@@ -5434,8 +5497,10 @@ def report_coupling_own(verdict, coupling):
                  f"{len(coupling.extension_of_record)}; owned extensions "
                  f"{sum(1 for e in coupling.extension_definitions if coupling.owner(e))} of "
                  f"{len(coupling.extension_definitions)}")
-    verdict.result("every package nominal type definition is placed on a compatible type record",
-                   not coupling.unplaced_types, f"{len(coupling.unplaced_types)} unplaced")
+    # A definition no type record holds (a type inside a macro's closure, which T0 doesn't measure) is a limit
+    # the scan reports in a warning (review C12); u7's comparison checks that warning's count against this list.
+    verdict.info(f"package nominal type definitions placed on no compatible type record: "
+                 f"{len(coupling.unplaced_types)}")
     verdict.listing(coupling.unplaced_types)
     if coupling.identity_collisions:
         production = sum(1 for usrs in coupling.identity_collisions.values() if coupling.types[usrs[0]]["production"])
@@ -5460,6 +5525,9 @@ def report_coupling_own(verdict, coupling):
                  f"{len(coupling.family_type_references)}")
 
 
+UNPLACED_TYPES_WARNING = re.compile(r"index: (\d+) package type definitions found no type record of their kind ")
+
+
 def compare_coupling(verdict, coupling):
     package = coupling.package
     block = package.block
@@ -5468,6 +5536,14 @@ def compare_coupling(verdict, coupling):
         verdict.result("the scan JSON has an index block (u7)", False, "absent")
         return
     run = next((c for c in package.scan.get("collectors", []) if c.get("name") == "index"), None)
+    verdict.section("u7 the index collector's warning of unplaced type definitions (review C12)")
+    warned = [w.get("message", "") for w in package.scan.get("warnings", []) or []
+              if isinstance(w, dict) and w.get("file") is None
+              and UNPLACED_TYPES_WARNING.match(str(w.get("message", "")))]
+    stated = [int(UNPLACED_TYPES_WARNING.match(text).group(1)) for text in warned]
+    verdict.result("the scan warns of unplaced type definitions exactly when this check finds some, with their count",
+                   stated == ([len(coupling.unplaced_types)] if coupling.unplaced_types else []),
+                   f"mine {len(coupling.unplaced_types)}; the scan's warnings {stated or 'none'}")
     verdict.section("u7 the index collector's rule options")
     options = run.get("options", []) if run else []
     for name, text in (("references", DESIGN_REFERENCES_RULE), ("types", DESIGN_TYPES_RULE)):
@@ -6382,6 +6458,8 @@ KEPT_OUTPUT = {"roots": "swiftstats-outskirts-roots.json", "production": "swifts
 OUTSKIRTS_CONFIG = "swiftstats-outskirts.yml"
 T1_DESCRIBE = "swiftstats-describe.json"
 UNSCANNED_RETAINED = "retain_public_modules lists modules that are not scanned"
+RETAIN_RULE = ("(the targets library products list and the package targets they re-export with @_exported import, "
+               "transitively, each with a kept or variant unit)")
 VERSION_WARNING = f"isn't the version SwiftStats was checked against ({OUTSKIRTS_CHECKED_VERSION})"
 HINT_WITH_TEXT = re.compile(r"([A-Za-z]+)\((.*)\)", re.S)
 BUILD_FILE = "<build>"
@@ -6669,10 +6747,15 @@ def compare_status(verdict, runs, scan, version):
         verdict.result("one `retain-public-modules:` option", False, f"{len(retain_lines)} found")
     else:
         value = retain_lines[0].split(":", 1)[1].strip()
+        rule = None
+        if value.endswith(")") and " (" in value:
+            value, rule = value[:value.index(" (")], value[value.index(" (") + 1:]
         listed = [] if value == "none" else [word for word in re.split(r"[,\s]+", value) if word]
         verdict.result("`retain-public-modules:` names my retained modules by target name, sorted",
                        listed == sorted(runs.retained_targets),
                        f"mine {', '.join(sorted(runs.retained_targets)) or 'none'}; the scan's {value!r}")
+        verdict.result("`retain-public-modules:` states the rule that chose them (review C14)", rule == RETAIN_RULE,
+                       f"got {rule!r}")
     lines = [(o, option_flags(o)) for o in options if isinstance(o, str)]
     lines = [(o, flags) for o, flags in lines if flags is not None]
     theirs = {("production" if "--exclude-tests" in flags else "roots"): flags for _, flags in lines}
@@ -7811,8 +7894,8 @@ def dead_mode(arguments):
         with_data = {described.by_module[unit["module"]]["name"] for unit in reader.units
                      if unit["location"] == "store" and classes[unit["name"]] in ("kept", "variant")}
         library_targets = {name for name in described.library_targets if name in described.targets}
-        runs = DeadRuns(package, described, outskirts, config, describe_path, library_targets & with_data,
-                        arguments.output_dir)
+        runs = DeadRuns(package, described, outskirts, config, describe_path,
+                        retained_targets(package, described, with_data), arguments.output_dir)
         if arguments.use_scan_inputs:
             inputs = f"the collector's describe {describe_path} and config {config}"
         else:
@@ -7912,10 +7995,12 @@ WITHOUT_FULL_RESULTS = ("unresolved", "unlisted")
 # Design 8.2's rule text, before the funnels (a left-out signal states it alone).
 DEAD_BUT_TESTED_PROSE = (
     "production functions no production code uses (outskirts with test targets not counted as roots; public API "
-    "of library-product modules, Codable and Equatable/Hashable/Comparable properties retained) whose mutants the "
-    "tests run (killed, survived or timed out; killed only, for files mutated with coverage off); delete the code "
-    "and its tests, which frees test and mutation time; a function called only from an inactive #if branch reads as "
-    "unused (outskirts' limit); types and properties aren't judged")
+    "of library-product modules and the package modules they re-export, Codable and Equatable/Hashable/Comparable "
+    "properties retained) whose mutants the tests run (killed, survived or timed out; killed only, for files mutated "
+    "with coverage off); a function nested in a production-dead one (an accessor, a local function) is dead with it, "
+    "and only the outermost is judged and listed, with the mutants of all of them; delete the code and its tests, "
+    "which frees test and mutation time; a function called only from an inactive #if branch reads as unused "
+    "(outskirts' limit); types and properties aren't judged")
 # Design 8.2's two funnels with their numbers as groups. The functions funnel names R1 to R4; `RB` is its R2
 # (only build errors), and `D2`/`RR` the restated D and R. The declarations funnel's F is `FE` here (the
 # functions funnel has its own F); its last clause, "D = the distinct records F, T, E and V cover", may name the
@@ -7923,7 +8008,8 @@ DEAD_BUT_TESTED_PROSE = (
 DEAD_FUNCTIONS_FUNNEL = re.compile(
     r"(?P<N>\d+) production functions = (?P<D>\d+) production-dead \+ (?P<A>\d+) used; "
     r"(?P<D2>\d+) = (?P<L>\d+) listed \+ (?P<R>\d+) with no mutant that ran \+ "
-    r"(?P<F>\d+) in files without full mutation results \(unresolved or unlisted\); "
+    r"(?P<F>\d+) in files without full mutation results \(unresolved or unlisted\) \+ "
+    r"(?P<I>\d+) nested in one of those, judged with it; "
     r"(?P<RR>\d+) = (?P<R1>\d+) only not covered or no coverage \+ (?P<RB>\d+) only build errors \+ "
     r"(?P<R3>\d+) no mutant \+ (?P<R4>\d+) only survived or timed out in a run with coverage off")
 DEAD_DECLARATIONS_FUNNEL = re.compile(
@@ -7934,7 +8020,8 @@ DEAD_DECLARATIONS_FUNNEL = re.compile(
     r"(?P<DD>\d+) = the distinct records (?P<cover>[^;]+?) cover(?=$|[;,.\s])")
 DEAD_FUNCTION_TERMS = (("N", "production functions"), ("D", "production-dead"), ("A", "used"),
                        ("D2", "D restated"), ("L", "listed"), ("R", "with no mutant that ran"),
-                       ("F", "in files without full mutation results"), ("RR", "R restated"),
+                       ("F", "in files without full mutation results"),
+                       ("I", "nested in one of those, judged with it (review C23)"), ("RR", "R restated"),
                        ("R1", "only not covered or no coverage"), ("RB", "R2: only build errors"),
                        ("R3", "no mutant"), ("R4", "only survived or timed out in a run with coverage off"))
 DEAD_DECLARATION_TERMS = (("X", "unused production declarations"), ("FE", "function entries matching a record"),
@@ -8704,16 +8791,43 @@ class DeadButTested:
         self.notes += [f"roots run: {note}" for note in self.roots.notes]
         self.counts.update(self.production.term_counts())
         declared = self.production.keys_covered_by(("FE", "T", "E", "V"))
-        pool = set()
+        pool = {row["key"] for row in rows.functions}
+        # Nesting (design 8.2 as built, review C23): a record's chain is itself, then its parentKey chain among the
+        # pool's records; it is production-dead when a record of its chain is covered, with the nearest one's
+        # cover; the outermost covered record of a chain is judged, with the mutants of every pool record whose
+        # chain reaches it; those others are nested (I). Dead with tests as roots: a record of the chain is
+        # covered by the roots run.
+        parents = {row["key"]: row["parentKey"] for row in rows.functions}
+        self.chains = {}
+        for key in pool:
+            chain, seen = [key], {key}
+            while parents.get(chain[-1]) in pool and parents[chain[-1]] not in seen:
+                chain.append(parents[chain[-1]])
+                seen.add(chain[-1])
+            self.chains[key] = chain
+        self.outermost = {}
+        for key, chain in self.chains.items():
+            covered = [held for held in chain if held in self.production.covered]
+            if covered:
+                self.outermost[key] = covered[-1]
+        self.nests = defaultdict(list)
+        for key, outer in self.outermost.items():
+            self.nests[outer].append(key)
+        self.cover = {key: next(self.production.covered[held] for held in self.chains[key]
+                                if held in self.production.covered) for key in self.outermost}
+        self.counts["INH"] = sum(1 for key in self.outermost if key not in self.production.covered)
         for row in rows.functions:
             key = row["key"]
-            pool.add(key)
             self.counts["N"] += 1
-            if key not in self.production.covered:
+            if key not in self.outermost:
                 self.counts["A"] += 1
                 continue
             self.counts["D"] += 1
-            facts = self.mutation_facts(row)
+            if self.outermost[key] != key:
+                self.counts["I"] += 1
+                self.members["I"].append(key)
+                continue
+            facts = self.mutation_facts(row, sorted(self.nests[key]))
             self.facts[key] = facts
             if facts["ran"] > 0:
                 term = "L"
@@ -8740,12 +8854,14 @@ class DeadButTested:
         self.items.sort(key=lambda row: (-self.facts[row["key"]]["ran"], -len(self.facts[row["key"]]["killing"]),
                                          row["key"], row["file"], row["startLine"]))
 
-    def mutation_facts(self, row):
-        """The record's mutants (place record), its file's disposition and run, and what ran: each mutant judged by
-        mutationRun.skipCoverage through mutationFile.run, else through its own run (design 8.2); the record's
-        coverage setting is its file's run's, else the one its mutants' runs share, else unknown (None)."""
+    def mutation_facts(self, row, keys):
+        """The mutants (place record) of the records `keys` (the record and those nested in it, review C23), its
+        file's disposition and run, and what ran: each mutant judged by mutationRun.skipCoverage through
+        mutationFile.run, else through its own run (design 8.2); the coverage setting is the file's run's, else the
+        one the mutants' runs share, else unknown (None)."""
         key = row["key"]
-        mutants = self.rows.record_mutants.get(key, [])
+        mutants = sorted((mutant for held in keys for mutant in self.rows.record_mutants.get(held, [])),
+                         key=lambda mutant: mutant["ordinal"])
         file_row = self.rows.mutation_files.get(nfc_text(row["file"]))
         disposition = file_row["disposition"] if file_row is not None else None
         run = file_row["run"] if file_row is not None else None
@@ -8804,7 +8920,8 @@ class DeadButTested:
         counts = self.counts
         return (f"{counts['N']} production functions = {counts['D']} production-dead + {counts['A']} used; "
                 f"{counts['D']} = {counts['L']} listed + {counts['R']} with no mutant that ran + {counts['F']} in "
-                f"files without full mutation results (unresolved or unlisted); {counts['R']} = {counts['R1']} only "
+                f"files without full mutation results (unresolved or unlisted) + {counts['I']} nested in one of those, "
+                f"judged with it; {counts['R']} = {counts['R1']} only "
                 f"not covered or no coverage + {counts['RB']} only build errors + {counts['R3']} no mutant + "
                 f"{counts['R4']} only survived or timed out in a run with coverage off")
 
@@ -8834,14 +8951,27 @@ class DeadButTested:
         Returns (required, alternatives, setting): `setting` is the run's coverage, "on", "off" or None when unknown
         (left out), which the `mutation` payload carries besides M6's weak-tests shape."""
         key = row["key"]
-        ordinal, via = self.production.covered[key]
+        ordinal, via = self.cover[key]
         entry = self.production.unused[ordinal]
         dead = mutation_check.without_nulls({
             "kind": entry["kind"], "name": entry["name"], "file": entry["file"], "line": entry["line"],
-            "via": via, "accessibility": entry["accessibility"], "deadWithTestsAsRoots": key in self.roots.covered})
-        held = mutation_model.held.get(key) or []
-        mutation = mutation_check.without_nulls(mutation_model.payload(
-            {"function": row, "counts": mutation_check.record_counts(held)})["mutation"])
+            "via": via, "accessibility": entry["accessibility"],
+            "deadWithTestsAsRoots": any(held in self.roots.covered for held in self.chains[key])})
+        keys = sorted(self.nests[key])
+        held = sorted((mutant for nested in keys for mutant in mutation_model.held.get(nested) or []),
+                      key=lambda mutant: mutant["ordinal"])
+        # mutation-check.py's payload reads one record's mutants: the nest's, merged in ordinal order, stand in for
+        # them while it runs, and the record's own are put back.
+        own = mutation_model.held.get(key)
+        mutation_model.held[key] = held
+        try:
+            mutation = mutation_check.without_nulls(mutation_model.payload(
+                {"function": row, "counts": mutation_check.record_counts(held)})["mutation"])
+        finally:
+            if own is None:
+                mutation_model.held.pop(key, None)
+            else:
+                mutation_model.held[key] = own
         required = {"dead": dead, "mutation": mutation}
         alternatives = {}
         if self.rows.coverage_held:
@@ -8900,7 +9030,7 @@ def report_dead_own(verdict, model, show_all):
         verdict.info(f"  entry {ordinal} {model.production.terms[ordinal]}: {entry['kind']} {entry['name']} "
                      f"({entry['file']}:{entry['line']}) covers {len(covered)}"
                      + (f": {'; '.join(covered if show_all else covered[:3])}" if covered else ""))
-    for term in ("F", "R1", "RB", "R3", "R4"):
+    for term in ("F", "R1", "RB", "R3", "R4", "I"):
         if model.members[term]:
             shown = model.members[term] if show_all else model.members[term][:5]
             more = len(model.members[term]) - len(shown)
@@ -8914,8 +9044,8 @@ def report_dead_own(verdict, model, show_all):
             verdict.info(f"  #{rank} {facts['ran']} {row['key']} ({row['file']}:{row['startLine']}) killing tests "
                          f"{len(facts['killing'])}, verdicts {dict(sorted(facts['verdicts'].items()))}, coverage "
                          f"{coverage_setting(facts['coverageOff']) or 'unknown'}, by {entry['kind']} {entry['name']} "
-                         f"via {via}, "
-                         f"dead with tests as roots {row['key'] in model.roots.covered}")
+                         f"via {via}, nest {len(model.nests[row['key']])}, dead with tests as roots "
+                         f"{any(held in model.roots.covered for held in model.chains[row['key']])}")
         if not show_all and len(model.items) > LISTED:
             verdict.info(f"  ... and {len(model.items) - LISTED} more (--all lists them)")
     else:
@@ -8958,7 +9088,7 @@ def compare_dead_but_tested(verdict, model, signal, expected):
     funnels = rule[len(DEAD_BUT_TESTED_PROSE) + 2:] if rule.startswith(DEAD_BUT_TESTED_PROSE + "; ") else rule
     functions = compare_funnel(
         verdict, "functions", funnels, DEAD_FUNCTIONS_FUNNEL, DEAD_FUNCTION_TERMS, model.expected_function_numbers(),
-        lambda n: n["N"] == n["D"] + n["A"] and n["D2"] == n["D"] and n["D"] == n["L"] + n["R"] + n["F"]
+        lambda n: n["N"] == n["D"] + n["A"] and n["D2"] == n["D"] and n["D"] == n["L"] + n["R"] + n["F"] + n["I"]
         and n["RR"] == n["R"] and n["R"] == n["R1"] + n["RB"] + n["R3"] + n["R4"])
     wanted = model.expected_declaration_numbers()
     accepted_dd = {wanted["DD"], model.declared_all}
@@ -8983,8 +9113,11 @@ def compare_dead_but_tested(verdict, model, signal, expected):
         verdict.result("the declarations funnel's parts add up as stated",
                        n["X"] == n["FE"] + n["U"] + n["T"] + n["E"] + n["V"] + n["O"])
         if functions is not None:
-            verdict.result("the declarations funnel's D is the functions funnel's D", n["DD"] == int(functions.group("D"))
-                           or n["DD"] == model.declared_all, f"{n['DD']} and {functions.group('D')}")
+            inherited = model.counts["INH"]
+            verdict.result("the functions funnel's D is the declarations funnel's D plus the functions dead only "
+                           "through a covered ancestor (review C23)",
+                           int(functions.group("D")) in (n["DD"] + inherited, model.declared_all + inherited),
+                           f"{functions.group('D')} and {n['DD']} + {inherited}")
         cover = declarations.group("cover").strip()
         numbers = re.fullmatch(r"(\d+), (\d+), (\d+) and (\d+)", cover)
         if cover == "F, T, E and V":
@@ -9299,11 +9432,10 @@ class HiddenCoupling:
 
     @staticmethod
     def nested(first, second):
-        """One type nested in the other: same target and type file, one type path a prefix of the other's
-        followed by `.` (design 8.1's Y)."""
-        if first[0] != second[0] or first[2] != second[2]:
-            return False
-        return first[1].startswith(second[1] + ".") or second[1].startswith(first[1] + ".")
+        """One type nested in the other, either way (design 8.1's Y), as design 4.3 reads nesting for cycles
+        (`nested_identity`): same target, the inner type path the outer's followed by `.`, the outer's typeFile ''
+        or the inner's, so a private type nested in a plain one is nested in it (review C10)."""
+        return nested_identity(first, second) or nested_identity(second, first)
 
     def note_applies(self, min_support):
         return min_support is not None and float(self.limits["support"]) < min_support

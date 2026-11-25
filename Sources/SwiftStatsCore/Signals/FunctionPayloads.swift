@@ -44,4 +44,15 @@ struct FunctionPayloads {
         }
         return judge.payload(of: row, counts: counts)
     }
+
+    /// The mutation results of `row` together with the records keyed
+    /// `keys` (`row`'s own key among them: the records nested in it, for
+    /// dead but tested); `row`'s alone when `keys` names only it; nil when
+    /// none has mutants, or the snapshot holds no mutation results.
+    func mutation(of row: FunctionRow, with keys: Set<String>) -> SignalItem.Mutation? {
+        guard keys != [row.key] else {
+            return mutation(of: row)
+        }
+        return judge?.payload(ofRecords: keys)
+    }
 }

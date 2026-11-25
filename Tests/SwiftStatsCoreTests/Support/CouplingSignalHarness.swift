@@ -9,7 +9,8 @@
 //  declares too and extending `Lib`'s types, by plain, qualified and
 //  typealias heads; a library `Third` declaring one of those as well; a
 //  library `App`, depending on none, extending another module's type of
-//  a name only `Lib` declares; and a test target `LibTests`. Every record
+//  a name only `Lib` declares; and a test target `LibTests`. `Lib`'s
+//  `Shared` holds a `private` type, file-scoped while `Shared` isn't. Every record
 //  gets a USR shaped as Swift mangles one: its context's (the extended
 //  type's, then the extension's module and `E`, for an extension
 //  member), then its name; `unseen()` has none and `bridged()` a `c:`
@@ -51,6 +52,9 @@ enum CouplingSignalHarness {
                     func gamma() -> Int { 3 }
                 }
                 func bridged() -> Int { 18 }
+                private struct Hidden {
+                    func omega() -> Int { 19 }
+                }
             }
             struct Holder {
                 func zeta() -> Int { 4 }
@@ -166,8 +170,13 @@ enum CouplingSignalHarness {
     /// The production types the index lists, by target and path.
     static let types = [
         ("Lib", "Box"), ("Lib", "Holder"), ("Lib", "Shared"), ("Lib", "Shared.Nested"), ("Lib", "Twin"),
-        ("Other", "Holder"), ("Other", "Holder.Inside"), ("Other", "Shared"), ("Third", "Twin")
+        ("Other", "Holder"), ("Other", "Holder.Inside"), ("Other", "Shared"), ("Third", "Twin"),
+        ("Lib", "Shared.Hidden")
     ]
+
+    /// The file of each file-scoped production type, by target and path:
+    /// `Lib`'s `private` `Shared.Hidden`, nested in the plain `Shared`.
+    static let typeFiles = ["Lib Shared.Hidden": "Sources/Lib/Lib.swift"]
 
     /// The type each extension member's USR names as its context, by the
     /// member's name, as its target, its type path: the type the

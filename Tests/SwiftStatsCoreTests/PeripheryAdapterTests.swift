@@ -21,7 +21,7 @@ struct PeripheryAdapterTests {
 
     /// The arguments of `run` over the build directory `build` (a real
     /// path), retaining `retained`, as design §5.2 words them.
-    private static func arguments(_ run: PeripheryCommand.Run, build: String, retained: [String]) -> [String] {
+    static func arguments(_ run: PeripheryCommand.Run, build: String, retained: [String]) -> [String] {
         [
             "scan", "--format", "json", "--disable-update-check",
             "--config", build + "/swiftstats-outskirts.yml",
@@ -36,7 +36,7 @@ struct PeripheryAdapterTests {
 
     /// The collector's options when it ran retaining `retained` (C99
     /// names), listed as `targets`.
-    private static func options(retained: [String], targets: String) -> [String] {
+    static func options(retained: [String], targets: String) -> [String] {
         let tail = retained.isEmpty ? "" : " --retain-public-modules " + retained.joined(separator: " ")
         let line = "outskirts scan --format json --disable-update-check --config <config> --index-store-path "
             + "<build>/out --skip-build --index-exclude <build>/** --json-package-manifest-path <describe>"
@@ -44,7 +44,7 @@ struct PeripheryAdapterTests {
         return [
             "roots: " + line,
             "production: " + line + " --exclude-tests",
-            "retain-public-modules: " + targets,
+            "retain-public-modules: " + targets + " " + PeripheryCommand.retainRule,
             "classes: " + PeripheryOutput.rule,
             "map: " + DeadCodeMapper.rule
         ]
@@ -65,7 +65,7 @@ struct PeripheryAdapterTests {
     /// Scans the fixture with `scan`, outskirts acted out by a fake
     /// playing `scenario`, and passes the copy, what the scan gave and the
     /// fake to `check`.
-    private static func scanning(
+    static func scanning(
         _ scenario: FakePeriphery.Scenario,
         with scan: IndexFixtureScan,
         check: (BuildFixture, IndexGroupHarness.Outcome, FakePeriphery) throws -> Void
@@ -156,7 +156,7 @@ struct PeripheryAdapterTests {
             let expected = Self.arguments(.production, build: build, retained: Self.retained)
             #expect(fake.arguments(of: .production) == expected)
             let options = outcome.statuses["periphery"]?.options ?? []
-            #expect(options.contains("retain-public-modules: IndexCore, index-kit"))
+            #expect(options.contains(PeripheryCommand.retainOption(targets: ["IndexCore", "index-kit"])))
         }
     }
 
@@ -186,7 +186,7 @@ struct PeripheryAdapterTests {
             let periphery = try #require(outcome.statuses["periphery"])
             #expect(periphery.state == .ran)
             #expect(periphery.reason == PeripheryAdapter.positionNote)
-            #expect(periphery.options.contains("retain-public-modules: IndexCore, index-kit"))
+            #expect(periphery.options.contains(PeripheryCommand.retainOption(targets: ["IndexCore", "index-kit"])))
             #expect(fake.calls == ["version", "roots", "production"])
             let build = URL(fileURLWithPath: fixture.paths.build)
             let moved = try FileManager.default.contentsOfDirectory(

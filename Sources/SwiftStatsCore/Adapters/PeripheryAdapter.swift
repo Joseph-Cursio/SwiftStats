@@ -119,13 +119,7 @@ enum PeripheryAdapter {
     private static func collect(_ job: PeripheryJob, options: inout [String]) throws -> PeripheryOutput {
         let products = job.products
         let version = try self.version(of: job)
-        let units = try job.index.report.map { PeripheryUnits(index: $0, localUSRs: job.index.localUSRs) }
-            ?? PeripheryUnits(
-                products: products,
-                root: job.scan.root,
-                opening: job.opening,
-                moving: job.index.quarantineRan == false
-            )
+        let units = try PeripheryUnits.of(job)
         let c99 = Dictionary(products.package.targets.map { ($0.name, $0.c99name) }) { first, _ in first }
         let retained = units.retained.compactMap { c99[$0] }.sorted(by: CodePointOrder.precedes)
         options = PeripheryCommand.Run.ordered.map { PeripheryCommand.option($0, retained: retained) }

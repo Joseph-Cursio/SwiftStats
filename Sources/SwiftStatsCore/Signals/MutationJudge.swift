@@ -39,6 +39,8 @@ struct MutationJudge {
     private let killingTests: [String: [String]]
     /// Each record's mutants, by key, in the report's order.
     private let mutants: [String: [Mutant]]
+    /// The mutants placed on a record, in the report's order.
+    private let placed: [Mutant]
     /// Each file's disposition, by NFC path.
     private let dispositions: [NFCPath: MutationFileDisposition]
     /// Each record's coverage, by key.
@@ -54,7 +56,8 @@ struct MutationJudge {
         functions = ProductionFunctions(snapshot)
         counts = Dictionary(mutation.records.map { ($0.key, $0.counts) }) { first, _ in first }
         killingTests = Dictionary(mutation.records.map { ($0.key, $0.killingTests) }) { first, _ in first }
-        mutants = Dictionary(grouping: mutation.mutants.filter { $0.place == .record }) { $0.owner ?? "" }
+        placed = mutation.mutants.filter { $0.place == .record }
+        mutants = Dictionary(grouping: placed) { $0.owner ?? "" }
         dispositions = Dictionary(
             mutation.files.map { (NFCPath($0.path), $0.disposition) }
         ) { first, _ in first }
@@ -145,9 +148,26 @@ struct MutationJudge {
 
     /// `row`'s mutation payload, from its `counts`.
     func payload(of row: FunctionRow, counts: MutationCounts) -> SignalItem.Mutation {
+        payload(held: mutants[row.key] ?? [], counts: counts, tests: killingTests[row.key] ?? [])
+    }
+
+    /// The mutation payload of the records keyed `keys` taken together (a
+    /// production-dead function with the records nested in it, for dead
+    /// but tested): their mutants counted, in the report's order, and the
+    /// distinct tests their kills name, sorted; nil when none has mutants.
+    func payload(ofRecords keys: Set<String>) -> SignalItem.Mutation? {
+        let held = placed.filter { keys.contains($0.owner ?? "") }
+        guard held.isEmpty == false else {
+            return nil
+        }
+        let tests = Set(held.filter { $0.verdict == .killed }.flatMap(\.killedBy)).sorted()
+        return payload(held: held, counts: MutationCounts(held), tests: tests)
+    }
+
+    /// The mutation payload of the mutants `held`, counted as `counts`,
+    /// whose kills name `tests`.
+    private func payload(held: [Mutant], counts: MutationCounts, tests: [String]) -> SignalItem.Mutation {
         let figures = MutationFigures(counts)
-        let held = mutants[row.key] ?? []
-        let tests = killingTests[row.key] ?? []
         return SignalItem.Mutation(
             counts: counts,
             score: figures.score,

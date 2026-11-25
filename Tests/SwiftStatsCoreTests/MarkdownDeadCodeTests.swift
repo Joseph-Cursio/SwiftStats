@@ -21,9 +21,9 @@ struct MarkdownDeadCodeTests {
     /// The fixture's section up to outskirts' limits.
     private static let fixtureLines = [
         "Status: ran.",
-        "outskirts 3.28.0, build sha256:fa462994fb.",
+        "outskirts 3.28.0, build sha256:ae61384d8c.",
         "Results per run (roots: test targets are roots; production: they aren't): roots 8, production 10.",
-        "Retained public modules (library products): IndexCore, index-kit.",
+        "Retained public modules: IndexCore, index-kit " + PeripheryCommand.retainRule + ".",
         "",
         "### Unused declarations",
         "",

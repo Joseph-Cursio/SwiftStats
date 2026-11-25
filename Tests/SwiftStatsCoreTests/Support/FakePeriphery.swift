@@ -9,8 +9,9 @@
 //  `--exclude-tests`, else the `roots` run; it prints the scenario's JSON
 //  for that run, `@ROOT@` the working directory (`pwd -P`) and `@DEP@` an
 //  IndexDep beside it, as in the Index fixture's recordings, writes the
-//  run's error text, restored alike, to standard error, exits with the run's status
-//  (0 by default). Each call is logged in order (`version`, `roots`,
+//  run's error text, restored alike, to standard error, then sends itself
+//  the run's signal when the scenario gives one, else exits with the run's
+//  status (0 by default). Each call is logged in order (`version`, `roots`,
 //  `production`), and each run keeps its arguments, one a line, its
 //  working directory and whether standard input is `/dev/null` (by its
 //  device), beside the script.
@@ -33,6 +34,9 @@ struct FakePeriphery {
         var errors: [PeripheryCommand.Run: String] = [:]
         /// Each run's exit status; 0 when absent.
         var statuses: [PeripheryCommand.Run: Int32] = [:]
+        /// The signal each run sends itself once it has written its
+        /// output; none when absent.
+        var signals: [PeripheryCommand.Run: Int32] = [:]
     }
 
     /// The warning outskirts prints on every run over an index store.
@@ -76,14 +80,14 @@ struct FakePeriphery {
             .appendingPathComponent("FakePeriphery-\(UUID().uuidString)")
         try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
         var files = ["version": scenario.version + "\n", "version-status": "\(scenario.versionStatus)"]
-        for (run, output) in scenario.outputs {
-            files["out-\(run.rawValue)"] = output
-        }
-        for (run, text) in scenario.errors {
-            files["err-\(run.rawValue)"] = text
-        }
-        for (run, status) in scenario.statuses {
-            files["status-\(run.rawValue)"] = "\(status)"
+        let perRun = [
+            ("out", scenario.outputs), ("err", scenario.errors),
+            ("status", scenario.statuses.mapValues { "\($0)" }), ("signal", scenario.signals.mapValues { "\($0)" })
+        ]
+        for (prefix, texts) in perRun {
+            for (run, text) in texts {
+                files["\(prefix)-\(run.rawValue)"] = text
+            }
         }
         for (name, text) in files {
             try text.write(to: folder.appendingPathComponent(name), atomically: true, encoding: .utf8)
@@ -111,6 +115,7 @@ struct FakePeriphery {
             }
             restored "$here/out-$run"
             restored "$here/err-$run" >&2
+            if [ -f "$here/signal-$run" ]; then kill -"$(cat "$here/signal-$run")" $$; fi
             if [ -f "$here/status-$run" ]; then exit "$(cat "$here/status-$run")"; fi
             exit 0
 

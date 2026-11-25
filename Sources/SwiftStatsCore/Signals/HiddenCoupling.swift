@@ -29,7 +29,7 @@
 /// The hidden coupling signal.
 enum HiddenCoupling {
     /// What the signal decides of a coupling pair: its funnel term.
-    enum Verdict: CaseIterable, Hashable {
+    enum Verdict: Hashable {
         /// No static dependency, below the limits (B).
         case belowLimits
         /// A family with a member in a generated file (G).

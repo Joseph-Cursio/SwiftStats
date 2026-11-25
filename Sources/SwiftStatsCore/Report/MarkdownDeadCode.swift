@@ -54,7 +54,7 @@ enum MarkdownDeadCode {
             + results.joined(separator: ", ") + ".")
         let retained = status?.options.first { $0.hasPrefix(PeripheryCommand.retainOptionLead) }
             .map { String($0.dropFirst(PeripheryCommand.retainOptionLead.count)) }
-        lines.append("Retained public modules (library products): \(retained ?? "not recorded").")
+        lines.append("Retained public modules: \(retained ?? "not recorded").")
         lines += ["", "### Unused declarations", ""] + declarations(dead)
         lines += ["", "### Dead records and the test-to-code ratio", ""] + ratios(scan)
         lines += ["", "Results left out, per class:", ""] + dropped(dead)

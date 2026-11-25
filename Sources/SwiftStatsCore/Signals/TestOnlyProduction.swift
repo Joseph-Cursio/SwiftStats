@@ -30,7 +30,7 @@ enum TestOnlyProduction {
     /// Why a function with a USR isn't a candidate: the first that
     /// applies of public API, witness, `@objc`, entry point and
     /// deinitializer.
-    enum Exclusion: CaseIterable {
+    enum Exclusion {
         /// A deinitializer.
         case deinitializer
         /// An entry point of an executable target.
