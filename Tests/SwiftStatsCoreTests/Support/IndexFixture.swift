@@ -96,6 +96,10 @@ enum IndexFixture {
     static let temporaryToken = "@TMP@"
     /// The developer folder's placeholder.
     static let developerToken = "@DEVELOPER@"
+    /// The environment variable naming a fresh `index-check.py dump`, which
+    /// `IndexStoreReaderLiveTests` reads again with the real reader; unset,
+    /// those tests are skipped.
+    static let liveVariable = "SWIFTSTATS_LIVE_INDEX"
 
     /// The Index fixture.
     static let directory = fixtures.appendingPathComponent("Index")

@@ -94,9 +94,9 @@ struct RecordedIndexSource: IndexStoreSource {
         return path
     }
 
-    /// Every unit's name, sorted.
+    /// Every unit's name, in code point order.
     func unitNames() -> [String] {
-        units.keys.sorted()
+        Self.codePointSorted(Array(units.keys))
     }
 
     /// The unit named `name`, or `Missing.unit`.

@@ -25,7 +25,7 @@ public struct SnapshotWorkspace {
     /// The configuration file given on the command line, if any.
     let configurationFile: URL?
     /// Scans with snapshot metadata.
-    let scanner: SnapshotScanner
+    private(set) var scanner: SnapshotScanner
     /// Learns the package's name.
     let describer: any PackageDescriber
     /// The store's path from the package root when it is kept inside the
@@ -65,6 +65,16 @@ public struct SnapshotWorkspace {
             throw StoreError.noSnapshot("\(revision), which names no commit")
         }
         return commit
+    }
+
+    /// The same workspace, its scans' `index` collector reading the stores
+    /// `factory` opens (tests pass recorded sources); backfill keeps it.
+    func readingIndex(
+        with factory: @escaping @Sendable (_ store: URL, _ library: URL) throws -> any IndexStoreSource
+    ) -> Self {
+        var workspace = self
+        workspace.scanner = scanner.readingIndex(with: factory)
+        return workspace
     }
 
     /// The signals of snapshot `id`, with this workspace's thresholds, and

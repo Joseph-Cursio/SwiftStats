@@ -144,4 +144,13 @@ extension PackageScanner {
             dependencies: dependencies
         )
     }
+
+    /// The same scanner, its external tool adapters skipped for `reason`,
+    /// or run when it is nil; everything else it was given is kept (a
+    /// backfill scans with it).
+    func skippingTools(for reason: String?) -> Self {
+        var scanner = self
+        scanner.toolSkipReason = reason
+        return scanner
+    }
 }

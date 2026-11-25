@@ -100,6 +100,14 @@ public struct SnapshotScanner {
         Self(scanner: scanner.recording(failedBuild: record), build: build)
     }
 
+    /// The same scanner, its `index` collector reading the stores
+    /// `factory` opens (`PackageScanner.readingIndex(with:)`).
+    func readingIndex(
+        with factory: @escaping @Sendable (_ store: URL, _ library: URL) throws -> any IndexStoreSource
+    ) -> Self {
+        Self(scanner: scanner.readingIndex(with: factory), build: build)
+    }
+
     /// Scans the package at `root` with the configuration in
     /// `configurationFile` (or the default). `git` and `toolchain` are read
     /// when not given; a scan of an exported revision supplies its git state.

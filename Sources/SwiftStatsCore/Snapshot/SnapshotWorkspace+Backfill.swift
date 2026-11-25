@@ -81,6 +81,16 @@ extension SnapshotWorkspace {
         return GitReader.line(arguments, in: root).flatMap { Int($0) }
     }
 
+    /// The workspace's scanner as a backfill scans with it: the same
+    /// describer, tools and index reader, its external tool adapters
+    /// skipped unless `withTools`.
+    func backfillScanner(withTools: Bool) -> SnapshotScanner {
+        SnapshotScanner(
+            scanner: scanner.scanner.skippingTools(for: withTools ? nil : Self.backfillToolSkipReason),
+            build: scanner.build
+        )
+    }
+
     /// Backfills the commits `plan` picks, reporting each step to `progress`.
     public func backfill(_ plan: BackfillPlan, progress: (BackfillStep) -> Void) throws -> [BackfillStep] {
         let name = try describer.describePackage(at: root).name
@@ -88,14 +98,7 @@ extension SnapshotWorkspace {
         guard git.commit != nil else {
             throw StoreError.noSnapshot("\(name): backfill follows git history, and this package has none")
         }
-        let backfillScanner = SnapshotScanner(
-            scanner: PackageScanner(
-                describer: describer,
-                tools: scanner.scanner.tools,
-                toolSkipReason: plan.withTools ? nil : Self.backfillToolSkipReason
-            ),
-            build: scanner.build
-        )
+        let backfillScanner = backfillScanner(withTools: plan.withTools)
         var steps: [BackfillStep] = []
         let line = try holdingPackage(try firstParentLine(), packagePath: git.packagePath)
         for commit in Self.picks(line, plan: plan) {

@@ -51,6 +51,14 @@ let kPackage = Package(
         .package(
             url: "https://github.com/Joseph-Cursio/SwiftEffectInference.git",
             revision: "ba3624d754c3c9150c946f66468c2c356be3e7e0"
+        ),
+        // The index store reader (PRD §6.1, D3), pinned to the tag of the toolchain
+        // SwiftStats is built with (swift-6.4.2-RELEASE); only the IndexStore product
+        // is linked, never IndexStoreDB (no C++, no LMDB database, no name clash).
+        // Keep `IndexStoreReader.pinned` equal to it.
+        .package(
+            url: "https://github.com/swiftlang/indexstore-db.git",
+            revision: "64aa0b26913249c4e7c21d351a215fba02702003"
         )
     ],
     targets: [
@@ -62,7 +70,8 @@ let kPackage = Package(
                 .product(name: "SwiftCodeMetrics", package: "SwiftCodeMetrics"),
                 .product(name: "Yams", package: "Yams"),
                 .product(name: "GRDB", package: "GRDB.swift"),
-                .product(name: "SwiftEffectInference", package: "SwiftEffectInference")
+                .product(name: "SwiftEffectInference", package: "SwiftEffectInference"),
+                .product(name: "IndexStore", package: "indexstore-db")
             ],
             swiftSettings: kSwiftSettings
         ),

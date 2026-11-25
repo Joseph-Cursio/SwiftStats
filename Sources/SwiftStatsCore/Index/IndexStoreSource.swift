@@ -26,3 +26,18 @@ protocol IndexStoreSource {
     /// The record named `name`, with every occurrence it holds.
     func record(named name: String) throws -> IndexRecordFact
 }
+
+extension IndexStoreSource {
+    /// Whether `lhs` comes before `rhs` in code point order: their Unicode
+    /// scalars compared one by one, as Python's `sorted()` orders the
+    /// checker's dump. `String`'s own `<` compares canonical (NFC) forms,
+    /// so a name stored decomposed (`Cafe\u{301}`) would sort apart.
+    static func codePointPrecedes(_ lhs: String, _ rhs: String) -> Bool {
+        lhs.unicodeScalars.lexicographicallyPrecedes(rhs.unicodeScalars)
+    }
+
+    /// `names` in code point order (`codePointPrecedes`), duplicates kept.
+    static func codePointSorted(_ names: [String]) -> [String] {
+        names.sorted(by: codePointPrecedes)
+    }
+}

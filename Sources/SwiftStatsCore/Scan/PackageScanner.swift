@@ -21,14 +21,19 @@ public struct PackageScanner {
     /// Where the external collectors' tools come from.
     let tools: ToolLocator
     /// When set, the external tool adapters are skipped for this reason
-    /// (SwiftStats' own measurements and the dependency graph still run).
-    let toolSkipReason: String?
+    /// (SwiftStats' own measurements and the dependency graph still run);
+    /// set after `init` through `skippingTools(for:)`.
+    var toolSkipReason: String?
     /// What a scan that stores its snapshot adds to the SwiftMutator run
     /// it asks for (`MutationSaving`); nil for any other scan.
     private(set) var saving: MutationSaving?
     /// Where a scan records the task log of a T1 build it ran that failed;
     /// nil when nobody asks.
     private(set) var failedBuild: FailedBuildLog?
+    /// Opens an index store (the directory holding `v5`) with a
+    /// libIndexStore.dylib, for the `index` collector: the product's
+    /// `IndexStoreReader`, or a test's recorded source.
+    var indexSource: @Sendable (_ store: URL, _ library: URL) throws -> any IndexStoreSource = IndexStoreReader.open
 
     /// Creates a scanner that learns a package's targets through
     /// `describer` and finds external tools with `tools`, or skips them

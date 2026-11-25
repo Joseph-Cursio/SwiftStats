@@ -170,6 +170,16 @@ extension PackageScanner {
             ?? .skipped(PeripheryAdapter.name, reason: PeripheryAdapter.notBuiltReason)
     }
 
+    /// The same scanner, its `index` collector reading the stores
+    /// `factory` opens (tests pass recorded sources).
+    func readingIndex(
+        with factory: @escaping @Sendable (_ store: URL, _ library: URL) throws -> any IndexStoreSource
+    ) -> Self {
+        var scanner = self
+        scanner.indexSource = factory
+        return scanner
+    }
+
     /// The T1 group's runs on the package at `root` under `configuration`,
     /// when the scan `requested` them: the build of `measured`'s package,
     /// whose `targets` its warnings are placed in, with its output mapped,

@@ -30,9 +30,11 @@ Recordings step 3). It doesn't class units or join anything; it holds:
   records  every record named by a unit whose main file is under <root>
            (stale units' too; units under <root>/.swiftstats or .build
            too, since they are under the root), each once, by record name:
-           `name`; `file`, the path the record dependencies of those units
-           give it; `otherFiles`, only when they give one record several
-           paths (files with one name and the same contents, such as
+           `name`; `file`, the path the record dependencies of every
+           non-system unit give it (units outside <root> included, as
+           SwiftStats' reader, which doesn't know the root, notes them);
+           `otherFiles`, only when they give one record several paths
+           (files with one name and the same contents, such as
            swift-syntax's `VersionMarkerModules/*/Empty.swift`), `file`
            then being the first path in code point order and `otherFiles`
            the rest; and `occurrences`, each with `line`, `column`
@@ -586,6 +588,7 @@ def read_dump(store_path, library_path, root):
         names = store.unit_names()
         units = []
         record_files = {}
+        dumped_records = set()
         system_units = 0
         for name in names:
             unit, records, modules = store.unit(name)
@@ -597,15 +600,15 @@ def read_dump(store_path, library_path, root):
             modules.sort(key=lambda entry: (entry["module"], entry["isSystem"]))
             unit["moduleDependencies"] = modules
             units.append(unit)
-            if unit["mainFile"] == "" or not is_under(unit["mainFile"], root):
-                continue
             for record, path in records:
                 path = real_path(path, f"record {record}'s file") if path else ""
                 record_files.setdefault(record, set()).add(path)
+            if unit["mainFile"] != "" and is_under(unit["mainFile"], root):
+                dumped_records.update(record for record, _ in records)
         dumped = []
         occurrence_count = 0
         shared = 0
-        for record in sorted(record_files):
+        for record in sorted(dumped_records):
             occurrences = store.occurrences(record)
             occurrences.sort(key=occurrence_order)
             occurrence_count += len(occurrences)
