@@ -197,6 +197,28 @@ struct CoverageFailureTests {
         #expect(reason == expected)
     }
 
+    @Test("""
+        without the LLVM tools in the toolchain, a missing or failing xcrun is reported before a failing \
+        swift --version, which isn't run
+        """)
+    func xcrunBeforeVersion() throws {
+        var scenario = try FakeToolchain.recorded()
+        scenario.llvmInToolchain = false
+        scenario.failing = ["version"]
+        let toolchain = try FakeToolchain.make(scenario)
+        defer { toolchain.remove() }
+        let package = try TemporaryPackage(["Sources/Lib/Lib.swift": "public func one() -> Int { 1 }\n"])
+        defer { package.remove() }
+        let run = CoverageAdapter.run(swift: toolchain.proxy, root: package.root, arguments: [], locator: .nowhere)
+        #expect(run.status.reason
+            == "the toolchain has no llvm-profdata and llvm-cov, and `xcrun` was not found on PATH")
+        #expect(toolchain.calls(of: "swift").contains("--version") == false)
+
+        scenario.failing = ["version", "xcrun"]
+        #expect(try CoverageHarness.failure(scenario)
+            == "`xcrun --find llvm-profdata` exited with status 1: xcrun: error: unable to find utility")
+    }
+
     @Test("an earlier run's file that can't be removed fails the run before the build, its path redacted")
     func staleFileStays() throws {
         let codecov = { (root: URL) in CoverageHarness.bin(of: root).appendingPathComponent("codecov") }
