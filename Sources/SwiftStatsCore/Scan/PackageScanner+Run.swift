@@ -6,8 +6,8 @@
 //  SwiftInferProperties and, when asked for, the coverage run, measure its
 //  files, infer side effects, run the other external collectors,
 //  SwiftCloneDetector among them, then, when asked for, the T1 group
-//  (`scan --index`) alone and SwiftMutator alone,
-//  attach the suggestions and clones and assemble the report, timing each
+//  (`scan --index`) alone and SwiftMutator alone, attach the suggestions,
+//  the clones and the build's timings and assemble the report, timing each
 //  collector for the snapshot (PRD §6.2).
 //
 
@@ -79,12 +79,13 @@ extension PackageScanner {
 
     /// The scan of `packageRoot`, with each collector's run time and binary;
     /// the coverage collector, the T1 group and the SwiftMutator collector
-    /// run only when `tiers` asks for them. SwiftMutator's copy checks out the commit of `git`, the
-    /// package's state as read before the scan (read when it runs when
-    /// nil), and leaves out the files at `ignoring`; a `--since` run, or
-    /// the resume of one, merges with the base `tiers` carries. For a scan
-    /// that stores its snapshot, `saving`'s gate runs before SwiftMutator
-    /// starts and may stop the scan.
+    /// run only when `tiers` asks for them. SwiftMutator's copy checks out
+    /// the commit of `git`, the package's state as read before the scan
+    /// (read when it runs when nil), and leaves out the files at
+    /// `ignoring`; a `--since` run, or the resume of one, merges with the
+    /// base `tiers` carries. For a scan that stores its snapshot,
+    /// `saving`'s gate runs before SwiftMutator starts and may stop the
+    /// scan.
     func run(
         packageAt packageRoot: URL,
         configurationFile: URL?,
@@ -133,7 +134,7 @@ extension PackageScanner {
             laws: measured.laws.with(kitDependency: KitProtocols.isDependency(in: dependencies.report)),
             coverage: external.coverage,
             mutation: external.mutationReport
-        )
+        ).with(build: external.index.report, status: external.index.build.result.status)
         return ScanOutcome(
             report: report,
             configuration: configuration,

@@ -4,8 +4,9 @@
 //
 //  Runs the external tools' collectors in a fixed order (PRD §7.16), and
 //  starts SwiftInferProperties' slower run (§7.11), SwiftCloneDetector's
-//  runs (§7.12) and the coverage run (M5) in the background; the
-//  SwiftMutator run (M6) comes last, alone, in the foreground.
+//  runs (§7.12) and the coverage run (M5) in the background; the T1 build
+//  (M7) and then the SwiftMutator run (M6) come last, each alone, in the
+//  foreground.
 //
 
 import Foundation
@@ -123,6 +124,34 @@ enum CollectorRun {
             case .skip(let reason):
                 return CoverageRun.skipped(reason)
             }
+        }
+    }
+
+    /// Runs the `build` collector, the T1 build, on the package at `root`,
+    /// alone, once the background runs have ended, and returns what
+    /// `readProducts` makes of the run, which it reads under the T1
+    /// group's lock (`BuildAdapter.run`). `collectors.build.enabled`
+    /// turns it off, and the coverage collector's `swift` builds
+    /// (`collectors.coverage.path`, else PATH, as SwiftMutator's test
+    /// command's); `measured` are the scanned files, hashed again after
+    /// the build. A skipped build is still passed to `readProducts`, so
+    /// the collectors that read the build say why they didn't.
+    static func runBuild<Value>(
+        root: URL,
+        configuration: SwiftStatsConfiguration,
+        locator: ToolLocator,
+        measured: [FileRecord],
+        then readProducts: (BuildRun) throws -> Value
+    ) rethrows -> Value {
+        if configuration.collectors[BuildAdapter.name]?.enabled == false {
+            return try readProducts(.skipped("disabled by collectors.\(BuildAdapter.name).enabled"))
+        }
+        switch MutationAdapter.testSwift(configuration: configuration, locator: locator, root: root) {
+        case .found(let swift):
+            return try BuildAdapter.run(swift: swift, root: root, files: measured, then: readProducts)
+
+        case .skip(let reason):
+            return try readProducts(.skipped(reason))
         }
     }
 

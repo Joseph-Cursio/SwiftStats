@@ -110,9 +110,14 @@ struct ScanCommand: ParsableCommand {
     func run() throws {
         let requested = try tiers
         let started = Date()
+        let failedBuild = FailedBuildLog()
         defer {
-            // Named only when this scan's mutation step wrote it, whether
-            // or not the scan then stored a snapshot.
+            // Each log is named only when this scan's own run wrote it
+            // (the build's only when the build failed), whether or not the
+            // scan then stored a snapshot.
+            if let line = failedBuild.line {
+                FileHandle.standardError.write(Data((line + "\n").utf8))
+            }
             let root = URL(fileURLWithPath: path, isDirectory: true)
             if requested.mutation != nil,
                let log = StoreLocation.mutationLog(packageRoot: root, writtenSince: started) {
@@ -123,20 +128,22 @@ struct ScanCommand: ParsableCommand {
             let report: ScanReport
             if noStore {
                 let root = URL(fileURLWithPath: path, isDirectory: true)
+                let scanner = PackageScanner().recording(failedBuild: failedBuild)
                 report = try options.config.map { file in
-                    try PackageScanner().scan(
+                    try scanner.scan(
                         packageAt: root,
                         configurationFile: URL(fileURLWithPath: file),
                         tiers: requested
                     )
-                } ?? PackageScanner().scan(packageAt: root, tiers: requested)
+                } ?? scanner.scan(packageAt: root, tiers: requested)
             } else {
                 let workspace = try options.workspace(path: path)
                 let history: HistorySource = noHistory ? .skipped("--no-history") : .automatic
                 let (snapshot, _) = try workspace.scanWorkingTree(
                     history: history,
                     tiers: requested,
-                    drop: DropOptions(coverage: dropCoverage, mutation: dropMutation, index: dropIndex)
+                    drop: DropOptions(coverage: dropCoverage, mutation: dropMutation, index: dropIndex),
+                    failedBuild: failedBuild
                 )
                 report = snapshot.report
                 FileHandle.standardError.write(Data((summary(snapshot.info, store: workspace.store.url) + "\n").utf8))

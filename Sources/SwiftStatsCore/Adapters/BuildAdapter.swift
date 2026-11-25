@@ -26,9 +26,12 @@ enum BuildAdapter {
     /// Why a scan that didn't ask for the T1 group skipped each of its
     /// collectors (`build`, `index` and `periphery` alike).
     static let notRequestedReason = "not requested; scan --index runs it"
-    /// Why a requested build is skipped until the T1 session is wired into
-    /// the scan (a placeholder; design §13, removed in step 3c).
-    static let notBuiltReason = "the index build is not built yet"
+    /// What `UnrunNotice`'s line about a requested build that didn't run
+    /// says first, before `failed` or `was skipped`.
+    static let ownRunLead = "this scan's index build "
+    /// What the reason of a collector reading the build (`index`,
+    /// `periphery`) starts with when the build didn't run.
+    static let needsBuildLead = "needs the build: "
     /// The error `collectors.build.path` gives: the build has no
     /// executable of its own.
     static let pathError = "the build uses the coverage collector's swift; set collectors.coverage.path"
@@ -38,6 +41,9 @@ enum BuildAdapter {
         .joined(separator: " ")
     /// The second option: what each build deletes first.
     static let rebuildOption = "rebuild: root package intermediates"
+    /// What the options naming the mapping rules start with: a run that
+    /// ran records them, after the toolchain.
+    static let ruleOptionLeads = ["map: ", "warnings: "]
     /// How many changed files the changed-files warning names.
     private static let namedChangedFiles = 5
 
@@ -45,6 +51,45 @@ enum BuildAdapter {
     /// is known: the command, what it rebuilds and the toolchain pin.
     static func options(root: URL) -> [String] {
         [invocation, rebuildOption, SwiftInferCopy.toolchainOption(root: root)]
+    }
+
+    /// What becomes of collector `name`, which reads the build (`index` or
+    /// `periphery`), after `run`, once its own settings let it run:
+    /// skipped `needs the build: <state>, <reason>` when the build didn't
+    /// run (design §1.5), failed when it ran without writing an index
+    /// store (§1.3 step 10); nil when it may read the build.
+    static func dependent(_ name: String, after run: BuildRun) -> AdapterResult? {
+        switch run.status.state {
+        case .ran:
+            guard let failure = run.products?.storeFailure else {
+                return nil
+            }
+            return AdapterResult(
+                status: CollectorStatus(name: name, state: .failed, version: nil, reason: failure, options: []),
+                findings: [],
+                warnings: []
+            )
+
+        case .failed, .skipped:
+            let how = run.status.state.rawValue + (run.status.reason.map { ", " + $0 } ?? "")
+            return .skipped(name, reason: needsBuildLead + how)
+        }
+    }
+
+    /// What became of a requested build that ended as `state` for
+    /// `reason`, as `UnrunNotice` words it; nil when it ran.
+    static func ownRun(state: CollectorState, reason given: String?) -> String? {
+        let reason = given ?? "no reason given"
+        switch state {
+        case .ran:
+            return nil
+
+        case .failed:
+            return "\(ownRunLead)failed (\(reason))"
+
+        case .skipped:
+            return reason == notRequestedReason ? nil : "\(ownRunLead)was skipped (\(reason))"
+        }
     }
 
     /// Builds the package at `root` with the toolchain `swift` resolves to
@@ -62,6 +107,7 @@ enum BuildAdapter {
     ) rethrows -> Value {
         var toolchain: SwiftToolchain?
         var lock: IndexLock?
+        var log: URL?
         defer { lock?.release() }
         let (outcome, milliseconds) = Stopwatch.time {
             Result { () throws -> BuildSession.Products in
@@ -75,17 +121,17 @@ enum BuildAdapter {
                 lock = try IndexLock(file: directory.appendingPathComponent(BuildSession.lockName))
                 let scratch = try BuildSession.realPath(creating: build)
                 let command = CoverageCommand(root: root, build: scratch, toolchain: found.directory)
-                return try BuildSession(toolchain: found, command: command, files: files).run()
+                return try BuildSession(toolchain: found, command: command, files: files).run { log = $0 }
             }
         }
-        return try readProducts(
-            buildRun(outcome, milliseconds: milliseconds, toolchain: toolchain, swift: swift, root: root)
-        )
+        var run = buildRun(outcome, milliseconds: milliseconds, toolchain: toolchain, swift: swift, root: root)
+        run.log = log
+        return try readProducts(run)
     }
 
     /// The run that `outcome` was, taking `milliseconds`, with the
     /// `toolchain` found (nil when it wasn't) from `swift` for the package
-    /// at `root`.
+    /// at `root`; its task log isn't set.
     private static func buildRun(
         _ outcome: Result<BuildSession.Products, any Error>,
         milliseconds: Int,
@@ -105,13 +151,14 @@ enum BuildAdapter {
                     state: .ran,
                     version: toolchain?.swiftVersion,
                     reason: notes.isEmpty ? nil : notes.joined(separator: "; "),
-                    options: known + ["map: " + TimingMapper.rule, "warnings: " + WarningReader.rule]
+                    options: known + zip(ruleOptionLeads, [TimingMapper.rule, WarningReader.rule]).map { $0 + $1 }
                 ),
                 executable: toolchain?.swift,
                 identity: identity,
                 milliseconds: milliseconds,
                 warnings: changed.isEmpty ? [] : [changedWarning(changed)],
-                products: products
+                products: products,
+                log: nil
             )
 
         case .failure(let error):
@@ -123,7 +170,8 @@ enum BuildAdapter {
                 identity: identity,
                 milliseconds: milliseconds,
                 warnings: [],
-                products: nil
+                products: nil,
+                log: nil
             )
         }
     }

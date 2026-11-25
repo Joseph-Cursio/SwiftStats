@@ -76,4 +76,46 @@ struct UnrunNoticeTests {
         #expect(UnrunNotice.lines(for: failed.report, requested: RequestedTiers(mutation: .full))
             == ["Warning: " + notice.message])
     }
+
+    @Test("""
+        a requested index build that failed prints one line naming the build and its reason, after the coverage \
+        run's; one that was skipped says so; one that ran, or wasn't asked for, prints nothing
+        """)
+    func indexBuild() throws {
+        var brokenBuild = try IndexGroupHarness.emptyBuild()
+        brokenBuild.stderr = "error: no such module 'Missing'\n"
+        brokenBuild.status = 1
+        let both = RequestedTiers(coverage: true, index: true)
+        let indexOnly = RequestedTiers(index: true)
+
+        let noTools = SnapshotHarness.noTools
+        try IndexGroupHarness.scanSmall(brokenBuild, extra: "", tiers: both, tools: noTools) { outcome in
+            let coverage = try #require(outcome.report.collectors.first { $0.name == CoverageAdapter.name })
+            let coverageWhat = try #require(CoverageCarry.ownRun(state: coverage.state, reason: coverage.reason))
+            let buildLine = "Warning: build: this scan's index build failed "
+                + "(swift build exited 1: error: no such module 'Missing')"
+            #expect(UnrunNotice.lines(for: outcome.report, requested: both)
+                == ["Warning: coverage: \(coverageWhat)", buildLine])
+            #expect(UnrunNotice.lines(for: outcome.report, requested: indexOnly) == [buildLine])
+            #expect(UnrunNotice.lines(for: outcome.report, requested: .syntaxOnly).isEmpty)
+        }
+        try IndexGroupHarness.scanSmall(
+            try IndexGroupHarness.emptyBuild(),
+            extra: "  build:\n    enabled: false\n",
+            tiers: indexOnly,
+            tools: SnapshotHarness.noTools
+        ) { outcome in
+            #expect(UnrunNotice.lines(for: outcome.report, requested: indexOnly)
+                == ["Warning: build: this scan's index build was skipped (disabled by collectors.build.enabled)"])
+        }
+        try IndexGroupHarness.scanSmall(
+            try IndexGroupHarness.emptyBuild(),
+            extra: "",
+            tiers: indexOnly,
+            tools: SnapshotHarness.noTools
+        ) { outcome in
+            #expect(outcome.report.collectors.first { $0.name == BuildAdapter.name }?.state == .ran)
+            #expect(UnrunNotice.lines(for: outcome.report, requested: indexOnly).isEmpty)
+        }
+    }
 }

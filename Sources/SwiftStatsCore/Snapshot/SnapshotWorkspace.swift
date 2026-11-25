@@ -87,16 +87,18 @@ public struct SnapshotWorkspace {
     /// coverage or SwiftMutator is refused, before the run, as its save
     /// would refuse held results it can't keep, and a SwiftMutator run
     /// that ran is kept until its snapshot is stored
-    /// (`SnapshotWorkspace+Held`).
+    /// (`SnapshotWorkspace+Held`). A T1 build that ran and failed records
+    /// its task log in `failedBuild`, even when the scan then throws.
     public func scanWorkingTree(
         history: HistorySource = .automatic,
         tiers: RequestedTiers = .syntaxOnly,
-        drop: DropOptions = []
+        drop: DropOptions = [],
+        failedBuild: FailedBuildLog? = nil
     ) throws -> (snapshot: ScannedSnapshot, id: Int64) {
         let git = GitReader.read(packageRoot: root, ignoring: storeInPackage)
         let base = try mutationBase(tiers.mutation, git: git)
         let saving = try heldResultsChecks(git: git, tiers: tiers, drop: drop)
-        let snapshot = try scanner.saving(saving).scan(
+        let snapshot = try scanner.saving(saving).recording(failedBuild: failedBuild).scan(
             packageAt: root,
             configurationFile: configurationFile ?? StoreLocation.localConfiguration(packageRoot: root),
             git: git,

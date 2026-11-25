@@ -5,9 +5,10 @@ import Testing
 /// The T1 group's place in a scan (M7, design §1): every scan lists the
 /// `build`, `index` and `periphery` statuses, they run only when the scan
 /// asks for them (`scan --index`), a requested group is skipped for each
-/// collector's own settings and otherwise gives the placeholders of
-/// design §13 without running anything, `--drop-index` drops nothing yet,
-/// and the index and the dead code compare only when the build does.
+/// collector's own settings, the index and outskirts are skipped when the
+/// build is, `--drop-index` drops nothing yet, and the index and the dead
+/// code compare only when the build does. `IndexGroupTests` runs the
+/// build.
 @Suite("Index collectors")
 struct IndexCollectorTests {
     private static let files = ["Sources/Lib/Lib.swift": "public func one() -> Int { 1 }\n"]
@@ -107,7 +108,8 @@ struct IndexCollectorTests {
 
     @Test("""
         asked for, each collector is skipped for its own settings first: disabled, no swift for the build, \
-        no outskirts or a path that isn't executable for periphery, and the tools' skip reason
+        no outskirts or a path that isn't executable for periphery, and the tools' skip reason; the index then \
+        needs the build
         """)
     func requestedSkips() throws {
         let disabled = try Self.statuses(
@@ -137,7 +139,7 @@ struct IndexCollectorTests {
         ])
         #expect(missing.mapValues(\.reason) == [
             "build": "`swift` not found on PATH; set collectors.coverage.path",
-            "index": "the index reader is not built yet",
+            "index": "needs the build: skipped, `swift` not found on PATH; set collectors.coverage.path",
             "periphery": "`outskirts` not found on PATH; set collectors.periphery.path"
         ])
         #expect(badPaths["build"]?.reason == "collectors.coverage.path tools/swift is not an executable file")
@@ -147,40 +149,6 @@ struct IndexCollectorTests {
         }))
         let all = [disabled, missing, badPaths, toolsSkipped].flatMap(\.values)
         #expect(all.allSatisfy { $0.state == .skipped && $0.options.isEmpty })
-    }
-
-    @Test("""
-        asked for with a swift and an outskirts found, the group gives the placeholders and runs neither, \
-        whatever the coverage collector's enabled says
-        """)
-    func requestedFound() throws {
-        let swift = try FakeTool.make(outputs: [""], errorText: "", statuses: [0])
-        let outskirts = try FakeTool.make(outputs: ["[]"], errorText: "", statuses: [0])
-        defer {
-            try? FileManager.default.removeItem(at: swift.deletingLastPathComponent())
-            try? FileManager.default.removeItem(at: outskirts.deletingLastPathComponent())
-        }
-        let configuration = """
-        collectors:
-          coverage:
-            enabled: false
-            path: \(swift.path)
-          periphery:
-            path: \(outskirts.path)
-        """
-
-        let statuses = try Self.statuses([".swiftstats.yml": configuration], toolSkipReason: nil, index: true)
-
-        #expect(statuses.mapValues(\.reason) == [
-            "build": "the index build is not built yet",
-            "index": "the index reader is not built yet",
-            "periphery": "the outskirts collector is not built yet"
-        ])
-        #expect(statuses.values.allSatisfy { $0.state == .skipped })
-        for tool in [swift, outskirts] {
-            let log = tool.deletingLastPathComponent().appendingPathComponent("arguments.log")
-            #expect(FileManager.default.fileExists(atPath: log.path) == false, "\(tool.path)")
-        }
     }
 
     @Test("""
@@ -200,7 +168,7 @@ struct IndexCollectorTests {
         #expect(askedRuns.map(\.name) == Self.names)
         #expect(askedRuns.map(\.reason) == [
             "`swift` not found on PATH; set collectors.coverage.path",
-            "the index reader is not built yet",
+            "needs the build: skipped, `swift` not found on PATH; set collectors.coverage.path",
             "`outskirts` not found on PATH; set collectors.periphery.path"
         ])
         #expect(stored == askedRuns)

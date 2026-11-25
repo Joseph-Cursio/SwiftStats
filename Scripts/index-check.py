@@ -131,16 +131,22 @@ with `--store`, with the rows of design section 9.1):
     whose bytes no longer have the scan's hash), `unscanned` (in the root,
     not a scanned file), else mapped: placed on the innermost record of any
     role holding (line, UTF-8 column) (latest start, earliest end, key; a
-    top-level code record only on its statement lines), else the innermost
-    type (named `<module>::<type path>`, plus ` @ <file>` when file-scoped),
-    else the file;
+    top-level code record only on its statement lines), except that a
+    position that record's innermost local type holds goes to that type
+    (a local type's own positions outside its members' records); else the
+    innermost type (named `<module>::<type path>`, plus ` @ <file>` when
+    file-scoped), else the file;
   - per record, the sum of its function-body entries and its largest
     expression entry, each in hundredths and rounded to whole ms half up
     once, null when it has none; per type or file attachment the same
-    (0 ms when it has only expressions); the total is the rounded sum of
-    function-body entries on records not nested in a body (no ancestor of
-    kind func, init, deinit, accessor or topLevel), on types and on files;
-    nothing is deduplicated;
+    (null ms when it has only expressions); the total is the rounded sum
+    of function-body entries on records not nested in a body, on types and
+    on files. A record is nested in a body when an ancestor of kind func,
+    init, deinit, accessor or topLevel is reached through its parent keys
+    without passing a type: a type lying inside that ancestor's range and
+    holding the record's range. So a local function is nested, and a local
+    type's members are not (the step-2b review's rules, as the compiler
+    prints them). Nothing is deduplicated;
   - warnings (severity `warning`; a macro form at its origin note, none
     without one) deduplicated on (file, line, column, ID or message);
     places under the build directory or outside the root dropped and
@@ -1723,13 +1729,28 @@ class BuildPackage:
             self.scoped[path] = file_scoped_paths(self.types_by_file[path], self.source(path))
         return owner + " @ " + path if scoped_by(record["name"], self.scoped[path]) else owner
 
+    def type_between(self, outer, inner):
+        """Whether a type of `inner`'s file lies inside `outer`'s range and
+        holds `inner`'s range."""
+        outer_start, outer_end = range_of(outer)
+        inner_start, inner_end = range_of(inner)
+        for candidate in self.types_by_file.get(inner["file"], []):
+            start, end = range_of(candidate)
+            if outer_start <= start and end <= outer_end and start <= inner_start and inner_end <= end:
+                return True
+        return False
+
     def nested_in_body(self, record):
+        """Whether a body-kind ancestor is reached through the parent keys
+        without passing a type between it and `record`."""
         seen = set()
         parent = record.get("parentKey")
         while parent and parent not in seen:
             seen.add(parent)
             ancestor = self.by_key.get(parent)
             if ancestor is None:
+                return False
+            if self.type_between(ancestor, record):
                 return False
             if ancestor["kind"] in BODY_KINDS:
                 return True
@@ -1748,7 +1769,9 @@ class BuildPackage:
         """(attachment kind, name): `record` and its key, `type` and its
         owner, or `file` and the path. The innermost record of any role
         holding (line, column): latest start, earliest end, key; a top-level
-        code record only on its statement lines."""
+        code record only on its statement lines. When a local type inside
+        that record holds the position (outside its members' records, or
+        one of them would be innermost), the innermost such type."""
         point = (line, column)
         holding = []
         for record in self.records_by_file.get(path, []):
@@ -1757,13 +1780,22 @@ class BuildPackage:
                 if record["kind"] == "topLevel" and line not in self.statement_lines(path):
                     continue
                 holding.append(record)
+        types = [t for t in self.types_by_file.get(path, []) if range_of(t)[0] <= point <= range_of(t)[1]]
+
+        def innermost_type(candidates):
+            chosen = min(candidates,
+                         key=lambda r: ((-range_of(r)[0][0], -range_of(r)[0][1]), range_of(r)[1], r["name"]))
+            return "type", self.type_owner(chosen)
+
         if holding:
             record = min(holding, key=lambda r: ((-range_of(r)[0][0], -range_of(r)[0][1]), range_of(r)[1], r["key"]))
+            start, end = range_of(record)
+            local = [t for t in types if t.get("isLocal") and start <= range_of(t)[0] and range_of(t)[1] <= end]
+            if local:
+                return innermost_type(local)
             return "record", record["key"]
-        types = [t for t in self.types_by_file.get(path, []) if range_of(t)[0] <= point <= range_of(t)[1]]
         if types:
-            record = min(types, key=lambda r: ((-range_of(r)[0][0], -range_of(r)[0][1]), range_of(r)[1], r["name"]))
-            return "type", self.type_owner(record)
+            return innermost_type(types)
         return "file", path
 
 
@@ -1831,8 +1863,7 @@ class Timings:
         out = {}
         for owner in set(self.function_sum) | set(self.expression_max):
             if owner[0] != "record":
-                milliseconds, slowest = self.figures(owner)
-                out[owner] = (milliseconds or 0, slowest)
+                out[owner] = self.figures(owner)
         return out
 
     def included_in_totals(self, owner):

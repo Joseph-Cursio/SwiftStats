@@ -22,7 +22,8 @@ public struct ScanReport: Codable, Hashable, Sendable {
     /// file's SHA-256 and the SwiftMutator collector, whose status every
     /// scan lists and whose results are mapped to records (M6); 9 adds the
     /// T1 group's collectors, `build`, `index` and `periphery`, whose
-    /// statuses every scan lists (M7).
+    /// statuses every scan lists, the build's type-check timings mapped to
+    /// records and its warnings as `swiftc` findings (M7).
     public static let currentSchemaVersion = 9
 
     /// The output format version (`currentSchemaVersion` when written).
@@ -74,6 +75,11 @@ public struct ScanReport: Codable, Hashable, Sendable {
     /// The SwiftMutator collector's results, mapped to records; absent when
     /// it didn't run or left no results (M6, design §3).
     public let mutation: MutationReport?
+    /// The T1 build's type-check timings, mapped to records, and the
+    /// counts of what it left out; absent when the `build` collector
+    /// didn't run (M7, design §6, §9.2). Its warnings are `swiftc`
+    /// findings.
+    public internal(set) var build: BuildReport?
     /// What the history collector found; absent when it didn't run (PRD §7.13).
     public internal(set) var history: HistoryReport?
 
@@ -81,6 +87,17 @@ public struct ScanReport: Codable, Hashable, Sendable {
     /// status replaced by `status`.
     func with(history: HistoryReport?, status: CollectorStatus) -> Self {
         var report = replacing(status, rollups: rollups, coverage: coverage, mutation: mutation, warnings: warnings)
+        report.history = history
+        return report
+    }
+
+    /// The report with `build` attached and the `build` collector's
+    /// status replaced by `status` (M7): how the scan attaches its T1
+    /// build's mapped timings, whose warnings are already among the
+    /// findings and counted in the roll-ups.
+    func with(build: BuildReport?, status: CollectorStatus) -> Self {
+        var report = replacing(status, rollups: rollups, coverage: coverage, mutation: mutation, warnings: warnings)
+        report.build = build
         report.history = history
         return report
     }
@@ -119,7 +136,7 @@ public struct ScanReport: Codable, Hashable, Sendable {
 
     /// The report with `status` replacing its collector's status, and
     /// `rollups`, `coverage`, `mutation` and `warnings` replacing its own,
-    /// and no history.
+    /// its build results kept, and no history.
     private func replacing(
         _ status: CollectorStatus,
         rollups: [Rollup],
@@ -127,7 +144,7 @@ public struct ScanReport: Codable, Hashable, Sendable {
         mutation: MutationReport?,
         warnings: [ScanWarning]
     ) -> Self {
-        Self(
+        var report = Self(
             schemaVersion: schemaVersion,
             tool: tool,
             metrics: metrics,
@@ -151,5 +168,7 @@ public struct ScanReport: Codable, Hashable, Sendable {
             coverage: coverage,
             mutation: mutation
         )
+        report.build = build
+        return report
     }
 }

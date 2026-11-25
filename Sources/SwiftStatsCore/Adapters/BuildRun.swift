@@ -29,6 +29,12 @@ struct BuildRun: Sendable {
     /// What the build left; nil unless it ran (a failed build's partial
     /// store is never read).
     let products: BuildSession.Products?
+    /// The build's task log when this run's build command ran, whether the
+    /// build then succeeded or failed; nil when it didn't run, as when
+    /// another scan held the lock or describing the package failed, so a
+    /// log another scan wrote is never taken for this one's. Set once the
+    /// run is made.
+    var log: URL?
 
     /// The run as the other external collectors' runs are recorded.
     var timed: TimedAdapterResult {
@@ -48,7 +54,26 @@ struct BuildRun: Sendable {
             identity: nil,
             milliseconds: 0,
             warnings: [],
-            products: nil
+            products: nil,
+            log: nil
+        )
+    }
+
+    /// The run failed for `reason` after the build: what it left couldn't
+    /// be read. Its options stop at the toolchain, as a failed run's do,
+    /// and it leaves nothing for the collectors that read the build.
+    func failing(_ reason: String) -> Self {
+        let kept = status.options.filter { option in
+            BuildAdapter.ruleOptionLeads.contains { option.hasPrefix($0) } == false
+        }
+        return Self(
+            status: CollectorStatus(name: status.name, state: .failed, version: nil, reason: reason, options: kept),
+            executable: executable,
+            identity: identity,
+            milliseconds: milliseconds,
+            warnings: warnings,
+            products: nil,
+            log: log
         )
     }
 }

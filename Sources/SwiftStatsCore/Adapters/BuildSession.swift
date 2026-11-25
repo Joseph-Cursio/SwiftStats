@@ -71,6 +71,12 @@ struct BuildSession {
         var stderr: URL {
             scratch.appendingPathComponent(BuildSession.stderrName)
         }
+
+        /// Whether the build re-timed every root file: false when the run
+        /// noted that it found no root intermediates to remove.
+        var complete: Bool {
+            notes.contains { $0.hasPrefix(BuildSession.incompleteLead) } == false
+        }
     }
 
     /// What describing and building the package gave.
@@ -103,6 +109,9 @@ struct BuildSession {
     /// Where Swift Build keeps each package's intermediates, in the store's
     /// directory.
     static let intermediatesDirectory = "Intermediates.noindex"
+    /// What the note of a run that found no root intermediates to remove
+    /// starts with.
+    static let incompleteLead = "timings may be incomplete"
     /// Why a build couldn't take the lock because another holds it.
     static let heldReason = "another scan --index is running in this package"
     /// The frontend flags the build passes, each behind
@@ -174,8 +183,10 @@ struct BuildSession {
     }
 
     /// Builds the package and returns what the build left, leaving the
-    /// package's `Package.resolved` as it found it.
-    func run() throws -> Products {
+    /// package's `Package.resolved` as it found it. `ranBuild` is called
+    /// with the build's task log once the build command has run, whether
+    /// it then succeeded or failed: only then did this run write the log.
+    func run(ranBuild: (URL) -> Void) throws -> Products {
         let lockfileURL = command.root.appendingPathComponent(CoverageSession.lockfileName)
         let lockfile: PreservedFile
         do {
@@ -187,7 +198,7 @@ struct BuildSession {
             )
         }
         ScratchRegistry.shared.preserve(lockfile)
-        let built = Result { try describeAndBuild() }
+        let built = Result { try describeAndBuild(ranBuild: ranBuild) }
         do {
             try ScratchRegistry.shared.putBack(lockfile)
         } catch {
@@ -215,12 +226,12 @@ struct BuildSession {
     }
 
     /// Describes the package, maps its modules, removes its intermediates
-    /// and builds it.
-    private func describeAndBuild() throws -> Built {
+    /// and builds it, calling `ranBuild` as `build(ranBuild:)` does.
+    private func describeAndBuild(ranBuild: (URL) -> Void) throws -> Built {
         let package = try describe()
         let modules = try Self.moduleMap(of: package)
         let notes = try removeRootIntermediates(named: package.name)
-        try build()
+        try build(ranBuild: ranBuild)
         return Built(package: package, modules: modules, notes: notes)
     }
 
@@ -258,7 +269,7 @@ struct BuildSession {
         let folder = out.appendingPathComponent(Self.intermediatesDirectory).appendingPathComponent(folderName)
         guard fileManager.fileExists(atPath: folder.path) else {
             return fileManager.fileExists(atPath: out.path)
-                ? ["timings may be incomplete: no root intermediates named \(folderName) to remove"]
+                ? ["\(Self.incompleteLead): no root intermediates named \(folderName) to remove"]
                 : []
         }
         do {
@@ -273,10 +284,12 @@ struct BuildSession {
     }
 
     /// Runs the build in the package root, its standard output and
-    /// standard error written to the build directory's files; a failure
-    /// unless it exits 0.
-    private func build() throws {
+    /// standard error written to the build directory's files, and calls
+    /// `ranBuild` with the task log once it has run; a failure unless it
+    /// exits 0.
+    private func build(ranBuild: (URL) -> Void) throws {
         let arguments = Self.arguments(scratch: command.build.path)
+        let log = command.build.appendingPathComponent(Self.logName)
         let stderr = command.build.appendingPathComponent(Self.stderrName)
         let termination: ProcessTermination
         do {
@@ -284,13 +297,14 @@ struct BuildSession {
                 executable: toolchain.swift.path,
                 arguments: arguments,
                 in: command.root,
-                writingOutputTo: command.build.appendingPathComponent(Self.logName),
+                writingOutputTo: log,
                 writingErrorTo: stderr
             )
         } catch {
             let display = command.display(toolchain.swift, arguments)
             throw command.launchFailure(display, tool: toolchain.swift, error: error)
         }
+        ranBuild(log)
         switch termination {
         case .exited(0):
             return

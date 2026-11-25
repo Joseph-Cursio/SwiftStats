@@ -66,6 +66,9 @@ extension PackageScanner {
         let coverage: CoverageReport?
         /// Problems mapping the coverage.
         let coverageWarnings: [ScanWarning]
+        /// The T1 group's runs and the build's timings and warning
+        /// counts, mapped to records.
+        let index: IndexGroup
         /// The SwiftMutator run, or its skip.
         let mutation: MutationRun
         /// Its results, mapped to records; nil unless it ran with results.
@@ -151,16 +154,48 @@ extension PackageScanner {
         return CollectorRun.startProperties(root: root, targets: targets, configuration: configuration, locator: tools)
     }
 
+    /// The runs that go alone, once every background run has ended, on
+    /// `targets` of the package at `root` under `configuration`: the T1
+    /// group, skipped unless `pending` asks for it, then, after `pending`'s
+    /// gate has been given its coverage run's status and `measured`'s
+    /// records, the SwiftMutator run `pending` asks for.
+    private func aloneRuns(
+        root: URL,
+        targets: [TargetSummary],
+        configuration: SwiftStatsConfiguration,
+        pending: PendingRuns,
+        measured: ScanMeasurements
+    ) throws -> (IndexGroup, MutationRun) {
+        let indexGroup = runIndexGroup(
+            root: root,
+            configuration: configuration,
+            requested: pending.index,
+            measured: measured,
+            targets: targets
+        )
+        if pending.mutation != nil, let gate = pending.gate {
+            try gate(pending.coverage.wait().status, measured.records)
+        }
+        let mutation = runMutation(
+            root: root,
+            configuration: configuration,
+            scope: pending.mutation,
+            measured: measured
+        )
+        return (indexGroup, mutation)
+    }
+
     /// Starts SwiftCloneDetector and runs the other external collectors on
     /// `targets` of the package at `root`, waits for it and for `pending`,
     /// SwiftInferProperties' and the coverage collector's runs, then runs
     /// the T1 group alone when `pending` asks for it (and lists it skipped
     /// otherwise), then the SwiftMutator collector alone, and attaches the
-    /// classes, the suggestions, the coverage, the mutants and every
-    /// finding to `measured`'s records. When a SwiftMutator run was asked
-    /// for, `pending`'s gate is given the coverage run's status and the
-    /// records before it starts, once every other run has ended, and may
-    /// stop the scan.
+    /// classes, the suggestions, the coverage, the build's timings, the
+    /// mutants and every finding, the compiler's warnings among them, to
+    /// `measured`'s records. When a SwiftMutator run was asked for,
+    /// `pending`'s gate is given the coverage run's status and the records
+    /// before it starts, once every other run has ended, and may stop the
+    /// scan.
     func externalRuns(
         root: URL,
         targets: [TargetSummary],
@@ -174,20 +209,18 @@ extension PackageScanner {
         let cloneRun = cloneJob?.wait()
         let run = pending.properties?.wait()
         let coverage = pending.coverage.wait()
-        let indexGroup = runIndexGroup(root: root, configuration: configuration, requested: pending.index)
-        if pending.mutation != nil, let gate = pending.gate {
-            try gate(coverage.status, measured.records)
-        }
-        let mutationRun = runMutation(
+        let (indexGroup, mutationRun) = try aloneRuns(
             root: root,
+            targets: targets,
             configuration: configuration,
-            scope: pending.mutation,
+            pending: pending,
             measured: measured
         )
-        let findings = Self.attach(measured.markers + adapters.flatMap(\.result.findings), to: measured)
+        let raw = measured.markers + adapters.flatMap(\.result.findings) + indexGroup.findings
+        let findings = Self.attach(raw, to: measured)
         // SwiftInferProperties and SwiftCloneDetector report no findings,
-        // so they get no counts.
-        let ran = adapters.map(\.result.status).filter { $0.state == .ran }.map(\.name)
+        // so they get no counts; the build's are counted as `swiftc`'s.
+        let ran = adapters.map(\.result.status).filter { $0.state == .ran }.map(\.name) + indexGroup.tools
         let properties = run.map { completed in
             Self.properties(of: completed, measured: measured, targets: targets, root: root, findings: findings)
         }
@@ -205,7 +238,7 @@ extension PackageScanner {
             configuration: configuration
         )
         return ExternalScan(
-            timed: adapters + [run?.timed, cloneRun?.timed, coverage.timed].compactMap(\.self) + indexGroup
+            timed: adapters + [run?.timed, cloneRun?.timed, coverage.timed].compactMap(\.self) + indexGroup.timed
                 + [mappedMutation.run.timed],
             findings: findings,
             tally: FindingTally(findings: findings, tools: Set(ran).union([MarkerCollector.tool])),
@@ -214,6 +247,7 @@ extension PackageScanner {
             clones: cloneRun.flatMap { Self.clones(of: $0, measured: measured) },
             coverage: mapped.report,
             coverageWarnings: mapped.warnings,
+            index: indexGroup,
             mutation: mappedMutation.run,
             mutationReport: mappedMutation.report,
             mutationWarnings: mappedMutation.warnings

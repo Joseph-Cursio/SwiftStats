@@ -14,6 +14,10 @@ public struct SnapshotScanner {
     /// Formats snapshot dates: ISO 8601, UTC, whole seconds.
     private static let dateFormat = Date.ISO8601FormatStyle(timeZone: .gmt)
 
+    /// The collectors whose build identity is their toolchain's `swift`
+    /// version line, which their run reports.
+    private static let toolchainIdentified: Set = [CoverageAdapter.name, BuildAdapter.name]
+
     /// The scan itself.
     let scanner: PackageScanner
     /// Which build of SwiftStats is scanning.
@@ -34,12 +38,13 @@ public struct SnapshotScanner {
     /// and the history's.
     static func info(for status: CollectorStatus, outcome: ScanOutcome, toolchain: Toolchain) -> CollectorRunInfo {
         var identity: (identity: String, label: String?)?
-        if status.name == CoverageAdapter.name {
-            // The toolchain that ran the tests is the tool, named by its
-            // own `swift --version` (the swift on PATH may be swiftly's
-            // proxy, whose hash names no compiler); diff also requires
-            // `swiftstats` to match, since SwiftStats' own code maps the
-            // profiles.
+        if Self.toolchainIdentified.contains(status.name) {
+            // The toolchain that ran the tests (coverage) or the T1 build
+            // (`build`, design §1.8) is the tool, named by its own `swift
+            // --version` (the swift on PATH may be swiftly's proxy, whose
+            // hash names no compiler); diff also requires `swiftstats` to
+            // match, since SwiftStats' own code maps the profiles, the
+            // timings and the warnings.
             if status.state != .skipped, let reported = outcome.identities[status.name] {
                 identity = (reported, nil)
             }
@@ -87,6 +92,12 @@ public struct SnapshotScanner {
     /// says (`MutationSaving`).
     func saving(_ added: MutationSaving?) -> Self {
         Self(scanner: scanner.saving(added), build: build)
+    }
+
+    /// The same scanner, its scans recording in `record` the task log of a
+    /// T1 build they ran that failed (`FailedBuildLog`).
+    func recording(failedBuild record: FailedBuildLog?) -> Self {
+        Self(scanner: scanner.recording(failedBuild: record), build: build)
     }
 
     /// Scans the package at `root` with the configuration in

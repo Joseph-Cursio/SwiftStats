@@ -26,6 +26,9 @@ public struct PackageScanner {
     /// What a scan that stores its snapshot adds to the SwiftMutator run
     /// it asks for (`MutationSaving`); nil for any other scan.
     private(set) var saving: MutationSaving?
+    /// Where a scan records the task log of a T1 build it ran that failed;
+    /// nil when nobody asks.
+    private(set) var failedBuild: FailedBuildLog?
 
     /// Creates a scanner that learns a package's targets through
     /// `describer` and finds external tools with `tools`, or skips them
@@ -297,6 +300,15 @@ public struct PackageScanner {
     func saving(_ added: MutationSaving?) -> Self {
         var scanner = self
         scanner.saving = added
+        return scanner
+    }
+
+    /// The same scanner, its scans recording in `record` the task log of a
+    /// T1 build they ran that failed, so the log can be named whether or
+    /// not the scan then returns.
+    public func recording(failedBuild record: FailedBuildLog?) -> Self {
+        var scanner = self
+        scanner.failedBuild = record
         return scanner
     }
 
