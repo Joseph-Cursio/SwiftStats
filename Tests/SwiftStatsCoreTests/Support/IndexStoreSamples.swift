@@ -187,7 +187,8 @@ enum IndexStoreSamples {
     /// The hand-made index block for `records`, in their order: the first
     /// with a USR, a secondary USR and test referrers, one of them
     /// `oddReferrer`; the second a witness with no referrers; the third
-    /// with a reason and no USR.
+    /// with a reason and no USR; its family references name `records`'
+    /// families (`named(_:families:)`).
     static func index(records: [FunctionRecord]) throws -> IndexReport {
         let shell = try JSONDecoder().decode(IndexReport.self, from: Data(indexJSON.utf8))
         let samples = try JSONDecoder().decode([IndexRecordUSR].self, from: Data(recordsJSON.utf8))
@@ -200,7 +201,7 @@ enum IndexStoreSamples {
                 coupling: sample.coupling
             )
         }
-        return IndexReport(
+        let report = IndexReport(
             store: shell.store,
             libraryModules: shell.libraryModules,
             records: listed,
@@ -214,6 +215,7 @@ enum IndexStoreSamples {
             familyTypeReferences: shell.familyTypeReferences,
             files: shell.files
         )
+        return named(report, families: records)
     }
 
     /// A history at `commit` holding the hand-made coupling pairs.

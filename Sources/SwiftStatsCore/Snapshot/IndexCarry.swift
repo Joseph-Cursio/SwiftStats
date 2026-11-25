@@ -13,12 +13,15 @@
 //  `index`'s `units:`, `usr:`, `references:` and `types:`, `periphery`'s
 //  `classes:` and `map:`; a reader that was skipped or failed has none to
 //  compare); the records are the same, of every role, each over the same
-//  full span, in the same family and owned by the same type, and so are
-//  the type records with their spans; and every scanned file has the
-//  bytes the build hashed, with no file scanned now that wasn't then, or
-//  the other way round. A SwiftStats rebuild that changes owning types,
-//  families or start columns without changing a rule therefore refuses
-//  rather than carry rows that name other things. A carried group keeps
+//  full span, in the same family and owned by the same type, every family
+//  the held family and family-type references name being a family of the
+//  rescan as this build groups its records, and so are the type records
+//  with their spans; and every scanned file has the bytes the
+//  build hashed, with no file scanned now that wasn't then, or the other
+//  way round. A SwiftStats rebuild that changes owning types, families
+//  (a record's family root, or how records are grouped into families) or
+//  start columns without changing a rule therefore refuses rather than
+//  carry rows that name other things. A carried group keeps
 //  each collector's original identity, version, options, duration and
 //  state, its reason saying when the results were collected; the `swiftc`
 //  findings and the warnings describing the results come with them, and
@@ -117,8 +120,9 @@ enum IndexCarry {
     /// Why the records of `held` aren't `records`, naming the first key
     /// in order that differs: a held record that is gone, in another file,
     /// over another span, in another family or owned by another type;
-    /// then a record the held scan didn't have. Nil when they are the
-    /// same.
+    /// then a record the held scan didn't have; then, first in order, a
+    /// family id the held index rows name that isn't a family of
+    /// `records` as this build groups them. Nil when they are the same.
     private static func recordsRefusal(of held: HeldIndex, onto records: [FunctionRecord]) -> String? {
         let scanned = HeldIndex.places(of: records)
         for key in held.records.keys.sorted() {
@@ -141,7 +145,23 @@ enum IndexCarry {
         if let added = scanned.keys.filter({ held.records[$0] == nil }).min() {
             return "`\(added)` has no index results"
         }
+        let families = Set(scanned.values.map(\.family))
+        if let gone = heldFamilies(of: held).filter({ families.contains($0) == false }).min() {
+            return "family `\(gone)` is gone now"
+        }
         return nil
+    }
+
+    /// The family ids `held`'s index rows name: both ends of each family
+    /// reference and each family-type reference's family, as the build
+    /// that collected them grouped the records; none when the index didn't
+    /// run.
+    private static func heldFamilies(of held: HeldIndex) -> Set<String> {
+        guard let index = held.index else {
+            return []
+        }
+        let references = index.familyReferences.flatMap { [$0.fromFamily, $0.toFamily] }
+        return Set(references + index.familyTypeReferences.map(\.family))
     }
 
     /// Why the type records of `held` aren't `types`, naming the first in

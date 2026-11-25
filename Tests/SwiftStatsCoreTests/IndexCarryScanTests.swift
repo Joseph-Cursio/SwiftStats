@@ -98,8 +98,8 @@ struct IndexCarryScanTests {
 
     @Test("""
         a plain scan after scan --index of the Index fixture carries the build, index and dead-code results with \
-        the compiler warnings, giving the report the scan --index gave but for the three runs, and the store \
-        reads back the same rows
+        the compiler warnings, their groups included, giving the report the scan --index gave but for the three \
+        runs, and the store reads back the same rows
         """)
     func fixtureCarry() async throws {
         let fake = try FakePeriphery.make(try FakePeriphery.recorded())
@@ -120,6 +120,7 @@ struct IndexCarryScanTests {
 
             let swiftc = held.report.findings.filter { $0.tool == WarningReader.tool }
             #expect(swiftc.isEmpty == false && held.report.deadCode != nil && held.report.index != nil)
+            #expect(swiftc.contains { $0.category != nil })
             #expect(carried.snapshot.report.findings == held.report.findings)
             #expect(try Self.with(Self.statuses(held.report), in: carried.snapshot.report) == held.report)
             let runs = IndexCarry.names.compactMap { name in held.info.collectors.first { $0.name == name } }
