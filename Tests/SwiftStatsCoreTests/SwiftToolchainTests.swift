@@ -52,7 +52,6 @@ struct SwiftToolchainTests {
         try Self.discover(try FakeToolchain.recorded()) { toolchain, fake in
             let real = MutationRunHarness.realPath
             #expect(real(toolchain.swift) == real(fake.swift))
-            #expect(real(toolchain.bin) == real(fake.directory.appendingPathComponent("usr/bin")))
             #expect(real(toolchain.directory) == real(fake.directory))
             #expect(real(toolchain.runtimeResources) == real(fake.directory.appendingPathComponent("usr/lib/swift")))
             #expect(toolchain.libIndexStore.lastPathComponent == "libIndexStore.dylib")

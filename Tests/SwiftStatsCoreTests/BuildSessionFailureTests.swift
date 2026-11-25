@@ -4,9 +4,9 @@ import Testing
 
 /// What fails the T1 build (M7, design §1.5) against a fake toolchain: the
 /// lock another scan holds, which the run keeps until its products are
-/// read, a failing describe, a failing build, whose reason is its last
-/// standard-error lines without timing lines, and a toolchain that refuses
-/// Swift Build.
+/// read, a failing describe, a failing build, whose reason is its first
+/// standard-error lines from the first error on, without timing or `info:`
+/// lines, and a toolchain that refuses Swift Build.
 @Suite("Build session failures")
 struct BuildSessionFailureTests {
     /// The package at `root`'s `.swiftstats/index.lock`, its folder made.
@@ -102,17 +102,20 @@ struct BuildSessionFailureTests {
     }
 
     @Test("""
-        a build that exits non-zero fails with its last standard-error lines, timing lines left out \
-        first, cleaned and redacted
+        a build that exits non-zero fails with its standard error's first lines from the first error on, \
+        -v's info: lines and timing lines left out, cleaned and redacted
         """)
     func failingBuild() throws {
         var scenario = try FakeToolchain.recordedBuild()
         scenario.stderr = try IndexFixture.text("failed.stderr")
         scenario.status = 1
-        // The recording's last lines hold timing lines, which would
-        // otherwise push the located error out of the kept lines.
-        let tail = scenario.stderr.split(whereSeparator: \.isNewline).suffix(CoverageStderr.keptLines)
-        try #require(tail.contains { BuildLineGrammar.timingEntry(String($0)) != nil })
+        // Before its first error the recording holds -v's target graph,
+        // the manifests' command lines and timing lines, which would
+        // otherwise fill the reason.
+        let recorded = scenario.stderr.split(whereSeparator: \.isNewline).map(String.init)
+        let firstError = try #require(recorded.firstIndex { $0.hasPrefix("error: ") })
+        try #require(recorded[..<firstError].contains { $0.hasPrefix("info: ") })
+        try #require(recorded[..<firstError].contains { BuildLineGrammar.timingEntry($0) != nil })
         try BuildHarness.run(scenario) { outcome in
             #expect(outcome.run.status.state == .failed)
             #expect(outcome.run.products == nil)
@@ -120,24 +123,28 @@ struct BuildSessionFailureTests {
             let prefix = "swift build exited 1: "
             #expect(reason.hasPrefix(prefix))
             let lines = reason.dropFirst(prefix.count).split(separator: "\n").map(String.init)
-            #expect(lines.count == CoverageStderr.keptLines)
-            #expect(lines.allSatisfy { BuildLineGrammar.timingEntry($0) == nil && $0.contains("ms\t") == false })
-            #expect(lines.last == "error: Build failed")
-            #expect(lines.contains(
+            #expect(lines == [
                 "error: <package>/Sources/IndexCore/Formatting.swift:8:1 expected expression in list of expressions "
-                    + "[expected_expr_in_expr_list]"
-            ))
-            #expect(lines.contains { $0.hasPrefix("error: SwiftDriver IndexCore normal arm64") })
+                    + "[expected_expr_in_expr_list]",
+                "warning: <package>/Sources/IndexCore/Warnings.swift:19:10 remember to finish this [pound_warning]",
+                "error: SwiftDriver IndexCore normal arm64 com.apple.xcode.tools.swift.compiler failed with a nonzero "
+                    + "exit code. Command line:",
+                "error: Build failed"
+            ])
             #expect(reason.contains("@ROOT@") == false && reason.contains(outcome.realRoot.path) == false)
             #expect(reason.contains(outcome.build.path) == false)
         }
     }
 
-    @Test("a failure's reason drops whole timing lines only, before keeping the last lines")
+    @Test("""
+        a failure's reason drops whole timing lines and info: lines, then keeps the first lines from the first \
+        error line on
+        """)
     func failureReason() {
-        let text = "Compiling Lib\n1.20ms\t/p/Sources/A.swift:1:1\t"
+        let text = "info: Target dependency graph (1 targets)\nCompiling Lib\n1.20ms\t/p/Sources/A.swift:1:1\t"
             + "global function Lib.(file).a()@/p/Sources/A.swift:1:1\n"
             + "0.10ms\t<invalid loc>\n2ms\tnot a place\n/p/Sources/A.swift:2:3: error: boom [id]\n"
+            + "2 | boom()\n  | `- error: boom [id]\n0.20ms\t<invalid loc>\nerror: Build failed\n"
 
         let reason = BuildSession.failureReason(
             status: 2,
@@ -145,10 +152,32 @@ struct BuildSessionFailureTests {
             replacing: [(URL(fileURLWithPath: "/p"), "<package>")]
         )
 
-        #expect(reason == "swift build exited 2: Compiling Lib\n2ms\tnot a place\n"
-            + "<package>/Sources/A.swift:2:3: error: boom [id]")
+        #expect(reason == "swift build exited 2: <package>/Sources/A.swift:2:3: error: boom [id]\n"
+            + "2 | boom()\n| `- error: boom [id]\nerror: Build failed")
         #expect(BuildSession.failureReason(status: 1, stderr: "0.5ms\t<invalid loc>\n", replacing: [])
             == "swift build exited 1")
+    }
+
+    @Test("""
+        a failure's reason with no error line is its last lines, timing and info: lines left out; one with more \
+        error lines than it keeps keeps the first
+        """)
+    func failureReasonBounds() {
+        let unerrored = BuildSession.failureReason(
+            status: 1,
+            stderr: "info: Building targets in dependency order\nCompiling Lib\n0.5ms\t<invalid loc>\n"
+                + "2ms\tnot a place\nwarning: something odd\n",
+            replacing: []
+        )
+        let errors = (1...(CoverageStderr.keptLines + 10)).map { "error: failure \($0)" }
+        let many = BuildSession.failureReason(
+            status: 1,
+            stderr: "Compiling Lib\n" + errors.joined(separator: "\n") + "\n",
+            replacing: []
+        )
+
+        #expect(unerrored == "swift build exited 1: Compiling Lib\n2ms\tnot a place\nwarning: something odd")
+        #expect(many == "swift build exited 1: " + errors.prefix(CoverageStderr.keptLines).joined(separator: "\n"))
     }
 
     @Test("a toolchain whose swift rejects --build-system swiftbuild fails, saying so in M5's words")

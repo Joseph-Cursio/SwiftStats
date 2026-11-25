@@ -16,7 +16,8 @@ import Testing
 /// The unit filter's handling of describe paths and local dependencies.
 @Suite("Unit filter paths")
 struct UnitFilterPathTests {
-    /// A temporary package root holding empty files.
+    /// A temporary package root holding empty files, which each test
+    /// removes.
     private struct Root {
         /// The root's real path.
         let path: String
@@ -38,6 +39,11 @@ struct UnitFilterPathTests {
                 try manager.createDirectory(at: fileURL.deletingLastPathComponent(), withIntermediateDirectories: true)
                 try Data().write(to: fileURL)
             }
+        }
+
+        /// Deletes the root.
+        func remove() {
+            try? FileManager.default.removeItem(atPath: path)
         }
 
         /// A filter for the root with `package`.
@@ -81,6 +87,7 @@ struct UnitFilterPathTests {
     @Test("a target at the package root and a source with . and .. segments match their units' main files")
     func rootTarget() throws {
         let root = try Root(files: ["main.swift", "Util.swift"])
+        defer { root.remove() }
         let filter = try root.filter(Self.package(
             target: "Tool",
             path: ".",
@@ -99,6 +106,7 @@ struct UnitFilterPathTests {
     func nestedDependency() throws {
         let dependencyFile = "LocalPackages/Foo/Sources/Foo/Foo.swift"
         let root = try Root(files: ["Sources/App/App.swift", dependencyFile])
+        defer { root.remove() }
         let absolute = DescribedDependency(
             identity: "foo",
             type: "fileSystem",

@@ -60,7 +60,7 @@ struct RecordedIndexSourceTests {
         #expect(unit.module == "IndexCoreTests")
         #expect(unit.mainFile == "/run/work/Index/Tests/IndexCoreTests/IndexCoreTests.swift")
         #expect(unit.target == "arm64-apple-macos14.0")
-        #expect(unit.modified == IndexUnitFact.ModificationDate(seconds: 1_795_607_287, nanoseconds: 651_432_637))
+        #expect(unit.modified == IndexUnitFact.ModificationDate(seconds: 1_795_610_817, nanoseconds: 615_500_957))
         #expect(unit.records == ["IndexCoreTests.swift-PTEX7T57Z9VP"])
         #expect(unit.moduleDependencies.filter { $0.isSystem == false }.map(\.module) == [
             "IndexCore", "index_kit", "index_support"

@@ -22,12 +22,19 @@ enum CoverageStderr {
     /// What a header followed by an indented command line contains.
     private static let commandLineHeader = "Command line:"
 
-    /// `text`, cleaned: the indented lines after an `error: … Command line:`
-    /// header, the rest of the header's own line, and any indented line over
-    /// `commandLineLength` characters are dropped; each directory in `replacements` is redacted, however it is
-    /// spelled; each line is trimmed and cut at `lineLimit` characters;
-    /// blank lines are dropped and the last `keptLines` are kept.
+    /// `text`, cleaned as `cleanedLines(_:replacing:)` cleans it, its last
+    /// `keptLines` lines kept.
     static func cleaned(_ text: String, replacing replacements: [(URL, String)]) -> String {
+        cleanedLines(text, replacing: replacements).suffix(keptLines).joined(separator: "\n")
+    }
+
+    /// `text`'s lines, cleaned: the indented lines after an `error: …
+    /// Command line:` header, the rest of the header's own line, and any
+    /// indented line over `commandLineLength` characters are dropped; each
+    /// directory in `replacements` is redacted, however it is spelled; each
+    /// line is trimmed and cut at `lineLimit` characters; blank lines are
+    /// dropped. Every line is kept, for the caller to bound.
+    static func cleanedLines(_ text: String, replacing replacements: [(URL, String)]) -> [String] {
         var lines: [String] = []
         var inCommandLine = false
         for line in text.split(whereSeparator: \.isNewline).map(String.init) {
@@ -46,6 +53,6 @@ enum CoverageStderr {
             }
             lines.append(redacted.count > lineLimit ? String(redacted.prefix(lineLimit)) + ellipsis : redacted)
         }
-        return lines.suffix(keptLines).joined(separator: "\n")
+        return lines
     }
 }

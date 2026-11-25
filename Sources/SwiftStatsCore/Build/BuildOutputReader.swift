@@ -10,8 +10,10 @@
 //  error only; one holding `ms<TAB>` that doesn't read is counted); a
 //  source excerpt, box or decorated line, which is skipped; a diagnostic's
 //  first line. A diagnostic's message takes the lines after it that can't
-//  be anything else, at most 20, until the joined text ends with its ID or
-//  group, which are read from that end (`DiagnosticText`); a macro
+//  be anything else, at most 20, up to the last of them after which the
+//  joined text ends with an ID or a group (all of them when none does),
+//  which are read from that end (`DiagnosticText`), so a quoted source line
+//  ending ` [word]` doesn't end it early; a macro
 //  diagnostic's place is the origin note on the line after its message. A
 //  line starting `warning: ` that is none of these (Swift Build's summary
 //  form, a manifest command `-v` prints as a warning, SwiftPM's own
@@ -123,12 +125,24 @@ enum BuildOutputReader {
     ) -> (diagnostic: BuildDiagnostic, consumed: Int) {
         var joined = String(header.message)
         var consumed = 0
+        // The message ends at the last line, of those that can continue it,
+        // after which the joined text ends with an ID or a group: a quoted
+        // source line ending ` [word]` reads as one, but the real suffix
+        // comes on a later line.
+        var complete = DiagnosticText(joined).isComplete ? (text: joined, consumed: 0) : nil
         for line in following.prefix(continuationLimit) {
-            guard DiagnosticText(joined).isComplete == false, BuildLineGrammar.continues(line) else {
+            guard BuildLineGrammar.continues(line) else {
                 break
             }
             joined += "\n" + line
             consumed += 1
+            if DiagnosticText(joined).isComplete {
+                complete = (joined, consumed)
+            }
+        }
+        if let complete {
+            joined = complete.text
+            consumed = complete.consumed
         }
         var origin: BuildPlace?
         if case .macro = header.location, let next = following.dropFirst(consumed).first {

@@ -1,10 +1,10 @@
-warning: 'index': @TOOLCHAIN@/usr/bin/swift-frontend -frontend -c -primary-file @ROOT@/Package.swift -target arm64-apple-macosx14.0 -Xllvm -aarch64-use-tbi -enable-objc-interop -stack-check -sdk @DEVELOPER@/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.2.sdk -I @DEVELOPER@/Platforms/MacOSX.platform/Developer/usr/lib -I @TOOLCHAIN@/usr/lib/swift/pm/ManifestAPI -F @DEVELOPER@/Platforms/MacOSX.platform/Developer/Library/Frameworks -vfsoverlay @TMP@/TemporaryDirectory.T3lApP/vfs.yaml -no-color-diagnostics -Xcc -fno-color-diagnostics -swift-version 6 -package-description-version 6.0.0 -new-driver-path @TOOLCHAIN@/usr/bin/swift-driver -empty-abi-descriptor -plugin-path @TOOLCHAIN@/usr/lib/swift/host/plugins/testing -no-auto-bridging-header-chaining -module-name main -disable-clang-spi -target-sdk-version 27.2 -target-sdk-name macosx27.2 -external-plugin-path '@DEVELOPER@/Platforms/MacOSX.platform/Developer/usr/lib/swift/host/plugins#@DEVELOPER@/Platforms/MacOSX.platform/Developer/usr/bin/swift-plugin-server' -external-plugin-path '@DEVELOPER@/Platforms/MacOSX.platform/Developer/usr/local/lib/swift/host/plugins#@DEVELOPER@/Platforms/MacOSX.platform/Developer/usr/bin/swift-plugin-server' -in-process-plugin-server-path @TOOLCHAIN@/usr/lib/swift/host/libSwiftInProcPluginServer.dylib -plugin-path @TOOLCHAIN@/usr/lib/swift/host/plugins -plugin-path @TOOLCHAIN@/usr/local/lib/swift/host/plugins -o @TMP@/TemporaryDirectory.mkW9ZU/Package-1.o
-@TOOLCHAIN@/usr/bin/clang @TMP@/TemporaryDirectory.mkW9ZU/Package-1.o -F @DEVELOPER@/Platforms/MacOSX.platform/Developer/Library/Frameworks --sysroot @DEVELOPER@/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.2.sdk --target=arm64-apple-macosx14.0 -L @TOOLCHAIN@/usr/lib/swift/macosx -L @DEVELOPER@/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.2.sdk/usr/lib/swift -rpath /usr/lib/swift -L @TOOLCHAIN@/usr/lib/swift/pm/ManifestAPI -L @DEVELOPER@/Platforms/MacOSX.platform/Developer/usr/lib -lPackageDescription -Xlinker -rpath -Xlinker @TOOLCHAIN@/usr/lib/swift/pm/ManifestAPI -o @TMP@/TemporaryDirectory.BNF2sp/index-manifest
+warning: 'index': @TOOLCHAIN@/usr/bin/swift-frontend -frontend -c -primary-file @ROOT@/Package.swift -target arm64-apple-macosx14.0 -Xllvm -aarch64-use-tbi -enable-objc-interop -stack-check -sdk @DEVELOPER@/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.2.sdk -I @DEVELOPER@/Platforms/MacOSX.platform/Developer/usr/lib -I @TOOLCHAIN@/usr/lib/swift/pm/ManifestAPI -F @DEVELOPER@/Platforms/MacOSX.platform/Developer/Library/Frameworks -vfsoverlay @TMP@/TemporaryDirectory.XXXXXX/vfs.yaml -no-color-diagnostics -Xcc -fno-color-diagnostics -swift-version 6 -package-description-version 6.0.0 -new-driver-path @TOOLCHAIN@/usr/bin/swift-driver -empty-abi-descriptor -plugin-path @TOOLCHAIN@/usr/lib/swift/host/plugins/testing -no-auto-bridging-header-chaining -module-name main -disable-clang-spi -target-sdk-version 27.2 -target-sdk-name macosx27.2 -external-plugin-path '@DEVELOPER@/Platforms/MacOSX.platform/Developer/usr/lib/swift/host/plugins#@DEVELOPER@/Platforms/MacOSX.platform/Developer/usr/bin/swift-plugin-server' -external-plugin-path '@DEVELOPER@/Platforms/MacOSX.platform/Developer/usr/local/lib/swift/host/plugins#@DEVELOPER@/Platforms/MacOSX.platform/Developer/usr/bin/swift-plugin-server' -in-process-plugin-server-path @TOOLCHAIN@/usr/lib/swift/host/libSwiftInProcPluginServer.dylib -plugin-path @TOOLCHAIN@/usr/lib/swift/host/plugins -plugin-path @TOOLCHAIN@/usr/local/lib/swift/host/plugins -o @TMP@/TemporaryDirectory.XXXXXX/Package-1.o
+@TOOLCHAIN@/usr/bin/clang @TMP@/TemporaryDirectory.XXXXXX/Package-1.o -F @DEVELOPER@/Platforms/MacOSX.platform/Developer/Library/Frameworks --sysroot @DEVELOPER@/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.2.sdk --target=arm64-apple-macosx14.0 -L @TOOLCHAIN@/usr/lib/swift/macosx -L @DEVELOPER@/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.2.sdk/usr/lib/swift -rpath /usr/lib/swift -L @TOOLCHAIN@/usr/lib/swift/pm/ManifestAPI -L @DEVELOPER@/Platforms/MacOSX.platform/Developer/usr/lib -lPackageDescription -Xlinker -rpath -Xlinker @TOOLCHAIN@/usr/lib/swift/pm/ManifestAPI -o @TMP@/TemporaryDirectory.XXXXXX/index-manifest
 Apple Swift version 6.4.2 (swiftlang-6.4.2.1.9 clang-2100.4.1.1)
 Target: arm64-apple-macosx14.0
 Running resolver because the following dependencies were added: 'indexdep' (@DEP@)
-warning: 'indexdep': @TOOLCHAIN@/usr/bin/swift-frontend -frontend -c -primary-file @DEP@/Package.swift -target arm64-apple-macosx14.0 -Xllvm -aarch64-use-tbi -enable-objc-interop -stack-check -sdk @DEVELOPER@/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.2.sdk -I @DEVELOPER@/Platforms/MacOSX.platform/Developer/usr/lib -I @TOOLCHAIN@/usr/lib/swift/pm/ManifestAPI -F @DEVELOPER@/Platforms/MacOSX.platform/Developer/Library/Frameworks -vfsoverlay @TMP@/TemporaryDirectory.MftcVd/vfs.yaml -no-color-diagnostics -Xcc -fno-color-diagnostics -swift-version 6 -package-description-version 6.0.0 -new-driver-path @TOOLCHAIN@/usr/bin/swift-driver -empty-abi-descriptor -plugin-path @TOOLCHAIN@/usr/lib/swift/host/plugins/testing -no-auto-bridging-header-chaining -module-name main -disable-clang-spi -target-sdk-version 27.2 -target-sdk-name macosx27.2 -external-plugin-path '@DEVELOPER@/Platforms/MacOSX.platform/Developer/usr/lib/swift/host/plugins#@DEVELOPER@/Platforms/MacOSX.platform/Developer/usr/bin/swift-plugin-server' -external-plugin-path '@DEVELOPER@/Platforms/MacOSX.platform/Developer/usr/local/lib/swift/host/plugins#@DEVELOPER@/Platforms/MacOSX.platform/Developer/usr/bin/swift-plugin-server' -in-process-plugin-server-path @TOOLCHAIN@/usr/lib/swift/host/libSwiftInProcPluginServer.dylib -plugin-path @TOOLCHAIN@/usr/lib/swift/host/plugins -plugin-path @TOOLCHAIN@/usr/local/lib/swift/host/plugins -o @TMP@/TemporaryDirectory.nKMsxh/Package-1.o
-@TOOLCHAIN@/usr/bin/clang @TMP@/TemporaryDirectory.nKMsxh/Package-1.o -F @DEVELOPER@/Platforms/MacOSX.platform/Developer/Library/Frameworks --sysroot @DEVELOPER@/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.2.sdk --target=arm64-apple-macosx14.0 -L @TOOLCHAIN@/usr/lib/swift/macosx -L @DEVELOPER@/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.2.sdk/usr/lib/swift -rpath /usr/lib/swift -L @TOOLCHAIN@/usr/lib/swift/pm/ManifestAPI -L @DEVELOPER@/Platforms/MacOSX.platform/Developer/usr/lib -lPackageDescription -Xlinker -rpath -Xlinker @TOOLCHAIN@/usr/lib/swift/pm/ManifestAPI -o @TMP@/TemporaryDirectory.6Rh3bs/indexdep-manifest
+warning: 'indexdep': @TOOLCHAIN@/usr/bin/swift-frontend -frontend -c -primary-file @DEP@/Package.swift -target arm64-apple-macosx14.0 -Xllvm -aarch64-use-tbi -enable-objc-interop -stack-check -sdk @DEVELOPER@/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.2.sdk -I @DEVELOPER@/Platforms/MacOSX.platform/Developer/usr/lib -I @TOOLCHAIN@/usr/lib/swift/pm/ManifestAPI -F @DEVELOPER@/Platforms/MacOSX.platform/Developer/Library/Frameworks -vfsoverlay @TMP@/TemporaryDirectory.XXXXXX/vfs.yaml -no-color-diagnostics -Xcc -fno-color-diagnostics -swift-version 6 -package-description-version 6.0.0 -new-driver-path @TOOLCHAIN@/usr/bin/swift-driver -empty-abi-descriptor -plugin-path @TOOLCHAIN@/usr/lib/swift/host/plugins/testing -no-auto-bridging-header-chaining -module-name main -disable-clang-spi -target-sdk-version 27.2 -target-sdk-name macosx27.2 -external-plugin-path '@DEVELOPER@/Platforms/MacOSX.platform/Developer/usr/lib/swift/host/plugins#@DEVELOPER@/Platforms/MacOSX.platform/Developer/usr/bin/swift-plugin-server' -external-plugin-path '@DEVELOPER@/Platforms/MacOSX.platform/Developer/usr/local/lib/swift/host/plugins#@DEVELOPER@/Platforms/MacOSX.platform/Developer/usr/bin/swift-plugin-server' -in-process-plugin-server-path @TOOLCHAIN@/usr/lib/swift/host/libSwiftInProcPluginServer.dylib -plugin-path @TOOLCHAIN@/usr/lib/swift/host/plugins -plugin-path @TOOLCHAIN@/usr/local/lib/swift/host/plugins -o @TMP@/TemporaryDirectory.XXXXXX/Package-1.o
+@TOOLCHAIN@/usr/bin/clang @TMP@/TemporaryDirectory.XXXXXX/Package-1.o -F @DEVELOPER@/Platforms/MacOSX.platform/Developer/Library/Frameworks --sysroot @DEVELOPER@/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.2.sdk --target=arm64-apple-macosx14.0 -L @TOOLCHAIN@/usr/lib/swift/macosx -L @DEVELOPER@/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.2.sdk/usr/lib/swift -rpath /usr/lib/swift -L @TOOLCHAIN@/usr/lib/swift/pm/ManifestAPI -L @DEVELOPER@/Platforms/MacOSX.platform/Developer/usr/lib -lPackageDescription -Xlinker -rpath -Xlinker @TOOLCHAIN@/usr/lib/swift/pm/ManifestAPI -o @TMP@/TemporaryDirectory.XXXXXX/indexdep-manifest
 Apple Swift version 6.4.2 (swiftlang-6.4.2.1.9 clang-2100.4.1.1)
 Target: arm64-apple-macosx14.0
 warning: 'index': found 1 file(s) which are unhandled; explicitly declare them as resources or exclude from the target
@@ -51,24 +51,77 @@ info: ➜ Explicit dependency on target 'IndexDepKit-product' in project 'IndexD
 info: Target 'IndexDepKit-product' in project 'IndexDep'
 info: ➜ Explicit dependency on target 'IndexDepKit' in project 'IndexDep'
 info: Target 'IndexDepKit' in project 'IndexDep' (no dependencies)
-Build description signature: 90180645bce0915f62f5bd217d9bd4a2
-Build description path: @BUILD@/out/Intermediates.noindex/XCBuildData/90180645bce0915f62f5bd217d9bd4a2.xcbuilddata
+Build description signature: 00000000000000000000000000000000
+Build description path: @BUILD@/out/Intermediates.noindex/XCBuildData/00000000000000000000000000000000.xcbuilddata
+0.01ms	<invalid loc>
+0.01ms	<invalid loc>
+0.01ms	<invalid loc>
+0.01ms	<invalid loc>
+0.01ms	<invalid loc>
+0.01ms	<invalid loc>
+0.01ms	<invalid loc>
+0.01ms	<invalid loc>
+0.01ms	<invalid loc>
+0.01ms	<invalid loc>
+0.01ms	<invalid loc>
+0.01ms	<invalid loc>
+0.01ms	<invalid loc>
+0.01ms	<invalid loc>
+0.01ms	<invalid loc>
+0.01ms	<invalid loc>
+0.01ms	<invalid loc>
+0.01ms	<invalid loc>
+0.01ms	<invalid loc>
+0.01ms	<invalid loc>
+0.01ms	<invalid loc>
+0.01ms	<invalid loc>
+0.01ms	<invalid loc>
+0.01ms	<invalid loc>
+0.01ms	<invalid loc>	getter index_support.(file).Record.CodingKeys.hashValue.getter
+0.01ms	<invalid loc>	getter index_support.(file).Record.CodingKeys.intValue.getter
+0.01ms	<invalid loc>	getter index_support.(file).Record.CodingKeys.stringValue.getter
+0.01ms	<invalid loc>	initializer index_support.(file).Record.CodingKeys.init(intValue:)
+0.01ms	<invalid loc>	initializer index_support.(file).Record.CodingKeys.init(stringValue:)
+0.01ms	<invalid loc>	initializer index_support.(file).Record.init(from:)
+0.01ms	<invalid loc>	instance method index_support.(file).Record.CodingKeys.hash(into:)
+0.01ms	<invalid loc>	instance method index_support.(file).Record.encode(to:)
+0.01ms	<invalid loc>	static method IndexTool.(file).Tool.$main()
+0.01ms	<invalid loc>	static method index_support.(file).Pair.__derived_struct_equals
+0.01ms	<invalid loc>	static method index_support.(file).Record.CodingKeys.__derived_enum_equals
+0.01ms	@DEP@/Sources/IndexDepKit/DepKit.swift:2:13	global function IndexDepKit.(file).depValue()@@DEP@/Sources/IndexDepKit/DepKit.swift:2:13
+0.01ms	@DEP@/Sources/IndexDepKit/DepKit.swift:4:30
+0.01ms	@DEP@/Sources/IndexDepKit/DepKit.swift:5:12
+0.01ms	@DEP@/Sources/IndexDepKit/Payload.swift:10:9
 0.01ms	@DEP@/Sources/IndexDepKit/Payload.swift:6:16	getter IndexDepKit.(file).Data.size.getter@@DEP@/Sources/IndexDepKit/Payload.swift:6:16
-0.38ms	@ROOT@/Sources/IndexTool/Tool.swift:6:9
-0.56ms	@ROOT@/Sources/IndexTool/Tool.swift:5:17	static method IndexTool.(file).Tool.main()@@ROOT@/Sources/IndexTool/Tool.swift:5:17
+0.01ms	@DEP@/Sources/IndexDepKit/Payload.swift:6:16	getter IndexDepKit.(file).Data.size.getter@@DEP@/Sources/IndexDepKit/Payload.swift:6:16
+0.01ms	@DEP@/Sources/IndexDepKit/Payload.swift:9:12	initializer IndexDepKit.(file).Data.init(size:)@@DEP@/Sources/IndexDepKit/Payload.swift:9:12
+0.01ms	@ROOT@/Sources/IndexTool/Tool.swift:2:1
 0.01ms	@ROOT@/Sources/IndexTool/Tool.swift:3:8	initializer IndexTool.(file).Tool.init()@@ROOT@/Sources/IndexTool/Tool.swift:3:8
-0.03ms	@ROOT@/Sources/IndexTool/Tool.swift:2:1
-0.05ms	<invalid loc>	static method IndexTool.(file).Tool.$main()
-0.29ms	@ROOT@/Sources/Kits/Relay.swift:4:5
-0.38ms	@ROOT@/Sources/Kits/Relay.swift:3:6	global function index_kit.(file).relay()@@ROOT@/Sources/Kits/Relay.swift:3:6
-0.39ms	@ROOT@/Sources/Kits/Kit.swift:4:5
-0.52ms	@ROOT@/Sources/Kits/Kit.swift:3:13	global function index_kit.(file).kitOnlyTests()@@ROOT@/Sources/Kits/Kit.swift:3:13
-0.01ms	@DEP@/Sources/IndexDepKit/Payload.swift:6:16	getter IndexDepKit.(file).Data.size.getter@@DEP@/Sources/IndexDepKit/Payload.swift:6:16
-0.18ms	@DEP@/Sources/IndexDepKit/Payload.swift:10:9
-0.28ms	@DEP@/Sources/IndexDepKit/Payload.swift:9:12	initializer IndexDepKit.(file).Data.init(size:)@@DEP@/Sources/IndexDepKit/Payload.swift:9:12
-0.25ms	@DEP@/Sources/IndexDepKit/DepKit.swift:4:30
-0.04ms	@DEP@/Sources/IndexDepKit/DepKit.swift:5:12
-0.68ms	@DEP@/Sources/IndexDepKit/DepKit.swift:2:13	global function IndexDepKit.(file).depValue()@@DEP@/Sources/IndexDepKit/DepKit.swift:2:13
+0.01ms	@ROOT@/Sources/IndexTool/Tool.swift:5:17	static method IndexTool.(file).Tool.main()@@ROOT@/Sources/IndexTool/Tool.swift:5:17
+0.01ms	@ROOT@/Sources/IndexTool/Tool.swift:6:9
+0.01ms	@ROOT@/Sources/Kits/Kit.swift:3:13	global function index_kit.(file).kitOnlyTests()@@ROOT@/Sources/Kits/Kit.swift:3:13
+0.01ms	@ROOT@/Sources/Kits/Kit.swift:4:5
+0.01ms	@ROOT@/Sources/Kits/Relay.swift:3:6	global function index_kit.(file).relay()@@ROOT@/Sources/Kits/Relay.swift:3:6
+0.01ms	@ROOT@/Sources/Kits/Relay.swift:4:5
+0.01ms	@ROOT@/Sources/Kits/Support.swift:10:13	global function index_support.(file).banner()@@ROOT@/Sources/Kits/Support.swift:10:13
+0.01ms	@ROOT@/Sources/Kits/Support.swift:11:21
+0.01ms	@ROOT@/Sources/Kits/Support.swift:11:23
+0.01ms	@ROOT@/Sources/Kits/Support.swift:11:35
+0.01ms	@ROOT@/Sources/Kits/Support.swift:11:35
+0.01ms	@ROOT@/Sources/Kits/Support.swift:11:5
+0.01ms	@ROOT@/Sources/Kits/Support.swift:11:6
+0.01ms	@ROOT@/Sources/Kits/Support.swift:11:7
+0.01ms	@ROOT@/Sources/Kits/Support.swift:17:9	getter index_support.(file).Record.name.getter@@ROOT@/Sources/Kits/Support.swift:17:9
+0.01ms	@ROOT@/Sources/Kits/Support.swift:19:9	getter index_support.(file).Record.note.getter@@ROOT@/Sources/Kits/Support.swift:19:9
+0.01ms	@ROOT@/Sources/Kits/Support.swift:25:9	getter index_support.(file).Pair.left.getter@@ROOT@/Sources/Kits/Support.swift:25:9
+0.01ms	@ROOT@/Sources/Kits/Support.swift:27:9	getter index_support.(file).Pair.right.getter@@ROOT@/Sources/Kits/Support.swift:27:9
+0.01ms	@ROOT@/Sources/Kits/Support.swift:31:6	global function index_support.(file).recordName()@@ROOT@/Sources/Kits/Support.swift:31:6
+0.01ms	@ROOT@/Sources/Kits/Support.swift:32:16
+0.01ms	@ROOT@/Sources/Kits/Support.swift:33:12
+0.01ms	@ROOT@/Sources/Kits/Support.swift:37:6	global function index_support.(file).samePair()@@ROOT@/Sources/Kits/Support.swift:37:6
+0.01ms	@ROOT@/Sources/Kits/Support.swift:38:5
+0.01ms	@ROOT@/Sources/Kits/Support.swift:5:13	global function index_support.(file).parseLine@@ROOT@/Sources/Kits/Support.swift:5:13
+0.01ms	@ROOT@/Sources/Kits/Support.swift:6:5
 @DEP@/Sources/IndexDepKit/DepKit.swift:4:9: warning: initialization of immutable value 'unusedInDependency' was never used; consider replacing with assignment to '_' or removing it [pbd_never_used] [#NoUsage]
 2 | public func depValue() -> Int {
 3 |     // An unused `let`: a warning in a local path dependency.

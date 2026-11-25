@@ -10,7 +10,8 @@
 //  T1 describe that goes with it. The stale dump's describe is the
 //  recorded one with the stale case's edits applied: `Formatting.swift`
 //  renamed `LineFormatting.swift`, and `Relay.swift` moved from
-//  `index-kit` to `index-support`. Nothing is built.
+//  `index-kit` to `index-support`. Nothing is built; each caller removes
+//  the root's temporary folder with `remove()`.
 //
 
 import Foundation
@@ -24,6 +25,8 @@ struct IndexWalkHarness {
     let package: DescribedPackage
     /// The recorded dump, its paths put back.
     let source: RecordedIndexSource
+    /// The temporary folder holding the root, which `remove()` deletes.
+    private let folder: URL
 
     /// The scratch folder's real path, `.swiftstats/index-build` in the
     /// root.
@@ -70,6 +73,7 @@ struct IndexWalkHarness {
             try Data().write(to: url)
         }
         root = realRoot
+        folder = parent
         self.package = package
         source = try RecordedIndexSource(
             recording: data,
@@ -144,6 +148,11 @@ struct IndexWalkHarness {
     /// The recording's unit named `name`.
     func unit(_ name: String) throws -> IndexUnitFact {
         try source.unit(named: name)
+    }
+
+    /// Deletes the temporary folder holding the root.
+    func remove() {
+        try? FileManager.default.removeItem(at: folder)
     }
 
     /// The recording with `units` added, replacing any of the same name.

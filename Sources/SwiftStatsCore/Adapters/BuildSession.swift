@@ -21,7 +21,9 @@
 //  interrupted (`ScratchRegistry` does on an interruption); hash the
 //  scanned files again, listing those changed since they were parsed; and
 //  check that the build wrote an index store. A failed build's reason is
-//  its last standard-error lines that aren't timing lines; a toolchain
+//  its standard error's first lines from the first error line on (or its
+//  last lines when none is an error), timing and `info:` lines left out,
+//  since `-v` prints the target graph as `info:` lines first; a toolchain
 //  rejecting `--build-system swiftbuild` is told apart by its argument
 //  parser's exit status, 64, with `--build-system` in its standard error
 //  (the coverage run's test alone would also take a compile error whose
@@ -117,6 +119,10 @@ struct BuildSession {
     static let incompleteLead = "timings may be incomplete"
     /// Why a build couldn't take the lock because another holds it.
     static let heldReason = "another scan --index is running in this package"
+    /// What Swift Build's informational lines start with.
+    private static let infoPrefix = "info: "
+    /// What Swift Build's own error lines start with.
+    private static let errorPrefix = "error: "
     /// The frontend flags the build passes, each behind
     /// `-Xswiftc -Xfrontend -Xswiftc`.
     private static let frontendFlags = [
@@ -175,14 +181,38 @@ struct BuildSession {
     }
 
     /// The reason a build that exited `status` and wrote `text` to
-    /// standard error failed for: its last lines that aren't timing lines,
-    /// cleaned as a coverage command's are, with `replacements` redacted.
+    /// standard error failed for. Timing lines and Swift Build's `info:`
+    /// lines (`-v`'s target graph, printed before anything is compiled)
+    /// are dropped first; then the reason is the first lines from the
+    /// first error line (`error: …`, or a diagnostic of severity `error`)
+    /// on, or, when no line is an error, the last lines; at most
+    /// `CoverageStderr.keptLines` either way, cleaned as a coverage
+    /// command's are, with `replacements` redacted.
     static func failureReason(status: Int32, stderr text: String, replacing replacements: [(URL, String)]) -> String {
-        let kept = text.split(omittingEmptySubsequences: false, whereSeparator: \.isNewline)
-            .filter { BuildLineGrammar.timingEntry(String($0)) == nil }
-            .joined(separator: "\n")
-        let cleaned = CoverageStderr.cleaned(kept, replacing: replacements)
-        return "swift build exited \(status)" + (cleaned.isEmpty ? "" : ": \(cleaned)")
+        let kept = text
+            .split(omittingEmptySubsequences: false, whereSeparator: \.isNewline)
+            .map(String.init)
+            .filter { BuildLineGrammar.timingEntry($0) == nil && $0.hasPrefix(infoPrefix) == false }
+        let lines: [String]
+        if let first = kept.firstIndex(where: isErrorLine) {
+            lines = Array(
+                CoverageStderr.cleanedLines(kept[first...].joined(separator: "\n"), replacing: replacements)
+                    .prefix(CoverageStderr.keptLines)
+            )
+        } else {
+            lines = Array(
+                CoverageStderr.cleanedLines(kept.joined(separator: "\n"), replacing: replacements)
+                    .suffix(CoverageStderr.keptLines)
+            )
+        }
+        return "swift build exited \(status)" + (lines.isEmpty ? "" : ": " + lines.joined(separator: "\n"))
+    }
+
+    /// Whether `line` states an error: Swift Build's `error: …` lines (its
+    /// summary of a compile error, a failed task, `Build failed`) or a
+    /// diagnostic whose severity is `error`.
+    private static func isErrorLine(_ line: String) -> Bool {
+        line.hasPrefix(errorPrefix) || BuildLineGrammar.header(line[...])?.severity == .error
     }
 
     /// Builds the package and returns what the build left, leaving the

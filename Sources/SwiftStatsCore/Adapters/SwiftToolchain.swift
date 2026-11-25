@@ -28,11 +28,6 @@ struct SwiftToolchain: Sendable {
     /// The first non-empty line `swift --version` prints, trimmed.
     let swiftVersion: String
 
-    /// The toolchain's `bin`, where its own `swift` is.
-    var bin: URL {
-        swift.deletingLastPathComponent()
-    }
-
     /// Where the toolchain's `libIndexStore.dylib` is, beside its runtime
     /// resources; whether it exists is the caller's question.
     var libIndexStore: URL {

@@ -136,6 +136,28 @@ struct BuildDiagnosticTests {
         #expect(found.first?.message == "done")
     }
 
+    @Test("""
+        a quoted source line ending in a one-word array literal doesn't end the message: its ID is read from \
+        the last line that ends with one
+        """)
+    func bracketedContinuation() throws {
+        let output = Self.read([
+            "\(Self.root)/Tests/T/ConfigTests.swift:12:22: warning: '#require(_:_:)' is redundant because 'Config(",
+            "    flags: [verbose]",
+            "))' never equals 'nil' (from macro 'require') [bridged_warning]",
+            "12 |         let config = try #require(Config(",
+            "   |                      `- warning: '#require(_:_:)' is redundant because 'Config("
+        ])
+        let diagnostic = try #require(output.diagnostics.first)
+        #expect(output.diagnostics.count == 1)
+        #expect(diagnostic.identifier == "bridged_warning")
+        #expect(diagnostic.message == """
+            '#require(_:_:)' is redundant because 'Config(
+                flags: [verbose]
+            ))' never equals 'nil' (from macro 'require')
+            """)
+    }
+
     @Test("the place is the first prefix that reads as one, and <unknown> has a line only")
     func places() throws {
         let found = Self.diagnostics([

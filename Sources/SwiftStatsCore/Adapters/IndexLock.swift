@@ -9,7 +9,10 @@
 //  the build until the build's products have been read (its output, the
 //  index store, outskirts), so a second scan can't empty the first's
 //  standard-error file or rebuild the store under its readers; the system
-//  drops it when the process ends, however it ends.
+//  drops it when the process ends, however it ends. Only `EWOULDBLOCK`
+//  means another holder: a volume without `flock` support (`ENOTSUP`, or
+//  `ENOLCK` on NFS without its lock daemon) is reported as the error it is,
+//  never as another scan.
 //
 
 import Foundation
@@ -21,14 +24,20 @@ struct IndexLock: Sendable {
 
     /// Takes the lock on `file`, creating the file when missing; a failure
     /// when another process (or another open of the file in this one)
-    /// holds it, or the file can't be opened.
+    /// holds it, the file can't be opened, or it can't be locked for
+    /// another reason, which the failure names.
     init(file: URL) throws {
         let opened = open(file.path, O_CREAT | O_RDWR | O_CLOEXEC, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH)
         guard opened >= 0 else {
             throw CoverageFailure(description: "could not open .swiftstats/\(file.lastPathComponent)")
         }
         guard flock(opened, LOCK_EX | LOCK_NB) == 0 else {
+            let code = errno
             close(opened)
+            guard code == EWOULDBLOCK else {
+                let reason = String(cString: strerror(code))
+                throw CoverageFailure(description: "could not lock .swiftstats/\(file.lastPathComponent): \(reason)")
+            }
             throw CoverageFailure(description: BuildSession.heldReason)
         }
         descriptor = opened

@@ -2,9 +2,10 @@ import Foundation
 @testable import SwiftStatsCore
 import Testing
 
-/// Which T1 build task log `scan --index` names (M7, design §1.5,
-/// `FailedBuildLog`): only the log of a build this scan's own build command
-/// ran that failed, whether or not the scan then returned, and never a log
+/// Which T1 build output `scan --index` names (M7, design §1.5,
+/// `FailedBuildLog`): the standard error, which holds the errors, then the
+/// task log, and only those of a build this scan's own build command ran
+/// that failed, whether or not the scan then returned, and never a log
 /// another scan holding `index.lock` is writing, or one a scan left before
 /// a failure that stopped this one before its build command.
 @Suite("Failed build log")
@@ -17,12 +18,23 @@ struct FailedBuildLogTests {
         let build: CollectorStatus?
         /// The package's build log, as its real path.
         let log: String
+        /// What the recorded standard error file held after the scan; nil
+        /// when none was recorded or it couldn't be read.
+        let errors: String?
+        /// What the recorded task log held after the scan; nil when none
+        /// was recorded or it couldn't be read.
+        let taskLog: String?
     }
 
-    /// A build that runs and exits 1.
+    /// A build that runs and exits 1, its error on standard error after
+    /// `-v`'s target graph, its task log holding no error, as Swift Build
+    /// prints them.
     private static func brokenBuild() throws -> FakeToolchain.BuildScenario {
         var scenario = try IndexGroupHarness.emptyBuild()
-        scenario.stderr = "error: no such module 'Missing'\n"
+        scenario.stdout = "SwiftDriver IndexCore normal arm64 com.apple.xcode.tools.swift.compiler\n"
+        scenario.stderr = "info: Target dependency graph (1 targets)\n"
+            + "info: Target 'IndexCore' in project 'IndexFixture' (no dependencies)\n"
+            + "error: no such module 'Missing'\n"
         scenario.status = 1
         return scenario
     }
@@ -61,7 +73,9 @@ struct FailedBuildLogTests {
         return Scanned(
             record: record,
             build: snapshot.report.collectors.first { $0.name == BuildAdapter.name },
-            log: logPath(of: package.root)
+            log: logPath(of: package.root),
+            errors: record.stderr.flatMap { try? String(contentsOf: $0, encoding: .utf8) },
+            taskLog: record.url.flatMap { try? String(contentsOf: $0, encoding: .utf8) }
         )
     }
 
@@ -99,11 +113,20 @@ struct FailedBuildLogTests {
         }
 
         #expect(failed.build?.state == .failed)
+        #expect(failed.build?.reason == "swift build exited 1: error: no such module 'Missing'")
         let log = try #require(failed.record.url)
         #expect(BuildFixture.realPath(log) == failed.log)
-        #expect(failed.record.line == "The index build's output is in \(log.path)")
+        let errors = try #require(failed.record.stderr)
+        #expect(errors.deletingLastPathComponent() == log.deletingLastPathComponent())
+        #expect(errors.lastPathComponent == "swiftstats-build.stderr")
+        // The line names the file holding the error first, then the task
+        // log, which holds none.
+        #expect(failed.record.line
+            == "The index build's errors are in \(errors.path); its task log is in \(log.path)")
+        #expect(failed.errors?.contains("error: no such module 'Missing'") == true)
+        #expect(failed.taskLog?.isEmpty == false && failed.taskLog?.contains("error") == false)
         #expect(ran.build?.state == .ran)
-        #expect(ran.record.url == nil && ran.record.line == nil)
+        #expect(ran.record.url == nil && ran.record.line == nil && ran.record.stderr == nil)
         #expect(skipped.build?.state == .skipped)
         #expect(skipped.record.url == nil)
         #expect(unasked.build?.state == .skipped)

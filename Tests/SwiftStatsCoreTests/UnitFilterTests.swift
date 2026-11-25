@@ -40,6 +40,7 @@ struct UnitFilterTests {
     @Test("on the stale recording, the renamed and moved files' old units are stale, the rest kept or other packages'")
     func staleRecording() throws {
         let harness = try IndexWalkHarness.stale()
+        defer { harness.remove() }
         let classes = Self.classes(try harness.filter.classify(harness.units))
         let expected = harness.units.map(\.name).reduce(into: [String: UnitFilter.UnitClass]()) { result, name in
             result[name] = Self.stale.contains(name) ? .stale : Self.otherPackage.contains(name) ? .otherPackage : .kept
@@ -54,6 +55,7 @@ struct UnitFilterTests {
     @Test("on the first build's recording every package unit is kept")
     func freshRecording() throws {
         let harness = try IndexWalkHarness.fresh()
+        defer { harness.remove() }
         let classes = Self.classes(try harness.filter.classify(harness.units))
 
         #expect(classes.count == 26)
@@ -64,6 +66,7 @@ struct UnitFilterTests {
     @Test("a package file's unit for a module no target has is another module's, before it can be stale")
     func otherModule() throws {
         let harness = try IndexWalkHarness.stale()
+        defer { harness.remove() }
         let ring = try harness.unit(Self.ringName)
         let renamed = try harness.unit("Formatting.o-2O0IO76AFY1BN")
         let units = harness.units + [
@@ -80,6 +83,7 @@ struct UnitFilterTests {
     @Test("a unit whose file is a source of another target than its module's is stale")
     func movedFile() throws {
         let harness = try IndexWalkHarness.fresh()
+        defer { harness.remove() }
         let ring = try harness.unit(Self.ringName)
         let units = harness.units + [ring.named("Ring.o-KIT").inModule("index_kit")]
         let classes = Self.classes(try harness.filter.classify(units))
@@ -91,6 +95,7 @@ struct UnitFilterTests {
     @Test("an older unit of one module, file and triple is a duplicate")
     func duplicate() throws {
         let harness = try IndexWalkHarness.stale()
+        defer { harness.remove() }
         let ring = try harness.unit(Self.ringName)
         let older = IndexUnitFact.ModificationDate(
             seconds: ring.modified.seconds,
@@ -113,6 +118,7 @@ struct UnitFilterTests {
     @Test("a modification-date tie between units of one module, file and triple is broken by the larger unit name")
     func dateTie() throws {
         let harness = try IndexWalkHarness.stale()
+        defer { harness.remove() }
         let ring = try harness.unit(Self.ringName)
         let larger = Self.classes(try harness.filter.classify(
             harness.units + [ring.named("Ring.o-ZZZ")]
@@ -130,6 +136,7 @@ struct UnitFilterTests {
     @Test("a unit of another triple makes both units variants, after duplicates are taken out per triple")
     func variant() throws {
         let harness = try IndexWalkHarness.stale()
+        defer { harness.remove() }
         let ring = try harness.unit(Self.ringName)
         let host = "arm64-apple-macos26.0"
         let older = IndexUnitFact.ModificationDate(seconds: 1, nanoseconds: 0)
@@ -148,6 +155,7 @@ struct UnitFilterTests {
     @Test("a system unit, a unit with no main file and units under .build or .swiftstats are classed first")
     func headerClasses() throws {
         let harness = try IndexWalkHarness.fresh()
+        defer { harness.remove() }
         let ring = try harness.unit(Self.ringName)
         let system = IndexUnitFact(
             name: "Swift.swiftinterface-SYS",
@@ -192,6 +200,7 @@ struct UnitFilterTests {
             )
         ])
         let root = FileManager.default.temporaryDirectory.appendingPathComponent("UnitFilterTests-\(UUID().uuidString)")
+        defer { try? FileManager.default.removeItem(at: root) }
         let file = root.appendingPathComponent("Sources/Lib").appendingPathComponent(composed)
         try FileManager.default.createDirectory(at: file.deletingLastPathComponent(), withIntermediateDirectories: true)
         try Data().write(to: file)
@@ -227,6 +236,7 @@ struct UnitFilterTests {
     @Test("the quarantine moves exactly the stale and other-module units into its emptied folder")
     func quarantine() throws {
         let harness = try IndexWalkHarness.stale()
+        defer { harness.remove() }
         let ring = try harness.unit(Self.ringName)
         let units = harness.units + [ring.named("Ring.o-GONE").inModule("GoneModule")]
         let store = harness.build + "/out/v5/units"
@@ -250,6 +260,7 @@ struct UnitFilterTests {
     @Test("a quarantine with nothing to move leaves its folder empty")
     func quarantineNothing() throws {
         let harness = try IndexWalkHarness.fresh()
+        defer { harness.remove() }
         let quarantined = harness.build + "/" + UnitFilter.quarantineDirectory
         try FileManager.default.createDirectory(atPath: quarantined, withIntermediateDirectories: true)
         try Data().write(to: URL(fileURLWithPath: quarantined + "/Leftover.o-1"))
@@ -264,6 +275,7 @@ struct UnitFilterTests {
     @Test("a quarantine whose unit file is missing fails with the collector's wording")
     func quarantineFailure() throws {
         let harness = try IndexWalkHarness.stale()
+        defer { harness.remove() }
         let filter = try harness.filter
         let classed = filter.classify(harness.units)
 

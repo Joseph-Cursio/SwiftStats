@@ -40,7 +40,8 @@
 #       same scratch, then dumps the store and runs outskirts' `roots` run
 #       over it with the stale units still in it;
 #    7. builds a second copy of Index with one syntax error appended to
-#       Sources/IndexCore/Formatting.swift, which must fail;
+#       Sources/IndexCore/Formatting.swift, which must fail, with `-j 1`
+#       (see failed.stderr below);
 #    8. describes, builds and dumps Diff/before and Diff/after.
 #
 #  Recorded files, in Tests/Fixtures/Index/Recorded/index/:
@@ -58,7 +59,21 @@
 #                                 spaces with slashes unescaped
 #    outskirts-stale-roots.json   the `roots` run over the stale store
 #    outskirts-version.txt        `outskirts version`
-#    failed.stderr                standard error of the failing build
+#    failed.stderr                standard error of the failing build,
+#                                 normalised: with parallel jobs, which
+#                                 compiles finish (and so print timing lines
+#                                 and IndexDep's warning) before IndexCore's
+#                                 error cancels the rest is a race, so the
+#                                 build runs one job at a time, which fixes
+#                                 the set of lines; then the timing lines
+#                                 (whose order, and which side of IndexDep's
+#                                 warning they fall, still vary) are moved to
+#                                 one block where the first was, sorted, and
+#                                 every time is written 0.01ms, the manifests'
+#                                 temporary folders TemporaryDirectory.XXXXXX
+#                                 and the build description's signature 32
+#                                 zeros, so re-recording an unchanged fixture
+#                                 gives the same bytes
 #    toolchain.txt                `toolchain: <the first line of swift
 #                                 --version>` and `.swift-version: <text>`
 #                                 or `absent`, as the build's options say
@@ -78,8 +93,9 @@
 #  and plugin servers), replaced after the toolchain, which is usually inside
 #  it. Each is also replaced as spelled without /private. A dump's `modified`
 #  dates are the unit files' own, so a re-recorded dump differs there even
-#  when nothing else did, as do the timings and the manifests' temporary
-#  folder names in the build's output.
+#  when nothing else did, as do the timings, the manifests' temporary
+#  folder names and the build description's signature in the build's output
+#  (but failed.stderr's, normalised as above).
 #
 
 set -eu
@@ -167,8 +183,12 @@ describe() {
 }
 
 # Design §1.4's build of the package in the current folder, standard output
-# to `$1` and standard error to `$2`; its exit status.
+# to `$1` and standard error to `$2`, any further arguments passed after the
+# design's; its exit status.
 t1_build() {
+    t1_output="$1"
+    t1_errors="$2"
+    shift 2
     code=0
     "$swift" build --build-tests --build-system swiftbuild -c debug -v --no-color-diagnostics \
         --scratch-path "$build" \
@@ -176,8 +196,34 @@ t1_build() {
         -Xswiftc -Xfrontend -Xswiftc -debug-time-function-bodies \
         -Xswiftc -Xfrontend -Xswiftc -debug-time-expression-type-checking \
         -Xswiftc -Xfrontend -Xswiftc -debug-diagnostic-names \
-        < /dev/null > "$1" 2> "$2" || code=$?
+        "$@" < /dev/null > "$t1_output" 2> "$t1_errors" || code=$?
     return "$code"
+}
+
+# Standard input, the failing build's redacted standard error, normalised
+# (see failed.stderr above): every timing line, its time written 0.01ms,
+# moved to one block where the first was, sorted in code point order; the
+# manifests' temporary folder names written TemporaryDirectory.XXXXXX and
+# the build description's signature 32 zeros.
+normalise_failed() {
+    python3 -I -c '
+import re
+import sys
+
+time = re.compile(r"^[0-9]+(\.[0-9]{1,2})?ms\t")
+lines = sys.stdin.read().split("\n")
+timings = sorted(time.sub("0.01ms\t", line) for line in lines if time.match(line))
+normalised = []
+for line in lines:
+    if time.match(line):
+        normalised.extend(timings)
+        timings = []
+        continue
+    line = re.sub(r"TemporaryDirectory\.[A-Za-z0-9]+", "TemporaryDirectory.XXXXXX", line)
+    line = re.sub(r"(Build description signature: |XCBuildData/)[0-9a-f]{32}", lambda match: match.group(1) + "0" * 32, line)
+    normalised.append(line)
+sys.stdout.write("\n".join(normalised))
+'
 }
 
 # Removes the root package's intermediates, named after the manifest, which
@@ -360,7 +406,9 @@ copy_fixture Tests/Fixtures/IndexDep "$work/failed/IndexDep"
 printf '\nfunc broken() -> Int {\n    return (\n}\n' >> "$failed/Sources/IndexCore/Formatting.swift"
 scratch_of "$failed"
 cd "$failed"
-if t1_build "$build/swiftstats-build.log" "$work/failed.stderr"; then
+# One job at a time: which compiles finish before the error cancels the
+# rest is otherwise a race.
+if t1_build "$build/swiftstats-build.log" "$work/failed.stderr" -j 1; then
     echo "error: the build with a syntax error succeeded" >&2
     exit 1
 fi
@@ -387,7 +435,8 @@ for file in build.stdout build.stderr rebuild.stderr describe.json reader.json r
     outskirts-roots.json outskirts-production.json outskirts-stale-roots.json outskirts-version.txt; do
     redact "$index" "$index_build" "$dependency" < "$work/$file" > "$recorded/$file"
 done
-redact "$failed" "$failed_build" "$work/failed/IndexDep" < "$work/failed.stderr" > "$recorded/failed.stderr"
+redact "$failed" "$failed_build" "$work/failed/IndexDep" < "$work/failed.stderr" > "$work/failed.redacted.stderr"
+normalise_failed < "$work/failed.redacted.stderr" > "$recorded/failed.stderr"
 printf 'toolchain: %s\n.swift-version: %s\n' "$version" "$pin" > "$recorded/toolchain.txt"
 # Swift files only: the staleness test hashes the same set.
 git -C "$repository" -c core.quotePath=false ls-files --cached --others --exclude-standard -- Tests/Fixtures/IndexDep |

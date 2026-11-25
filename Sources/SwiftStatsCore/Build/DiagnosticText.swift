@@ -20,8 +20,9 @@ struct DiagnosticText: Hashable, Sendable {
     /// The group; nil when none ends the text.
     let group: String?
 
-    /// Whether the text ended with an ID or a group, so no line continues
-    /// it.
+    /// Whether the text ends with an ID or a group: a message can end
+    /// there (it may still go on, when the suffix was a quoted source
+    /// line's).
     var isComplete: Bool {
         identifier != nil || group != nil
     }

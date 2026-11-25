@@ -106,12 +106,13 @@ none may be unaccounted:
     warning (`warning: '<package>': <text>`);
   - no escape or bell character may be left once ANSI CSI and OSC-8
     sequences are removed (lines that held one are counted).
-A diagnostic's message continues on the following lines as far as the line
-that makes it end with a diagnostic ID (the build passes
--debug-diagnostic-names), within 20 lines none of which could not continue
-a message (blank, excerpt, box, decoration, timing, diagnostic, a
-`warning:`/`error:`/`note:`/`remark:`/`info:` line, a group footnote); a
-message that ends with no ID has no continuation. Each excerpt echo of the
+A diagnostic's message continues on the following lines as far as the last
+line that makes it end with a diagnostic ID (the build passes
+-debug-diagnostic-names; a quoted source line ending ` [word]` can make it
+seem to end earlier), within 20 lines none of which could not continue a
+message (blank, excerpt, box, decoration, timing, diagnostic, a
+`warning:`/`error:`/`note:`/`remark:`/`info:` line, a group footnote); when
+no such line ends it with an ID it has no continuation. Each excerpt echo of the
 diagnostic just read must repeat its whole joined message. The stdout log
 must hold no timing entry (the reader takes timings from stderr only).
 `--json` writes this parse (classes per file, counters, the entries, the
@@ -2028,21 +2029,22 @@ def ends_message(text):
 
 def continuation_count(lines, start, message):
     """How many lines from `start` continue a message: as many as it takes
-    to reach the line that ends with the diagnostic ID (the build passes
-    -debug-diagnostic-names), within CONTINUATION_LIMIT lines none of which
-    can't continue a message; 0 when the message already ends with an ID or
-    no such line comes."""
-    if split_suffixes(message)[1] is not None:
-        return 0
+    to reach the last line, of the CONTINUATION_LIMIT lines at most that
+    follow and none of which can't continue a message, after which the
+    joined message ends with a diagnostic ID (the build passes
+    -debug-diagnostic-names); 0 when none does. A quoted source line that
+    ends in ` [word]` reads as an ID, so the first such line isn't
+    necessarily the message's end."""
     joined = message
+    count = 0
     for offset in range(CONTINUATION_LIMIT):
         index = start + offset
         if index >= len(lines) or ends_message(lines[index]):
-            return 0
+            break
         joined += "\n" + lines[index]
         if split_suffixes(joined)[1] is not None:
-            return offset + 1
-    return 0
+            count = offset + 1
+    return count
 
 
 class BuildLines:

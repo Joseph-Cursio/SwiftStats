@@ -20,6 +20,7 @@ struct IndexWalkTests {
     @Test("the walk reads every unit once and each kept or variant unit's records once, and no other unit's")
     func readsOnce() throws {
         let harness = try IndexWalkHarness.stale()
+        defer { harness.remove() }
         let ring = try harness.unit(Self.ringName)
         let source = harness.adding([ring.named("Ring.o-HOST").forTriple("arm64-apple-macos26.0")])
         let counting = CountingIndexSource(source, failing: [])
@@ -42,6 +43,7 @@ struct IndexWalkTests {
     @Test("the snapshot lists every unit with its class and counts each class")
     func classes() throws {
         let harness = try IndexWalkHarness.stale()
+        defer { harness.remove() }
 
         let snapshot = try IndexWalk.walk(harness.source, filter: harness.filter)
 
@@ -54,6 +56,7 @@ struct IndexWalkTests {
     @Test("module names are target names wherever the module is the package's, and C99 names elsewhere")
     func moduleNames() throws {
         let harness = try IndexWalkHarness.fresh()
+        defer { harness.remove() }
 
         let snapshot = try IndexWalk.walk(harness.source, filter: harness.filter)
 
@@ -81,6 +84,7 @@ struct IndexWalkTests {
     @Test("paths under the root are paths in the package, and others stay absolute")
     func paths() throws {
         let harness = try IndexWalkHarness.fresh()
+        defer { harness.remove() }
 
         let snapshot = try IndexWalk.walk(harness.source, filter: harness.filter)
 
@@ -97,6 +101,7 @@ struct IndexWalkTests {
     @Test("a unit or record that doesn't read fails the walk, naming it")
     func failures() throws {
         let harness = try IndexWalkHarness.fresh()
+        defer { harness.remove() }
         let unitFailing = CountingIndexSource(harness.source, failing: [Self.ringName])
         let recordFailing = CountingIndexSource(harness.source, failing: ["Ring.swift-2NSB2P0UKUTYT"])
 
@@ -119,6 +124,7 @@ struct IndexWalkTests {
         """)
     func headersAndLocals() throws {
         let harness = try IndexWalkHarness.fresh()
+        defer { harness.remove() }
         let counting = CountingIndexSource(harness.source, failing: [])
 
         let units = try IndexWalk.units(of: counting)

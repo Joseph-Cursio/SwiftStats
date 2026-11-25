@@ -3,9 +3,9 @@
 //  SwiftStatsCoreTests
 //
 //  Reading the T1 build's output (M7, design §6.1): timing lines and their
-//  times in hundredths, escapes, refused timing lines, and the recorded
-//  fixture build's output (`BuildDiagnosticTests` covers the diagnostic
-//  grammar).
+//  times in hundredths, escapes, refused timing lines, a line that isn't
+//  UTF-8, and the recorded fixture build's output (`BuildDiagnosticTests`
+//  covers the diagnostic grammar).
 //
 
 import Foundation
@@ -120,6 +120,31 @@ struct BuildOutputReaderTests {
         #expect(output.entries.first?.place?.column == 2)
     }
 
+    @Test("""
+        a line that isn't UTF-8 is read as Latin-1 on its own: the lines around it, UTF-8 ones included, read \
+        as they are
+        """)
+    func latin1Line() throws {
+        var bytes = Data("0.20ms\t\(Self.root)/Caf\u{E9}.swift:1:2\n".utf8)
+        // A byte that isn't UTF-8 (0xEF, Latin-1 ï) in a diagnostic and in
+        // its excerpt line, between two timing lines, the first of which
+        // holds UTF-8 é.
+        bytes.append(Data("\(Self.root)/A.swift:2:3: warning: na".utf8))
+        bytes.append(0xEF)
+        bytes.append(Data("ve [pbd_never_used]\n2 | let na".utf8))
+        bytes.append(0xEF)
+        bytes.append(Data("ve = 1\n0.30ms\t\(Self.root)/A.swift:2:3\n".utf8))
+
+        let output = BuildOutputReader.read(stderr: bytes, log: Data())
+
+        #expect(output.entries.map(\.place?.path) == ["\(Self.root)/Caf\u{E9}.swift", "\(Self.root)/A.swift"])
+        #expect(output.entries.map(\.hundredths) == [20, 30])
+        let diagnostic = try #require(output.diagnostics.first)
+        #expect(diagnostic.message == "na\u{EF}ve")
+        #expect(diagnostic.identifier == "pbd_never_used")
+        #expect(output.unparsedTimingLines == 0)
+    }
+
     @Test("the recorded fixture build reads as its entries, its nine distinct diagnostics and its counters")
     func recordedFixture() throws {
         let fixture = try BuildFixture()
@@ -146,12 +171,19 @@ struct BuildOutputReaderTests {
         #expect(bridged.message.split(separator: "\n").count == 3)
     }
 
-    @Test("the recorded failed build's output reads its entries and its dependency's warning")
+    @Test("""
+        the recorded failed build's output, built one job at a time and normalised so it records the same on \
+        every run, reads its entries and its dependency's warning
+        """)
     func recordedFailure() throws {
         let fixture = try BuildFixture()
         defer { fixture.remove() }
         let output = BuildOutputReader.read(stderr: try fixture.recorded("failed.stderr"), log: Data())
-        #expect(output.entries.count == 16)
+        // Every target but IndexCore and its dependents compiled before
+        // IndexCore's error: index-kit, index-support, IndexTool and
+        // IndexDepKit.
+        #expect(output.entries.count == 69)
+        #expect(output.entries.allSatisfy { $0.hundredths == 1 })
         #expect(output.unparsedTimingLines == 0)
         #expect(output.diagnostics.map(\.identifier) == ["pbd_never_used"])
         #expect(output.otherWarningLines == 5)
