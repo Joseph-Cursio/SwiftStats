@@ -56,7 +56,9 @@ struct ReferenceCounting {
         let usr = located.occurrence.usr
         let container = resolver.container(of: located)
         let isTest = container.target.map(resolver.input.testModules.contains) ?? false
-        let sourceFamily = container.recordKey.map(family(of:))
+        // A direct call: `map(family(of:))` would copy this whole pass (the
+        // resolver with its input, and every table) for each reference.
+        let sourceFamily: String? = if let key = container.recordKey { family(of: key) } else { nil }
         for target in resolver.targets(of: usr, roles: located.occurrence.roles) {
             let destination = family(of: target.key)
             guard sourceFamily != destination else {

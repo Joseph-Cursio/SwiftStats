@@ -56,7 +56,9 @@ struct OccurrenceFacts {
     /// `joinable` files (scanned, unchanged).
     init(occurrences: [String: [IndexOccurrenceFact]], targets: [String: String], joinable: Set<String>) {
         for (file, held) in occurrences.sorted(by: { CodePointOrder.precedes($0.key, $1.key) }) {
-            var seen: Set<IndexOccurrenceFact> = []
+            // Sized for the file up front: growing would hash every
+            // occurrence, its relations included, again at each resize.
+            var seen = Set<IndexOccurrenceFact>(minimumCapacity: held.count)
             for occurrence in held where seen.insert(occurrence).inserted {
                 note(Located(file: file, occurrence: occurrence), target: targets[file], joinable: joinable)
             }
