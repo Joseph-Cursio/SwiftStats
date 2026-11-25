@@ -4,6 +4,8 @@ import PackageDescription
 let package = Package(
     name: "Shapes",
     targets: [
-        .target(name: "Shapes")
+        .target(name: "Shapes"),
+        .target(name: "Glossary"),
+        .target(name: "Spelling", dependencies: ["Glossary"])
     ]
 )

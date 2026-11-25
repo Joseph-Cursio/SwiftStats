@@ -6,7 +6,11 @@
 //  function each (Tests/Fixtures/Diff/before → after), the diff shows
 //  exactly those four, and the move shows as a move. The repository is made
 //  at test time; `diff` scans the older commit from a `git archive` export
-//  and the newer one in place.
+//  and the newer one in place. The `Spelling` and `Glossary` modules hold
+//  M7's cases for the index (a spelling change, a retargeted typealias, and
+//  two `size(of:)` overloads whose keys collide, `Foundation.Data` against
+//  `Glossary.Data`, each moved to another file in `after`, so both collision
+//  suffixes change), so these tests read the `Shapes` module alone.
 //
 
 import Foundation
@@ -56,14 +60,15 @@ struct DiffFixtureTests {
         let ids = try workspace.diffSnapshotIDs(older: "HEAD~1", newer: nil, includeDirty: false, rescan: false)
         let diff = SnapshotDiff.diff(try workspace.store.load(id: ids.older), try workspace.store.load(id: ids.newer))
 
-        let summary = diff.families.map { "\($0.statuses.map(\.rawValue).joined(separator: "+")) \($0.key)" }
+        let shapes = diff.families.filter { $0.key.hasPrefix("Shapes::") }
+        let summary = shapes.map { "\($0.statuses.map(\.rawValue).joined(separator: "+")) \($0.key)" }
         #expect(summary == [
             "changed Shapes::Square::func area() -> Int",
             "added Shapes::func diagonal(of: Square) -> Double",
             "removed Shapes::func legacyDescription(of: Square) -> String",
             "moved Shapes::func perimeter(of: Square) -> Int"
         ].sorted { $0.split(separator: " ")[1] < $1.split(separator: " ")[1] })
-        let moved = try #require(diff.families.first { $0.statuses == [.moved] })
+        let moved = try #require(shapes.first { $0.statuses == [.moved] })
         #expect(moved.oldFile == "Sources/Shapes/Perimeter.swift")
         #expect(moved.newFile == "Sources/Shapes/Measure.swift")
         #expect(moved.matchedBy == .key)
@@ -75,8 +80,9 @@ struct DiffFixtureTests {
         // Only the changed function's own metrics move: `area` went from 2
         // stripped lines in its body plus the signature (4 in all) to 6, and
         // gained a `guard` (cognitive 0 → 1).
-        #expect(diff.functions.map(\.key) == ["Shapes::Square::func area() -> Int"])
-        let area = Dictionary(uniqueKeysWithValues: diff.functions[0].metrics.map { ($0.metric, $0) })
+        let functions = diff.functions.filter { $0.key.hasPrefix("Shapes::") }
+        #expect(functions.map(\.key) == ["Shapes::Square::func area() -> Int"])
+        let area = Dictionary(uniqueKeysWithValues: try #require(functions.first).metrics.map { ($0.metric, $0) })
         #expect(area["strippedLines"]?.before == 4)
         #expect(area["strippedLines"]?.after == 6)
         #expect(area["strippedLines"]?.verdict == .worse)

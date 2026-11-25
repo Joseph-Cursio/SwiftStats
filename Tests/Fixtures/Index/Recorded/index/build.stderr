@@ -1,0 +1,737 @@
+warning: 'index': @TOOLCHAIN@/usr/bin/swift-frontend -frontend -c -primary-file @ROOT@/Package.swift -target arm64-apple-macosx14.0 -Xllvm -aarch64-use-tbi -enable-objc-interop -stack-check -sdk @DEVELOPER@/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.2.sdk -I @DEVELOPER@/Platforms/MacOSX.platform/Developer/usr/lib -I @TOOLCHAIN@/usr/lib/swift/pm/ManifestAPI -F @DEVELOPER@/Platforms/MacOSX.platform/Developer/Library/Frameworks -vfsoverlay @TMP@/TemporaryDirectory.B7IyQ2/vfs.yaml -no-color-diagnostics -Xcc -fno-color-diagnostics -swift-version 6 -package-description-version 6.0.0 -new-driver-path @TOOLCHAIN@/usr/bin/swift-driver -empty-abi-descriptor -plugin-path @TOOLCHAIN@/usr/lib/swift/host/plugins/testing -no-auto-bridging-header-chaining -module-name main -disable-clang-spi -target-sdk-version 27.2 -target-sdk-name macosx27.2 -external-plugin-path '@DEVELOPER@/Platforms/MacOSX.platform/Developer/usr/lib/swift/host/plugins#@DEVELOPER@/Platforms/MacOSX.platform/Developer/usr/bin/swift-plugin-server' -external-plugin-path '@DEVELOPER@/Platforms/MacOSX.platform/Developer/usr/local/lib/swift/host/plugins#@DEVELOPER@/Platforms/MacOSX.platform/Developer/usr/bin/swift-plugin-server' -in-process-plugin-server-path @TOOLCHAIN@/usr/lib/swift/host/libSwiftInProcPluginServer.dylib -plugin-path @TOOLCHAIN@/usr/lib/swift/host/plugins -plugin-path @TOOLCHAIN@/usr/local/lib/swift/host/plugins -o @TMP@/TemporaryDirectory.664xj0/Package-1.o
+@TOOLCHAIN@/usr/bin/clang @TMP@/TemporaryDirectory.664xj0/Package-1.o -F @DEVELOPER@/Platforms/MacOSX.platform/Developer/Library/Frameworks --sysroot @DEVELOPER@/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.2.sdk --target=arm64-apple-macosx14.0 -L @TOOLCHAIN@/usr/lib/swift/macosx -L @DEVELOPER@/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.2.sdk/usr/lib/swift -rpath /usr/lib/swift -L @TOOLCHAIN@/usr/lib/swift/pm/ManifestAPI -L @DEVELOPER@/Platforms/MacOSX.platform/Developer/usr/lib -lPackageDescription -Xlinker -rpath -Xlinker @TOOLCHAIN@/usr/lib/swift/pm/ManifestAPI -o @TMP@/TemporaryDirectory.3NqoAV/index-manifest
+Apple Swift version 6.4.2 (swiftlang-6.4.2.1.9 clang-2100.4.1.1)
+Target: arm64-apple-macosx14.0
+Running resolver because the following dependencies were added: 'indexdep' (@DEP@)
+warning: 'indexdep': @TOOLCHAIN@/usr/bin/swift-frontend -frontend -c -primary-file @DEP@/Package.swift -target arm64-apple-macosx14.0 -Xllvm -aarch64-use-tbi -enable-objc-interop -stack-check -sdk @DEVELOPER@/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.2.sdk -I @DEVELOPER@/Platforms/MacOSX.platform/Developer/usr/lib -I @TOOLCHAIN@/usr/lib/swift/pm/ManifestAPI -F @DEVELOPER@/Platforms/MacOSX.platform/Developer/Library/Frameworks -vfsoverlay @TMP@/TemporaryDirectory.HTe4rK/vfs.yaml -no-color-diagnostics -Xcc -fno-color-diagnostics -swift-version 6 -package-description-version 6.0.0 -new-driver-path @TOOLCHAIN@/usr/bin/swift-driver -empty-abi-descriptor -plugin-path @TOOLCHAIN@/usr/lib/swift/host/plugins/testing -no-auto-bridging-header-chaining -module-name main -disable-clang-spi -target-sdk-version 27.2 -target-sdk-name macosx27.2 -external-plugin-path '@DEVELOPER@/Platforms/MacOSX.platform/Developer/usr/lib/swift/host/plugins#@DEVELOPER@/Platforms/MacOSX.platform/Developer/usr/bin/swift-plugin-server' -external-plugin-path '@DEVELOPER@/Platforms/MacOSX.platform/Developer/usr/local/lib/swift/host/plugins#@DEVELOPER@/Platforms/MacOSX.platform/Developer/usr/bin/swift-plugin-server' -in-process-plugin-server-path @TOOLCHAIN@/usr/lib/swift/host/libSwiftInProcPluginServer.dylib -plugin-path @TOOLCHAIN@/usr/lib/swift/host/plugins -plugin-path @TOOLCHAIN@/usr/local/lib/swift/host/plugins -o @TMP@/TemporaryDirectory.XEzzLX/Package-1.o
+@TOOLCHAIN@/usr/bin/clang @TMP@/TemporaryDirectory.XEzzLX/Package-1.o -F @DEVELOPER@/Platforms/MacOSX.platform/Developer/Library/Frameworks --sysroot @DEVELOPER@/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.2.sdk --target=arm64-apple-macosx14.0 -L @TOOLCHAIN@/usr/lib/swift/macosx -L @DEVELOPER@/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.2.sdk/usr/lib/swift -rpath /usr/lib/swift -L @TOOLCHAIN@/usr/lib/swift/pm/ManifestAPI -L @DEVELOPER@/Platforms/MacOSX.platform/Developer/usr/lib -lPackageDescription -Xlinker -rpath -Xlinker @TOOLCHAIN@/usr/lib/swift/pm/ManifestAPI -o @TMP@/TemporaryDirectory.1jUYNT/indexdep-manifest
+Apple Swift version 6.4.2 (swiftlang-6.4.2.1.9 clang-2100.4.1.1)
+Target: arm64-apple-macosx14.0
+warning: 'index': found 1 file(s) which are unhandled; explicitly declare them as resources or exclude from the target
+    @ROOT@/Sources/Kits/Support.swift
+warning: 'index': found 2 file(s) which are unhandled; explicitly declare them as resources or exclude from the target
+    @ROOT@/Sources/Kits/Kit.swift
+    @ROOT@/Sources/Kits/Relay.swift
+info: Building targets in dependency order
+info: Target dependency graph (12 targets)
+info: Target 'AllIncludingTests' in project 'Aggregate'
+info: ➜ Explicit dependency on target 'IndexXCTests-product' in project 'IndexFixture'
+info: ➜ Dependency on target 'IndexXCTests-product' in project 'IndexFixture' via transitive dependency through 'IndexXCTests-test-runner'
+info: ➜ Explicit dependency on target 'IndexCoreTests-product' in project 'IndexFixture'
+info: ➜ Dependency on target 'IndexCoreTests-product' in project 'IndexFixture' via transitive dependency through 'IndexCoreTests-test-runner'
+info: ➜ Explicit dependency on target 'IndexCore-product' in project 'IndexFixture'
+info: ➜ Explicit dependency on target 'IndexKit-product' in project 'IndexFixture'
+info: ➜ Explicit dependency on target 'IndexTool-product' in project 'IndexFixture'
+info: ➜ Explicit dependency on target 'IndexApp-product' in project 'IndexFixture'
+info: ➜ Explicit dependency on target 'IndexCore' in project 'IndexFixture'
+info: ➜ Explicit dependency on target 'index-kit' in project 'IndexFixture'
+info: ➜ Explicit dependency on target 'index-support' in project 'IndexFixture'
+info: Target 'IndexApp-product' in project 'IndexFixture'
+info: ➜ Explicit dependency on target 'IndexCore' in project 'IndexFixture'
+info: ➜ Explicit dependency on target 'index-support' in project 'IndexFixture'
+info: ➜ Explicit dependency on target 'IndexDepKit-product' in project 'IndexDep'
+info: Target 'IndexTool-product' in project 'IndexFixture' (no dependencies)
+info: Target 'IndexKit-product' in project 'IndexFixture'
+info: ➜ Explicit dependency on target 'index-kit' in project 'IndexFixture'
+info: Target 'IndexCore-product' in project 'IndexFixture'
+info: ➜ Explicit dependency on target 'IndexCore' in project 'IndexFixture'
+info: ➜ Explicit dependency on target 'IndexDepKit-product' in project 'IndexDep'
+info: Target 'IndexCoreTests-product' in project 'IndexFixture'
+info: ➜ Explicit dependency on target 'IndexCore' in project 'IndexFixture'
+info: ➜ Explicit dependency on target 'index-support' in project 'IndexFixture'
+info: ➜ Explicit dependency on target 'index-kit' in project 'IndexFixture'
+info: ➜ Explicit dependency on target 'IndexDepKit-product' in project 'IndexDep'
+info: Target 'index-kit' in project 'IndexFixture' (no dependencies)
+info: Target 'index-support' in project 'IndexFixture' (no dependencies)
+info: Target 'IndexXCTests-product' in project 'IndexFixture'
+info: ➜ Explicit dependency on target 'IndexCore' in project 'IndexFixture'
+info: ➜ Explicit dependency on target 'IndexDepKit-product' in project 'IndexDep'
+info: Target 'IndexCore' in project 'IndexFixture'
+info: ➜ Explicit dependency on target 'IndexDepKit-product' in project 'IndexDep'
+info: Target 'IndexDepKit-product' in project 'IndexDep'
+info: ➜ Explicit dependency on target 'IndexDepKit' in project 'IndexDep'
+info: Target 'IndexDepKit' in project 'IndexDep' (no dependencies)
+Build description signature: 1bf288a8dfc95d0918025b177f20c526
+Build description path: @BUILD@/out/Intermediates.noindex/XCBuildData/1bf288a8dfc95d0918025b177f20c526.xcbuilddata
+0.01ms	@DEP@/Sources/IndexDepKit/Payload.swift:6:16	getter IndexDepKit.(file).Data.size.getter@@DEP@/Sources/IndexDepKit/Payload.swift:6:16
+0.44ms	@ROOT@/Sources/Kits/Kit.swift:4:5
+0.59ms	@ROOT@/Sources/Kits/Kit.swift:3:13	global function index_kit.(file).kitOnlyTests()@@ROOT@/Sources/Kits/Kit.swift:3:13
+0.34ms	@ROOT@/Sources/IndexTool/Tool.swift:6:9
+0.50ms	@ROOT@/Sources/IndexTool/Tool.swift:5:17	static method IndexTool.(file).Tool.main()@@ROOT@/Sources/IndexTool/Tool.swift:5:17
+0.01ms	@ROOT@/Sources/IndexTool/Tool.swift:3:8	initializer IndexTool.(file).Tool.init()@@ROOT@/Sources/IndexTool/Tool.swift:3:8
+0.03ms	@ROOT@/Sources/IndexTool/Tool.swift:2:1
+0.05ms	<invalid loc>	static method IndexTool.(file).Tool.$main()
+0.01ms	@DEP@/Sources/IndexDepKit/Payload.swift:6:16	getter IndexDepKit.(file).Data.size.getter@@DEP@/Sources/IndexDepKit/Payload.swift:6:16
+0.36ms	@DEP@/Sources/IndexDepKit/Payload.swift:10:9
+0.54ms	@DEP@/Sources/IndexDepKit/Payload.swift:9:12	initializer IndexDepKit.(file).Data.init(size:)@@DEP@/Sources/IndexDepKit/Payload.swift:9:12
+0.33ms	@ROOT@/Sources/Kits/Relay.swift:4:5
+0.46ms	@ROOT@/Sources/Kits/Relay.swift:3:6	global function index_kit.(file).relay()@@ROOT@/Sources/Kits/Relay.swift:3:6
+0.21ms	@DEP@/Sources/IndexDepKit/DepKit.swift:4:30
+0.04ms	@DEP@/Sources/IndexDepKit/DepKit.swift:5:12
+0.59ms	@DEP@/Sources/IndexDepKit/DepKit.swift:2:13	global function IndexDepKit.(file).depValue()@@DEP@/Sources/IndexDepKit/DepKit.swift:2:13
+@DEP@/Sources/IndexDepKit/DepKit.swift:4:9: warning: initialization of immutable value 'unusedInDependency' was never used; consider replacing with assignment to '_' or removing it [pbd_never_used] [#NoUsage]
+2 | public func depValue() -> Int {
+3 |     // An unused `let`: a warning in a local path dependency.
+4 |     let unusedInDependency = 1
+  |         `- warning: initialization of immutable value 'unusedInDependency' was never used; consider replacing with assignment to '_' or removing it [pbd_never_used] [#NoUsage]
+5 |     return 7
+6 | }
+
+[#NoUsage]: <https://docs.swift.org/compiler/documentation/diagnostics/no-usage>
+warning: @ROOT@/Sources/IndexCore/Warnings.swift:19:10 remember to finish this [pound_warning]
+0.32ms	@ROOT@/Sources/IndexCore/Warnings.swift:3:20
+@ROOT@/Sources/IndexCore/Warnings.swift:19:10: warning: remember to finish this [pound_warning]
+17 | }
+18 | 
+19 | #warning("remember to finish this")
+   |          `- warning: remember to finish this [pound_warning]
+20 | 
+
+1.02ms	@ROOT@/Sources/IndexCore/Warnings.swift:4:12
+@ROOT@/Sources/IndexCore/Warnings.swift:4:23: warning: 'legacy()' is deprecated: use warned() [availability_deprecated] [#DeprecatedDeclaration]
+ 2 | public func warned() -> Int {
+ 3 |     var constant = 3
+ 4 |     return constant + legacy()
+   |                       `- warning: 'legacy()' is deprecated: use warned() [availability_deprecated] [#DeprecatedDeclaration]
+ 5 | }
+ 6 | 
+
+8.35ms	@ROOT@/Sources/IndexCore/Warnings.swift:2:13	global function IndexCore.(file).warned()@@ROOT@/Sources/IndexCore/Warnings.swift:2:13
+0.02ms	@ROOT@/Sources/IndexCore/Warnings.swift:10:5
+0.03ms	@ROOT@/Sources/IndexCore/Warnings.swift:9:6	global function IndexCore.(file).legacy()@@ROOT@/Sources/IndexCore/Warnings.swift:9:6
+0.01ms	@ROOT@/Sources/IndexCore/Warnings.swift:15:12
+0.11ms	@ROOT@/Sources/IndexCore/Warnings.swift:16:5
+0.17ms	@ROOT@/Sources/IndexCore/Warnings.swift:14:13	global function IndexCore.(file).unreachable()@@ROOT@/Sources/IndexCore/Warnings.swift:14:13
+@ROOT@/Sources/IndexCore/Warnings.swift:3:9: warning: variable 'constant' was never mutated; consider changing to 'let' constant [variable_never_mutated] [#VariableNeverMutated]
+ 1 | /// A `var` never mutated and a call to a deprecated function.
+ 2 | public func warned() -> Int {
+ 3 |     var constant = 3
+   |         `- warning: variable 'constant' was never mutated; consider changing to 'let' constant [variable_never_mutated] [#VariableNeverMutated]
+ 4 |     return constant + legacy()
+ 5 | }
+
+@ROOT@/Sources/IndexCore/Warnings.swift:16:5: warning: code after 'return' will never be executed [unreachable_code_after_stmt]
+14 | public func unreachable() -> Int {
+15 |     return 1
+16 |     print("never")
+   |     `- warning: code after 'return' will never be executed [unreachable_code_after_stmt]
+17 | }
+18 | 
+
+[#DeprecatedDeclaration]: <https://docs.swift.org/compiler/documentation/diagnostics/deprecated-declaration>
+[#VariableNeverMutated]: <https://docs.swift.org/compiler/documentation/diagnostics/variable-never-mutated>
+0.65ms	@ROOT@/Sources/IndexCore/Accessors.swift:4:18
+0.02ms	@ROOT@/Sources/IndexCore/Accessors.swift:6:17
+0.02ms	@ROOT@/Sources/IndexCore/Accessors.swift:44:27
+1.02ms	@ROOT@/Sources/IndexCore/Accessors.swift:49:13
+4.88ms	@ROOT@/Sources/IndexCore/Accessors.swift:48:9	didSet observer IndexCore.(file).Storage.observed.didSet observer@@ROOT@/Sources/IndexCore/Accessors.swift:48:9
+0.01ms	@ROOT@/Sources/IndexCore/Accessors.swift:19:12	_modify accessor IndexCore.(file).Storage.subscript(slot:)._modify accessor@@ROOT@/Sources/IndexCore/Accessors.swift:19:12
+0.01ms	@ROOT@/Sources/IndexCore/Accessors.swift:34:16	_modify accessor IndexCore.(file).Storage.head._modify accessor@@ROOT@/Sources/IndexCore/Accessors.swift:34:16
+0.01ms	@ROOT@/Sources/IndexCore/Accessors.swift:44:16	getter IndexCore.(file).Storage.observed.getter@@ROOT@/Sources/IndexCore/Accessors.swift:44:16
+0.01ms	@ROOT@/Sources/IndexCore/Accessors.swift:44:16	_modify accessor IndexCore.(file).Storage.observed._modify accessor@@ROOT@/Sources/IndexCore/Accessors.swift:44:16
+0.01ms	@ROOT@/Sources/IndexCore/Accessors.swift:54:16	getter IndexCore.(file).Storage.coroutine.getter@@ROOT@/Sources/IndexCore/Accessors.swift:54:16
+0.01ms	@ROOT@/Sources/IndexCore/Accessors.swift:54:16	setter IndexCore.(file).Storage.coroutine.setter@@ROOT@/Sources/IndexCore/Accessors.swift:54:16
+0.01ms	@ROOT@/Sources/IndexCore/Accessors.swift:81:16	getter IndexCore.(file).Addressed.value.getter@@ROOT@/Sources/IndexCore/Accessors.swift:81:16
+0.01ms	@ROOT@/Sources/IndexCore/Accessors.swift:81:16	setter IndexCore.(file).Addressed.value.setter@@ROOT@/Sources/IndexCore/Accessors.swift:81:16
+0.01ms	@ROOT@/Sources/IndexCore/Accessors.swift:81:16	_modify accessor IndexCore.(file).Addressed.value._modify accessor@@ROOT@/Sources/IndexCore/Accessors.swift:81:16
+0.01ms	@ROOT@/Sources/IndexCore/Accessors.swift:97:16	_modify accessor IndexCore.(file).Initialized.value._modify accessor@@ROOT@/Sources/IndexCore/Accessors.swift:97:16
+0.01ms	@ROOT@/Sources/IndexCore/Lifecycle.swift:4:16	getter IndexCore.(file).Session.name.getter@@ROOT@/Sources/IndexCore/Lifecycle.swift:4:16
+0.08ms	@ROOT@/Sources/IndexCore/Locals.swift:13:12
+0.26ms	@ROOT@/Sources/IndexCore/Locals.swift:2:13	global function IndexCore.(file).layout@@ROOT@/Sources/IndexCore/Locals.swift:2:13
+0.03ms	@ROOT@/Sources/IndexCore/References.swift:30:18
+0.71ms	@ROOT@/Sources/IndexCore/Ring.swift:32:21
+0.01ms	@ROOT@/Sources/IndexCore/Ring.swift:25:12	_read accessor IndexCore.(file).Ring.subscript(_:)._read accessor@@ROOT@/Sources/IndexCore/Ring.swift:25:12
+@ROOT@/Sources/IndexCore/Warnings.swift:19:10: warning: remember to finish this [pound_warning]
+17 | }
+18 | 
+19 | #warning("remember to finish this")
+   |          `- warning: remember to finish this [pound_warning]
+20 | 
+0.74ms	@ROOT@/Sources/IndexCore/Accessors.swift:4:18
+0.03ms	@ROOT@/Sources/IndexCore/Accessors.swift:6:17
+0.02ms	@ROOT@/Sources/IndexCore/Accessors.swift:44:27
+2.20ms	@ROOT@/Sources/IndexCore/Accessors.swift:49:13
+9.55ms	@ROOT@/Sources/IndexCore/Accessors.swift:48:9	didSet observer IndexCore.(file).Storage.observed.didSet observer@@ROOT@/Sources/IndexCore/Accessors.swift:48:9
+0.01ms	@ROOT@/Sources/IndexCore/Accessors.swift:4:9	getter IndexCore.(file).Storage.values.getter@@ROOT@/Sources/IndexCore/Accessors.swift:4:9
+0.01ms	@ROOT@/Sources/IndexCore/Accessors.swift:4:9	setter IndexCore.(file).Storage.values.setter@@ROOT@/Sources/IndexCore/Accessors.swift:4:9
+0.01ms	@ROOT@/Sources/IndexCore/Accessors.swift:4:9	_modify accessor IndexCore.(file).Storage.values._modify accessor@@ROOT@/Sources/IndexCore/Accessors.swift:4:9
+0.01ms	@ROOT@/Sources/IndexCore/Accessors.swift:6:9	getter IndexCore.(file).Storage.cache.getter@@ROOT@/Sources/IndexCore/Accessors.swift:6:9
+0.01ms	@ROOT@/Sources/IndexCore/Accessors.swift:6:9	setter IndexCore.(file).Storage.cache.setter@@ROOT@/Sources/IndexCore/Accessors.swift:6:9
+0.01ms	@ROOT@/Sources/IndexCore/Accessors.swift:6:9	_modify accessor IndexCore.(file).Storage.cache._modify accessor@@ROOT@/Sources/IndexCore/Accessors.swift:6:9
+0.02ms	@ROOT@/Sources/IndexCore/Accessors.swift:9:12	initializer IndexCore.(file).Storage.init()@@ROOT@/Sources/IndexCore/Accessors.swift:9:12
+3.38ms	@ROOT@/Sources/IndexCore/Accessors.swift:14:9
+3.51ms	@ROOT@/Sources/IndexCore/Accessors.swift:13:44	getter IndexCore.(file).Storage.subscript(_:).getter@@ROOT@/Sources/IndexCore/Accessors.swift:13:44
+0.27ms	@ROOT@/Sources/IndexCore/Accessors.swift:21:13
+0.37ms	@ROOT@/Sources/IndexCore/Accessors.swift:20:9	getter IndexCore.(file).Storage.subscript(slot:).getter@@ROOT@/Sources/IndexCore/Accessors.swift:20:9
+0.27ms	@ROOT@/Sources/IndexCore/Accessors.swift:24:13
+0.38ms	@ROOT@/Sources/IndexCore/Accessors.swift:23:9	setter IndexCore.(file).Storage.subscript(slot:).setter@@ROOT@/Sources/IndexCore/Accessors.swift:23:9
+0.01ms	@ROOT@/Sources/IndexCore/Accessors.swift:19:12	_modify accessor IndexCore.(file).Storage.subscript(slot:)._modify accessor@@ROOT@/Sources/IndexCore/Accessors.swift:19:12
+0.44ms	@ROOT@/Sources/IndexCore/Accessors.swift:30:9
+0.52ms	@ROOT@/Sources/IndexCore/Accessors.swift:29:27	getter IndexCore.(file).Storage.count.getter@@ROOT@/Sources/IndexCore/Accessors.swift:29:27
+0.24ms	@ROOT@/Sources/IndexCore/Accessors.swift:36:13
+0.30ms	@ROOT@/Sources/IndexCore/Accessors.swift:35:9	getter IndexCore.(file).Storage.head.getter@@ROOT@/Sources/IndexCore/Accessors.swift:35:9
+0.32ms	@ROOT@/Sources/IndexCore/Accessors.swift:39:13
+0.40ms	@ROOT@/Sources/IndexCore/Accessors.swift:38:9	setter IndexCore.(file).Storage.head.setter@@ROOT@/Sources/IndexCore/Accessors.swift:38:9
+0.01ms	@ROOT@/Sources/IndexCore/Accessors.swift:34:16	_modify accessor IndexCore.(file).Storage.head._modify accessor@@ROOT@/Sources/IndexCore/Accessors.swift:34:16
+0.05ms	@ROOT@/Sources/IndexCore/Accessors.swift:46:13
+0.11ms	@ROOT@/Sources/IndexCore/Accessors.swift:45:9	willSet observer IndexCore.(file).Storage.observed.willSet observer@@ROOT@/Sources/IndexCore/Accessors.swift:45:9
+0.01ms	@ROOT@/Sources/IndexCore/Accessors.swift:44:16	getter IndexCore.(file).Storage.observed.getter@@ROOT@/Sources/IndexCore/Accessors.swift:44:16
+0.02ms	@ROOT@/Sources/IndexCore/Accessors.swift:44:16	setter IndexCore.(file).Storage.observed.setter@@ROOT@/Sources/IndexCore/Accessors.swift:44:16
+0.01ms	@ROOT@/Sources/IndexCore/Accessors.swift:44:16	_modify accessor IndexCore.(file).Storage.observed._modify accessor@@ROOT@/Sources/IndexCore/Accessors.swift:44:16
+0.06ms	@ROOT@/Sources/IndexCore/Accessors.swift:56:19
+0.12ms	@ROOT@/Sources/IndexCore/Accessors.swift:55:9	_read accessor IndexCore.(file).Storage.coroutine._read accessor@@ROOT@/Sources/IndexCore/Accessors.swift:55:9
+0.04ms	@ROOT@/Sources/IndexCore/Accessors.swift:59:20
+0.08ms	@ROOT@/Sources/IndexCore/Accessors.swift:58:9	_modify accessor IndexCore.(file).Storage.coroutine._modify accessor@@ROOT@/Sources/IndexCore/Accessors.swift:58:9
+0.01ms	@ROOT@/Sources/IndexCore/Accessors.swift:54:16	getter IndexCore.(file).Storage.coroutine.getter@@ROOT@/Sources/IndexCore/Accessors.swift:54:16
+0.01ms	@ROOT@/Sources/IndexCore/Accessors.swift:54:16	setter IndexCore.(file).Storage.coroutine.setter@@ROOT@/Sources/IndexCore/Accessors.swift:54:16
+0.70ms	@ROOT@/Sources/IndexCore/Accessors.swift:66:9
+1.14ms	@ROOT@/Sources/IndexCore/Accessors.swift:65:29	getter IndexCore.(file).Storage.unusedComputed.getter@@ROOT@/Sources/IndexCore/Accessors.swift:65:29
+0.01ms	@ROOT@/Sources/IndexCore/Accessors.swift:73:9	getter IndexCore.(file).Addressed.base.getter@@ROOT@/Sources/IndexCore/Accessors.swift:73:9
+0.04ms	@ROOT@/Sources/IndexCore/Accessors.swift:77:9
+0.08ms	@ROOT@/Sources/IndexCore/Accessors.swift:76:12	initializer IndexCore.(file).Addressed.init(base:)@@ROOT@/Sources/IndexCore/Accessors.swift:76:12
+0.28ms	@ROOT@/Sources/IndexCore/Accessors.swift:83:13
+0.33ms	@ROOT@/Sources/IndexCore/Accessors.swift:82:9	address accessor IndexCore.(file).Addressed.value.address accessor@@ROOT@/Sources/IndexCore/Accessors.swift:82:9
+0.02ms	@ROOT@/Sources/IndexCore/Accessors.swift:86:13
+0.04ms	@ROOT@/Sources/IndexCore/Accessors.swift:85:9	mutableAddress accessor IndexCore.(file).Addressed.value.mutableAddress accessor@@ROOT@/Sources/IndexCore/Accessors.swift:85:9
+0.01ms	@ROOT@/Sources/IndexCore/Accessors.swift:81:16	getter IndexCore.(file).Addressed.value.getter@@ROOT@/Sources/IndexCore/Accessors.swift:81:16
+0.01ms	@ROOT@/Sources/IndexCore/Accessors.swift:81:16	setter IndexCore.(file).Addressed.value.setter@@ROOT@/Sources/IndexCore/Accessors.swift:81:16
+0.01ms	@ROOT@/Sources/IndexCore/Accessors.swift:81:16	_modify accessor IndexCore.(file).Addressed.value._modify accessor@@ROOT@/Sources/IndexCore/Accessors.swift:81:16
+0.01ms	@ROOT@/Sources/IndexCore/Accessors.swift:94:9	getter IndexCore.(file).Initialized.stored.getter@@ROOT@/Sources/IndexCore/Accessors.swift:94:9
+0.00ms	@ROOT@/Sources/IndexCore/Accessors.swift:94:9	setter IndexCore.(file).Initialized.stored.setter@@ROOT@/Sources/IndexCore/Accessors.swift:94:9
+0.01ms	@ROOT@/Sources/IndexCore/Accessors.swift:94:9	_modify accessor IndexCore.(file).Initialized.stored._modify accessor@@ROOT@/Sources/IndexCore/Accessors.swift:94:9
+0.03ms	@ROOT@/Sources/IndexCore/Accessors.swift:100:13
+0.05ms	@ROOT@/Sources/IndexCore/Accessors.swift:99:9	init accessor IndexCore.(file).Initialized.value.init accessor@@ROOT@/Sources/IndexCore/Accessors.swift:99:9
+0.02ms	@ROOT@/Sources/IndexCore/Accessors.swift:103:13
+0.04ms	@ROOT@/Sources/IndexCore/Accessors.swift:102:9	getter IndexCore.(file).Initialized.value.getter@@ROOT@/Sources/IndexCore/Accessors.swift:102:9
+0.02ms	@ROOT@/Sources/IndexCore/Accessors.swift:106:13
+0.04ms	@ROOT@/Sources/IndexCore/Accessors.swift:105:9	setter IndexCore.(file).Initialized.value.setter@@ROOT@/Sources/IndexCore/Accessors.swift:105:9
+0.01ms	@ROOT@/Sources/IndexCore/Accessors.swift:97:16	_modify accessor IndexCore.(file).Initialized.value._modify accessor@@ROOT@/Sources/IndexCore/Accessors.swift:97:16
+0.02ms	@ROOT@/Sources/IndexCore/Accessors.swift:112:9
+0.03ms	@ROOT@/Sources/IndexCore/Accessors.swift:111:12	initializer IndexCore.(file).Initialized.init(value:)@@ROOT@/Sources/IndexCore/Accessors.swift:111:12
+0.02ms	@ROOT@/Sources/IndexCore/Bom.swift:1:36
+0.03ms	@ROOT@/Sources/IndexCore/Bom.swift:1:16	global function IndexCore.(file).bomFirst()@@ROOT@/Sources/IndexCore/Bom.swift:1:16
+0.38ms	@ROOT@/Sources/IndexCore/Bom.swift:6:5
+0.73ms	@ROOT@/Sources/IndexCore/Bom.swift:5:13	global function IndexCore.(file).bomSecond()@@ROOT@/Sources/IndexCore/Bom.swift:5:13
+0.12ms	@ROOT@/Sources/IndexCore/References.swift:30:18
+0.03ms	@ROOT@/Sources/IndexCore/References.swift:4:12	initializer IndexCore.(file).Vehicle.init()@@ROOT@/Sources/IndexCore/References.swift:4:12
+0.03ms	@ROOT@/Sources/IndexCore/References.swift:8:9
+0.04ms	@ROOT@/Sources/IndexCore/References.swift:7:17	instance method IndexCore.(file).Vehicle.wheels()@@ROOT@/Sources/IndexCore/References.swift:7:17
+0.01ms	@ROOT@/Sources/IndexCore/References.swift:2:14	deinitializer IndexCore.(file).Vehicle.deinit@@ROOT@/Sources/IndexCore/References.swift:2:14
+0.01ms	@ROOT@/Sources/IndexCore/References.swift:16:9
+0.02ms	@ROOT@/Sources/IndexCore/References.swift:15:26	instance method IndexCore.(file).Bike.wheels()@@ROOT@/Sources/IndexCore/References.swift:15:26
+0.01ms	@ROOT@/Sources/IndexCore/References.swift:13:34	initializer IndexCore.(file).Bike.init()@@ROOT@/Sources/IndexCore/References.swift:13:34
+0.01ms	@ROOT@/Sources/IndexCore/References.swift:13:20	deinitializer IndexCore.(file).Bike.deinit@@ROOT@/Sources/IndexCore/References.swift:13:20
+0.04ms	@ROOT@/Sources/IndexCore/References.swift:23:9
+0.05ms	@ROOT@/Sources/IndexCore/References.swift:22:36	getter IndexCore.(file).Bike extension.description.getter@@ROOT@/Sources/IndexCore/References.swift:22:36
+0.01ms	@ROOT@/Sources/IndexCore/References.swift:30:9	getter IndexCore.(file).Threshold.stored.getter@@ROOT@/Sources/IndexCore/References.swift:30:9
+0.01ms	@ROOT@/Sources/IndexCore/References.swift:30:9	setter IndexCore.(file).Threshold.stored.setter@@ROOT@/Sources/IndexCore/References.swift:30:9
+0.01ms	@ROOT@/Sources/IndexCore/References.swift:30:9	_modify accessor IndexCore.(file).Threshold.stored._modify accessor@@ROOT@/Sources/IndexCore/References.swift:30:9
+0.07ms	@ROOT@/Sources/IndexCore/References.swift:35:13
+0.11ms	@ROOT@/Sources/IndexCore/References.swift:34:9	getter IndexCore.(file).Threshold.level.getter@@ROOT@/Sources/IndexCore/References.swift:34:9
+0.03ms	@ROOT@/Sources/IndexCore/References.swift:38:13
+0.07ms	@ROOT@/Sources/IndexCore/References.swift:37:9	setter IndexCore.(file).Threshold.level.setter@@ROOT@/Sources/IndexCore/References.swift:37:9
+0.01ms	@ROOT@/Sources/IndexCore/References.swift:33:9	_modify accessor IndexCore.(file).Threshold.level._modify accessor@@ROOT@/Sources/IndexCore/References.swift:33:9
+0.00ms	@ROOT@/Sources/IndexCore/References.swift:28:8	initializer IndexCore.(file).Threshold.init()@@ROOT@/Sources/IndexCore/References.swift:28:8
+0.27ms	@ROOT@/Sources/IndexCore/References.swift:45:5
+0.36ms	@ROOT@/Sources/IndexCore/References.swift:44:13	global function IndexCore.(file).currentLevel()@@ROOT@/Sources/IndexCore/References.swift:44:13
+2.01ms	@ROOT@/Sources/IndexCore/Ring.swift:32:21
+0.02ms	@ROOT@/Sources/IndexCore/Ring.swift:7:12	initializer IndexCore.(file).Ring.init()@@ROOT@/Sources/IndexCore/Ring.swift:7:12
+0.06ms	@ROOT@/Sources/IndexCore/Ring.swift:11:9
+0.11ms	@ROOT@/Sources/IndexCore/Ring.swift:10:32	getter IndexCore.(file).Ring.startIndex.getter@@ROOT@/Sources/IndexCore/Ring.swift:10:32
+0.02ms	@ROOT@/Sources/IndexCore/Ring.swift:16:9
+0.05ms	@ROOT@/Sources/IndexCore/Ring.swift:15:30	getter IndexCore.(file).Ring.endIndex.getter@@ROOT@/Sources/IndexCore/Ring.swift:15:30
+0.42ms	@ROOT@/Sources/IndexCore/Ring.swift:21:9
+1.49ms	@ROOT@/Sources/IndexCore/Ring.swift:20:17	instance method IndexCore.(file).Ring.index(after:)@@ROOT@/Sources/IndexCore/Ring.swift:20:17
+0.09ms	@ROOT@/Sources/IndexCore/Ring.swift:26:9
+0.15ms	@ROOT@/Sources/IndexCore/Ring.swift:25:44	getter IndexCore.(file).Ring.subscript(_:).getter@@ROOT@/Sources/IndexCore/Ring.swift:25:44
+0.78ms	@ROOT@/Sources/IndexCore/Ring.swift:36:5
+0.90ms	@ROOT@/Sources/IndexCore/Ring.swift:35:13	global function IndexCore.(file).totalWidth()@@ROOT@/Sources/IndexCore/Ring.swift:35:13
+0.01ms	@ROOT@/Sources/IndexCore/Ring.swift:25:12	_read accessor IndexCore.(file).Ring.subscript(_:)._read accessor@@ROOT@/Sources/IndexCore/Ring.swift:25:12
+2.02ms	@ROOT@/Sources/IndexCore/Locals.swift:4:9
+10.15ms	@ROOT@/Sources/IndexCore/Locals.swift:3:10	local function IndexCore.(file).layout(_:).padded@@ROOT@/Sources/IndexCore/Locals.swift:3:10
+0.21ms	@ROOT@/Sources/IndexCore/Locals.swift:13:12
+11.30ms	@ROOT@/Sources/IndexCore/Locals.swift:2:13	global function IndexCore.(file).layout@@ROOT@/Sources/IndexCore/Locals.swift:2:13
+0.06ms	@ROOT@/Sources/IndexCore/Locals.swift:17:22
+0.10ms	@ROOT@/Sources/IndexCore/Locals.swift:17:6	global function IndexCore.(file).left()@@ROOT@/Sources/IndexCore/Locals.swift:17:6
+0.04ms	@ROOT@/Sources/IndexCore/Locals.swift:17:49
+0.07ms	@ROOT@/Sources/IndexCore/Locals.swift:17:32	global function IndexCore.(file).right()@@ROOT@/Sources/IndexCore/Locals.swift:17:32
+0.34ms	@ROOT@/Sources/IndexCore/Locals.swift:21:5
+0.51ms	@ROOT@/Sources/IndexCore/Locals.swift:20:13	global function IndexCore.(file).pair()@@ROOT@/Sources/IndexCore/Locals.swift:20:13
+1.73ms	@ROOT@/Sources/IndexCore/Locals.swift:26:23
+0.06ms	@ROOT@/Sources/IndexCore/Locals.swift:28:9
+0.11ms	@ROOT@/Sources/IndexCore/Locals.swift:27:10	local function IndexCore.(file).summarize(_:).unusedHelper()@@ROOT@/Sources/IndexCore/Locals.swift:27:10
+0.75ms	@ROOT@/Sources/IndexCore/Locals.swift:30:12
+3.32ms	@ROOT@/Sources/IndexCore/Locals.swift:25:13	global function IndexCore.(file).summarize@@ROOT@/Sources/IndexCore/Locals.swift:25:13
+0.02ms	@ROOT@/Sources/IndexCore/Locals.swift:36:8
+0.02ms	@ROOT@/Sources/IndexCore/Locals.swift:38:13
+0.03ms	@ROOT@/Sources/IndexCore/Locals.swift:37:14	local function IndexCore.(file).choose(_:).pick()@@ROOT@/Sources/IndexCore/Locals.swift:37:14
+0.02ms	@ROOT@/Sources/IndexCore/Locals.swift:40:16
+0.02ms	@ROOT@/Sources/IndexCore/Locals.swift:43:13
+0.02ms	@ROOT@/Sources/IndexCore/Locals.swift:42:14	local function IndexCore.(file).choose(_:).pick()@@ROOT@/Sources/IndexCore/Locals.swift:42:14
+0.01ms	@ROOT@/Sources/IndexCore/Locals.swift:45:16
+0.21ms	@ROOT@/Sources/IndexCore/Locals.swift:35:13	global function IndexCore.(file).choose@@ROOT@/Sources/IndexCore/Locals.swift:35:13
+0.01ms	@ROOT@/Sources/IndexCore/Locals.swift:7:13	getter IndexCore.(file).layout(_:).Square.side.getter@@ROOT@/Sources/IndexCore/Locals.swift:7:13
+0.28ms	@ROOT@/Sources/IndexCore/Locals.swift:10:13
+0.48ms	@ROOT@/Sources/IndexCore/Locals.swift:9:14	instance method IndexCore.(file).layout(_:).Square.area()@@ROOT@/Sources/IndexCore/Locals.swift:9:14
+0.01ms	@ROOT@/Sources/IndexCore/Protocols.swift:4:10	instance method IndexCore.(file).Shape.area()@@ROOT@/Sources/IndexCore/Protocols.swift:4:10
+0.01ms	@ROOT@/Sources/IndexCore/Protocols.swift:10:9	getter IndexCore.(file).Tile.side.getter@@ROOT@/Sources/IndexCore/Protocols.swift:10:9
+0.13ms	@ROOT@/Sources/IndexCore/Protocols.swift:14:9
+0.20ms	@ROOT@/Sources/IndexCore/Protocols.swift:13:10	instance method IndexCore.(file).Tile.area()@@ROOT@/Sources/IndexCore/Protocols.swift:13:10
+0.01ms	@ROOT@/Sources/IndexCore/Protocols.swift:21:10	instance method IndexCore.(file).Greeter.greet()@@ROOT@/Sources/IndexCore/Protocols.swift:21:10
+0.06ms	@ROOT@/Sources/IndexCore/Protocols.swift:27:9
+0.07ms	@ROOT@/Sources/IndexCore/Protocols.swift:26:10	instance method IndexCore.(file).Greeter extension.greet()@@ROOT@/Sources/IndexCore/Protocols.swift:26:10
+0.01ms	@ROOT@/Sources/IndexCore/Protocols.swift:32:8	initializer IndexCore.(file).Host.init()@@ROOT@/Sources/IndexCore/Protocols.swift:32:8
+0.75ms	@ROOT@/Sources/IndexCore/Protocols.swift:36:5
+0.83ms	@ROOT@/Sources/IndexCore/Protocols.swift:35:13	global function IndexCore.(file).totalArea@@ROOT@/Sources/IndexCore/Protocols.swift:35:13
+0.05ms	@ROOT@/Sources/IndexCore/Protocols.swift:41:5
+0.08ms	@ROOT@/Sources/IndexCore/Protocols.swift:40:13	global function IndexCore.(file).unitTile()@@ROOT@/Sources/IndexCore/Protocols.swift:40:13
+0.03ms	@ROOT@/Sources/IndexCore/Protocols.swift:46:29
+0.08ms	@ROOT@/Sources/IndexCore/Protocols.swift:47:12
+0.18ms	@ROOT@/Sources/IndexCore/Protocols.swift:45:13	global function IndexCore.(file).welcome()@@ROOT@/Sources/IndexCore/Protocols.swift:45:13
+@ROOT@/Sources/IndexCore/Locals.swift:26:9: warning: initialization of immutable value 'unusedTotal' was never used; consider replacing with assignment to '_' or removing it [pbd_never_used] [#NoUsage]
+24 | /// An unused local `let` and an unused local function in a used function.
+25 | public func summarize(_ values: [Int]) -> Int {
+26 |     let unusedTotal = values.count
+   |         `- warning: initialization of immutable value 'unusedTotal' was never used; consider replacing with assignment to '_' or removing it [pbd_never_used] [#NoUsage]
+27 |     func unusedHelper() -> Int {
+28 |         0
+
+[#NoUsage]: <https://docs.swift.org/compiler/documentation/diagnostics/no-usage>
+0.20ms	@ROOT@/Sources/IndexCore/Unused+Extra.swift:4:9
+0.30ms	@ROOT@/Sources/IndexCore/Unused+Extra.swift:3:10	instance method IndexCore.(file).Unused extension.third()@@ROOT@/Sources/IndexCore/Unused+Extra.swift:3:10
+0.03ms	@ROOT@/Sources/IndexCore/Unused.swift:6:9
+0.05ms	@ROOT@/Sources/IndexCore/Unused.swift:5:10	instance method IndexCore.(file).Unused.first()@@ROOT@/Sources/IndexCore/Unused.swift:5:10
+0.02ms	@ROOT@/Sources/IndexCore/Unused.swift:11:9
+0.03ms	@ROOT@/Sources/IndexCore/Unused.swift:10:10	instance method IndexCore.(file).Unused.second()@@ROOT@/Sources/IndexCore/Unused.swift:10:10
+0.01ms	@ROOT@/Sources/IndexCore/Unused.swift:3:8	initializer IndexCore.(file).Unused.init()@@ROOT@/Sources/IndexCore/Unused.swift:3:8
+4.74ms	@ROOT@/Sources/IndexCore/Formatting.swift:3:5
+4.92ms	@ROOT@/Sources/IndexCore/Formatting.swift:2:13	global function IndexCore.(file).formatLine@@ROOT@/Sources/IndexCore/Formatting.swift:2:13
+0.01ms	@ROOT@/Sources/IndexCore/Lifecycle.swift:4:16	getter IndexCore.(file).Session.name.getter@@ROOT@/Sources/IndexCore/Lifecycle.swift:4:16
+0.07ms	@ROOT@/Sources/IndexCore/Lifecycle.swift:8:9
+0.14ms	@ROOT@/Sources/IndexCore/Lifecycle.swift:7:12	initializer IndexCore.(file).Session.init(name:)@@ROOT@/Sources/IndexCore/Lifecycle.swift:7:12
+0.10ms	@ROOT@/Sources/IndexCore/Lifecycle.swift:12:9
+0.15ms	@ROOT@/Sources/IndexCore/Lifecycle.swift:11:5	deinitializer IndexCore.(file).Session.deinit@@ROOT@/Sources/IndexCore/Lifecycle.swift:11:5
+0.68ms	@ROOT@/Sources/IndexCore/Lifecycle.swift:17:9
+1.63ms	@ROOT@/Sources/IndexCore/Lifecycle.swift:16:17	instance method IndexCore.(file).Session.open()@@ROOT@/Sources/IndexCore/Lifecycle.swift:16:17
+0.11ms	@ROOT@/Sources/IndexCore/Lifecycle.swift:22:9
+0.16ms	@ROOT@/Sources/IndexCore/Lifecycle.swift:21:17	instance method IndexCore.(file).Session.close()@@ROOT@/Sources/IndexCore/Lifecycle.swift:21:17
+0.01ms	@ROOT@/Sources/IndexCore/Lifecycle.swift:29:9	getter IndexCore.(file).Version.major.getter@@ROOT@/Sources/IndexCore/Lifecycle.swift:29:9
+0.03ms	@ROOT@/Sources/IndexCore/Lifecycle.swift:33:9
+0.05ms	@ROOT@/Sources/IndexCore/Lifecycle.swift:32:12	initializer IndexCore.(file).Version.init(major:)@@ROOT@/Sources/IndexCore/Lifecycle.swift:32:12
+0.98ms	@ROOT@/Sources/IndexCore/Lifecycle.swift:38:9
+1.14ms	@ROOT@/Sources/IndexCore/Lifecycle.swift:37:24	operator function IndexCore.(file).Version.==@@ROOT@/Sources/IndexCore/Lifecycle.swift:37:24
+0.23ms	@ROOT@/Sources/IndexCore/TestOnly.swift:3:5
+0.31ms	@ROOT@/Sources/IndexCore/TestOnly.swift:2:13	global function IndexCore.(file).publicOnlyTests()@@ROOT@/Sources/IndexCore/TestOnly.swift:2:13
+0.03ms	@ROOT@/Sources/IndexCore/TestOnly.swift:8:16
+0.89ms	@ROOT@/Sources/IndexCore/TestOnly.swift:9:12
+5.51ms	@ROOT@/Sources/IndexCore/TestOnly.swift:7:6	global function IndexCore.(file).onlyTestsCall()@@ROOT@/Sources/IndexCore/TestOnly.swift:7:6
+0.02ms	@ROOT@/Sources/IndexCore/TestOnly.swift:14:5
+0.04ms	@ROOT@/Sources/IndexCore/TestOnly.swift:13:6	global function IndexCore.(file).neverCalled()@@ROOT@/Sources/IndexCore/TestOnly.swift:13:6
+0.06ms	@ROOT@/Sources/IndexCore/TestOnly.swift:19:5
+0.08ms	@ROOT@/Sources/IndexCore/TestOnly.swift:18:13	global function IndexCore.(file).cases()@@ROOT@/Sources/IndexCore/TestOnly.swift:18:13
+0.05ms	@ROOT@/Sources/IndexCore/TestOnly.swift:32:5
+0.07ms	@ROOT@/Sources/IndexCore/TestOnly.swift:31:13	global function IndexCore.(file).buildMode()@@ROOT@/Sources/IndexCore/TestOnly.swift:31:13
+0.01ms	@ROOT@/Sources/IndexCore/Types.swift:5:9	getter IndexCore.(file).Alpha.value.getter@@ROOT@/Sources/IndexCore/Types.swift:5:9
+0.07ms	@ROOT@/Sources/IndexCore/Types.swift:12:9
+0.11ms	@ROOT@/Sources/IndexCore/Types.swift:11:10	instance method IndexCore.(file).Beta.make()@@ROOT@/Sources/IndexCore/Types.swift:11:10
+0.01ms	@ROOT@/Sources/IndexCore/Types.swift:9:8	initializer IndexCore.(file).Beta.init()@@ROOT@/Sources/IndexCore/Types.swift:9:8
+0.03ms	@ROOT@/Sources/IndexCore/Types.swift:19:9
+0.04ms	@ROOT@/Sources/IndexCore/Types.swift:18:10	instance method IndexCore.(file).Alpha extension.partner()@@ROOT@/Sources/IndexCore/Types.swift:18:10
+0.01ms	@ROOT@/Sources/IndexCore/Types.swift:26:9	getter IndexCore.(file).Ledger.entries.getter@@ROOT@/Sources/IndexCore/Types.swift:26:9
+0.01ms	@ROOT@/Sources/IndexCore/Types.swift:26:9	setter IndexCore.(file).Ledger.entries.setter@@ROOT@/Sources/IndexCore/Types.swift:26:9
+0.01ms	@ROOT@/Sources/IndexCore/Types.swift:26:9	_modify accessor IndexCore.(file).Ledger.entries._modify accessor@@ROOT@/Sources/IndexCore/Types.swift:26:9
+0.01ms	@ROOT@/Sources/IndexCore/Types.swift:31:13	getter IndexCore.(file).Ledger.Index.position.getter@@ROOT@/Sources/IndexCore/Types.swift:31:13
+1.56ms	@ROOT@/Sources/IndexCore/Types.swift:35:13
+1.61ms	@ROOT@/Sources/IndexCore/Types.swift:34:14	instance method IndexCore.(file).Ledger.Index.entry(in:)@@ROOT@/Sources/IndexCore/Types.swift:34:14
+0.03ms	@ROOT@/Sources/IndexCore/Types.swift:41:9
+0.06ms	@ROOT@/Sources/IndexCore/Types.swift:40:10	instance method IndexCore.(file).Ledger.index(at:)@@ROOT@/Sources/IndexCore/Types.swift:40:10
+0.57ms	@ROOT@/Sources/IndexCore/Types.swift:49:9
+0.81ms	@ROOT@/Sources/IndexCore/Types.swift:48:10	instance method IndexCore.(file).Array extension.doubledAll()@@ROOT@/Sources/IndexCore/Types.swift:48:10
+2.04ms	@ROOT@/Sources/IndexCore/Types.swift:56:9
+2.30ms	@ROOT@/Sources/IndexCore/Types.swift:55:10	instance method IndexCore.(file).Array extension.secondItem()@@ROOT@/Sources/IndexCore/Types.swift:55:10
+0.07ms	@ROOT@/Sources/IndexCore/Types.swift:62:5
+0.09ms	@ROOT@/Sources/IndexCore/Types.swift:61:13	global function IndexCore.(file).cycle()@@ROOT@/Sources/IndexCore/Types.swift:61:13
+0.05ms	@ROOT@/Sources/IndexCore/Types.swift:67:18
+0.04ms	@ROOT@/Sources/IndexCore/Types.swift:68:12
+0.15ms	@ROOT@/Sources/IndexCore/Types.swift:66:13	global function IndexCore.(file).ledgerEntry()@@ROOT@/Sources/IndexCore/Types.swift:66:13
+0.16ms	@ROOT@/Sources/IndexCore/Types.swift:73:5
+0.22ms	@ROOT@/Sources/IndexCore/Types.swift:72:13	global function IndexCore.(file).arrayUse()@@ROOT@/Sources/IndexCore/Types.swift:72:13
+0.29ms	@ROOT@/Sources/IndexApp/main.swift:6:16
+0.32ms	@ROOT@/Sources/IndexApp/main.swift:7:1
+3.04ms	@ROOT@/Sources/IndexApp/main.swift:8:1
+0.29ms	@ROOT@/Sources/IndexApp/main.swift:6:16
+0.32ms	@ROOT@/Sources/IndexApp/main.swift:7:1
+3.05ms	@ROOT@/Sources/IndexApp/main.swift:8:1
+6.27ms	@ROOT@/Sources/IndexCore/Bytes.swift:7:5
+6.38ms	@ROOT@/Sources/IndexCore/Bytes.swift:6:6	global function IndexCore.(file).measure@@ROOT@/Sources/IndexCore/Bytes.swift:6:6
+2.74ms	@ROOT@/Sources/IndexCore/Bytes.swift:12:5
+2.83ms	@ROOT@/Sources/IndexCore/Bytes.swift:11:13	global function IndexCore.(file).bufferSize()@@ROOT@/Sources/IndexCore/Bytes.swift:11:13
+1.34ms	@ROOT@/Sources/IndexCore/Dependency.swift:5:5
+4.68ms	@ROOT@/Sources/IndexCore/Dependency.swift:4:13	global function IndexCore.(file).withDependency()@@ROOT@/Sources/IndexCore/Dependency.swift:4:13
+0.10ms	@ROOT@/Sources/IndexCore/Dependency.swift:12:5
+0.18ms	@ROOT@/Sources/IndexCore/Dependency.swift:11:6	global function IndexCore.(file).measure@@ROOT@/Sources/IndexCore/Dependency.swift:11:6
+0.21ms	@ROOT@/Sources/IndexCore/Dependency.swift:17:5
+0.29ms	@ROOT@/Sources/IndexCore/Dependency.swift:16:13	global function IndexCore.(file).payloadSize()@@ROOT@/Sources/IndexCore/Dependency.swift:16:13
+14.70ms	@ROOT@/Sources/Kits/Support.swift:6:5
+14.89ms	@ROOT@/Sources/Kits/Support.swift:5:13	global function index_support.(file).parseLine@@ROOT@/Sources/Kits/Support.swift:5:13
+0.05ms	@ROOT@/Sources/Kits/Support.swift:11:5
+0.07ms	@ROOT@/Sources/Kits/Support.swift:11:6
+1.08ms	@ROOT@/Sources/Kits/Support.swift:11:7
+0.03ms	@ROOT@/Sources/Kits/Support.swift:11:21
+0.09ms	@ROOT@/Sources/Kits/Support.swift:11:23
+0.03ms	@ROOT@/Sources/Kits/Support.swift:11:35
+0.15ms	@ROOT@/Sources/Kits/Support.swift:11:35
+1.56ms	@ROOT@/Sources/Kits/Support.swift:10:13	global function index_support.(file).banner()@@ROOT@/Sources/Kits/Support.swift:10:13
+0.01ms	@ROOT@/Sources/Kits/Support.swift:17:9	getter index_support.(file).Record.name.getter@@ROOT@/Sources/Kits/Support.swift:17:9
+0.01ms	@ROOT@/Sources/Kits/Support.swift:19:9	getter index_support.(file).Record.note.getter@@ROOT@/Sources/Kits/Support.swift:19:9
+0.02ms	<invalid loc>	static method index_support.(file).Record.CodingKeys.__derived_enum_equals
+0.02ms	<invalid loc>	getter index_support.(file).Record.CodingKeys.hashValue.getter
+0.02ms	<invalid loc>
+0.02ms	<invalid loc>
+0.01ms	<invalid loc>
+0.08ms	<invalid loc>
+0.20ms	<invalid loc>	instance method index_support.(file).Record.CodingKeys.hash(into:)
+0.01ms	<invalid loc>
+0.02ms	<invalid loc>
+0.01ms	<invalid loc>
+0.07ms	<invalid loc>	getter index_support.(file).Record.CodingKeys.stringValue.getter
+0.01ms	<invalid loc>
+0.42ms	<invalid loc>
+0.08ms	<invalid loc>
+0.02ms	<invalid loc>
+0.01ms	<invalid loc>
+0.68ms	<invalid loc>	initializer index_support.(file).Record.CodingKeys.init(stringValue:)
+0.02ms	<invalid loc>
+0.04ms	<invalid loc>	getter index_support.(file).Record.CodingKeys.intValue.getter
+0.01ms	<invalid loc>	initializer index_support.(file).Record.CodingKeys.init(intValue:)
+0.27ms	<invalid loc>
+0.64ms	<invalid loc>
+0.11ms	<invalid loc>
+1.14ms	<invalid loc>	initializer index_support.(file).Record.init(from:)
+0.01ms	@ROOT@/Sources/Kits/Support.swift:25:9	getter index_support.(file).Pair.left.getter@@ROOT@/Sources/Kits/Support.swift:25:9
+0.01ms	@ROOT@/Sources/Kits/Support.swift:27:9	getter index_support.(file).Pair.right.getter@@ROOT@/Sources/Kits/Support.swift:27:9
+2.46ms	@ROOT@/Sources/Kits/Support.swift:32:16
+0.31ms	@ROOT@/Sources/Kits/Support.swift:33:12
+2.99ms	@ROOT@/Sources/Kits/Support.swift:31:6	global function index_support.(file).recordName()@@ROOT@/Sources/Kits/Support.swift:31:6
+2.81ms	@ROOT@/Sources/Kits/Support.swift:38:5
+3.25ms	@ROOT@/Sources/Kits/Support.swift:37:6	global function index_support.(file).samePair()@@ROOT@/Sources/Kits/Support.swift:37:6
+0.39ms	<invalid loc>
+1.64ms	<invalid loc>
+0.40ms	<invalid loc>
+2.89ms	<invalid loc>	instance method index_support.(file).Record.encode(to:)
+0.63ms	<invalid loc>
+0.09ms	<invalid loc>
+0.46ms	<invalid loc>
+0.02ms	<invalid loc>
+0.01ms	<invalid loc>
+1.92ms	<invalid loc>	static method index_support.(file).Pair.__derived_struct_equals
+0.18ms	@ROOT@/Tests/IndexCoreTests/IndexCoreTests.swift:9:5
+0.17ms	@ROOT@/Tests/IndexCoreTests/IndexCoreTests.swift:17:5
+0.14ms	@ROOT@/Tests/IndexCoreTests/IndexCoreTests.swift:25:5
+0.17ms	@ROOT@/Tests/IndexCoreTests/IndexCoreTests.swift:32:5
+0.11ms	@ROOT@/Tests/IndexCoreTests/IndexCoreTests.swift:37:5
+0.92ms	@ROOT@/Tests/IndexCoreTests/IndexCoreTests.swift:45:5
+0.29ms	@__swiftmacro_14IndexCoreTestsAAV04onlyC04TestfMp_.swift:25:141
+0.11ms	@__swiftmacro_14IndexCoreTestsAAV11writesLevel4TestfMp_.swift:25:146
+0.09ms	@__swiftmacro_14IndexCoreTestsAAV11nonOptional4TestfMp_.swift:25:146
+0.09ms	@__swiftmacro_14IndexCoreTestsAAV11needlessTry4TestfMp_.swift:25:146
+0.08ms	@__swiftmacro_14IndexCoreTestsAAV16redundantRequire4TestfMp_.swift:25:151
+0.09ms	@__swiftmacro_14IndexCoreTestsAAV8positive4TestfMp_.swift:25:142
+1.42ms	@BUILD@/out/Intermediates.noindex/IndexFixture.build/Debug/IndexCoreTests-p.build/DerivedSources/test_entry_point.swift:520:24
+0.28ms	@BUILD@/out/Intermediates.noindex/IndexFixture.build/Debug/IndexCoreTests-p.build/DerivedSources/test_entry_point.swift:521:30
+9.36ms	@BUILD@/out/Intermediates.noindex/IndexFixture.build/Debug/IndexCoreTests-p.build/DerivedSources/test_entry_point.swift:522:16
+0.07ms	@BUILD@/out/Intermediates.noindex/IndexFixture.build/Debug/IndexCoreTests-p.build/DerivedSources/test_entry_point.swift:522:67
+3.80ms	@BUILD@/out/Intermediates.noindex/IndexFixture.build/Debug/IndexCoreTests-p.build/DerivedSources/test_entry_point.swift:523:24
+0.03ms	@BUILD@/out/Intermediates.noindex/IndexFixture.build/Debug/IndexCoreTests-p.build/DerivedSources/test_entry_point.swift:528:16
+17.45ms	@BUILD@/out/Intermediates.noindex/IndexFixture.build/Debug/IndexCoreTests-p.build/DerivedSources/test_entry_point.swift:519:25	static method IndexCoreTests.(file).__SwiftPMGeneratedTestRunner.testingLibrary()@@BUILD@/out/Intermediates.noindex/IndexFixture.build/Debug/IndexCoreTests-p.build/DerivedSources/test_entry_point.swift:519:25
+0.10ms	@BUILD@/out/Intermediates.noindex/IndexFixture.build/Debug/IndexCoreTests-p.build/DerivedSources/test_entry_point.swift:532:24
+0.05ms	@BUILD@/out/Intermediates.noindex/IndexFixture.build/Debug/IndexCoreTests-p.build/DerivedSources/test_entry_point.swift:533:30
+0.21ms	@BUILD@/out/Intermediates.noindex/IndexFixture.build/Debug/IndexCoreTests-p.build/DerivedSources/test_entry_point.swift:534:16
+0.04ms	@BUILD@/out/Intermediates.noindex/IndexFixture.build/Debug/IndexCoreTests-p.build/DerivedSources/test_entry_point.swift:534:70
+0.03ms	@BUILD@/out/Intermediates.noindex/IndexFixture.build/Debug/IndexCoreTests-p.build/DerivedSources/test_entry_point.swift:535:24
+0.02ms	@BUILD@/out/Intermediates.noindex/IndexFixture.build/Debug/IndexCoreTests-p.build/DerivedSources/test_entry_point.swift:538:16
+0.70ms	@BUILD@/out/Intermediates.noindex/IndexFixture.build/Debug/IndexCoreTests-p.build/DerivedSources/test_entry_point.swift:531:25	static method IndexCoreTests.(file).__SwiftPMGeneratedTestRunner.testOutputPath()@@BUILD@/out/Intermediates.noindex/IndexFixture.build/Debug/IndexCoreTests-p.build/DerivedSources/test_entry_point.swift:531:25
+0.03ms	@BUILD@/out/Intermediates.noindex/IndexFixture.build/Debug/IndexCoreTests-p.build/DerivedSources/test_entry_point.swift:561:30
+0.17ms	@BUILD@/out/Intermediates.noindex/IndexFixture.build/Debug/IndexCoreTests-p.build/DerivedSources/test_entry_point.swift:563:12
+0.05ms	@BUILD@/out/Intermediates.noindex/IndexFixture.build/Debug/IndexCoreTests-p.build/DerivedSources/test_entry_point.swift:564:13
+0.01ms	@BUILD@/out/Intermediates.noindex/IndexFixture.build/Debug/IndexCoreTests-p.build/DerivedSources/test_entry_point.swift:564:46
+0.48ms	@BUILD@/out/Intermediates.noindex/IndexFixture.build/Debug/IndexCoreTests-p.build/DerivedSources/test_entry_point.swift:559:17	static method IndexCoreTests.(file).__SwiftPMGeneratedTestRunner.main()@@BUILD@/out/Intermediates.noindex/IndexFixture.build/Debug/IndexCoreTests-p.build/DerivedSources/test_entry_point.swift:559:17
+0.01ms	@BUILD@/out/Intermediates.noindex/IndexFixture.build/Debug/IndexCoreTests-p.build/DerivedSources/test_entry_point.swift:518:8	initializer IndexCoreTests.(file).__SwiftPMGeneratedTestRunner.init()@@BUILD@/out/Intermediates.noindex/IndexFixture.build/Debug/IndexCoreTests-p.build/DerivedSources/test_entry_point.swift:518:8
+0.02ms	@BUILD@/out/Intermediates.noindex/IndexFixture.build/Debug/IndexCoreTests-p.build/DerivedSources/test_entry_point.swift:515:1
+0.07ms	<invalid loc>	static method IndexCoreTests.(file).__SwiftPMGeneratedTestRunner.$main()
+0.25ms	@ROOT@/Tests/IndexCoreTests/IndexCoreTests.swift:9:5
+0.19ms	@ROOT@/Tests/IndexCoreTests/IndexCoreTests.swift:17:5
+0.10ms	@ROOT@/Tests/IndexCoreTests/IndexCoreTests.swift:25:5
+0.06ms	@ROOT@/Tests/IndexCoreTests/IndexCoreTests.swift:32:5
+0.05ms	@ROOT@/Tests/IndexCoreTests/IndexCoreTests.swift:37:5
+1.02ms	@ROOT@/Tests/IndexCoreTests/IndexCoreTests.swift:45:5
+0.35ms	@__swiftmacro_14IndexCoreTestsAAV04onlyC04TestfMp_.swift:25:141
+0.13ms	@__swiftmacro_14IndexCoreTestsAAV11writesLevel4TestfMp_.swift:25:146
+0.11ms	@__swiftmacro_14IndexCoreTestsAAV11nonOptional4TestfMp_.swift:25:146
+0.10ms	@__swiftmacro_14IndexCoreTestsAAV11needlessTry4TestfMp_.swift:25:146
+0.09ms	@__swiftmacro_14IndexCoreTestsAAV16redundantRequire4TestfMp_.swift:25:151
+0.09ms	@__swiftmacro_14IndexCoreTestsAAV8positive4TestfMp_.swift:25:142
+0.11ms	@__swiftmacro_14IndexCoreTestsAAV04onlyC04TestfMp_.swift:4:62
+0.08ms	@__swiftmacro_14IndexCoreTestsAAV04onlyC04TestfMp_.swift:5:5
+0.01ms	@__swiftmacro_14IndexCoreTests0063___swiftmacro_14IndexCoreTestsAAV04onlyC04TestfMp_swift_jbDJvnBafMX3_151_9isolationfMf_.swift:1:1
+0.08ms	@__swiftmacro_14IndexCoreTestsAAV04onlyC04TestfMp_.swift:4:152
+0.01ms	@__swiftmacro_14IndexCoreTests0063___swiftmacro_14IndexCoreTestsAAV04onlyC04TestfMp_swift_jbDJvnBafMX4_98_9isolationfMf0_.swift:1:1
+0.05ms	@__swiftmacro_14IndexCoreTestsAAV04onlyC04TestfMp_.swift:5:99
+0.46ms	@__swiftmacro_14IndexCoreTestsAAV04onlyC04TestfMp_.swift:3:18	local function IndexCoreTests.(file).IndexCoreTests.$s14IndexCoreTestsAAV04onlyC04TestfMp_17Z9226405aec4ab361fMu_().$s14IndexCoreTestsAAV04onlyC04TestfMp_7__localfMu0_@@__swiftmacro_14IndexCoreTestsAAV04onlyC04TestfMp_.swift:3:18
+0.08ms	@__swiftmacro_14IndexCoreTestsAAV04onlyC04TestfMp_.swift:3:107
+0.04ms	@__swiftmacro_14IndexCoreTestsAAV04onlyC04TestfMp_.swift:7:3
+0.02ms	@__swiftmacro_14IndexCoreTests0063___swiftmacro_14IndexCoreTestsAAV04onlyC04TestfMp_swift_jbDJvnBafMX3_151_9isolationfMf_.swift:1:1
+0.02ms	@__swiftmacro_14IndexCoreTests0063___swiftmacro_14IndexCoreTestsAAV04onlyC04TestfMp_swift_jbDJvnBafMX4_98_9isolationfMf0_.swift:1:1
+1.06ms	@__swiftmacro_14IndexCoreTestsAAV04onlyC04TestfMp_.swift:2:31	static method IndexCoreTests.(file).IndexCoreTests.$s14IndexCoreTestsAAV04onlyC04TestfMp_17Z9226405aec4ab361fMu_()@@__swiftmacro_14IndexCoreTestsAAV04onlyC04TestfMp_.swift:2:31
+1.66ms	@__swiftmacro_14IndexCoreTestsAAV04onlyC04TestfMp_.swift:12:10
+0.01ms	@__swiftmacro_14IndexCoreTestsAAV04onlyC04TestfMp_.swift:12:21
+1.90ms	@__swiftmacro_14IndexCoreTestsAAV04onlyC04TestfMp_.swift:11:31	static method IndexCoreTests.(file).IndexCoreTests.$s14IndexCoreTestsAAV04onlyC04TestfMp_25generator9226405aec4ab361fMu_()@@__swiftmacro_14IndexCoreTestsAAV04onlyC04TestfMp_.swift:11:31
+0.01ms	@__swiftmacro_14IndexCoreTestsAAV04onlyC04TestfMp_.swift:25:32	getter IndexCoreTests.(file).IndexCoreTests.$s14IndexCoreTestsAAV04onlyC04TestfMp_33testContentRecord9226405aec4ab361fMu_.getter@@__swiftmacro_14IndexCoreTestsAAV04onlyC04TestfMp_.swift:25:32
+2.38ms	@__swiftmacro_14IndexCoreTests0025IndexCoreTestsswift_jqFBgfMX9_8_6expectfMf_.swift:1:1
+10.22ms	@ROOT@/Tests/IndexCoreTests/IndexCoreTests.swift:10:9
+1.23ms	@__swiftmacro_14IndexCoreTests0025IndexCoreTestsswift_jqFBgfMX10_8_6expectfMf0_.swift:1:1
+2.27ms	@ROOT@/Tests/IndexCoreTests/IndexCoreTests.swift:11:9
+1.94ms	@__swiftmacro_14IndexCoreTests0025IndexCoreTestsswift_jqFBgfMX11_8_6expectfMf1_.swift:1:1
+2.88ms	@ROOT@/Tests/IndexCoreTests/IndexCoreTests.swift:12:9
+9.82ms	@__swiftmacro_14IndexCoreTests0025IndexCoreTestsswift_jqFBgfMX12_8_6expectfMf2_.swift:1:1
+12.49ms	@ROOT@/Tests/IndexCoreTests/IndexCoreTests.swift:13:9
+0.02ms	@ROOT@/Tests/IndexCoreTests/IndexCoreTests.swift:10:16
+0.04ms	@__swiftmacro_14IndexCoreTests0025IndexCoreTestsswift_jqFBgfMX9_15_15_sourceLocationfMf_.swift:1:1
+0.69ms	@ROOT@/Tests/IndexCoreTests/IndexCoreTests.swift:10:16
+0.03ms	@ROOT@/Tests/IndexCoreTests/IndexCoreTests.swift:11:16
+0.04ms	@__swiftmacro_14IndexCoreTests0025IndexCoreTestsswift_jqFBgfMX10_15_15_sourceLocationfMf0_.swift:1:1
+0.38ms	@ROOT@/Tests/IndexCoreTests/IndexCoreTests.swift:11:16
+0.02ms	@ROOT@/Tests/IndexCoreTests/IndexCoreTests.swift:12:16
+0.03ms	@__swiftmacro_14IndexCoreTests0025IndexCoreTestsswift_jqFBgfMX11_15_15_sourceLocationfMf1_.swift:1:1
+0.30ms	@ROOT@/Tests/IndexCoreTests/IndexCoreTests.swift:12:16
+0.01ms	@ROOT@/Tests/IndexCoreTests/IndexCoreTests.swift:13:16
+0.03ms	@__swiftmacro_14IndexCoreTests0025IndexCoreTestsswift_jqFBgfMX12_15_15_sourceLocationfMf2_.swift:1:1
+0.28ms	@ROOT@/Tests/IndexCoreTests/IndexCoreTests.swift:13:16
+0.02ms	@__swiftmacro_14IndexCoreTests0025IndexCoreTestsswift_jqFBgfMX9_8_6expectfMf_.swift:1:244
+0.01ms	@__swiftmacro_14IndexCoreTests0025IndexCoreTestsswift_jqFBgfMX9_8_6expectfMf_.swift:1:244
+0.02ms	@__swiftmacro_14IndexCoreTests0025IndexCoreTestsswift_jqFBgfMX9_8_6expectfMf_.swift:1:244
+0.01ms	@__swiftmacro_14IndexCoreTests0025IndexCoreTestsswift_jqFBgfMX9_8_6expectfMf_.swift:1:244
+0.01ms	@__swiftmacro_14IndexCoreTests0025IndexCoreTestsswift_jqFBgfMX10_8_6expectfMf0_.swift:1:246
+0.01ms	@__swiftmacro_14IndexCoreTests0025IndexCoreTestsswift_jqFBgfMX10_8_6expectfMf0_.swift:1:246
+0.01ms	@__swiftmacro_14IndexCoreTests0025IndexCoreTestsswift_jqFBgfMX10_8_6expectfMf0_.swift:1:246
+0.01ms	@__swiftmacro_14IndexCoreTests0025IndexCoreTestsswift_jqFBgfMX10_8_6expectfMf0_.swift:1:246
+0.01ms	@__swiftmacro_14IndexCoreTests0025IndexCoreTestsswift_jqFBgfMX11_8_6expectfMf1_.swift:1:240
+0.01ms	@__swiftmacro_14IndexCoreTests0025IndexCoreTestsswift_jqFBgfMX11_8_6expectfMf1_.swift:1:240
+0.01ms	@__swiftmacro_14IndexCoreTests0025IndexCoreTestsswift_jqFBgfMX11_8_6expectfMf1_.swift:1:240
+0.01ms	@__swiftmacro_14IndexCoreTests0025IndexCoreTestsswift_jqFBgfMX11_8_6expectfMf1_.swift:1:240
+0.01ms	@__swiftmacro_14IndexCoreTests0025IndexCoreTestsswift_jqFBgfMX12_8_6expectfMf2_.swift:1:266
+0.01ms	@__swiftmacro_14IndexCoreTests0025IndexCoreTestsswift_jqFBgfMX12_8_6expectfMf2_.swift:1:266
+0.01ms	@__swiftmacro_14IndexCoreTests0025IndexCoreTestsswift_jqFBgfMX12_8_6expectfMf2_.swift:1:266
+0.01ms	@__swiftmacro_14IndexCoreTests0025IndexCoreTestsswift_jqFBgfMX12_8_6expectfMf2_.swift:1:266
+31.78ms	@ROOT@/Tests/IndexCoreTests/IndexCoreTests.swift:9:16	instance method IndexCoreTests.(file).IndexCoreTests.onlyTests()@@ROOT@/Tests/IndexCoreTests/IndexCoreTests.swift:9:16
+0.10ms	@__swiftmacro_14IndexCoreTestsAAV11writesLevel4TestfMp_.swift:4:67
+0.08ms	@__swiftmacro_14IndexCoreTestsAAV11writesLevel4TestfMp_.swift:5:5
+0.01ms	@__swiftmacro_14IndexCoreTests0068___swiftmacro_14IndexCoreTestsAAV11writesLevel4TestfMp_swift_eoIByCDafMX3_156_9isolationfMf_.swift:1:1
+0.06ms	@__swiftmacro_14IndexCoreTestsAAV11writesLevel4TestfMp_.swift:4:157
+0.01ms	@__swiftmacro_14IndexCoreTests0068___swiftmacro_14IndexCoreTestsAAV11writesLevel4TestfMp_swift_eoIByCDafMX4_98_9isolationfMf0_.swift:1:1
+0.05ms	@__swiftmacro_14IndexCoreTestsAAV11writesLevel4TestfMp_.swift:5:99
+0.40ms	@__swiftmacro_14IndexCoreTestsAAV11writesLevel4TestfMp_.swift:3:18	local function IndexCoreTests.(file).IndexCoreTests.$s14IndexCoreTestsAAV11writesLevel4TestfMp_16efd2a34152025891fMu_().$s14IndexCoreTestsAAV11writesLevel4TestfMp_7__localfMu0_@@__swiftmacro_14IndexCoreTestsAAV11writesLevel4TestfMp_.swift:3:18
+0.02ms	@__swiftmacro_14IndexCoreTestsAAV11writesLevel4TestfMp_.swift:3:112
+0.02ms	@__swiftmacro_14IndexCoreTestsAAV11writesLevel4TestfMp_.swift:7:3
+0.01ms	@__swiftmacro_14IndexCoreTests0068___swiftmacro_14IndexCoreTestsAAV11writesLevel4TestfMp_swift_eoIByCDafMX3_156_9isolationfMf_.swift:1:1
+0.01ms	@__swiftmacro_14IndexCoreTests0068___swiftmacro_14IndexCoreTestsAAV11writesLevel4TestfMp_swift_eoIByCDafMX4_98_9isolationfMf0_.swift:1:1
+0.64ms	@__swiftmacro_14IndexCoreTestsAAV11writesLevel4TestfMp_.swift:2:31	static method IndexCoreTests.(file).IndexCoreTests.$s14IndexCoreTestsAAV11writesLevel4TestfMp_16efd2a34152025891fMu_()@@__swiftmacro_14IndexCoreTestsAAV11writesLevel4TestfMp_.swift:2:31
+0.34ms	@__swiftmacro_14IndexCoreTestsAAV11writesLevel4TestfMp_.swift:12:10
+0.01ms	@__swiftmacro_14IndexCoreTestsAAV11writesLevel4TestfMp_.swift:12:21
+0.43ms	@__swiftmacro_14IndexCoreTestsAAV11writesLevel4TestfMp_.swift:11:31	static method IndexCoreTests.(file).IndexCoreTests.$s14IndexCoreTestsAAV11writesLevel4TestfMp_25generatorefd2a34152025891fMu_()@@__swiftmacro_14IndexCoreTestsAAV11writesLevel4TestfMp_.swift:11:31
+0.01ms	@__swiftmacro_14IndexCoreTestsAAV11writesLevel4TestfMp_.swift:25:32	getter IndexCoreTests.(file).IndexCoreTests.$s14IndexCoreTestsAAV11writesLevel4TestfMp_33testContentRecordefd2a34152025891fMu_.getter@@__swiftmacro_14IndexCoreTestsAAV11writesLevel4TestfMp_.swift:25:32
+0.10ms	@ROOT@/Tests/IndexCoreTests/IndexCoreTests.swift:18:25
+0.05ms	@ROOT@/Tests/IndexCoreTests/IndexCoreTests.swift:19:9
+1.28ms	@__swiftmacro_14IndexCoreTests0025IndexCoreTestsswift_jqFBgfMX19_8_6expectfMf_.swift:1:1
+2.42ms	@ROOT@/Tests/IndexCoreTests/IndexCoreTests.swift:20:9
+0.02ms	@ROOT@/Tests/IndexCoreTests/IndexCoreTests.swift:20:16
+0.03ms	@__swiftmacro_14IndexCoreTests0025IndexCoreTestsswift_jqFBgfMX19_15_15_sourceLocationfMf_.swift:1:1
+0.32ms	@ROOT@/Tests/IndexCoreTests/IndexCoreTests.swift:20:16
+0.02ms	@__swiftmacro_14IndexCoreTests0025IndexCoreTestsswift_jqFBgfMX19_8_6expectfMf_.swift:1:244
+0.01ms	@__swiftmacro_14IndexCoreTests0025IndexCoreTestsswift_jqFBgfMX19_8_6expectfMf_.swift:1:244
+0.01ms	@__swiftmacro_14IndexCoreTests0025IndexCoreTestsswift_jqFBgfMX19_8_6expectfMf_.swift:1:244
+0.01ms	@__swiftmacro_14IndexCoreTests0025IndexCoreTestsswift_jqFBgfMX19_8_6expectfMf_.swift:1:244
+3.25ms	@ROOT@/Tests/IndexCoreTests/IndexCoreTests.swift:17:16	instance method IndexCoreTests.(file).IndexCoreTests.writesLevel()@@ROOT@/Tests/IndexCoreTests/IndexCoreTests.swift:17:16
+0.08ms	@__swiftmacro_14IndexCoreTestsAAV11nonOptional4TestfMp_.swift:4:67
+0.07ms	@__swiftmacro_14IndexCoreTestsAAV11nonOptional4TestfMp_.swift:5:5
+0.01ms	@__swiftmacro_14IndexCoreTests0068___swiftmacro_14IndexCoreTestsAAV11nonOptional4TestfMp_swift_eoIByCDafMX3_156_9isolationfMf_.swift:1:1
+0.05ms	@__swiftmacro_14IndexCoreTestsAAV11nonOptional4TestfMp_.swift:4:157
+0.01ms	@__swiftmacro_14IndexCoreTests0068___swiftmacro_14IndexCoreTestsAAV11nonOptional4TestfMp_swift_eoIByCDafMX4_98_9isolationfMf0_.swift:1:1
+0.04ms	@__swiftmacro_14IndexCoreTestsAAV11nonOptional4TestfMp_.swift:5:99
+0.34ms	@__swiftmacro_14IndexCoreTestsAAV11nonOptional4TestfMp_.swift:3:18	local function IndexCoreTests.(file).IndexCoreTests.$s14IndexCoreTestsAAV11nonOptional4TestfMp_17Z712fc9f94792ba11fMu_().$s14IndexCoreTestsAAV11nonOptional4TestfMp_7__localfMu0_@@__swiftmacro_14IndexCoreTestsAAV11nonOptional4TestfMp_.swift:3:18
+0.02ms	@__swiftmacro_14IndexCoreTestsAAV11nonOptional4TestfMp_.swift:3:112
+0.02ms	@__swiftmacro_14IndexCoreTestsAAV11nonOptional4TestfMp_.swift:7:3
+0.01ms	@__swiftmacro_14IndexCoreTests0068___swiftmacro_14IndexCoreTestsAAV11nonOptional4TestfMp_swift_eoIByCDafMX3_156_9isolationfMf_.swift:1:1
+0.01ms	@__swiftmacro_14IndexCoreTests0068___swiftmacro_14IndexCoreTestsAAV11nonOptional4TestfMp_swift_eoIByCDafMX4_98_9isolationfMf0_.swift:1:1
+0.54ms	@__swiftmacro_14IndexCoreTestsAAV11nonOptional4TestfMp_.swift:2:31	static method IndexCoreTests.(file).IndexCoreTests.$s14IndexCoreTestsAAV11nonOptional4TestfMp_17Z712fc9f94792ba11fMu_()@@__swiftmacro_14IndexCoreTestsAAV11nonOptional4TestfMp_.swift:2:31
+0.33ms	@__swiftmacro_14IndexCoreTestsAAV11nonOptional4TestfMp_.swift:12:10
+0.01ms	@__swiftmacro_14IndexCoreTestsAAV11nonOptional4TestfMp_.swift:12:21
+0.42ms	@__swiftmacro_14IndexCoreTestsAAV11nonOptional4TestfMp_.swift:11:31	static method IndexCoreTests.(file).IndexCoreTests.$s14IndexCoreTestsAAV11nonOptional4TestfMp_25generator712fc9f94792ba11fMu_()@@__swiftmacro_14IndexCoreTestsAAV11nonOptional4TestfMp_.swift:11:31
+0.01ms	@__swiftmacro_14IndexCoreTestsAAV11nonOptional4TestfMp_.swift:25:32	getter IndexCoreTests.(file).IndexCoreTests.$s14IndexCoreTestsAAV11nonOptional4TestfMp_33testContentRecord712fc9f94792ba11fMu_.getter@@__swiftmacro_14IndexCoreTestsAAV11nonOptional4TestfMp_.swift:25:32
+0.07ms	@ROOT@/Tests/IndexCoreTests/IndexCoreTests.swift:26:21
+1.11ms	@__swiftmacro_14IndexCoreTests0025IndexCoreTestsswift_jqFBgfMX26_8_6expectfMf_.swift:1:1
+2.62ms	@ROOT@/Tests/IndexCoreTests/IndexCoreTests.swift:27:9
+0.02ms	@ROOT@/Tests/IndexCoreTests/IndexCoreTests.swift:27:16
+0.04ms	@__swiftmacro_14IndexCoreTests0025IndexCoreTestsswift_jqFBgfMX26_15_15_sourceLocationfMf_.swift:1:1
+0.36ms	@ROOT@/Tests/IndexCoreTests/IndexCoreTests.swift:27:16
+0.02ms	@__swiftmacro_14IndexCoreTests0025IndexCoreTestsswift_jqFBgfMX26_8_6expectfMf_.swift:1:226
+0.01ms	@__swiftmacro_14IndexCoreTests0025IndexCoreTestsswift_jqFBgfMX26_8_6expectfMf_.swift:1:226
+0.01ms	@__swiftmacro_14IndexCoreTests0025IndexCoreTestsswift_jqFBgfMX26_8_6expectfMf_.swift:1:226
+0.01ms	@__swiftmacro_14IndexCoreTests0025IndexCoreTestsswift_jqFBgfMX26_8_6expectfMf_.swift:1:226
+3.46ms	@ROOT@/Tests/IndexCoreTests/IndexCoreTests.swift:25:16	instance method IndexCoreTests.(file).IndexCoreTests.nonOptional()@@ROOT@/Tests/IndexCoreTests/IndexCoreTests.swift:25:16
+0.09ms	@__swiftmacro_14IndexCoreTestsAAV11needlessTry4TestfMp_.swift:4:67
+0.08ms	@__swiftmacro_14IndexCoreTestsAAV11needlessTry4TestfMp_.swift:5:5
+0.01ms	@__swiftmacro_14IndexCoreTests0068___swiftmacro_14IndexCoreTestsAAV11needlessTry4TestfMp_swift_eoIByCDafMX3_156_9isolationfMf_.swift:1:1
+0.06ms	@__swiftmacro_14IndexCoreTestsAAV11needlessTry4TestfMp_.swift:4:157
+0.01ms	@__swiftmacro_14IndexCoreTests0068___swiftmacro_14IndexCoreTestsAAV11needlessTry4TestfMp_swift_eoIByCDafMX4_98_9isolationfMf0_.swift:1:1
+0.05ms	@__swiftmacro_14IndexCoreTestsAAV11needlessTry4TestfMp_.swift:5:99
+0.39ms	@__swiftmacro_14IndexCoreTestsAAV11needlessTry4TestfMp_.swift:3:18	local function IndexCoreTests.(file).IndexCoreTests.$s14IndexCoreTestsAAV11needlessTry4TestfMp_17Z516c09fcc4bb865dfMu_().$s14IndexCoreTestsAAV11needlessTry4TestfMp_7__localfMu0_@@__swiftmacro_14IndexCoreTestsAAV11needlessTry4TestfMp_.swift:3:18
+0.02ms	@__swiftmacro_14IndexCoreTestsAAV11needlessTry4TestfMp_.swift:3:112
+0.02ms	@__swiftmacro_14IndexCoreTestsAAV11needlessTry4TestfMp_.swift:7:3
+0.01ms	@__swiftmacro_14IndexCoreTests0068___swiftmacro_14IndexCoreTestsAAV11needlessTry4TestfMp_swift_eoIByCDafMX3_156_9isolationfMf_.swift:1:1
+0.01ms	@__swiftmacro_14IndexCoreTests0068___swiftmacro_14IndexCoreTestsAAV11needlessTry4TestfMp_swift_eoIByCDafMX4_98_9isolationfMf0_.swift:1:1
+0.61ms	@__swiftmacro_14IndexCoreTestsAAV11needlessTry4TestfMp_.swift:2:31	static method IndexCoreTests.(file).IndexCoreTests.$s14IndexCoreTestsAAV11needlessTry4TestfMp_17Z516c09fcc4bb865dfMu_()@@__swiftmacro_14IndexCoreTestsAAV11needlessTry4TestfMp_.swift:2:31
+0.35ms	@__swiftmacro_14IndexCoreTestsAAV11needlessTry4TestfMp_.swift:12:10
+0.01ms	@__swiftmacro_14IndexCoreTestsAAV11needlessTry4TestfMp_.swift:12:21
+0.45ms	@__swiftmacro_14IndexCoreTestsAAV11needlessTry4TestfMp_.swift:11:31	static method IndexCoreTests.(file).IndexCoreTests.$s14IndexCoreTestsAAV11needlessTry4TestfMp_25generator516c09fcc4bb865dfMu_()@@__swiftmacro_14IndexCoreTestsAAV11needlessTry4TestfMp_.swift:11:31
+0.01ms	@__swiftmacro_14IndexCoreTestsAAV11needlessTry4TestfMp_.swift:25:32	getter IndexCoreTests.(file).IndexCoreTests.$s14IndexCoreTestsAAV11needlessTry4TestfMp_33testContentRecord516c09fcc4bb865dfMu_.getter@@__swiftmacro_14IndexCoreTestsAAV11needlessTry4TestfMp_.swift:25:32
+0.39ms	@__swiftmacro_14IndexCoreTests0025IndexCoreTestsswift_jqFBgfMX32_8_6expectfMf_.swift:1:1
+1.37ms	@ROOT@/Tests/IndexCoreTests/IndexCoreTests.swift:33:9
+0.02ms	@ROOT@/Tests/IndexCoreTests/IndexCoreTests.swift:33:16
+0.03ms	@__swiftmacro_14IndexCoreTests0025IndexCoreTestsswift_jqFBgfMX32_15_15_sourceLocationfMf_.swift:1:1
+0.32ms	@ROOT@/Tests/IndexCoreTests/IndexCoreTests.swift:33:16
+0.02ms	@__swiftmacro_14IndexCoreTests0025IndexCoreTestsswift_jqFBgfMX32_8_6expectfMf_.swift:1:21
+0.01ms	@__swiftmacro_14IndexCoreTests0025IndexCoreTestsswift_jqFBgfMX32_8_6expectfMf_.swift:1:21
+0.01ms	@__swiftmacro_14IndexCoreTests0025IndexCoreTestsswift_jqFBgfMX32_8_6expectfMf_.swift:1:21
+0.01ms	@__swiftmacro_14IndexCoreTests0025IndexCoreTestsswift_jqFBgfMX32_8_6expectfMf_.swift:1:21
+0.01ms	@__swiftmacro_14IndexCoreTests0025IndexCoreTestsswift_jqFBgfMX32_8_6expectfMf_.swift:1:169
+0.01ms	@__swiftmacro_14IndexCoreTests0025IndexCoreTestsswift_jqFBgfMX32_8_6expectfMf_.swift:1:169
+0.01ms	@__swiftmacro_14IndexCoreTests0025IndexCoreTestsswift_jqFBgfMX32_8_6expectfMf_.swift:1:169
+0.01ms	@__swiftmacro_14IndexCoreTests0025IndexCoreTestsswift_jqFBgfMX32_8_6expectfMf_.swift:1:169
+@ROOT@/Tests/IndexCoreTests/IndexCoreTests.swift:27:23: warning: comparing non-optional value of type 'Int' to 'nil' always returns true [nonoptional_compare_to_nil]
+25 |     @Test func nonOptional() {
+26 |         let count = Storage().count
+27 |         #expect(count != nil)
+   |                       `- warning: comparing non-optional value of type 'Int' to 'nil' always returns true [nonoptional_compare_to_nil]
+28 |     }
+29 | 
+
+3.38ms	@ROOT@/Tests/IndexCoreTests/IndexCoreTests.swift:32:16	instance method IndexCoreTests.(file).IndexCoreTests.needlessTry()@@ROOT@/Tests/IndexCoreTests/IndexCoreTests.swift:32:16
+0.15ms	@__swiftmacro_14IndexCoreTestsAAV16redundantRequire4TestfMp_.swift:4:72
+0.08ms	@__swiftmacro_14IndexCoreTestsAAV16redundantRequire4TestfMp_.swift:5:5
+0.01ms	@__swiftmacro_14IndexCoreTests0074___swiftmacro_14IndexCoreTestsAAV16redundantRequire4TestfMp_swift_IADEAaiGafMX3_161_9isolationfMf_.swift:1:1
+0.08ms	@__swiftmacro_14IndexCoreTestsAAV16redundantRequire4TestfMp_.swift:4:162
+0.01ms	@__swiftmacro_14IndexCoreTests0074___swiftmacro_14IndexCoreTestsAAV16redundantRequire4TestfMp_swift_IADEAaiGafMX4_98_9isolationfMf0_.swift:1:1
+0.05ms	@__swiftmacro_14IndexCoreTestsAAV16redundantRequire4TestfMp_.swift:5:99
+0.50ms	@__swiftmacro_14IndexCoreTestsAAV16redundantRequire4TestfMp_.swift:3:18	local function IndexCoreTests.(file).IndexCoreTests.$s14IndexCoreTestsAAV16redundantRequire4TestfMp_16f3802769f81a343dfMu_().$s14IndexCoreTestsAAV16redundantRequire4TestfMp_7__localfMu0_@@__swiftmacro_14IndexCoreTestsAAV16redundantRequire4TestfMp_.swift:3:18
+0.02ms	@__swiftmacro_14IndexCoreTestsAAV16redundantRequire4TestfMp_.swift:3:117
+0.02ms	@__swiftmacro_14IndexCoreTestsAAV16redundantRequire4TestfMp_.swift:7:3
+0.01ms	@__swiftmacro_14IndexCoreTests0074___swiftmacro_14IndexCoreTestsAAV16redundantRequire4TestfMp_swift_IADEAaiGafMX3_161_9isolationfMf_.swift:1:1
+0.01ms	@__swiftmacro_14IndexCoreTests0074___swiftmacro_14IndexCoreTestsAAV16redundantRequire4TestfMp_swift_IADEAaiGafMX4_98_9isolationfMf0_.swift:1:1
+0.77ms	@__swiftmacro_14IndexCoreTestsAAV16redundantRequire4TestfMp_.swift:2:31	static method IndexCoreTests.(file).IndexCoreTests.$s14IndexCoreTestsAAV16redundantRequire4TestfMp_16f3802769f81a343dfMu_()@@__swiftmacro_14IndexCoreTestsAAV16redundantRequire4TestfMp_.swift:2:31
+0.36ms	@__swiftmacro_14IndexCoreTestsAAV16redundantRequire4TestfMp_.swift:12:10
+0.01ms	@__swiftmacro_14IndexCoreTestsAAV16redundantRequire4TestfMp_.swift:12:21
+0.45ms	@__swiftmacro_14IndexCoreTestsAAV16redundantRequire4TestfMp_.swift:11:31	static method IndexCoreTests.(file).IndexCoreTests.$s14IndexCoreTestsAAV16redundantRequire4TestfMp_25generatorf3802769f81a343dfMu_()@@__swiftmacro_14IndexCoreTestsAAV16redundantRequire4TestfMp_.swift:11:31
+0.01ms	@__swiftmacro_14IndexCoreTestsAAV16redundantRequire4TestfMp_.swift:25:32	getter IndexCoreTests.(file).IndexCoreTests.$s14IndexCoreTestsAAV16redundantRequire4TestfMp_33testContentRecordf3802769f81a343dfMu_.getter@@__swiftmacro_14IndexCoreTestsAAV16redundantRequire4TestfMp_.swift:25:32
+macro expansion #expect:1:22: warning: no calls to throwing functions occur within 'try' expression [no_throw_in_try] [#UnnecessaryEffectMarker]
+`- @ROOT@/Tests/IndexCoreTests/IndexCoreTests.swift:33:36: note: expanded code originates here
+31 |     /// the macro's expansion, placed by its origin note.
+32 |     @Test func needlessTry() {
+33 |         #expect(try layout(1) == 9)
+   |         `- note: in expansion of macro 'expect' here [in_macro_expansion]
+   +--- macro expansion #expect ----------------------------------------
+   |1 | Testing.__checkValue(try layout(1) == 9,expression: .__fromSyntaxNode("try layout(1) == 9"),comments: [],isRequired: false,sourceLocation: Testing.SourceLocation.__here()).__expected()
+   |  |                      `- warning: no calls to throwing functions occur within 'try' expression [no_throw_in_try] [#UnnecessaryEffectMarker]
+   +--------------------------------------------------------------------
+34 |     }
+35 | 
+
+0.88ms	@__swiftmacro_14IndexCoreTests0025IndexCoreTestsswift_jqFBgfMX37_27_7requirefMf_.swift:1:1
+3.15ms	@ROOT@/Tests/IndexCoreTests/IndexCoreTests.swift:38:23
+2.26ms	@__swiftmacro_14IndexCoreTests0025IndexCoreTestsswift_jqFBgfMX40_8_6expectfMf_.swift:1:1
+3.41ms	@ROOT@/Tests/IndexCoreTests/IndexCoreTests.swift:41:9
+0.02ms	@ROOT@/Tests/IndexCoreTests/IndexCoreTests.swift:38:36
+0.06ms	@__swiftmacro_14IndexCoreTests0025IndexCoreTestsswift_jqFBgfMX37_35_15_sourceLocationfMf_.swift:1:1
+0.41ms	@ROOT@/Tests/IndexCoreTests/IndexCoreTests.swift:38:36
+0.02ms	@ROOT@/Tests/IndexCoreTests/IndexCoreTests.swift:41:16
+0.03ms	@__swiftmacro_14IndexCoreTests0025IndexCoreTestsswift_jqFBgfMX40_15_15_sourceLocationfMf0_.swift:1:1
+0.36ms	@ROOT@/Tests/IndexCoreTests/IndexCoreTests.swift:41:16
+0.02ms	@__swiftmacro_14IndexCoreTests0025IndexCoreTestsswift_jqFBgfMX37_27_7requirefMf_.swift:3:194
+0.01ms	@__swiftmacro_14IndexCoreTests0025IndexCoreTestsswift_jqFBgfMX37_27_7requirefMf_.swift:3:194
+0.02ms	@__swiftmacro_14IndexCoreTests0025IndexCoreTestsswift_jqFBgfMX37_27_7requirefMf_.swift:3:194
+0.01ms	@__swiftmacro_14IndexCoreTests0025IndexCoreTestsswift_jqFBgfMX37_27_7requirefMf_.swift:3:194
+0.01ms	@__swiftmacro_14IndexCoreTests0025IndexCoreTestsswift_jqFBgfMX40_8_6expectfMf_.swift:1:292
+0.01ms	@__swiftmacro_14IndexCoreTests0025IndexCoreTestsswift_jqFBgfMX40_8_6expectfMf_.swift:1:292
+0.01ms	@__swiftmacro_14IndexCoreTests0025IndexCoreTestsswift_jqFBgfMX40_8_6expectfMf_.swift:1:292
+0.01ms	@__swiftmacro_14IndexCoreTests0025IndexCoreTestsswift_jqFBgfMX40_8_6expectfMf_.swift:1:292
+7.91ms	@ROOT@/Tests/IndexCoreTests/IndexCoreTests.swift:37:16	instance method IndexCoreTests.(file).IndexCoreTests.redundantRequire()@@ROOT@/Tests/IndexCoreTests/IndexCoreTests.swift:37:16
+0.10ms	@__swiftmacro_14IndexCoreTestsAAV8positive4TestfMp_.swift:4:63
+0.08ms	@__swiftmacro_14IndexCoreTestsAAV8positive4TestfMp_.swift:5:5
+0.01ms	@__swiftmacro_14IndexCoreTests0064___swiftmacro_14IndexCoreTestsAAV8positive4TestfMp_swift_DdIDwEBafMX3_152_9isolationfMf_.swift:1:1
+0.06ms	@__swiftmacro_14IndexCoreTestsAAV8positive4TestfMp_.swift:4:153
+0.01ms	@__swiftmacro_14IndexCoreTests0064___swiftmacro_14IndexCoreTestsAAV8positive4TestfMp_swift_DdIDwEBafMX4_98_9isolationfMf0_.swift:1:1
+0.05ms	@__swiftmacro_14IndexCoreTestsAAV8positive4TestfMp_.swift:5:99
+0.40ms	@__swiftmacro_14IndexCoreTestsAAV8positive4TestfMp_.swift:3:18	local function IndexCoreTests.(file).IndexCoreTests.$s14IndexCoreTestsAAV8positive4TestfMp_16ad84a4ae6813c52ffMu_(value:).$s14IndexCoreTestsAAV8positive4TestfMp_7__localfMu0_(value:_:)@@__swiftmacro_14IndexCoreTestsAAV8positive4TestfMp_.swift:3:18
+0.02ms	@__swiftmacro_14IndexCoreTestsAAV8positive4TestfMp_.swift:3:123
+0.02ms	@__swiftmacro_14IndexCoreTestsAAV8positive4TestfMp_.swift:7:3
+0.01ms	@__swiftmacro_14IndexCoreTests0064___swiftmacro_14IndexCoreTestsAAV8positive4TestfMp_swift_DdIDwEBafMX3_152_9isolationfMf_.swift:1:1
+0.01ms	@__swiftmacro_14IndexCoreTests0064___swiftmacro_14IndexCoreTestsAAV8positive4TestfMp_swift_DdIDwEBafMX4_98_9isolationfMf0_.swift:1:1
+0.65ms	@__swiftmacro_14IndexCoreTestsAAV8positive4TestfMp_.swift:2:31	static method IndexCoreTests.(file).IndexCoreTests.$s14IndexCoreTestsAAV8positive4TestfMp_16ad84a4ae6813c52ffMu_(value:)@@__swiftmacro_14IndexCoreTestsAAV8positive4TestfMp_.swift:2:31
+0.60ms	@__swiftmacro_14IndexCoreTestsAAV8positive4TestfMp_.swift:12:10
+0.01ms	@__swiftmacro_14IndexCoreTestsAAV8positive4TestfMp_.swift:12:21
+0.85ms	@__swiftmacro_14IndexCoreTestsAAV8positive4TestfMp_.swift:11:31	static method IndexCoreTests.(file).IndexCoreTests.$s14IndexCoreTestsAAV8positive4TestfMp_25generatorad84a4ae6813c52ffMu_()@@__swiftmacro_14IndexCoreTestsAAV8positive4TestfMp_.swift:11:31
+0.01ms	@__swiftmacro_14IndexCoreTestsAAV8positive4TestfMp_.swift:25:32	getter IndexCoreTests.(file).IndexCoreTests.$s14IndexCoreTestsAAV8positive4TestfMp_33testContentRecordad84a4ae6813c52ffMu_.getter@@__swiftmacro_14IndexCoreTestsAAV8positive4TestfMp_.swift:25:32
+0.61ms	@__swiftmacro_14IndexCoreTests0025IndexCoreTestsswift_jqFBgfMX46_8_6expectfMf_.swift:1:1
+1.58ms	@ROOT@/Tests/IndexCoreTests/IndexCoreTests.swift:47:9
+0.02ms	@ROOT@/Tests/IndexCoreTests/IndexCoreTests.swift:47:16
+0.03ms	@__swiftmacro_14IndexCoreTests0025IndexCoreTestsswift_jqFBgfMX46_15_15_sourceLocationfMf_.swift:1:1
+0.33ms	@ROOT@/Tests/IndexCoreTests/IndexCoreTests.swift:47:16
+0.01ms	@__swiftmacro_14IndexCoreTests0025IndexCoreTestsswift_jqFBgfMX46_8_6expectfMf_.swift:1:220
+0.01ms	@__swiftmacro_14IndexCoreTests0025IndexCoreTestsswift_jqFBgfMX46_8_6expectfMf_.swift:1:220
+0.01ms	@__swiftmacro_14IndexCoreTests0025IndexCoreTestsswift_jqFBgfMX46_8_6expectfMf_.swift:1:220
+0.01ms	@__swiftmacro_14IndexCoreTests0025IndexCoreTestsswift_jqFBgfMX46_8_6expectfMf_.swift:1:220
+2.28ms	@ROOT@/Tests/IndexCoreTests/IndexCoreTests.swift:46:10	instance method IndexCoreTests.(file).IndexCoreTests.positive(value:)@@ROOT@/Tests/IndexCoreTests/IndexCoreTests.swift:46:10
+0.01ms	@ROOT@/Tests/IndexCoreTests/IndexCoreTests.swift:7:8	initializer IndexCoreTests.(file).IndexCoreTests.init()@@ROOT@/Tests/IndexCoreTests/IndexCoreTests.swift:7:8
+@ROOT@/Tests/IndexCoreTests/IndexCoreTests.swift:38:37: warning: '#require(_:_:)' is redundant because 'Session(
+            name: "spanning"
+        )' never equals 'nil' (from macro 'require') [bridged_warning]
+36 |     /// A redundant `#require` whose argument spans lines.
+37 |     @Test func redundantRequire() {
+38 |         let session = try? #require(Session(
+   |                                     `- warning: '#require(_:_:)' is redundant because 'Session(
+            name: "spanning"
+        )' never equals 'nil' (from macro 'require') [bridged_warning]
+39 |             name: "spanning"
+40 |         ))
+
+[#UnnecessaryEffectMarker]: <https://docs.swift.org/compiler/documentation/diagnostics/unnecessary-effect-marker>
+1.91ms	@BUILD@/out/Intermediates.noindex/IndexFixture.build/Debug/IndexXCTests-p.build/DerivedSources/test_entry_point.swift:520:24
+0.13ms	@BUILD@/out/Intermediates.noindex/IndexFixture.build/Debug/IndexXCTests-p.build/DerivedSources/test_entry_point.swift:521:30
+5.99ms	@BUILD@/out/Intermediates.noindex/IndexFixture.build/Debug/IndexXCTests-p.build/DerivedSources/test_entry_point.swift:522:16
+0.08ms	@BUILD@/out/Intermediates.noindex/IndexFixture.build/Debug/IndexXCTests-p.build/DerivedSources/test_entry_point.swift:522:67
+5.00ms	@BUILD@/out/Intermediates.noindex/IndexFixture.build/Debug/IndexXCTests-p.build/DerivedSources/test_entry_point.swift:523:24
+0.03ms	@BUILD@/out/Intermediates.noindex/IndexFixture.build/Debug/IndexXCTests-p.build/DerivedSources/test_entry_point.swift:528:16
+14.39ms	@BUILD@/out/Intermediates.noindex/IndexFixture.build/Debug/IndexXCTests-p.build/DerivedSources/test_entry_point.swift:519:25	static method IndexXCTests.(file).__SwiftPMGeneratedTestRunner.testingLibrary()@@BUILD@/out/Intermediates.noindex/IndexFixture.build/Debug/IndexXCTests-p.build/DerivedSources/test_entry_point.swift:519:25
+0.11ms	@BUILD@/out/Intermediates.noindex/IndexFixture.build/Debug/IndexXCTests-p.build/DerivedSources/test_entry_point.swift:532:24
+0.05ms	@BUILD@/out/Intermediates.noindex/IndexFixture.build/Debug/IndexXCTests-p.build/DerivedSources/test_entry_point.swift:533:30
+0.23ms	@BUILD@/out/Intermediates.noindex/IndexFixture.build/Debug/IndexXCTests-p.build/DerivedSources/test_entry_point.swift:534:16
+0.04ms	@BUILD@/out/Intermediates.noindex/IndexFixture.build/Debug/IndexXCTests-p.build/DerivedSources/test_entry_point.swift:534:70
+0.03ms	@BUILD@/out/Intermediates.noindex/IndexFixture.build/Debug/IndexXCTests-p.build/DerivedSources/test_entry_point.swift:535:24
+0.02ms	@BUILD@/out/Intermediates.noindex/IndexFixture.build/Debug/IndexXCTests-p.build/DerivedSources/test_entry_point.swift:538:16
+0.72ms	@BUILD@/out/Intermediates.noindex/IndexFixture.build/Debug/IndexXCTests-p.build/DerivedSources/test_entry_point.swift:531:25	static method IndexXCTests.(file).__SwiftPMGeneratedTestRunner.testOutputPath()@@BUILD@/out/Intermediates.noindex/IndexFixture.build/Debug/IndexXCTests-p.build/DerivedSources/test_entry_point.swift:531:25
+0.03ms	@BUILD@/out/Intermediates.noindex/IndexFixture.build/Debug/IndexXCTests-p.build/DerivedSources/test_entry_point.swift:561:30
+0.17ms	@BUILD@/out/Intermediates.noindex/IndexFixture.build/Debug/IndexXCTests-p.build/DerivedSources/test_entry_point.swift:563:12
+0.05ms	@BUILD@/out/Intermediates.noindex/IndexFixture.build/Debug/IndexXCTests-p.build/DerivedSources/test_entry_point.swift:564:13
+0.01ms	@BUILD@/out/Intermediates.noindex/IndexFixture.build/Debug/IndexXCTests-p.build/DerivedSources/test_entry_point.swift:564:46
+0.48ms	@BUILD@/out/Intermediates.noindex/IndexFixture.build/Debug/IndexXCTests-p.build/DerivedSources/test_entry_point.swift:559:17	static method IndexXCTests.(file).__SwiftPMGeneratedTestRunner.main()@@BUILD@/out/Intermediates.noindex/IndexFixture.build/Debug/IndexXCTests-p.build/DerivedSources/test_entry_point.swift:559:17
+0.01ms	@BUILD@/out/Intermediates.noindex/IndexFixture.build/Debug/IndexXCTests-p.build/DerivedSources/test_entry_point.swift:518:8	initializer IndexXCTests.(file).__SwiftPMGeneratedTestRunner.init()@@BUILD@/out/Intermediates.noindex/IndexFixture.build/Debug/IndexXCTests-p.build/DerivedSources/test_entry_point.swift:518:8
+0.02ms	@BUILD@/out/Intermediates.noindex/IndexFixture.build/Debug/IndexXCTests-p.build/DerivedSources/test_entry_point.swift:515:1
+0.04ms	<invalid loc>	static method IndexXCTests.(file).__SwiftPMGeneratedTestRunner.$main()
+2.25ms	@ROOT@/Tests/IndexXCTests/LayoutXCTests.swift:8:9
+0.09ms	@ROOT@/Tests/IndexXCTests/LayoutXCTests.swift:8:23
+0.02ms	@ROOT@/Tests/IndexXCTests/LayoutXCTests.swift:8:23
+2.82ms	@ROOT@/Tests/IndexXCTests/LayoutXCTests.swift:7:10	instance method IndexXCTests.(file).LayoutXCTests.testLayout()@@ROOT@/Tests/IndexXCTests/LayoutXCTests.swift:7:10
+0.01ms	@ROOT@/Tests/IndexXCTests/LayoutXCTests.swift:5:39	initializer IndexXCTests.(file).LayoutXCTests.init(invocation:)@@ROOT@/Tests/IndexXCTests/LayoutXCTests.swift:5:39
+0.01ms	@ROOT@/Tests/IndexXCTests/LayoutXCTests.swift:5:39	initializer IndexXCTests.(file).LayoutXCTests.init(selector:)@@ROOT@/Tests/IndexXCTests/LayoutXCTests.swift:5:39
+0.01ms	@ROOT@/Tests/IndexXCTests/LayoutXCTests.swift:5:39	initializer IndexXCTests.(file).LayoutXCTests.init()@@ROOT@/Tests/IndexXCTests/LayoutXCTests.swift:5:39
+0.01ms	@ROOT@/Tests/IndexXCTests/LayoutXCTests.swift:5:13	deinitializer IndexXCTests.(file).LayoutXCTests.deinit@@ROOT@/Tests/IndexXCTests/LayoutXCTests.swift:5:13
