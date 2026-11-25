@@ -280,9 +280,9 @@ public struct PackageScanner {
     }
 
     /// Scans the package rooted at `packageRoot`, with the `.swiftstats.yml`
-    /// in its root when there is one; the coverage and SwiftMutator
-    /// collectors run only when `tiers` asks for them (`scan --coverage`,
-    /// `scan --mutation`).
+    /// in its root when there is one; the coverage collector, the T1 group
+    /// and the SwiftMutator collector run only when `tiers` asks for them
+    /// (`scan --coverage`, `scan --index`, `scan --mutation`).
     public func scan(packageAt packageRoot: URL, tiers: RequestedTiers = .syntaxOnly) throws -> ScanReport {
         let file = packageRoot.standardizedFileURL.appendingPathComponent(SwiftStatsConfiguration.fileName)
         return try scan(
@@ -302,8 +302,8 @@ public struct PackageScanner {
 
     /// Scans the package rooted at `packageRoot` with the configuration in
     /// `configurationFile`, or the default configuration when it is nil;
-    /// the coverage and SwiftMutator collectors run only when `tiers` asks
-    /// for them.
+    /// the coverage collector, the T1 group and the SwiftMutator collector
+    /// run only when `tiers` asks for them.
     public func scan(
         packageAt packageRoot: URL,
         configurationFile: URL?,

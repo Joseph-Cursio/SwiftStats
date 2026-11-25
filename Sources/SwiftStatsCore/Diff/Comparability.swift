@@ -2,7 +2,9 @@
 //  Comparability.swift
 //  SwiftStatsCore
 //
-//  Which collectors' results two snapshots can compare (PRD §6.6).
+//  Which collectors' results two snapshots can compare (PRD §6.6): those
+//  SwiftStats' own code reads or maps also need SwiftStats' build to
+//  match, and the index and the dead code (M7) need the T1 build's too.
 //
 
 /// Decides each collector's comparability.
@@ -10,12 +12,21 @@ enum Comparability {
     /// Collectors whose results SwiftStats' own code reads or maps, so they
     /// compare only when `swiftstats` does, with the reason they don't.
     private static let needingOwnBuild = [
+        BuildAdapter.name: "SwiftStats' build differs, and its own code maps the timings and warnings",
         CoverageAdapter.name: "SwiftStats' build differs, and its own code maps the coverage",
         DependencyGraphAdapter.name: "SwiftStats' build differs, and its own code reads the graph",
         HistoryCollector.name: "SwiftStats' build differs, and its own code reads the history",
         EffectCollector.name: "SwiftStats' build differs, and its own code maps the side effects",
-        MutationAdapter.name: "SwiftStats' build differs, and its own code maps the mutants"
+        IndexAdapter.name: "SwiftStats' build differs, and its own code reads the index",
+        MutationAdapter.name: "SwiftStats' build differs, and its own code maps the mutants",
+        PeripheryAdapter.name: "SwiftStats' build differs, and its own code maps the dead code"
     ]
+    /// Collectors whose results come from the T1 build's output, so they
+    /// compare only when `build` does too.
+    private static let needingBuild: Set<String> = [IndexAdapter.name, PeripheryAdapter.name]
+    /// Why a collector of `needingBuild` doesn't compare when `build`
+    /// doesn't.
+    private static let buildDiffers = "the build differs: the index and the dead code come from it"
 
     /// Each collector in either snapshot, sorted by name.
     static func compare(_ old: SnapshotInfo, _ new: SnapshotInfo) -> [CollectorComparison] {
@@ -23,10 +34,19 @@ enum Comparability {
         let newRuns = Dictionary(new.collectors.map { ($0.name, $0) }) { first, _ in first }
         let names = Set(oldRuns.keys).union(newRuns.keys).sorted()
         let ownOutcome = outcome(oldRuns[SwiftStatsCollector.name], newRuns[SwiftStatsCollector.name])
-        return names.map { name in
-            var result = outcome(oldRuns[name], newRuns[name])
+        // One collector's outcome, given SwiftStats' own.
+        func compared(_ name: String) -> (outcome: ComparisonOutcome, reason: String?) {
+            let result = outcome(oldRuns[name], newRuns[name])
             if let reason = needingOwnBuild[name], result.outcome == .compared, ownOutcome.outcome != .compared {
-                result = (.notComparable, reason)
+                return (.notComparable, reason)
+            }
+            return result
+        }
+        let buildOutcome = compared(BuildAdapter.name)
+        return names.map { name in
+            var result = compared(name)
+            if needingBuild.contains(name), result.outcome == .compared, buildOutcome.outcome != .compared {
+                result = (.notComparable, buildDiffers)
             }
             return CollectorComparison(name: name, outcome: result.outcome, reason: result.reason)
         }

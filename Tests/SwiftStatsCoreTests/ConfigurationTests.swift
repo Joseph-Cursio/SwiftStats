@@ -91,7 +91,7 @@ struct ConfigurationTests {
           swiftprojectlint:
             path: tools/spl
             options: [--strict]
-          periphery:
+          jazzy:
             enabled: true
           dependencies:
         """
@@ -102,7 +102,7 @@ struct ConfigurationTests {
             "swiftlint": CollectorSettings(enabled: false, path: nil),
             "swiftprojectlint": CollectorSettings(enabled: true, path: "tools/spl")
         ])
-        #expect(configuration.unusedKeys == ["collectors.periphery", "collectors.swiftprojectlint.options"])
+        #expect(configuration.unusedKeys == ["collectors.jazzy", "collectors.swiftprojectlint.options"])
         let invalid = [
             "collectors: [swiftlint]\n", "collectors:\n  swiftlint: on\n",
             "collectors:\n  swiftlint:\n    enabled: maybe\n", "collectors:\n  swiftlint:\n    paths: x\n",
@@ -119,7 +119,7 @@ struct ConfigurationTests {
     func scanExcludes() throws {
         let config = try Self.temporaryFile(
             ".swiftstats.yml",
-            "excluded:\n  - Sources/Tool\n  - \"**/XCTestTests.swift\"\ncollectors:\n  periphery: {}\n"
+            "excluded:\n  - Sources/Tool\n  - \"**/XCTestTests.swift\"\ncollectors:\n  jazzy: {}\n"
         )
         let report = try PackageScanner(tools: .nowhere).scan(packageAt: Self.fixture, configurationFile: config)
 
@@ -127,7 +127,7 @@ struct ConfigurationTests {
         #expect(report.configuration.excludedFiles == expected)
         #expect(report.records.contains { report.configuration.excludedFiles.contains($0.file) } == false)
         #expect(report.files.map(\.path).contains("Sources/Tool/main.swift") == false)
-        let notUsed = "`collectors.periphery` is accepted but not used yet"
+        let notUsed = "`collectors.jazzy` is accepted but not used yet"
         let warning = report.warnings.first { $0.message.hasPrefix(notUsed) }
         #expect(warning?.file == config.path)
     }

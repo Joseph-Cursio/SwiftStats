@@ -74,11 +74,11 @@ public struct SnapshotWorkspace {
     }
 
     /// Scans the working tree, reading history from `history` and running
-    /// the coverage and SwiftMutator collectors when `tiers` asks for them,
-    /// stores the snapshot as `save(_:drop:)` does and returns what it
-    /// stored with its id. Before anything runs, `--since` chooses the
-    /// stored snapshot it merges with and is refused when there is none it
-    /// can merge with (`StoreError.noMutationBase`, `MutationBase`), and
+    /// the coverage collector, the T1 group and the SwiftMutator collector
+    /// when `tiers` asks for them, stores the snapshot as `save(_:drop:)`
+    /// does and returns what it stored with its id. Before anything runs,
+    /// `--since` chooses the stored snapshot it merges with and is refused
+    /// when there is none it can merge with (`StoreError.noMutationBase`, `MutationBase`), and
     /// `--resume` is refused (`ScanError.mutationRefused`) when no run is
     /// pending, or when the tree, the settings, the copy or the results
     /// file don't let it go on (`MutationResume`); the resume of a

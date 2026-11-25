@@ -1,6 +1,14 @@
 {
   "collectors" : [
     {
+      "name" : "build",
+      "options" : [
+
+      ],
+      "reason" : "not requested; scan --index runs it",
+      "state" : "skipped"
+    },
+    {
       "name" : "coverage",
       "options" : [
 
@@ -22,6 +30,22 @@
 
       ],
       "reason" : "not requested",
+      "state" : "skipped"
+    },
+    {
+      "name" : "index",
+      "options" : [
+
+      ],
+      "reason" : "not requested; scan --index runs it",
+      "state" : "skipped"
+    },
+    {
+      "name" : "periphery",
+      "options" : [
+
+      ],
+      "reason" : "not requested; scan --index runs it",
       "state" : "skipped"
     },
     {
@@ -2293,7 +2317,7 @@
       }
     }
   ],
-  "schemaVersion" : 8,
+  "schemaVersion" : 9,
   "sitrep" : {
     "imports" : [
       {

@@ -35,8 +35,12 @@ struct ScanCommand: ParsableCommand {
         discards that run. A scan without --mutation, or whose mutation run fails, keeps the mutation results \
         of the snapshot it replaces when the tree, the records they name, the files they test and the mapping \
         rule are the same, and otherwise stops without storing anything; --drop-mutation replaces the snapshot \
-        without them instead. A coverage or mutation run asked for that fails or is skipped doesn't fail the scan, \
-        which says so on standard error.
+        without them instead. --index also builds the package once more, in .swiftstats/index-build, with the \
+        coverage collector's swift, for type-check times, compiler warnings, USRs and references from the index \
+        store, and dead code from outskirts (outskirts on PATH, or collectors.periphery.path); a scan without it \
+        lists those collectors as not requested, and --drop-index replaces a snapshot without the results this \
+        scan can't keep. A coverage, mutation or index run asked for that fails or is skipped doesn't fail the \
+        scan, which says so on standard error.
         """
     )
 
@@ -73,6 +77,12 @@ struct ScanCommand: ParsableCommand {
     @Flag(help: "Replace a snapshot holding mutation results this scan can't keep or can't read, dropping them.")
     var dropMutation = false
 
+    @Flag(help: "Also build the package's index: type-check times, warnings, USRs, coupling and dead code.")
+    var index = false
+
+    @Flag(help: "Replace a snapshot holding index results this scan can't keep or can't read, dropping them.")
+    var dropIndex = false
+
     @OptionGroup var options: PackageOptions
 
     /// The opt-in collectors the flags ask for.
@@ -85,6 +95,7 @@ struct ScanCommand: ParsableCommand {
                 resume: resume,
                 storing: noStore == false
             )
+            .asking(index: index)
         }
     }
 
@@ -125,7 +136,7 @@ struct ScanCommand: ParsableCommand {
                 let (snapshot, _) = try workspace.scanWorkingTree(
                     history: history,
                     tiers: requested,
-                    drop: DropOptions(coverage: dropCoverage, mutation: dropMutation)
+                    drop: DropOptions(coverage: dropCoverage, mutation: dropMutation, index: dropIndex)
                 )
                 report = snapshot.report
                 FileHandle.standardError.write(Data((summary(snapshot.info, store: workspace.store.url) + "\n").utf8))

@@ -94,8 +94,9 @@ public struct SnapshotScanner {
     /// when not given; a scan of an exported revision supplies its git state.
     /// Changes to the files at `ignoring` (relative to `root`, such as a
     /// store kept in the package) don't make the tree dirty. `history` says
-    /// whether and where to read the history (PRD §7.13); the coverage and
-    /// SwiftMutator collectors run only when `tiers` asks for them (M5, M6).
+    /// whether and where to read the history (PRD §7.13); the coverage
+    /// collector, the T1 group and the SwiftMutator collector run only when
+    /// `tiers` asks for them (M5–M7).
     public func scan(
         packageAt root: URL,
         configurationFile: URL?,

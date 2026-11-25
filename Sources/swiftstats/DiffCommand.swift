@@ -11,9 +11,10 @@ struct DiffCommand: ParsableCommand {
         Compares functions (added, removed, moved, renamed, changed) and metrics, for collectors that ran \
         in both snapshots with the same build and options. A commit with no snapshot is scanned first, \
         from a copy of its tracked files checked out into a temporary directory, and stored. A rescan keeps \
-        the coverage and mutation results of the snapshot it replaces when the tree, the records and the \
+        the coverage, mutation and index results of the snapshot it replaces when the tree, the records and the \
         mapping rule are the same, and otherwise stops; --drop-coverage replaces it without its coverage \
-        instead, and --drop-mutation without the mutation results it can't keep.
+        instead, --drop-mutation without the mutation results it can't keep, and --drop-index without the \
+        index results.
         """
     )
 
@@ -44,6 +45,9 @@ struct DiffCommand: ParsableCommand {
     @Flag(help: "Replace a snapshot holding mutation results a rescan can't keep or can't read, dropping them.")
     var dropMutation = false
 
+    @Flag(help: "Replace a snapshot holding index results a rescan can't keep or can't read, dropping them.")
+    var dropIndex = false
+
     @OptionGroup var options: PackageOptions
 
     func run() throws {
@@ -54,7 +58,7 @@ struct DiffCommand: ParsableCommand {
                 newer: newer,
                 includeDirty: includeDirty,
                 rescan: rescan,
-                drop: DropOptions(coverage: dropCoverage, mutation: dropMutation)
+                drop: DropOptions(coverage: dropCoverage, mutation: dropMutation, index: dropIndex)
             )
             let store = workspace.store
             let diff = SnapshotDiff.diff(try store.load(id: ids.older), try store.load(id: ids.newer))

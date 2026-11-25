@@ -5,9 +5,11 @@
 //  The `collectors` key (PRD §10.1, §7.16): per collector, `enabled` and
 //  `path`, though a collector SwiftStats runs in process takes no `path`;
 //  the coverage and swiftmutator collectors also take `arguments` (M5, M6),
-//  and swiftmutator reads `options` (`workers`, `timeout`; M6). `options`
-//  under any other collector, and collectors no milestone has built yet,
-//  are accepted with a warning; any other key is an error.
+//  and swiftmutator reads `options` (`workers`, `timeout`; M6). The T1
+//  group's `build` takes no `path` either, since it uses the coverage
+//  collector's `swift` (M7). `options` under any other collector, and
+//  collectors no milestone has built yet, are accepted with a warning; any
+//  other key is an error.
 //
 
 import Yams
@@ -15,8 +17,8 @@ import Yams
 extension SwiftStatsConfiguration {
     /// Collectors SwiftStats runs.
     static let builtCollectors: Set<String> = [
-        "coverage", "dependencies", "swiftclonedetector", "swifteffectinference", "swiftinferproperties",
-        "swiftlint", "swiftmutator", "swiftprojectlint"
+        "build", "coverage", "dependencies", "index", "periphery", "swiftclonedetector", "swifteffectinference",
+        "swiftinferproperties", "swiftlint", "swiftmutator", "swiftprojectlint"
     ]
     /// Keys a collector's entry may hold.
     private static let collectorKeys: Set<String> = ["arguments", "enabled", "options", "path"]
@@ -25,7 +27,7 @@ extension SwiftStatsConfiguration {
     /// Collectors that read their entry's `options`.
     private static let optionCollectors: Set<String> = [MutationAdapter.name]
     /// Collectors SwiftStats runs in process, which take no `path`.
-    private static let inProcessCollectors: Set<String> = ["swifteffectinference"]
+    private static let inProcessCollectors: Set<String> = ["index", "swifteffectinference"]
 
     /// The settings `value` gives each collector, and the keys it holds that
     /// nothing reads yet, as `collectors.<name>[.options]`.
@@ -91,6 +93,9 @@ extension SwiftStatsConfiguration {
                 path,
                 "`collectors.\(name).path`: a collector SwiftStats runs itself has no path"
             )
+        }
+        if name == BuildAdapter.name, mapping["path"] != nil {
+            throw ScanError.configurationInvalid(path, "`collectors.\(name).path`: \(BuildAdapter.pathError)")
         }
         return mapping
     }

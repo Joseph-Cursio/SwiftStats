@@ -20,8 +20,10 @@ public struct ScanReport: Codable, Hashable, Sendable {
     /// coverage collector, its coverage mapped to records and rolled up,
     /// and each record's access level and owning type (M5); 8 adds each
     /// file's SHA-256 and the SwiftMutator collector, whose status every
-    /// scan lists and whose results are mapped to records (M6).
-    public static let currentSchemaVersion = 8
+    /// scan lists and whose results are mapped to records (M6); 9 adds the
+    /// T1 group's collectors, `build`, `index` and `periphery`, whose
+    /// statuses every scan lists (M7).
+    public static let currentSchemaVersion = 9
 
     /// The output format version (`currentSchemaVersion` when written).
     public let schemaVersion: Int

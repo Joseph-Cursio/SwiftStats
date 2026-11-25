@@ -2,10 +2,11 @@
 //  PackageScanner+Run.swift
 //  SwiftStatsCore
 //
-//  The scan itself (PRD M0–M2, M4–M6): describe the package, start
+//  The scan itself (PRD M0–M2, M4–M7): describe the package, start
 //  SwiftInferProperties and, when asked for, the coverage run, measure its
 //  files, infer side effects, run the other external collectors,
-//  SwiftCloneDetector among them, then, when asked for, SwiftMutator alone,
+//  SwiftCloneDetector among them, then, when asked for, the T1 group
+//  (`scan --index`) alone and SwiftMutator alone,
 //  attach the suggestions and clones and assemble the report, timing each
 //  collector for the snapshot (PRD §6.2).
 //
@@ -77,8 +78,8 @@ extension PackageScanner {
     }
 
     /// The scan of `packageRoot`, with each collector's run time and binary;
-    /// the coverage and SwiftMutator collectors run only when `tiers` asks
-    /// for them. SwiftMutator's copy checks out the commit of `git`, the
+    /// the coverage collector, the T1 group and the SwiftMutator collector
+    /// run only when `tiers` asks for them. SwiftMutator's copy checks out the commit of `git`, the
     /// package's state as read before the scan (read when it runs when
     /// nil), and leaves out the files at `ignoring`; a `--since` run, or
     /// the resume of one, merges with the base `tiers` carries. For a scan
