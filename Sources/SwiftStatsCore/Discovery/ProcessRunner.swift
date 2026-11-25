@@ -132,6 +132,29 @@ enum ProcessRunner {
         )
     }
 
+    /// Runs `executable` as `runToEnd(executable:arguments:in:)` does, with
+    /// standard input read from the file at `input` (outskirts gets
+    /// `/dev/null`, M7) and standard output written to the file at
+    /// `output` (created or replaced) when given, else kept: the returned
+    /// output is empty when it was written to a file.
+    static func runToEnd(
+        executable: String,
+        arguments: [String],
+        in directory: URL,
+        input: URL,
+        writingOutputTo output: URL?
+    ) throws -> ProcessOutput {
+        try run(
+            executable: executable,
+            arguments: arguments,
+            in: directory,
+            accepting: { _ in true },
+            environment: .inherited,
+            input: input,
+            output: output
+        )
+    }
+
     /// Runs `executable` with `arguments` in `directory` to its end, with
     /// standard input empty (`/dev/null`), standard output written to the
     /// file at `output` and standard error to the file at `errorFile` (each

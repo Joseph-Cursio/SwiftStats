@@ -15,9 +15,11 @@
 //  `needs the build: …` when the build didn't run, and fails when the
 //  build wrote no index store. Once the build ran, the `index` collector
 //  reads its store, joins its definitions to the records and counts its
-//  references and coupling (`IndexAdapter`); until the outskirts
-//  collector is built, `periphery` gives its placeholder once its own
-//  settings let it run (design §13).
+//  references and coupling (`IndexAdapter`); then, once its own settings
+//  let it run, the `periphery` collector runs outskirts twice over the
+//  same store and reads its entries (`PeripheryAdapter`), after the index
+//  has moved stale units out of the store or, when the index didn't run,
+//  moving them itself.
 //
 
 import Foundation
@@ -39,6 +41,9 @@ extension PackageScanner {
         /// The index results mapped onto the scan; nil unless the `index`
         /// collector ran.
         let indexReport: IndexReport?
+        /// outskirts' entries, read and classed; nil unless the
+        /// `periphery` collector ran.
+        let peripheryOutput: PeripheryOutput?
 
         /// The `index` collector's status.
         var indexStatus: CollectorStatus {
@@ -71,7 +76,8 @@ extension PackageScanner {
                 readers: Array(runs.dropFirst()),
                 report: nil,
                 findings: [],
-                indexReport: nil
+                indexReport: nil,
+                peripheryOutput: nil
             )
         }
     }
@@ -150,29 +156,48 @@ extension PackageScanner {
         return MappedBuild(run: run, report: report, findings: warnings.findings)
     }
 
-    /// The `periphery` collector's run on the package at `root` after
-    /// `build`, under `configuration`: skipped for its own settings
+    /// The `periphery` collector's run after `build` and `index`, under
+    /// `configuration`, over `scan`: skipped for its own settings
     /// (`collectors.periphery.enabled`, a path that isn't an executable,
-    /// no `outskirts` on PATH), else as the build leaves it, else the
-    /// placeholder; outskirts never runs.
-    private static func periphery(
+    /// no `outskirts` on PATH), else as the build leaves it, else its runs
+    /// of outskirts over the build's store.
+    private func periphery(
         after build: BuildRun,
-        root: URL,
+        index: IndexAdapter.Run,
         configuration: SwiftStatsConfiguration,
-        locator: ToolLocator
-    ) -> AdapterResult {
+        scan: IndexAdapter.Scan
+    ) -> PeripheryRun {
         let resolution = ToolResolution.resolve(
             PeripheryAdapter.name,
             executable: PeripheryAdapter.executableName,
             configuration: configuration,
-            locator: locator,
-            root: root
+            locator: tools,
+            root: scan.root
         )
-        if case .skip(let reason) = resolution {
-            return .skipped(PeripheryAdapter.name, reason: reason)
+        let result: AdapterResult
+        switch resolution {
+        case .skip(let reason):
+            result = .skipped(PeripheryAdapter.name, reason: reason)
+
+        case .found(let executable):
+            if let dependent = BuildAdapter.dependent(PeripheryAdapter.name, after: build) {
+                result = dependent
+            } else if let products = build.products {
+                return PeripheryAdapter.run(PeripheryJob(
+                    executable: executable,
+                    products: products,
+                    scan: scan,
+                    index: index,
+                    opening: indexSource
+                ))
+            } else {
+                result = .skipped(PeripheryAdapter.name, reason: BuildAdapter.notRequestedReason)
+            }
         }
-        return BuildAdapter.dependent(PeripheryAdapter.name, after: build)
-            ?? .skipped(PeripheryAdapter.name, reason: PeripheryAdapter.notBuiltReason)
+        return PeripheryRun(
+            timed: TimedAdapterResult(result: result, executable: nil, identity: nil, milliseconds: 0),
+            output: nil
+        )
     }
 
     /// The `index` collector's run after `build`, under `configuration`,
@@ -194,7 +219,9 @@ extension PackageScanner {
             let result = skipped ?? .skipped(IndexAdapter.name, reason: BuildAdapter.notRequestedReason)
             return IndexAdapter.Run(
                 timed: TimedAdapterResult(result: result, executable: nil, identity: nil, milliseconds: 0),
-                report: nil
+                report: nil,
+                localUSRs: [],
+                quarantineRan: false
             )
         }
         return IndexAdapter.run(products: products, scan: scan, opening: indexSource)
@@ -239,30 +266,25 @@ extension PackageScanner {
         ) { run in
             let mapped = Self.build(of: run, measured: measured, targets: targets, root: root)
             failedBuild?.record(mapped.run)
-            let index = index(
-                after: mapped.run,
-                configuration: configuration,
-                scan: IndexAdapter.Scan(
-                    root: root,
-                    records: measured.records.sorted(by: Self.recordOrder),
-                    types: measured.types,
-                    files: measured.files,
-                    targets: targets,
-                    topLevelLines: measured.topLevelLines,
-                    fileScopedTypes: measured.fileScopedTypes,
-                    warnings: measured.warnings
-                )
+            let scan = IndexAdapter.Scan(
+                root: root,
+                records: measured.records.sorted(by: Self.recordOrder),
+                types: measured.types,
+                files: measured.files,
+                targets: targets,
+                topLevelLines: measured.topLevelLines,
+                fileScopedTypes: measured.fileScopedTypes,
+                warnings: measured.warnings
             )
-            let periphery = Self.periphery(after: mapped.run, root: root, configuration: configuration, locator: tools)
+            let index = index(after: mapped.run, configuration: configuration, scan: scan)
+            let periphery = periphery(after: mapped.run, index: index, configuration: configuration, scan: scan)
             return IndexGroup(
                 build: mapped.run.timed,
-                readers: [
-                    index.timed,
-                    TimedAdapterResult(result: periphery, executable: nil, identity: nil, milliseconds: 0)
-                ],
+                readers: [index.timed, periphery.timed],
                 report: mapped.report,
                 findings: mapped.findings,
-                indexReport: index.report
+                indexReport: index.report,
+                peripheryOutput: periphery.output
             )
         }
     }

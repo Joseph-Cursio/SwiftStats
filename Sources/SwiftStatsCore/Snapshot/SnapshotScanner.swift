@@ -55,22 +55,18 @@ public struct SnapshotScanner {
                 identity = (reported, nil)
             }
         } else if status.name == MutationAdapter.name {
-            // The build its results file's header names made every result;
-            // the resolved binary's commit labels it only when it is that
-            // build. A run that read no header is named by the binary.
-            if status.state != .skipped, let executable = outcome.executables[status.name] {
-                let binary = BinaryIdentity.of(executable)
-                if let reported = outcome.identities[status.name] {
-                    identity = (reported, binary?.identity == reported ? binary?.label : nil)
-                } else {
-                    identity = binary
-                }
-            }
+            identity = mutationIdentity(for: status, outcome: outcome)
         } else if status.name == DependencyGraphAdapter.name {
             // The toolchain is the tool; diff also requires `swiftstats`
             // to match, since SwiftStats' own code reads the graph.
             if outcome.executables[status.name] != nil, let version = toolchain.swiftVersion {
                 identity = ("swift:\(version)", nil)
+            }
+        } else if status.name == PeripheryAdapter.name {
+            // outskirts is released by tag (design §1): the label adds
+            // the tag naming the binary's commit, when there is one.
+            if let executable = outcome.executables[status.name] {
+                identity = BinaryIdentity.of(executable, tagged: true)
             }
         } else if let pinned = Self.linkedIdentities[status.name] {
             // Linked, not run as a binary: the pinned revision is the
@@ -93,6 +89,24 @@ public struct SnapshotScanner {
             options: status.options,
             durationMilliseconds: outcome.milliseconds[status.name] ?? 0
         )
+    }
+
+    /// The build identity of a SwiftMutator run recorded as `status` in
+    /// `outcome`: the build its results file's header names made every
+    /// result, and the resolved binary's commit labels it only when it is
+    /// that build; a run that read no header is named by the binary.
+    private static func mutationIdentity(
+        for status: CollectorStatus,
+        outcome: ScanOutcome
+    ) -> (identity: String, label: String?)? {
+        guard status.state != .skipped, let executable = outcome.executables[status.name] else {
+            return nil
+        }
+        let binary = BinaryIdentity.of(executable)
+        guard let reported = outcome.identities[status.name] else {
+            return binary
+        }
+        return (reported, binary?.identity == reported ? binary?.label : nil)
     }
 
     /// The same scanner, its scans storing their snapshots as `added`

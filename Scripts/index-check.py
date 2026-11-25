@@ -11,8 +11,8 @@ script reads them with its own line patterns, not design section 6.1's
 grammar, and accounts for every line. Run it as `python3 -I -B Scripts/index-check.py <mode> ...`, so it
 writes no bytecode cache beside itself.
 
-Modes (later plan steps add `dead`, `signals` and `coverage-names`, and
-`usr`'s check u8):
+Modes (later plan steps add `dead`'s mapping part, `signals` and
+`coverage-names`, and `usr`'s check u8):
 
 `dump` writes the reader's values for a store as JSON: the recorded
 `reader.json` the unit tests read through `RecordedIndexSource`, and the
@@ -386,6 +386,98 @@ Inputs `usr` trusts:
     Scripts/coverage-check.py.
 Not the scan JSON's `index` block or `index.*` roll-ups, which it checks.
 
+`dead` (its run part, plan step 6a) runs outskirts itself, twice, with the
+command line built from design section 5.2's words, not from SwiftStats'
+options, and compares its sorted output with what the periphery collector
+kept and stored (design sections 5.1 to 5.3, 9.1, 9.2 and 11):
+  run      each run in the package root, stdin /dev/null, every flag its own
+           argv element:
+             <outskirts> scan --format json --disable-update-check
+               --config <an empty file of its own>
+               --index-store-path <build>/out --skip-build
+               --index-exclude <build>/**
+               --json-package-manifest-path <its own describe JSON>
+               [--retain-public-modules <C99 module> ...]
+               --retain-codable-properties --retain-equatable-properties
+               [--exclude-tests]
+           `roots` without --exclude-tests, `production` with it; <build>
+           the real path of <package>/.swiftstats/index-build. The retained
+           modules are the C99 names of the targets the describe's library
+           products list that have at least one unit of class kept or
+           variant in the store (this script's design 2.3 filter, as `usr`
+           u1 classes units), in byte order, the flag left out when there
+           are none. Each run must exit 0 and its stderr must not hold
+           outskirts' "retain_public_modules lists modules that are not
+           scanned" warning; it must leave the package's `git status
+           --porcelain --ignored`, its `.build` (absent or present), its
+           Package.resolved bytes and the names in its root as they were;
+  format   each run's stdout is a JSON array whose every entry holds the
+           nine keys accessibility, attributes, hints, ids, kind, location,
+           modifiers, modules and name (extra keys allowed), `hints` holding
+           one string and `location` reading, from the right, as
+           <path>:<line>:<column> with 1-based numbers;
+  kept     each run's entries, sorted by their canonical JSON text, equal
+           the entries of the file the collector kept for it
+           (<build>/swiftstats-outskirts-roots.json and
+           swiftstats-outskirts-production.json, or --roots-file and
+           --production-file), compared as multisets; whether the bytes are
+           also identical is printed, not failed;
+  stored   when the scan JSON has a `deadCode` block, its `runs` (name,
+           results) equal each run's entry count and its `declarations`
+           equal this script's decoding of each run's entries as multisets
+           of (run, hint, hintText, kind, name, accessibility, attributes,
+           modifiers, ids, modules, file, line, column): a hint `name(text)`
+           read as hint `name` and hintText `text` (a stored hintText
+           repeating the whole hint is accepted as the same), ids, modules,
+           attributes and modifiers as lists, modules translated from C99
+           to target names through the describe, file the package-relative
+           NFC real path (null outside the root; any path under the build
+           directory compared as one value); and when the declarations carry ordinals, ordinal k
+           (from 0 or 1, contiguous) is the run's k-th entry in outskirts'
+           order. With --store the same holds for the `deadScan` and
+           `deadDeclaration` rows (JSON arrays as text) of --snapshot (the
+           newest by default), and the collectorRun row of `periphery`
+           holds identity `sha256:` + the SHA-256 of the outskirts binary
+           (symlinks resolved), version `outskirts version`'s output, and a
+           label that, when given, is `git:<HEAD of the clean tree whose
+           .build holds the binary>` followed by ` (<tag>)` when `git
+           describe --exact-match --tags` names one (an absent label is
+           printed, not failed: the mtime rule that withholds it isn't
+           rechecked). Absent blocks and tables (step 6a stores no
+           deadCode block yet) are printed as not compared, not failed;
+  status   the scan's `periphery` collector ran; its version is `outskirts
+           version`'s output, and its reason holds "isn't the version
+           SwiftStats was checked against (3.28.0)" exactly when that output
+           isn't 3.28.0; its options hold a `retain-public-modules:` line
+           naming this script's retained modules by target name, sorted (or
+           `none`), and the outskirts command lines among its options name
+           the same flags as this script's runs (placeholder spellings of
+           paths aren't compared); <build>/swiftstats-outskirts.yml exists
+           and is empty, and <build>/swiftstats-describe.json describes the
+           package (a difference from this script's own describe is printed,
+           not failed: the runs' outputs are what is compared).
+Printed, not failed: each run's time, its results by hint and by kind, the
+entries in test targets (all modules test targets, or a file among a test
+target's sources), under the build directory, outside the root, and whose
+file doesn't exist. `--own-only` runs outskirts and prints this script's
+figures without comparing; `--output-dir` keeps each run's stdout and
+stderr; `--use-scan-inputs` passes the collector's own empty config and
+describe JSON instead of this script's (to tell an input difference from an
+output one).
+
+Inputs `dead` (run part) trusts:
+  - the outskirts binary named on the command line, run in place;
+  - its own `swift package --scratch-path <tmp> describe --type json` of the
+    package by the package toolchain's swift (as `usr`), or `--describe`:
+    target names, C99 names, types, sources and library products;
+  - the index store at <build>/out read through libIndexStore's C API (as
+    `usr`), for which library-product targets have kept or variant units;
+  - realpath(3), git (`status`, `rev-parse`, `describe`) and the file
+    system;
+  - the scan JSON's `collectors` entry for `periphery` only as the thing
+    checked, and its `deadCode` block and the store's rows likewise.
+Nothing from SwiftStats' code.
+
 Usage:
     python3 -I -B Scripts/index-check.py dump <store> <libIndexStore.dylib>
                                          <describe.json> <root>
@@ -415,6 +507,17 @@ Usage:
                                          [--without-u7]
                                          [--local-containers symbol|enclosing]
                                          [--requirements protocol|package|all]
+    python3 -I -B Scripts/index-check.py dead <package> <scan.json>
+                                         <outskirts>
+                                         [--store <store>] [--snapshot <id>]
+                                         [--swift <swift>] [--library <dylib>]
+                                         [--describe <describe.json>]
+                                         [--index-store <dir>]
+                                         [--roots-file <json>]
+                                         [--production-file <json>]
+                                         [--use-scan-inputs]
+                                         [--output-dir <dir>]
+                                         [--own-only] [--dump <path>] [--all]
 
 For `dump`, <store> is the directory holding `v5/units` (for the T1 build,
 `<package>/.swiftstats/index-build/out`). The JSON goes to standard output,
@@ -422,8 +525,9 @@ or to `--output`; a summary (unit, record and occurrence counts) goes to
 standard error.
 
 Exit status: `dump` 0 when the dump is written, 2 on bad input or a store
-that doesn't read; `build-lines`, `build` and `usr` 0 when every check
-passes, 1 when one fails, 2 on bad input or a store that doesn't read.
+that doesn't read; `build-lines`, `build`, `usr` and `dead` 0 when every
+check passes, 1 when one fails, 2 on bad input or a store that doesn't
+read (for `dead`, also when outskirts can't be started).
 """
 
 import argparse
@@ -433,10 +537,12 @@ import hashlib
 import json
 import os
 import re
+import shlex
 import shutil
 import subprocess
 import sys
 import tempfile
+import time
 import unicodedata
 from collections import Counter, defaultdict
 
@@ -4732,6 +4838,633 @@ def usr_mode(arguments):
 
 
 # --------------------------------------------------------------------------
+# dead, run part: outskirts' two runs and the sorted comparison (design
+# sections 5.1 to 5.3, 9.1, 9.2 and 11; plan step 6a)
+
+OUTSKIRTS_CHECKED_VERSION = "3.28.0"
+OUTSKIRTS_KEYS = ("accessibility", "attributes", "hints", "ids", "kind", "location", "modifiers", "modules", "name")
+OUTSKIRTS_LISTS = ("attributes", "ids", "modifiers", "modules")
+OUTSKIRTS_STRINGS = ("accessibility", "kind", "name")
+DEAD_RUNS = ("roots", "production")
+KEPT_OUTPUT = {"roots": "swiftstats-outskirts-roots.json", "production": "swiftstats-outskirts-production.json"}
+OUTSKIRTS_CONFIG = "swiftstats-outskirts.yml"
+T1_DESCRIBE = "swiftstats-describe.json"
+UNSCANNED_RETAINED = "retain_public_modules lists modules that are not scanned"
+VERSION_WARNING = f"isn't the version SwiftStats was checked against ({OUTSKIRTS_CHECKED_VERSION})"
+HINT_WITH_TEXT = re.compile(r"([A-Za-z]+)\((.*)\)", re.S)
+BUILD_FILE = "<build>"
+DECLARATION_FIELDS = ("run", "hint", "hintText", "kind", "name", "accessibility", "attributes", "modifiers", "ids",
+                      "modules", "file", "line", "column")
+
+
+def byte_order(names):
+    return sorted(names, key=lambda name: name.encode("utf-8"))
+
+
+def outskirts_command(outskirts, scratch, config, describe_path, retained, production):
+    """Design 5.2's command line from its words, each flag its own argv element."""
+    command = [outskirts, "scan", "--format", "json", "--disable-update-check",
+               "--config", config,
+               "--index-store-path", os.path.join(scratch, STORE_DIRECTORY), "--skip-build",
+               "--index-exclude", scratch + "/**",
+               "--json-package-manifest-path", describe_path]
+    if retained:
+        command += ["--retain-public-modules"] + list(retained)
+    command += ["--retain-codable-properties", "--retain-equatable-properties"]
+    if production:
+        command.append("--exclude-tests")
+    return command
+
+
+def printable_command(command, replacements):
+    """A command line with its paths spelt as placeholders, for printing."""
+    words = []
+    for word in command:
+        for path, token in replacements:
+            if word == path or word.startswith(path + "/"):
+                word = token + word[len(path):]
+                break
+        words.append(word)
+    return " ".join(words)
+
+
+def tree_state(root):
+    """What a run must leave as it was: git's view of the package (ignored
+    files included), whether `.build` exists, Package.resolved's bytes and
+    the names in the package root (outside git too)."""
+    status = None
+    try:
+        result = subprocess.run(["git", "status", "--porcelain=v1", "--ignored", "-z"], cwd=root,
+                                capture_output=True, timeout=120, stdin=subprocess.DEVNULL)
+        if result.returncode == 0:
+            status = result.stdout
+    except (OSError, subprocess.TimeoutExpired):
+        status = None
+    resolved = os.path.join(root, "Package.resolved")
+    with_resolved = None
+    if os.path.isfile(resolved):
+        with open(resolved, "rb") as handle:
+            with_resolved = handle.read()
+    return {"git status --porcelain --ignored": status, ".build": os.path.exists(os.path.join(root, ".build")),
+            "Package.resolved": with_resolved, "the root's names": sorted(os.listdir(root))}
+
+
+def split_location(text):
+    """`<path>:<line>:<column>`, split from the right, 1-based; None when it doesn't read."""
+    if not isinstance(text, str):
+        return None
+    parts = text.rsplit(":", 2)
+    if len(parts) != 3 or not parts[0] or not ascii_digits(parts[1]) or not ascii_digits(parts[2]):
+        return None
+    line, column = int(parts[1]), int(parts[2])
+    if line < 1 or column < 1:
+        return None
+    return parts[0], line, column
+
+
+def format_problems(entries, run):
+    """Design 5.3's format: an array of objects holding the nine keys."""
+    if not isinstance(entries, list):
+        return [f"the {run} run's output is a JSON {type(entries).__name__}, not an array"]
+    problems = []
+    for number, entry in enumerate(entries, 1):
+        if not isinstance(entry, dict):
+            problems.append(f"entry {number}: not an object")
+            continue
+        missing = [key for key in OUTSKIRTS_KEYS if key not in entry]
+        if missing:
+            problems.append(f"entry {number}: lacks {', '.join(missing)}")
+            continue
+        hints = entry["hints"]
+        if not (isinstance(hints, list) and len(hints) == 1 and isinstance(hints[0], str)):
+            problems.append(f"entry {number}: hints {hints!r} isn't one string")
+        for key in OUTSKIRTS_LISTS:
+            if not isinstance(entry[key], list) or not all(isinstance(value, str) for value in entry[key]):
+                problems.append(f"entry {number}: {key} {entry[key]!r} isn't a list of strings")
+        for key in OUTSKIRTS_STRINGS:
+            if not isinstance(entry[key], str):
+                problems.append(f"entry {number}: {key} {entry[key]!r} isn't a string")
+        if split_location(entry["location"]) is None:
+            problems.append(f"entry {number}: location {entry['location']!r} doesn't read as path:line:column")
+    return problems
+
+
+def canonical(entry):
+    return json.dumps(entry, sort_keys=True, ensure_ascii=False, separators=(",", ":"))
+
+
+def compare_multisets(verdict, name, mine, theirs, theirs_name="theirs"):
+    own, other = Counter(mine), Counter(theirs)
+    only_mine = sorted((own - other).elements(), key=str)
+    only_theirs = sorted((other - own).elements(), key=str)
+    verdict.result(name, not only_mine and not only_theirs,
+                   f"{sum(own.values())} mine, {sum(other.values())} {theirs_name}")
+    verdict.listing(f"only mine: {item}" for item in only_mine)
+    verdict.listing(f"only {theirs_name}: {item}" for item in only_theirs)
+
+
+def as_list(value):
+    """A list, or a JSON array stored as text, as a tuple; anything else as it is."""
+    if isinstance(value, str):
+        try:
+            parsed = json.loads(value)
+        except ValueError:
+            return value
+        value = parsed
+    return tuple(value) if isinstance(value, list) else value
+
+
+def git_text(directory, *command):
+    try:
+        result = subprocess.run(["git", "-C", directory] + list(command), capture_output=True, text=True,
+                                timeout=60, stdin=subprocess.DEVNULL)
+    except (OSError, subprocess.TimeoutExpired):
+        return None
+    return result.stdout.strip() if result.returncode == 0 else None
+
+
+class DeadRuns:
+    """This script's two outskirts runs over the scan's build directory, and
+    its decoding of their entries (design 5.3, without the classes)."""
+
+    def __init__(self, package, described, outskirts, config, describe_path, retained_targets, output_dir):
+        self.package = package
+        self.described = described
+        self.outskirts = outskirts
+        self.retained_targets = byte_order(retained_targets)
+        self.retained = byte_order(described.targets[name]["module"] for name in retained_targets)
+        self.config = config
+        self.describe_path = describe_path
+        self.output_dir = output_dir
+        self.commands = {}
+        self.entries = {}
+        self.problems = {}
+        self.exits = {}
+        self.stderr = {}
+        self.seconds = {}
+        self.tree_changes = {}
+        self.raw = {}
+
+    def run_all(self):
+        for run in DEAD_RUNS:
+            self.run(run)
+
+    def run(self, run):
+        command = outskirts_command(self.outskirts, self.package.scratch, self.config, self.describe_path,
+                                    self.retained, run == "production")
+        self.commands[run] = command
+        before = tree_state(self.package.root)
+        start = time.monotonic()
+        try:
+            result = subprocess.run(command, cwd=self.package.root, stdin=subprocess.DEVNULL, capture_output=True,
+                                    timeout=3600)
+        except (OSError, subprocess.TimeoutExpired) as error:
+            fail(f"outskirts ({run}) didn't run: {error}")
+        self.seconds[run] = time.monotonic() - start
+        after = tree_state(self.package.root)
+        self.tree_changes[run] = [name for name in before if before[name] != after[name]]
+        self.exits[run] = result.returncode
+        self.stderr[run] = result.stderr.decode("utf-8", errors="replace")
+        self.raw[run] = result.stdout
+        if self.output_dir:
+            os.makedirs(self.output_dir, exist_ok=True)
+            with open(os.path.join(self.output_dir, f"outskirts-{run}.json"), "wb") as handle:
+                handle.write(result.stdout)
+            with open(os.path.join(self.output_dir, f"outskirts-{run}.stderr"), "w", encoding="utf-8") as handle:
+                handle.write(self.stderr[run])
+        self.entries[run] = None
+        self.problems[run] = []
+        if result.returncode != 0:
+            return
+        try:
+            entries = json.loads(result.stdout.decode("utf-8"))
+        except (UnicodeDecodeError, ValueError) as error:
+            self.problems[run] = [f"stdout isn't JSON: {error}"]
+            return
+        self.problems[run] = format_problems(entries, run)
+        if not self.problems[run]:
+            self.entries[run] = entries
+
+    def decoded(self, entry, run):
+        """One entry as the stored declaration fields (design 5.3 and 9.1)."""
+        raw = entry["hints"][0]
+        match = HINT_WITH_TEXT.fullmatch(raw)
+        hint, text = (match.group(1), match.group(2)) if match else (raw, None)
+        path, line, column = split_location(entry["location"])
+        real = self.real(path)
+        if is_under(real, self.package.scratch):
+            file = BUILD_FILE
+        else:
+            file = self.package.relative(real)
+        modules = tuple(self.described.by_module[module]["name"] if module in self.described.by_module else module
+                        for module in entry["modules"])
+        return (run, hint, text, entry["kind"], entry["name"], entry["accessibility"], tuple(entry["attributes"]),
+                tuple(entry["modifiers"]), tuple(entry["ids"]), modules, file, line, column)
+
+    def real(self, path):
+        try:
+            return real_path(path, "a location's path") if os.path.isabs(path) else unicodedata.normalize("NFC", path)
+        except ReadError:
+            return unicodedata.normalize("NFC", path)
+
+    def figures(self, run):
+        """Printed counts for one run: by hint, by kind, and where entries lie."""
+        entries = self.entries.get(run) or []
+        test_targets = {name for name, target in self.described.targets.items() if target["type"] == "test"}
+        test_sources = set()
+        for name in test_targets:
+            test_sources |= self.described.targets[name]["sources"]
+        figures = {"results": len(entries), "hints": Counter(), "kinds": Counter(), "test": 0, "build": 0,
+                   "outsideRoot": 0, "missingFile": 0, "production": Counter()}
+        for entry in entries:
+            decoded = self.decoded(entry, run)
+            hint, kind, modules, file = decoded[1], decoded[3], decoded[9], decoded[10]
+            figures["hints"][hint] += 1
+            figures["kinds"][kind] += 1
+            path = split_location(entry["location"])[0]
+            if not os.path.exists(path):
+                figures["missingFile"] += 1
+            if file == BUILD_FILE:
+                figures["build"] += 1
+            elif file is None:
+                figures["outsideRoot"] += 1
+            elif file in test_sources or (modules and all(module in test_targets for module in modules)):
+                figures["test"] += 1
+            else:
+                figures["production"][f"{hint} {kind}"] += 1
+        return figures
+
+
+def periphery_collector(scan):
+    for collector in scan.get("collectors", []):
+        if collector.get("name") == "periphery":
+            return collector
+    return None
+
+
+def option_flags(option):
+    """The flags of an outskirts command line among a collector's options."""
+    try:
+        words = shlex.split(option)
+    except ValueError:
+        words = option.split()
+    if "scan" not in words or "--format" not in words:
+        return None
+    return [word for word in words if word.startswith("--")]
+
+
+def compare_status(verdict, runs, scan, version):
+    """The scan's periphery collector status, version, options and inputs."""
+    verdict.section("the periphery collector's status, version, options and inputs")
+    collector = periphery_collector(scan)
+    if collector is None:
+        verdict.result("the scan lists the periphery collector", False, "absent")
+        return False
+    ran = collector.get("state") == "ran"
+    verdict.result("the periphery collector ran", ran,
+                   f"{collector.get('state')}" + (f", {collector.get('reason')}" if collector.get("reason") else ""))
+    if not ran:
+        return False
+    verdict.result("its version is `outskirts version`'s output", collector.get("version") == version,
+                   f"mine {version!r}, the scan's {collector.get('version')!r}")
+    warned = VERSION_WARNING in (collector.get("reason") or "")
+    should_warn = version != OUTSKIRTS_CHECKED_VERSION
+    verdict.result("the version warning is given exactly when the version isn't " + OUTSKIRTS_CHECKED_VERSION,
+                   warned == should_warn, f"warned {warned}, version {version}")
+    options = collector.get("options") or []
+    retain_lines = [o for o in options if isinstance(o, str) and o.startswith("retain-public-modules:")]
+    if len(retain_lines) != 1:
+        verdict.result("one `retain-public-modules:` option", False, f"{len(retain_lines)} found")
+    else:
+        value = retain_lines[0].split(":", 1)[1].strip()
+        listed = [] if value == "none" else [word for word in re.split(r"[,\s]+", value) if word]
+        verdict.result("`retain-public-modules:` names my retained modules by target name, sorted",
+                       listed == sorted(runs.retained_targets),
+                       f"mine {', '.join(sorted(runs.retained_targets)) or 'none'}; the scan's {value!r}")
+    lines = [(o, option_flags(o)) for o in options if isinstance(o, str)]
+    lines = [(o, flags) for o, flags in lines if flags is not None]
+    theirs = {("production" if "--exclude-tests" in flags else "roots"): flags for _, flags in lines}
+    if len(lines) != 2 or len(theirs) != 2:
+        verdict.result("two outskirts command lines among the options, one with --exclude-tests", False,
+                       f"{len(lines)} found")
+        verdict.listing(o for o, _ in lines)
+    else:
+        for run in DEAD_RUNS:
+            mine = [word for word in runs.commands[run] if word.startswith("--")]
+            verdict.result(f"the {run} command line in the options names my flags, in order", theirs[run] == mine,
+                           "" if theirs[run] == mine else f"mine {' '.join(mine)}; the scan's {' '.join(theirs[run])}")
+    config = os.path.join(runs.package.scratch, OUTSKIRTS_CONFIG)
+    size = os.path.getsize(config) if os.path.isfile(config) else None
+    verdict.result(f"{BUILD_DIRECTORY}/{OUTSKIRTS_CONFIG} exists and is empty", size == 0,
+                   "absent" if size is None else f"{size} bytes")
+    describe_path = os.path.join(runs.package.scratch, T1_DESCRIBE)
+    try:
+        with open(describe_path, encoding="utf-8") as handle:
+            theirs_describe = json.load(handle)
+        described_path = theirs_describe.get("path")
+        same_package = isinstance(described_path, str) and os.path.isabs(described_path) \
+            and real_path(described_path, "the T1 describe's path") == runs.package.root
+        verdict.result(f"{BUILD_DIRECTORY}/{T1_DESCRIBE} describes the package", same_package,
+                       f"path {described_path!r}")
+        with open(runs.describe_path, encoding="utf-8") as handle:
+            mine_describe = json.load(handle)
+        verdict.info("the T1 describe " + ("equals" if mine_describe == theirs_describe else
+                                            "differs from (printed, not failed)") + " the describe the runs used")
+    except (OSError, ValueError, ReadError) as error:
+        verdict.result(f"{BUILD_DIRECTORY}/{T1_DESCRIBE} reads as JSON", False, str(error))
+    return True
+
+
+def compare_kept(verdict, runs, arguments):
+    verdict.section("my runs' sorted output against the files the collector kept")
+    for run in DEAD_RUNS:
+        path = getattr(arguments, f"{run}_file") or os.path.join(runs.package.scratch, KEPT_OUTPUT[run])
+        if not os.path.isfile(path):
+            verdict.result(f"{run}: the kept file exists", False, f"{path} absent")
+            continue
+        with open(path, "rb") as handle:
+            kept_bytes = handle.read()
+        try:
+            kept = json.loads(kept_bytes.decode("utf-8"))
+        except (UnicodeDecodeError, ValueError) as error:
+            verdict.result(f"{run}: the kept file is JSON", False, f"{path}: {error}")
+            continue
+        if not isinstance(kept, list):
+            verdict.result(f"{run}: the kept file is a JSON array", False, f"{path}: {type(kept).__name__}")
+            continue
+        if runs.entries.get(run) is None:
+            verdict.result(f"{run}: my run read, to compare", False, "my run failed or didn't read")
+            continue
+        compare_multisets(verdict, f"{run}: entries equal as sorted canonical JSON ({path})",
+                          [canonical(e) for e in runs.entries[run]], [canonical(e) for e in kept], "kept")
+        verdict.info(f"{run}: the kept file's bytes " + ("equal" if kept_bytes == runs.raw[run] else "differ from")
+                     + " my run's stdout (printed, not failed)")
+
+
+def stored_tuple(item, run_default=None):
+    """A stored declaration (scan JSON object or store row) as the decoded fields."""
+    def value(*names):
+        found = lookup(item, *names)
+        return None if found is MISSING else found
+    hint = value("hint")
+    text = value("hintText", "hint_text")
+    if isinstance(text, str) and isinstance(hint, str) and text.startswith(hint + "(") and text.endswith(")"):
+        text = text[len(hint) + 1:-1]
+    file = value("file", "location.file")
+    if isinstance(file, str) and file.startswith(BUILD_DIRECTORY + "/"):
+        file = BUILD_FILE
+    return (value("run") or run_default, hint, text, value("kind"), value("name"), value("accessibility"),
+            as_list(value("attributes")), as_list(value("modifiers")), as_list(value("ids")),
+            as_list(value("modules")), file, value("line", "location.line"), value("column", "location.column"))
+
+
+def compare_declarations(verdict, runs, where, results, declarations):
+    """Results per run and the declarations (with ordinals when given)."""
+    for run in DEAD_RUNS:
+        entries = runs.entries.get(run)
+        if entries is None:
+            verdict.result(f"{where}: {run}: my run read, to compare", False, "my run failed or didn't read")
+            continue
+        verdict.result(f"{where}: {run}: results", results.get(run) == len(entries),
+                       f"mine {len(entries)}, {where}'s {results.get(run, 'absent')}")
+        mine = [runs.decoded(entry, run) for entry in entries]
+        theirs = [(ordinal, item) for ordinal, item in declarations if item[0] == run]
+        compare_multisets(verdict, f"{where}: {run}: declarations (" + ", ".join(DECLARATION_FIELDS) + ")",
+                          mine, [item for _, item in theirs], where)
+        ordinals = [ordinal for ordinal, _ in theirs if ordinal is not None]
+        if not ordinals:
+            verdict.info(f"{where}: {run}: no ordinals given")
+            continue
+        base = min(ordinals)
+        contiguous = sorted(ordinals) == list(range(base, base + len(theirs))) and base in (0, 1)
+        verdict.result(f"{where}: {run}: ordinals contiguous from 0 or 1", contiguous,
+                       f"{len(ordinals)} ordinals of {len(theirs)}, from {base}")
+        if contiguous:
+            out_of_order = [f"ordinal {ordinal}: {item}" for ordinal, item in theirs
+                            if ordinal - base >= len(mine) or mine[ordinal - base] != item]
+            verdict.result(f"{where}: {run}: ordinal k is outskirts' k-th entry", not out_of_order,
+                           f"{len(out_of_order)} differ" if out_of_order else "")
+            verdict.listing(out_of_order)
+
+
+def compare_scan_block(verdict, runs, scan):
+    verdict.section("my runs against the scan JSON's deadCode block (design 9.2)")
+    block = scan.get("deadCode")
+    if not isinstance(block, dict):
+        verdict.info("the scan JSON has no deadCode block: stored entries not compared (printed, not failed)")
+        return False
+    results = {}
+    for item in block.get("runs") or []:
+        if isinstance(item, dict):
+            results[item.get("name")] = item.get("results")
+    declarations = []
+    for item in block.get("declarations") or []:
+        if isinstance(item, dict):
+            ordinal = item.get("ordinal")
+            declarations.append((ordinal if isinstance(ordinal, int) else None, stored_tuple(item)))
+    compare_declarations(verdict, runs, "the scan JSON", results, declarations)
+    return True
+
+
+def binary_label(outskirts_real):
+    """The label BinaryIdentity gives a binary in its clean tree's .build
+    (design 1): `git:<HEAD>` plus ` (<tag>)`; (label, why not) otherwise."""
+    parts = outskirts_real.split("/")
+    if ".build" not in parts:
+        return None, "the binary isn't under a .build directory"
+    index = len(parts) - 1 - parts[::-1].index(".build")
+    tree = "/".join(parts[:index])
+    head = git_text(tree, "rev-parse", "HEAD")
+    if head is None:
+        return None, f"{tree} isn't a git work tree"
+    if git_text(tree, "status", "--porcelain") != "":
+        return None, f"{tree} isn't clean"
+    tag = git_text(tree, "describe", "--exact-match", "--tags", head)
+    return f"git:{head}" + (f" ({tag})" if tag else ""), None
+
+
+def compare_store_rows(verdict, runs, store_path, snapshot, outskirts_real, version):
+    import sqlite3
+
+    verdict.section(f"my runs against the store ({store_path})")
+    connection = sqlite3.connect(f"file:{store_path}?mode=ro", uri=True)
+    try:
+        if snapshot is None:
+            snapshot = connection.execute("SELECT max(id) FROM snapshot").fetchone()[0]
+        verdict.info(f"snapshot {snapshot}")
+        row = connection.execute("SELECT state, identity, identityLabel, version FROM collectorRun "
+                                 "WHERE snapshotId = ? AND name = 'periphery'", (snapshot,)).fetchone()
+        if row is None:
+            verdict.result("a periphery collectorRun row", False, "absent")
+        else:
+            state, identity, label, stored_version = row
+            verdict.result("its state is ran", state == "ran", str(state))
+            expected = "sha256:" + sha256_of(outskirts_real)
+            verdict.result("its identity is sha256: + the binary's SHA-256", identity == expected,
+                           f"mine {expected}, stored {identity}")
+            verdict.result("its version is `outskirts version`'s output", stored_version == version,
+                           f"mine {version!r}, stored {stored_version!r}")
+            mine_label, why_not = binary_label(outskirts_real)
+            if label is None:
+                verdict.info(f"no label stored (printed, not failed; mine would be {mine_label or why_not})")
+            else:
+                verdict.result("its label is git:<commit> (<tag>) of the binary's clean tree", label == mine_label,
+                               f"mine {mine_label or why_not}, stored {label}")
+        tables = {name for (name,) in connection.execute("SELECT name FROM sqlite_master WHERE type = 'table'")}
+        if not {"deadScan", "deadDeclaration"} <= tables:
+            verdict.info("the store has no deadScan and deadDeclaration tables: rows not compared "
+                         "(printed, not failed)")
+            return
+        connection.row_factory = sqlite3.Row
+        scan_row = connection.execute("SELECT * FROM deadScan WHERE snapshotId = ?", (snapshot,)).fetchone()
+        if scan_row is None:
+            verdict.result("a deadScan row", False, "absent")
+            return
+        results = {"roots": scan_row["rootsResults"], "production": scan_row["productionResults"]}
+        verdict.result("deadScan.version is `outskirts version`'s output", scan_row["version"] == version,
+                       f"mine {version!r}, stored {scan_row['version']!r}")
+        declarations = []
+        for item in connection.execute("SELECT * FROM deadDeclaration WHERE snapshotId = ?", (snapshot,)):
+            item = dict(item)
+            declarations.append((item.get("ordinal"), stored_tuple(item)))
+        compare_declarations(verdict, runs, "the store", results, declarations)
+    finally:
+        connection.close()
+
+
+def report_runs_own(verdict, runs, version, outskirts_real, library_targets, with_data):
+    verdict.section("my outskirts runs (design 5.2)")
+    verdict.info(f"outskirts {outskirts_real}, version {version}, sha256:{sha256_of(outskirts_real)}")
+    if version != OUTSKIRTS_CHECKED_VERSION:
+        verdict.info(f"note: not the version SwiftStats was checked against ({OUTSKIRTS_CHECKED_VERSION})")
+    verdict.info("library-product targets: " + (", ".join(sorted(library_targets)) or "none")
+                 + "; with kept or variant units: " + (", ".join(sorted(library_targets & with_data)) or "none"))
+    verdict.info("retained (C99, byte order): " + (" ".join(runs.retained) or "none (flag left out)"))
+    replacements = [(runs.package.scratch, BUILD_FILE), (runs.config, "<config>"),
+                    (runs.describe_path, "<describe>"), (runs.outskirts, "outskirts")]
+    for run in DEAD_RUNS:
+        verdict.info(f"{run}: {printable_command(runs.commands[run], replacements)}")
+        verdict.result(f"{run}: outskirts exited 0", runs.exits[run] == 0,
+                       f"exit {runs.exits[run]}, {runs.seconds[run]:.2f} s")
+        if runs.exits[run] != 0:
+            verdict.listing(runs.stderr[run].rstrip("\n").split("\n")[-20:])
+        unscanned = [line for line in runs.stderr[run].split("\n") if UNSCANNED_RETAINED in line]
+        verdict.result(f"{run}: no retained module left unscanned", not unscanned,
+                       unscanned[0].strip() if unscanned else "")
+        verdict.result(f"{run}: the package left as it was (git status --ignored, .build, Package.resolved, root names)",
+                       not runs.tree_changes[run], ", ".join(runs.tree_changes[run]))
+        if runs.exits[run] == 0:
+            verdict.result(f"{run}: the output is an array of entries with the nine keys", not runs.problems[run],
+                           f"{len(runs.problems[run])} problems" if runs.problems[run] else "")
+            verdict.listing(runs.problems[run])
+        figures = runs.figures(run)
+        verdict.info(f"{run}: {figures['results']} results; test targets {figures['test']}, under the build "
+                     f"directory {figures['build']}, outside the root {figures['outsideRoot']}, file missing "
+                     f"{figures['missingFile']}, other {sum(figures['production'].values())}")
+        verdict.info(f"{run}: by hint: " + (", ".join(f"{k} {v}" for k, v in sorted(figures["hints"].items()))
+                                            or "none"))
+        verdict.info(f"{run}: by kind: " + (", ".join(f"{k} {v}" for k, v in sorted(figures["kinds"].items()))
+                                            or "none"))
+        verdict.info(f"{run}: outside test targets, by hint and kind: "
+                     + (", ".join(f"{k} {v}" for k, v in sorted(figures["production"].items())) or "none"))
+
+
+def dead_mode(arguments):
+    arguments.reader = None
+    arguments.root_spelling = None
+    arguments.build_spelling = None
+    arguments.spelling = None
+    try:
+        package = UsrPackage(arguments)
+    except (OSError, ValueError, ReadError) as error:
+        fail(str(error))
+    outskirts = os.path.abspath(arguments.outskirts)
+    if not (os.path.isfile(outskirts) and os.access(outskirts, os.X_OK)):
+        fail(f"{outskirts} is not an executable file")
+    outskirts_real = real_path(outskirts, "outskirts")
+    try:
+        result = subprocess.run([outskirts, "version"], capture_output=True, text=True, timeout=120,
+                                stdin=subprocess.DEVNULL)
+    except (OSError, subprocess.TimeoutExpired) as error:
+        fail(f"{outskirts} version didn't run: {error}")
+    if result.returncode != 0:
+        fail(f"{outskirts} version exited {result.returncode}: {result.stderr.strip()[:300]}")
+    version = result.stdout.strip()
+    resource = None
+    if arguments.library is None or (arguments.describe is None and not arguments.use_scan_inputs):
+        resource = toolchain_of(package.root, arguments.swift)
+    if arguments.library is None:
+        arguments.library = os.path.join(os.path.dirname(resource), "libIndexStore.dylib")
+    verdict = Verdict(arguments.all)
+    temporary = tempfile.mkdtemp(prefix="index-check-dead-")
+    try:
+        if arguments.use_scan_inputs:
+            describe_path = os.path.join(package.scratch, T1_DESCRIBE)
+            config = os.path.join(package.scratch, OUTSKIRTS_CONFIG)
+            with open(describe_path, encoding="utf-8") as handle:
+                describe = json.load(handle)
+        else:
+            if arguments.describe:
+                describe_path = os.path.abspath(arguments.describe)
+                with open(describe_path, encoding="utf-8") as handle:
+                    describe = json.load(handle)
+            else:
+                describe = run_describe(package.root,
+                                        os.path.join(os.path.dirname(os.path.dirname(resource)), "bin", "swift"))
+                describe_path = os.path.join(temporary, "describe.json")
+                with open(describe_path, "w", encoding="utf-8") as handle:
+                    json.dump(describe, handle, ensure_ascii=False)
+            config = os.path.join(temporary, "outskirts.yml")
+            open(config, "wb").close()
+        described_path = describe.get("path")
+        if not isinstance(described_path, str) or not os.path.isabs(described_path) \
+                or real_path(described_path, "describe's path") != package.root:
+            fail(f"the describe JSON describes {described_path!r}, not {package.root}")
+        described = Described(describe, package)
+        try:
+            reader = UnitReader(package, arguments)
+            try:
+                classes = classify_units(reader.units, package, described)
+            finally:
+                reader.close()
+        except ReadError as error:
+            fail(str(error))
+        with_data = {described.by_module[unit["module"]]["name"] for unit in reader.units
+                     if unit["location"] == "store" and classes[unit["name"]] in ("kept", "variant")}
+        library_targets = {name for name in described.library_targets if name in described.targets}
+        runs = DeadRuns(package, described, outskirts, config, describe_path, library_targets & with_data,
+                        arguments.output_dir)
+        if arguments.use_scan_inputs:
+            inputs = f"the collector's describe {describe_path} and config {config}"
+        else:
+            inputs = (f"describe {describe_path}" if arguments.describe
+                      else "my own describe (swift package --scratch-path <tmp> describe)") + " and an empty config"
+        print(f"package {package.root}\nbuild directory {package.scratch}\n"
+              f"index read from {reader.store_path} with {arguments.library}\nruns given {inputs}")
+        runs.run_all()
+        report_runs_own(verdict, runs, version, outskirts_real, library_targets, with_data)
+        if arguments.dump:
+            write_json(arguments.dump, {
+                "version": version, "retainedModules": runs.retained, "retainedTargets": runs.retained_targets,
+                "runs": {run: {"exit": runs.exits[run], "seconds": round(runs.seconds[run], 3),
+                               "entries": runs.entries.get(run),
+                               "decoded": [list(runs.decoded(e, run)) for e in runs.entries.get(run) or []]}
+                         for run in DEAD_RUNS}})
+        if arguments.own_only:
+            verdict.section("comparison with the collector's output skipped (--own-only)")
+        else:
+            compare_status(verdict, runs, package.scan, version)
+            compare_kept(verdict, runs, arguments)
+            compare_scan_block(verdict, runs, package.scan)
+            if arguments.store:
+                compare_store_rows(verdict, runs, arguments.store, arguments.snapshot, outskirts_real, version)
+    finally:
+        shutil.rmtree(temporary, ignore_errors=True)
+    print("\nRESULT: " + ("FAIL" if verdict.failed else "PASS"))
+    return 1 if verdict.failed else 0
+
+
+# --------------------------------------------------------------------------
 
 
 def main():
@@ -4793,9 +5526,31 @@ def main():
                          help="u7: which overridden USRs' references count for their witnesses: protocol "
                               "requirements (design 4.1 as written, the default), only those of protocols the "
                               "package declares, or every overridden USR (class methods too)")
+    dead = modes.add_parser("dead", help="run outskirts twice and compare with the periphery collector's output")
+    dead.add_argument("package", help="the scanned package (its .swiftstats/index-build holds the store)")
+    dead.add_argument("scan", help="`swiftstats scan --index --format json` of <package>")
+    dead.add_argument("outskirts", help="the outskirts executable, run in place")
+    dead.add_argument("--store", help="the store the scan saved to: its rows are compared too")
+    dead.add_argument("--snapshot", type=int, help="the snapshot id in --store (default: the newest)")
+    dead.add_argument("--swift", default="swift",
+                      help="the swift asked for -print-target-info in <package> (default: swift on PATH)")
+    dead.add_argument("--library", help="libIndexStore.dylib (default: the package toolchain's)")
+    dead.add_argument("--describe", help="a describe JSON of <package> instead of running describe")
+    dead.add_argument("--index-store", help="the directory holding v5/units (default: <build>/out)")
+    dead.add_argument("--roots-file", help="the collector's kept roots output (default: <build>/"
+                                           + KEPT_OUTPUT["roots"] + ")")
+    dead.add_argument("--production-file", help="the collector's kept production output (default: <build>/"
+                                                + KEPT_OUTPUT["production"] + ")")
+    dead.add_argument("--use-scan-inputs", action="store_true",
+                      help="give outskirts the collector's own config and describe JSON instead of this script's")
+    dead.add_argument("--output-dir", help="keep each run's stdout and stderr here")
+    dead.add_argument("--own-only", action="store_true",
+                      help="run outskirts and print this check's figures without comparing")
+    dead.add_argument("--dump", help="write this check's runs and decoded entries as JSON")
+    dead.add_argument("--all", action="store_true", help="list every difference")
     arguments = parser.parse_args()
     return {"dump": dump_mode, "build-lines": build_lines_mode, "build": build_mode,
-            "usr": usr_mode}[arguments.mode](arguments)
+            "usr": usr_mode, "dead": dead_mode}[arguments.mode](arguments)
 
 
 if __name__ == "__main__":

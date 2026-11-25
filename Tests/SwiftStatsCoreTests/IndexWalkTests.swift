@@ -112,4 +112,24 @@ struct IndexWalkTests {
                 + "refused Ring.swift-2NSB2P0UKUTYT"
         }
     }
+
+    @Test("""
+        the unit headers alone read every unit once and no record; the local USRs are those the read records \
+        define with the local property: locals, local functions and parameters, not their enclosing function
+        """)
+    func headersAndLocals() throws {
+        let harness = try IndexWalkHarness.fresh()
+        let counting = CountingIndexSource(harness.source, failing: [])
+
+        let units = try IndexWalk.units(of: counting)
+        let locals = IndexAdapter.localUSRs(in: try IndexWalk.walk(harness.source, filter: harness.filter))
+
+        #expect(units.count == harness.units.count && Set(units.map(\.name)) == Set(harness.units.map(\.name)))
+        #expect(counting.recordReads.isEmpty)
+        #expect(locals.contains("s:9IndexCore9summarizeySiSaySiGF11unusedTotalL_Sivp"))
+        #expect(locals.contains("s:9IndexCore9summarizeySiSaySiGF12unusedHelperL_SiyF"))
+        #expect(locals.contains("s:9IndexCore9summarizeySiSaySiGF6valuesL_ACvp"))
+        #expect(locals.contains("s:9IndexCore9summarizeySiSaySiGF") == false)
+        #expect(locals.contains("s:9IndexCore13onlyTestsCallSiyF") == false)
+    }
 }

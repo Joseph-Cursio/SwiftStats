@@ -26,6 +26,22 @@ enum IndexAdapter {
         let timed: TimedAdapterResult
         /// The index results mapped onto the scan; nil unless it ran.
         let report: IndexReport?
+        /// The USRs whose definitions in the read records have the local
+        /// property, which the `periphery` collector classes local
+        /// variables by (design §5.3); empty unless it ran.
+        let localUSRs: Set<String>
+        /// Whether its quarantine moved the stale and other-module units
+        /// out of the store; true even when it failed after that, so the
+        /// `periphery` collector leaves the quarantine folder as it is.
+        let quarantineRan: Bool
+    }
+
+    /// What a read of the store gave.
+    private struct Read {
+        /// The results mapped onto the scan.
+        let report: IndexReport
+        /// The USRs defined local.
+        let localUSRs: Set<String>
     }
 
     /// What a read of the store needs from the scan.
@@ -89,8 +105,9 @@ enum IndexAdapter {
         scan: Scan,
         opening factory: (_ store: URL, _ library: URL) throws -> any IndexStoreSource
     ) -> Run {
+        var quarantineRan = false
         let (outcome, milliseconds) = Stopwatch.time {
-            Result { try read(products: products, scan: scan, opening: factory) }
+            Result { try read(products: products, scan: scan, opening: factory, quarantineRan: &quarantineRan) }
         }
         let result: AdapterResult
         switch outcome {
@@ -119,20 +136,25 @@ enum IndexAdapter {
                 options: options
             )
         }
+        let read = try? outcome.get()
         return Run(
             timed: TimedAdapterResult(result: result, executable: nil, identity: nil, milliseconds: milliseconds),
-            report: try? outcome.get()
+            report: read?.report,
+            localUSRs: read?.localUSRs ?? [],
+            quarantineRan: quarantineRan
         )
     }
 
     /// The store of `products` read for `scan`: located, opened by
-    /// `factory`, walked, its stale and other-module units moved out, and
-    /// its definitions joined to the records.
+    /// `factory`, walked, its stale and other-module units moved out
+    /// (`quarantineRan` set as soon as they are), and its definitions
+    /// joined to the records.
     private static func read(
         products: BuildSession.Products,
         scan: Scan,
-        opening factory: (_ store: URL, _ library: URL) throws -> any IndexStoreSource
-    ) throws -> IndexReport {
+        opening factory: (_ store: URL, _ library: URL) throws -> any IndexStoreSource,
+        quarantineRan: inout Bool
+    ) throws -> Read {
         let location = try IndexStoreLocator.locate(products)
         let source = try factory(location.store, location.library)
         let filter = try UnitFilter(
@@ -142,6 +164,7 @@ enum IndexAdapter {
         )
         let snapshot = try IndexWalk.walk(source, filter: filter)
         let quarantined = try filter.quarantine(snapshot)
+        quarantineRan = true
         let plugins = Set(products.package.targets.filter { $0.type == pluginType }.map(\.name))
         if snapshot.readUnits.isEmpty, scan.records.contains(where: { plugins.contains($0.module) == false }) {
             throw Failure(description: noUnitsReason)
@@ -165,9 +188,9 @@ enum IndexAdapter {
             inDisagreement: join.inDisagreement,
             compiles: compiled(scan.records, snapshot: snapshot, products: products).contains
         )
-        return IndexReport(
+        let report = IndexReport(
             store: summary(of: snapshot, quarantined: quarantined.count),
-            libraryModules: libraryModules(products.package, snapshot: snapshot),
+            libraryModules: libraryModules(products.package, reading: Set(snapshot.readUnits.map(\.module))),
             records: recordUSRs(scan.records, join: join, coupling: coupling, evidence: evidence),
             definitions: definitions(of: join),
             disagreements: join.disagreements,
@@ -179,6 +202,29 @@ enum IndexAdapter {
             familyTypeReferences: coupling.familyTypeReferences,
             files: scan.files.map(\.path).sorted().map { IndexFileHash(path: $0, sha256: products.hashes[$0]) }
         )
+        return Read(report: report, localUSRs: localUSRs(in: snapshot))
+    }
+
+    /// The library-product targets of `package` among `read`, the targets
+    /// with a kept or variant unit, in code point order: the modules whose
+    /// public declarations outskirts retains (design §5.2).
+    static func libraryModules(_ package: DescribedPackage, reading read: Set<String>) -> [String] {
+        Set(package.products.filter { $0.kind == libraryKind }.flatMap(\.targets))
+            .intersection(read)
+            .sorted(by: CodePointOrder.precedes)
+    }
+
+    /// The USRs that `snapshot`'s records define with the local property.
+    static func localUSRs(in snapshot: IndexSnapshot) -> Set<String> {
+        var usrs: Set<String> = []
+        for record in snapshot.records {
+            for occurrence in record.occurrences
+            where occurrence.roles & IndexSymbolKind.Role.definition != 0
+                && occurrence.properties & IndexSymbolKind.Property.local != 0 {
+                usrs.insert(occurrence.usr)
+            }
+        }
+        return usrs
     }
 
     /// Each of `records`' USRs from `join`, or the reason from `evidence`
@@ -232,15 +278,6 @@ enum IndexAdapter {
                 )
             }
         )
-    }
-
-    /// The library-product targets of `package` whose units `snapshot`
-    /// read, sorted.
-    private static func libraryModules(_ package: DescribedPackage, snapshot: IndexSnapshot) -> [String] {
-        let read = Set(snapshot.readUnits.map(\.module))
-        return Set(package.products.filter { $0.kind == libraryKind }.flatMap(\.targets))
-            .intersection(read)
-            .sorted()
     }
 
     /// The targets of `records` that no unit of `snapshot` names but whose

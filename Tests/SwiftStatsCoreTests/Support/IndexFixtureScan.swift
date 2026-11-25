@@ -9,9 +9,11 @@
 //  `.swiftstats/index-build` and `@DEP@` for an IndexDep beside it. The
 //  toolchain holds an empty `libIndexStore.dylib`, which only the locator
 //  looks for. A scan can change the build's scenario, the copy before the
-//  scan and the recorded source the factory gives. The scan runs on a
-//  thread of its own (`ThreadRun`), so a test awaiting it holds no pool
-//  thread for its seconds of work. Nothing is built or read for real.
+//  scan and the recorded source the factory gives. A test can also run
+//  the T1 group alone, as a scan would, to read what a snapshot doesn't
+//  keep (step 6a). The scan runs on a thread of its own (`ThreadRun`), so
+//  a test awaiting it holds no pool thread for its seconds of work.
+//  Nothing is built or read for real.
 //
 
 import Foundation
@@ -86,13 +88,27 @@ struct IndexFixtureScan {
     /// own, and passes the copy and what the scan gave to `check`.
     func run(check: (BuildFixture, IndexGroupHarness.Outcome) throws -> Void) async throws {
         let setup = self
-        let scanned = try await ThreadRun { Result { try setup.scanned() } }.value.get()
+        let scanned = try await ThreadRun { Result { try setup.scanned(setup.scan) } }.value.get()
         defer { scanned.remove() }
-        try check(scanned.fixture, scanned.outcome)
+        try check(scanned.fixture, scanned.value)
     }
 
-    /// Makes the toolchain and the copy and scans the copy as set up.
-    private func scanned() throws -> IndexFixtureScanned {
+    /// Runs the T1 group alone on a copy of the Index fixture as set up,
+    /// on a thread of its own, as a scan would after measuring it, and
+    /// passes the copy and the group's runs to `check`: what a snapshot
+    /// keeps of the group leaves out outskirts' classed entries.
+    func runGroup(check: (BuildFixture, PackageScanner.IndexGroup) throws -> Void) async throws {
+        let setup = self
+        let scanned = try await ThreadRun { Result { try setup.scanned(setup.group) } }.value.get()
+        defer { scanned.remove() }
+        try check(scanned.fixture, scanned.value)
+    }
+
+    /// Makes the toolchain and the copy and gives what `body` makes of
+    /// them, removing both when it throws.
+    private func scanned<Value>(
+        _ body: (BuildFixture, FakeToolchain) throws -> Value
+    ) throws -> IndexFixtureScanned<Value> {
         let toolchain = try FakeToolchain.make(build: scenario)
         let fixture: BuildFixture
         do {
@@ -102,7 +118,7 @@ struct IndexFixtureScan {
             throw error
         }
         do {
-            return IndexFixtureScanned(fixture: fixture, outcome: try scan(fixture, with: toolchain))
+            return IndexFixtureScanned(fixture: fixture, toolchain: toolchain, value: try body(fixture, toolchain))
         } catch {
             toolchain.remove()
             fixture.remove()
@@ -110,8 +126,10 @@ struct IndexFixtureScan {
         }
     }
 
-    /// `fixture` scanned with `toolchain` as set up.
-    private func scan(_ fixture: BuildFixture, with toolchain: FakeToolchain) throws -> IndexGroupHarness.Outcome {
+    /// `fixture` set up for a scan with `toolchain`: the library, the
+    /// configuration and `prepare`; the scanner reading the recorded
+    /// dump.
+    private func scanner(_ fixture: BuildFixture, with toolchain: FakeToolchain) throws -> PackageScanner {
         if hasLibrary {
             try Data().write(to: toolchain.directory.appendingPathComponent("usr/lib/libIndexStore.dylib"))
         }
@@ -122,10 +140,16 @@ struct IndexFixtureScan {
         let recording = try IndexFixture.data(dump)
         let paths = Self.restoring(fixture)
         let transform = source
-        let scanner = PackageScanner(describer: fixture.package.describer, tools: SnapshotHarness.noTools)
+        return PackageScanner(describer: fixture.package.describer, tools: SnapshotHarness.noTools)
             .readingIndex { _, _ in
                 try transform(RecordedIndexSource(recording: recording, restoring: paths))
             }
+    }
+
+    /// `fixture` scanned with `toolchain` as set up.
+    private func scan(_ fixture: BuildFixture, with toolchain: FakeToolchain) throws -> IndexGroupHarness.Outcome {
+        let scanner = try scanner(fixture, with: toolchain)
+        let root = fixture.package.root
         let snapshot = try SnapshotScanner(scanner: scanner, build: SnapshotHarness.build)
             .scan(
                 packageAt: root,
@@ -137,5 +161,26 @@ struct IndexFixtureScan {
                 tiers: RequestedTiers(index: true)
             )
         return IndexGroupHarness.Outcome(snapshot: snapshot, toolchain: toolchain, root: root)
+    }
+
+    /// The T1 group's runs on `fixture` with `toolchain` as set up, after
+    /// measuring its targets as a scan does.
+    private func group(_ fixture: BuildFixture, with toolchain: FakeToolchain) throws -> PackageScanner.IndexGroup {
+        let scanner = try scanner(fixture, with: toolchain)
+        let root = fixture.package.root
+        let configuration = try SwiftStatsConfiguration.load(
+            StoreLocation.localConfiguration(packageRoot: root),
+            root: root
+        )
+        let package = try fixture.package.describer.describePackage(at: root)
+        let targets = PackageScanner.excluding(TargetResolver.resolve(package), by: configuration).targets
+        let measured = PackageScanner.measured(targets, root: root, configuration: configuration).measurements
+        return scanner.runIndexGroup(
+            root: root,
+            configuration: configuration,
+            requested: true,
+            measured: measured,
+            targets: targets
+        )
     }
 }

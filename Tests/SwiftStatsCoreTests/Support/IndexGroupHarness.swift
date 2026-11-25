@@ -65,7 +65,8 @@ enum IndexGroupHarness {
     }
 
     /// An executable `outskirts` stand-in that logs its calls beside
-    /// itself and fails; the group never runs it yet.
+    /// itself and fails every one, for scans in which outskirts must not
+    /// run (`FakePeriphery` acts out real runs).
     static func outskirts() throws -> URL {
         try FakeTool.make(outputs: ["[]"], errorText: "unexpected", statuses: [1])
     }

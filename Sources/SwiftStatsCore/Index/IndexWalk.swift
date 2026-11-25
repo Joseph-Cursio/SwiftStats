@@ -20,11 +20,7 @@ enum IndexWalk {
 
     /// The snapshot of the store `source` reads, classed by `filter`.
     static func walk(_ source: any IndexStoreSource, filter: UnitFilter) throws -> IndexSnapshot {
-        let names = try reading("the unit list") { try source.unitNames() }
-        let units = try names.map { name in
-            try reading("unit \(name)") { try source.unit(named: name) }
-        }
-        let classed = filter.classify(units)
+        let classed = filter.classify(try units(of: source))
         var naming: [String: String] = [:]
         for entry in classed where entry.unitClass.isRead {
             for record in entry.unit.records where naming[record] == nil {
@@ -40,6 +36,16 @@ enum IndexWalk {
             )
         }
         return IndexSnapshot(units: classed.map { snapshotUnit($0, filter: filter) }, records: records)
+    }
+
+    /// Every unit header of the store `source` reads, in the order of its
+    /// unit list; the `periphery` collector reads only these when the
+    /// `index` collector didn't run (design §2.4).
+    static func units(of source: any IndexStoreSource) throws -> [IndexUnitFact] {
+        let names = try reading("the unit list") { try source.unitNames() }
+        return try names.map { name in
+            try reading("unit \(name)") { try source.unit(named: name) }
+        }
     }
 
     /// `entry` as the snapshot gives it: module names translated, its main

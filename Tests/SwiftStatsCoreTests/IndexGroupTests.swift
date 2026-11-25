@@ -8,7 +8,8 @@ import Testing
 /// build when it didn't run and fail when it wrote no index store; when it
 /// ran, the index reads its store (here failing for a toolchain without
 /// `libIndexStore.dylib`; `USRJoinTests` reads a recorded one) and
-/// outskirts gives its placeholder. `IndexGroupOutputTests` reads a
+/// outskirts, which then reads the unit headers itself, fails alike
+/// (`PeripheryAdapterTests` runs it). `IndexGroupOutputTests` reads a
 /// recorded build. A fake toolchain acts out every build.
 @Suite("Index group")
 struct IndexGroupTests {
@@ -30,12 +31,13 @@ struct IndexGroupTests {
     @Test("""
         asked for with a swift and an outskirts found, the build runs with the coverage collector's swift's \
         toolchain whatever coverage's enabled says, the index reads its store, failing for a toolchain without \
-        libIndexStore.dylib, and periphery gives its placeholder, outskirts never run
+        libIndexStore.dylib, and periphery, reading the unit headers itself, fails alike after asking \
+        outskirts its version, never scanning
         """)
     func buildRuns() throws {
-        let outskirts = try IndexGroupHarness.outskirts()
-        defer { try? FileManager.default.removeItem(at: outskirts.deletingLastPathComponent()) }
-        let extra = "    enabled: false\n  periphery:\n    path: \(outskirts.path)\n"
+        let outskirts = try FakePeriphery.make(try FakePeriphery.recorded())
+        defer { outskirts.remove() }
+        let extra = "    enabled: false\n" + outskirts.configuration
 
         try IndexGroupHarness.scanSmall(
             try IndexGroupHarness.emptyBuild(),
@@ -48,17 +50,23 @@ struct IndexGroupTests {
             #expect(build.reason == nil)
             #expect(build.version == "Apple Swift version 9.9 (fake)")
             #expect(build.options == Self.ranOptions)
-            #expect(outcome.statuses["index"]?.reason
-                == "the toolchain has no libIndexStore.dylib (<toolchain>/usr/lib)")
-            #expect(outcome.statuses["periphery"]?.reason == "the outskirts collector is not built yet")
-            #expect(outcome.statuses["index"]?.state == .failed && outcome.statuses["periphery"]?.state == .skipped)
+            let noLibrary = "the toolchain has no libIndexStore.dylib (<toolchain>/usr/lib)"
+            #expect(outcome.statuses["index"]?.reason == noLibrary)
+            #expect(outcome.statuses["periphery"] == CollectorStatus(
+                name: "periphery",
+                state: .failed,
+                version: nil,
+                reason: noLibrary,
+                options: []
+            ))
+            #expect(outcome.statuses["index"]?.state == .failed)
+            #expect(outcome.run("periphery")?.identity?.hasPrefix("sha256:") == true)
             #expect(outcome.report.index == nil)
             #expect(outcome.built)
             #expect(outcome.toolchain.calls(of: "proxy") == ["-print-target-info"])
             #expect(outcome.report.collectors.first { $0.name == "coverage" }?.reason
                 == CoverageAdapter.notRequestedReason)
-            let log = outskirts.deletingLastPathComponent().appendingPathComponent("arguments.log")
-            #expect(FileManager.default.fileExists(atPath: log.path) == false)
+            #expect(outskirts.calls == ["version"])
             let report = try #require(outcome.report.build)
             #expect(report.records.isEmpty && report.attachments.isEmpty)
             #expect(report.totals == BuildTotals(functionEntries: 0, expressionEntries: 0, milliseconds: 0))
