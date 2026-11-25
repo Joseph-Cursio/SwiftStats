@@ -1,0 +1,170 @@
+# Coverage
+## Sources/Exe/main.swift
+1:1 file
+2:1 record Exe::<top-level code> @ Sources/Exe/main.swift
+3:1 file
+4:1 record Exe::func exeHelper(_: Int) -> Int
+6:2 file
+8:1 record Exe::<top-level code> @ Sources/Exe/main.swift
+8:14 file
+## Sources/Probe/Accessors.swift
+1:1 file
+2:1 type Probe::Box
+6:28 record Probe::Box::var both: Int { get }
+6:43 type Probe::Box
+6:44 record Probe::Box::var both: Int { set }
+6:70 type Probe::Box
+8:30 record Probe::Box::var watched { willSet }
+8:60 type Probe::Box
+8:61 record Probe::Box::var watched { didSet }
+8:84 type Probe::Box
+10:29 record Probe::Box::var doubled: Int { get }
+10:44 type Probe::Box
+14:5 record Probe::Box::subscript(_: Int) -> Int
+14:43 record Probe::Box::subscript(_: Int) -> Int / { get }
+14:66 record Probe::Box::subscript(_: Int) -> Int
+14:67 record Probe::Box::subscript(_: Int) -> Int / { set }
+14:101 record Probe::Box::subscript(_: Int) -> Int
+14:103 type Probe::Box
+17:5 record Probe::Box::init()
+17:21 type Probe::Box
+18:2 file
+## Sources/Probe/Attached.swift
+1:1 file
+5:1 record Probe::func withDefault(_: (Int) -> Int) -> Int
+7:2 file
+10:1 type Probe::Secret @ Sources/Probe/Attached.swift
+13:2 file
+16:1 record Probe::func firstSecret() -> Int
+18:2 file
+## Sources/Probe/Bom.swift
+1:1 file
+1:4 record Probe::func bomFirst() -> Int
+2:1 file
+4:1 record Probe::func bomSecond() -> Int
+6:2 file
+## Sources/Probe/Counter.swift
+1:1 file
+2:1 type Probe::Counter
+7:5 record Probe::Counter::init()
+7:21 type Probe::Counter
+10:5 record Probe::Counter::func add(_: [Int])
+12:6 type Probe::Counter
+15:5 record Probe::Counter::func doubled() -> Int
+17:6 type Probe::Counter
+18:2 file
+21:1 record Probe::func twice(_: Int) -> Int @ Sources/Probe/Counter.swift
+23:2 file
+26:1 record Probe::func onlyKit() -> Int
+28:2 file
+31:1 record Probe::func neverCalled() -> Int
+33:2 file
+## Sources/Probe/Dependency.swift
+1:1 file
+4:1 record Probe::func fromHelper() -> Int
+6:2 file
+## Sources/Probe/Generated.swift
+1:1 file
+2:1 record Probe::func generatedHelper() -> Int
+4:2 file
+## Sources/Probe/Nested.swift
+1:1 file
+2:1 record Probe::func outer(_: Bool) -> Int
+3:5 record Probe::func outer(_: Bool) -> Int / func inner(_: Int) -> Int
+5:6 record Probe::func outer(_: Bool) -> Int
+11:2 file
+14:1 record Probe::func sameLine() -> Int
+14:33 record Probe::func sameLine() -> Int / func one() -> Int
+14:56 record Probe::func sameLine() -> Int
+14:68 file
+17:1 record Probe::func anyLarge(_: [Int]) -> Bool
+19:2 file
+## Sources/Probe/Overloads.swift
+1:1 file
+2:1 record Probe::func describe(_: Int) -> String
+4:2 file
+7:1 record Probe::func describe(_: String) -> String
+9:2 file
+13:1 record Probe::func mode() -> String #if DEBUG
+13:41 file
+16:1 record Probe::func mode() -> String #if !(DEBUG)
+16:43 file
+20:1 record Probe::func platform() -> String
+26:2 file
+## Sources/Probe/Secrets.swift
+1:1 file
+2:1 type Probe::Secret @ Sources/Probe/Secrets.swift
+5:2 file
+8:1 record Probe::func secondSecret() -> Int
+10:2 file
+## Sources/Probe/Wrappers.swift
+1:1 file
+2:1 type Probe::Clamped
+8:9 record Probe::Clamped::var wrappedValue: Int { get }
+8:22 type Probe::Clamped
+9:9 record Probe::Clamped::var wrappedValue: Int { set }
+9:42 type Probe::Clamped
+13:5 record Probe::Clamped::init(wrappedValue: Int)
+15:6 type Probe::Clamped
+16:2 file
+19:1 type Probe::Settings
+24:5 record Probe::Settings::init()
+24:21 type Probe::Settings
+25:2 file
+28:1 type Probe::Side
+31:2 file
+35:1 record Probe::func lefts(_: [Int]) -> [Side]
+37:2 file
+## Sources/Unlinked/Unlinked.swift
+1:1 file
+2:1 record Unlinked::func unlinked() -> Int
+4:2 file
+## Tests/ProbeTests/CounterTests.swift
+1:1 file
+## Tests/ProbeTests/CounterXCTests.swift
+1:1 file
+4:1 type ProbeTests::CounterXCTests
+8:2 file
+## Tests/ProbeTests/MappingTests.swift
+1:1 file
+## Tests/SwiftTestKitTests/KitTests.swift
+1:1 file
+# Mutation
+## Sources/Core/Bounds.swift
+1:1 file
+4:1 record Core::func clamp(_: Int, low: Int, high: Int) -> Int
+12:2 file
+17:1 record Core::func isWithin(_: Int, low: Int, high: Int) -> Bool
+19:2 file
+## Sources/Core/Dormant.swift
+1:1 file
+4:1 record Core::func neverCalled(_: Int) -> Int
+9:2 file
+## Sources/Core/NormalizeA.swift
+1:1 file
+6:1 record Core::func normalizedA(_: [Int], log: inout[Int]) -> [Int]
+11:2 file
+## Sources/Core/Signs.swift
+1:1 file
+3:1 record Core::func sign(_: Int) -> Int
+8:2 file
+## Sources/Extras/NormalizeB.swift
+1:1 file
+2:1 record Extras::func normalizedB(_: [Int], log: inout[Int]) -> [Int]
+7:2 file
+## Sources/Extras/Scale.swift
+1:1 file
+2:1 record Extras::func scale(_: Int) -> Int
+4:2 file
+## Sources/Extras/Unused.swift
+1:1 file
+3:1 record Extras::func unused(_: Int, _: Int) -> Int
+8:2 file
+## Tests/CoreTests/BoundsTests.swift
+1:1 file
+## Tests/CoreTests/NormalizeTests.swift
+1:1 file
+## Tests/CoreTests/SignTests.swift
+1:1 file
+## Tests/ExtrasTests/ScaleTests.swift
+1:1 file

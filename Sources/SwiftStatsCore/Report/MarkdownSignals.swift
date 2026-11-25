@@ -196,12 +196,16 @@ public enum MarkdownSignals {
 
         case .bestPropertyTarget, .genuinelyUnderTested, .unevenCloneMutation, .weakTests:
             mutationColumns(for: signal)
+
+        case .deadButTested, .hiddenCoupling, .testOnlyProduction:
+            indexColumns(for: signal)
         }
     }
 
     /// What the subject column of `signal`'s table heads: a type for
     /// unchecked laws, a copy or class for the clone signals, a function,
-    /// type or file for risky + untested, else a function.
+    /// type or file for risky + untested, a pair's first family for hidden
+    /// coupling, else a function.
     private static func subjectHeading(for signal: SignalName) -> String {
         switch signal {
         case .cloneHotspot:
@@ -209,6 +213,9 @@ public enum MarkdownSignals {
 
         case .divergentClones:
             "Unchanged copy"
+
+        case .hiddenCoupling:
+            "Family"
 
         case .riskyUntested:
             "Function, type or file"

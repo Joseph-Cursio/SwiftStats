@@ -25,16 +25,27 @@ enum RollupMetrics {
     private static let swiftProjectLintPaths: Set<String> = ["api.overExposed", "tests.swiftTestingWithoutAssertions"]
     /// Roll-up fields whose next key names the tool.
     private static let perToolFields: Set<String> = ["findings", "findingKinds"]
-    /// The roll-up field whose numbers come from SwiftEffectInference.
-    private static let effectsField = "effects"
-    /// The roll-up field whose numbers come from SwiftInferProperties.
-    private static let propertiesField = "properties"
-    /// The roll-up field whose numbers come from SwiftCloneDetector.
-    private static let clonesField = "clones"
-    /// The roll-up field whose numbers come from the coverage collector.
-    private static let coverageField = "coverage"
-    /// The roll-up field whose numbers come from the SwiftMutator collector.
-    private static let mutationField = "mutation"
+    /// The roll-up fields whose numbers all come from one collector: its
+    /// name, by field. The `typecheck` figures come from the `build`
+    /// collector's type-check timings (M7, design §6.4).
+    private static let fieldCollectors = [
+        "effects": EffectCollector.name,
+        "properties": SwiftInferPropertiesAdapter.name,
+        "clones": SwiftCloneDetectorAdapter.name,
+        "coverage": CoverageAdapter.name,
+        "mutation": MutationAdapter.name,
+        "index": IndexAdapter.name,
+        "deadCode": PeripheryAdapter.name,
+        "typecheck": BuildAdapter.name
+    ]
+    /// The line ratio's dead lines, which come from the `periphery`
+    /// collector, though the rest of the ratio is SwiftStats' own (M7,
+    /// design §7).
+    private static let deadLinesPath = "tests.lineRatio.deadLines"
+    /// The collector of each finding tool that isn't named after its
+    /// collector: the compiler's warnings come from the T1 build (M7,
+    /// design §6.4).
+    private static let toolCollectors = [WarningReader.tool: BuildAdapter.name]
 
     /// Every number in `rollup`, sorted by path. Nulls and booleans are left
     /// out: a null is a value not collected, and a flag isn't a metric.
@@ -48,27 +59,24 @@ enum RollupMetrics {
     /// The collector a metric at `path` comes from.
     static func collector(of path: [String]) -> String {
         if let field = path.first, perToolFields.contains(field), path.count > 1 {
-            return path[1]
+            return collector(ofTool: path[1])
         }
         if swiftProjectLintPaths.contains(path.joined(separator: ".")) {
             return SwiftProjectLintAdapter.name
         }
-        if path.first == effectsField {
-            return EffectCollector.name
+        if let field = path.first, let named = fieldCollectors[field] {
+            return named
         }
-        if path.first == propertiesField {
-            return SwiftInferPropertiesAdapter.name
-        }
-        if path.first == clonesField {
-            return SwiftCloneDetectorAdapter.name
-        }
-        if path.first == coverageField {
-            return CoverageAdapter.name
-        }
-        if path.first == mutationField {
-            return MutationAdapter.name
+        if path.joined(separator: ".") == deadLinesPath {
+            return PeripheryAdapter.name
         }
         return SwiftStatsCollector.name
+    }
+
+    /// The collector whose run gives the findings of `tool`: the tool's
+    /// own name, but `build` for `swiftc`.
+    static func collector(ofTool tool: String) -> String {
+        toolCollectors[tool] ?? tool
     }
 
     /// Appends each number under `value` to `metrics`.

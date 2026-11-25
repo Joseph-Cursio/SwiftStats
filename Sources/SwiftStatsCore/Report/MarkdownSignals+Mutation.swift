@@ -90,7 +90,7 @@ extension MarkdownSignals {
 
     /// Killed of scored, with the percentage; a dash when nothing was
     /// scored.
-    private static func functionScore(_ score: MutationScore) -> String {
+    static func functionScore(_ score: MutationScore) -> String {
         guard let percent = score.percent else {
             return "—"
         }
@@ -125,7 +125,7 @@ extension MarkdownSignals {
 
     /// How many tests the kills name, and the first of them (Swift
     /// Testing's display names can be sentences; the JSON names five).
-    private static func killingTests(_ mutation: SignalItem.Mutation) -> String {
+    static func killingTests(_ mutation: SignalItem.Mutation) -> String {
         guard let first = mutation.firstKillingTests.first else {
             return String(mutation.killingTests)
         }
@@ -170,7 +170,7 @@ extension MarkdownSignals {
     }
 
     /// A cell reading an item's mutation results with `cell`.
-    private static func mutation(_ cell: @escaping (SignalItem.Mutation) -> String) -> (SignalItem) -> String {
+    static func mutation(_ cell: @escaping (SignalItem.Mutation) -> String) -> (SignalItem) -> String {
         { item in item.mutation.map(cell) ?? "—" }
     }
 

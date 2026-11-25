@@ -2,13 +2,14 @@
 //  RequestedTiers.swift
 //  SwiftStatsCore
 //
-//  The slow collectors a scan runs only when asked for (M5, M6): coverage
-//  (`scan --coverage`) and mutation (`scan --mutation`, with `--since` or
-//  `--resume`). `backfill` and `diff`'s scans of other revisions ask for
-//  neither. The flags' combinations are checked here, so every front end
-//  refuses the same ones with the same words. A `--since` run, or the
-//  resume of one, also carries the stored snapshot it merges with, which
-//  the scan chooses before anything runs (M6, design §6.1).
+//  The slow collectors a scan runs only when asked for (M5–M7): coverage
+//  (`scan --coverage`), mutation (`scan --mutation`, with `--since` or
+//  `--resume`) and the T1 group (`scan --index`: the build, the index read
+//  and outskirts). `backfill` and `diff`'s scans of other revisions ask
+//  for none of them. The flags' combinations are checked here, so every
+//  front end refuses the same ones with the same words. A `--since` run,
+//  or the resume of one, also carries the stored snapshot it merges with,
+//  which the scan chooses before anything runs (M6, design §6.1).
 //
 
 /// Which of the opt-in collectors a scan runs.
@@ -25,7 +26,7 @@ public struct RequestedTiers: Hashable, Sendable {
         }
     }
 
-    /// Neither: the scan runs only the collectors that always run.
+    /// None: the scan runs only the collectors that always run.
     public static let syntaxOnly = Self()
     /// Coverage alone, as `scan --coverage` asks for it.
     public static let coverage = Self(coverage: true)
@@ -35,21 +36,27 @@ public struct RequestedTiers: Hashable, Sendable {
     /// Which SwiftMutator run the scan asked for; nil when it didn't
     /// (`scan` without `--mutation`).
     public let mutation: MutationRequest?
+    /// Whether the T1 group runs (`scan --index`): the `build`, `index`
+    /// and `periphery` collectors.
+    public let index: Bool
     /// The stored snapshot a `--since` run, or the resume of one, merges
     /// with, chosen before the scan; nil until chosen, and for other runs.
     let base: MutationBase?
 
     /// Tiers. Fields are documented on their properties.
-    public init(coverage: Bool = false, mutation: MutationRequest? = nil) {
+    public init(coverage: Bool = false, mutation: MutationRequest? = nil, index: Bool = false) {
         self.coverage = coverage
         self.mutation = mutation
+        self.index = index
         base = nil
     }
 
-    /// Tiers asking for `coverage` and `mutation`, merging with `base`.
-    private init(coverage: Bool, mutation: MutationRequest?, base: MutationBase?) {
+    /// Tiers asking for `coverage`, `mutation` and `index`, merging with
+    /// `base`.
+    private init(coverage: Bool, mutation: MutationRequest?, index: Bool, base: MutationBase?) {
         self.coverage = coverage
         self.mutation = mutation
+        self.index = index
         self.base = base
     }
 
@@ -58,7 +65,8 @@ public struct RequestedTiers: Hashable, Sendable {
     /// `--no-store`. Throws when `--since` or `--resume` comes without
     /// `--mutation`, when both come together (a resume takes its base from
     /// the run it continues), when `--since` names nothing, or when either
-    /// comes with `--no-store`, since both read the store.
+    /// comes with `--no-store`, since both read the store. `--index`
+    /// combines with every flag, so `asking(index:)` adds it.
     public static func scanFlags(
         coverage: Bool,
         mutation: Bool,
@@ -93,8 +101,14 @@ public struct RequestedTiers: Hashable, Sendable {
         return Self(coverage: coverage, mutation: since.map(MutationRequest.since) ?? .full)
     }
 
+    /// The same tiers, asking for the T1 group when `index` is true
+    /// (`scan --index`, which combines with every other flag).
+    public func asking(index: Bool) -> Self {
+        Self(coverage: coverage, mutation: mutation, index: index, base: base)
+    }
+
     /// The same tiers, the SwiftMutator run merging with `chosen`.
     func merging(with chosen: MutationBase?) -> Self {
-        Self(coverage: coverage, mutation: mutation, base: chosen)
+        Self(coverage: coverage, mutation: mutation, index: index, base: chosen)
     }
 }

@@ -10,8 +10,8 @@
 //  linked to property tests, and every finding is attached to its place.
 //  SwiftCloneDetector starts beside the other external collectors and is
 //  waited for with them, as is the coverage run when the scan asked for it;
-//  the SwiftMutator run, when asked for, follows them alone. The tools'
-//  skip reason covers all of them.
+//  the T1 group, then the SwiftMutator run, each when asked for, follow
+//  them alone. The tools' skip reason covers all of them.
 //
 
 import Foundation
@@ -19,7 +19,7 @@ import Foundation
 extension PackageScanner {
     /// The collectors started in the background before the package is
     /// measured, waited for with the other external collectors, and the
-    /// SwiftMutator run asked for, which follows them.
+    /// T1 group and the SwiftMutator run asked for, which follow them.
     struct PendingRuns {
         /// SwiftInferProperties' run; nil when the tools are skipped.
         let properties: BackgroundJob<SwiftInferRun>?
@@ -27,25 +27,39 @@ extension PackageScanner {
         let coverage: BackgroundJob<CoverageRun>
         /// The SwiftMutator run the scan asked for; nil when it didn't.
         var mutation: MutationScope?
+        /// Whether the scan asked for the T1 group (`scan --index`), which
+        /// runs in the foreground, alone, once the background runs end.
+        let index: Bool
         /// What a scan that stores its snapshot checks before its
         /// SwiftMutator run starts (`MutationSaving`); nil for another scan.
-        var gate: ((CollectorStatus, [FunctionRecord]) throws -> Void)?
+        var gate: ((CollectorStatus, CollectorStatus, ScanMeasurements) throws -> Void)?
+        /// What a scan that stores its snapshot checks before its T1 build
+        /// starts (`IndexSaving`); nil for another scan.
+        var indexGate: ((CollectorStatus, ScanMeasurements) throws -> Void)?
 
         /// Sets the SwiftMutator run's copy to check out `git`'s commit and
         /// leave out the files at `ignoring`, and, for a scan that stores
-        /// its snapshot as `saving` says, its gate and keeping a run that
-        /// ran until it is stored.
-        mutating func prepareMutation(git: GitState?, ignoring: [String], saving: MutationSaving?) {
+        /// its snapshot as `saving` and `indexSaving` say, the gates before
+        /// SwiftMutator and the T1 build and keeping a run that ran until
+        /// it is stored.
+        mutating func prepareMutation(
+            git: GitState?,
+            ignoring: [String],
+            saving: MutationSaving?,
+            indexSaving: IndexSaving?
+        ) {
             mutation = mutation?.with(git: git, ignoring: ignoring, keepsUntilStored: saving != nil)
             gate = saving?.gate
+            indexGate = indexSaving?.gate
         }
     }
 
     /// The external collectors' part of a scan.
     struct ExternalScan {
         /// Each external collector's run, SwiftInferProperties',
-        /// SwiftCloneDetector's, the coverage collector's and the
-        /// SwiftMutator collector's included.
+        /// SwiftCloneDetector's, the coverage collector's, the T1 group's
+        /// (`build`, `index`, `periphery`) and the SwiftMutator collector's
+        /// included.
         let timed: [TimedAdapterResult]
         /// SwiftStats' markers and the tools' findings, attached.
         let findings: [Finding]
@@ -62,6 +76,9 @@ extension PackageScanner {
         let coverage: CoverageReport?
         /// Problems mapping the coverage.
         let coverageWarnings: [ScanWarning]
+        /// The T1 group's runs and the build's timings and warning
+        /// counts, mapped to records.
+        let index: IndexGroup
         /// The SwiftMutator run, or its skip.
         let mutation: MutationRun
         /// Its results, mapped to records; nil unless it ran with results.
@@ -116,8 +133,9 @@ extension PackageScanner {
 
     /// SwiftInferProperties' run over `targets` of the package at `root`,
     /// and the coverage run when `tiers` asks for it, started in the
-    /// background, with the SwiftMutator run `tiers` asks for, before the
-    /// scan sets the git state it read and the files the copy leaves out.
+    /// background, with the T1 group and the SwiftMutator run `tiers` asks
+    /// for, before the scan sets the git state it read and the files the
+    /// SwiftMutator copy leaves out.
     func startBackground(
         root: URL,
         targets: [TargetSummary],
@@ -128,7 +146,9 @@ extension PackageScanner {
             properties: startProperties(root: root, targets: targets, configuration: configuration),
             coverage: startCoverage(root: root, configuration: configuration, requested: tiers.coverage),
             mutation: tiers.mutation.map { MutationScope(request: $0, base: tiers.base, git: nil, ignoring: []) },
-            gate: nil
+            index: tiers.index,
+            gate: nil,
+            indexGate: nil
         )
     }
 
@@ -145,15 +165,54 @@ extension PackageScanner {
         return CollectorRun.startProperties(root: root, targets: targets, configuration: configuration, locator: tools)
     }
 
+    /// The runs that go alone, once every background run has ended, on
+    /// `targets` of the package at `root` under `configuration`: the T1
+    /// group, skipped unless `pending` asks for it, after `pending`'s T1
+    /// gate has been given its coverage run's status and `measured`, then,
+    /// after `pending`'s gate has been given its coverage run's status,
+    /// the build's and `measured`, the SwiftMutator run `pending` asks for.
+    private func aloneRuns(
+        root: URL,
+        targets: [TargetSummary],
+        configuration: SwiftStatsConfiguration,
+        pending: PendingRuns,
+        measured: ScanMeasurements
+    ) throws -> (IndexGroup, MutationRun) {
+        if pending.index, let gate = pending.indexGate {
+            try gate(pending.coverage.wait().status, measured)
+        }
+        let indexGroup = runIndexGroup(
+            root: root,
+            configuration: configuration,
+            requested: pending.index,
+            measured: measured,
+            targets: targets
+        )
+        if pending.mutation != nil, let gate = pending.gate {
+            try gate(pending.coverage.wait().status, indexGroup.build.result.status, measured)
+        }
+        let mutation = runMutation(
+            root: root,
+            configuration: configuration,
+            scope: pending.mutation,
+            measured: measured
+        )
+        return (indexGroup, mutation)
+    }
+
     /// Starts SwiftCloneDetector and runs the other external collectors on
     /// `targets` of the package at `root`, waits for it and for `pending`,
     /// SwiftInferProperties' and the coverage collector's runs, then runs
-    /// the SwiftMutator collector alone, and attaches the classes, the
-    /// suggestions, the coverage, the mutants and every finding to
-    /// `measured`'s records. When a SwiftMutator run was asked for,
-    /// `pending`'s gate is given the coverage run's status and the records
-    /// before it starts, once every other run has ended, and may stop the
-    /// scan.
+    /// the T1 group alone when `pending` asks for it (and lists it skipped
+    /// otherwise), then the SwiftMutator collector alone, and attaches the
+    /// classes, the suggestions, the coverage, the build's timings, the
+    /// mutants and every finding, the compiler's warnings among them, to
+    /// `measured`'s records. When the T1 group was asked for, `pending`'s
+    /// T1 gate is given the coverage run's status and `measured` before
+    /// the build starts; when a SwiftMutator run was asked for, `pending`'s
+    /// gate is given the coverage run's status, the build's and `measured`
+    /// before it starts, once every other run has ended; either may stop
+    /// the scan.
     func externalRuns(
         root: URL,
         targets: [TargetSummary],
@@ -167,19 +226,18 @@ extension PackageScanner {
         let cloneRun = cloneJob?.wait()
         let run = pending.properties?.wait()
         let coverage = pending.coverage.wait()
-        if pending.mutation != nil, let gate = pending.gate {
-            try gate(coverage.status, measured.records)
-        }
-        let mutationRun = runMutation(
+        let (indexGroup, mutationRun) = try aloneRuns(
             root: root,
+            targets: targets,
             configuration: configuration,
-            scope: pending.mutation,
+            pending: pending,
             measured: measured
         )
-        let findings = Self.attach(measured.markers + adapters.flatMap(\.result.findings), to: measured)
+        let raw = measured.markers + adapters.flatMap(\.result.findings) + indexGroup.findings
+        let findings = Self.attach(raw, to: measured)
         // SwiftInferProperties and SwiftCloneDetector report no findings,
-        // so they get no counts.
-        let ran = adapters.map(\.result.status).filter { $0.state == .ran }.map(\.name)
+        // so they get no counts; the build's are counted as `swiftc`'s.
+        let ran = adapters.map(\.result.status).filter { $0.state == .ran }.map(\.name) + indexGroup.tools
         let properties = run.map { completed in
             Self.properties(of: completed, measured: measured, targets: targets, root: root, findings: findings)
         }
@@ -197,8 +255,8 @@ extension PackageScanner {
             configuration: configuration
         )
         return ExternalScan(
-            timed: adapters + [run?.timed, cloneRun?.timed, coverage.timed, mappedMutation.run.timed]
-                .compactMap(\.self),
+            timed: adapters + [run?.timed, cloneRun?.timed, coverage.timed].compactMap(\.self) + indexGroup.timed
+                + [mappedMutation.run.timed],
             findings: findings,
             tally: FindingTally(findings: findings, tools: Set(ran).union([MarkerCollector.tool])),
             properties: properties?.report,
@@ -206,6 +264,7 @@ extension PackageScanner {
             clones: cloneRun.flatMap { Self.clones(of: $0, measured: measured) },
             coverage: mapped.report,
             coverageWarnings: mapped.warnings,
+            index: indexGroup,
             mutation: mappedMutation.run,
             mutationReport: mappedMutation.report,
             mutationWarnings: mappedMutation.warnings

@@ -3,7 +3,9 @@
 //  SwiftStatsCore
 //
 //  `swiftstats diff --format markdown` (PRD §6.6, §10): a summary, the
-//  function families that changed, the test bundles that came or went,
+//  function families that changed with how each was matched (`usr` among
+//  the methods, M7), the records whose USR changed under the same key, the
+//  test bundles that came or went,
 //  where merged mutation results came from, metric deltas grouped into
 //  worse, better and neutral, and what couldn't be compared.
 //
@@ -26,7 +28,7 @@ public enum MarkdownDiff {
             lines += ["Functions and roll-ups: not compared, since SwiftStats' own results don't compare\(reason)."]
         } else {
             lines += summary(diff)
-            lines += ["", "## Functions", ""] + families(diff.families)
+            lines += ["", "## Functions", ""] + families(diff.families) + usrChanges(diff.families)
         }
         lines += bundles(diff.bundles) + mutationSources(diff)
         let deltas = diff.functions.flatMap { function in
@@ -78,6 +80,19 @@ public enum MarkdownDiff {
             ]
         }
         return table.lines(empty: "No function changes.")
+    }
+
+    /// The records that kept their key but not their primary USR, as facts
+    /// under the functions; nothing when there are none.
+    private static func usrChanges(_ families: [FamilyChange]) -> [String] {
+        let changes = families.flatMap(\.usrChanges)
+        guard changes.isEmpty == false else {
+            return []
+        }
+        var table = MarkdownTable(header: ["Record", "USR before", "USR after"])
+        table.rows = changes.map { [$0.key, "`\($0.before)`", "`\($0.after)`"] }
+        return ["", "Records whose key now names another declaration (the index's USR changed):", ""]
+            + table.lines(empty: "")
     }
 
     /// The test bundles that came or went, as a fact beside the coverage

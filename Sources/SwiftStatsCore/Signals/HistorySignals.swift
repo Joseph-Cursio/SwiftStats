@@ -103,9 +103,9 @@ enum HistorySignals {
         case .unstableFixes:
             "reverted, or fixed again within the repeat window"
 
-        case .bestPropertyTarget, .cloneHotspot, .divergentClones, .genuinelyUnderTested, .missingTemplate,
-            .riskyUntested, .toolDisagreement, .uncheckedLaws, .unevenCloneMutation, .unevenCloneTesting,
-            .untestedProperty, .weakTests:
+        case .bestPropertyTarget, .cloneHotspot, .deadButTested, .divergentClones, .genuinelyUnderTested,
+            .hiddenCoupling, .missingTemplate, .riskyUntested, .testOnlyProduction, .toolDisagreement, .uncheckedLaws,
+            .unevenCloneMutation, .unevenCloneTesting, .untestedProperty, .weakTests:
             ""
         }
     }
@@ -135,9 +135,9 @@ enum HistorySignals {
         case .unstableFixes:
             value = Double((history.reverts ?? 0) + (history.repeatedFixes ?? 0))
 
-        case .bestPropertyTarget, .cloneHotspot, .divergentClones, .genuinelyUnderTested, .missingTemplate,
-            .riskyUntested, .toolDisagreement, .uncheckedLaws, .unevenCloneMutation, .unevenCloneTesting,
-            .untestedProperty, .weakTests:
+        case .bestPropertyTarget, .cloneHotspot, .deadButTested, .divergentClones, .genuinelyUnderTested,
+            .hiddenCoupling, .missingTemplate, .riskyUntested, .testOnlyProduction, .toolDisagreement, .uncheckedLaws,
+            .unevenCloneMutation, .unevenCloneTesting, .untestedProperty, .weakTests:
             value = nil
         }
         guard let value, value > 0 else {

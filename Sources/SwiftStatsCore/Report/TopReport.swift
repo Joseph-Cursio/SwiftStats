@@ -14,8 +14,11 @@ public struct TopReport: Codable, Hashable, Sendable {
     /// into `history` (M4); 3 adds the coverage signals and their payloads,
     /// `markers`, `coverage` and a clone class's `coverage` (M5); 4 adds the
     /// mutation signals and their payloads, `mutation`, `ratio`,
-    /// `propertyTarget` and a clone class's `mutation` (M6).
-    public static let currentSchemaVersion = 4
+    /// `propertyTarget` and a clone class's `mutation` (M6); 5 adds the
+    /// index signals (`hidden-coupling`, `dead-but-tested`,
+    /// `test-only-production`) and their payloads, `coupling`, `dead` and
+    /// `references`, items as `report` writes them (M7).
+    public static let currentSchemaVersion = 5
 
     /// The document's format version.
     public let schemaVersion: Int

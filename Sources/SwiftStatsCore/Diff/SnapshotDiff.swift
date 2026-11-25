@@ -4,8 +4,10 @@
 //
 //  Compares two stored snapshots (PRD §6.6): which collectors compare, which
 //  function families were added, removed, moved, renamed or changed, which
-//  metrics moved, which test bundles came or went (M5), and where each
-//  side's mutation results came from (M6). A side whose mutation results
+//  metrics moved, which test bundles came or went (M5), where each side's
+//  mutation results came from (M6), and, when the index compares, which
+//  families matched by USR and which records kept their key but not their
+//  USR (M7, design §10.3). A side whose mutation results
 //  leave files out (`MutationGaps`) has its mutation counts above records
 //  left out of the roll-up deltas, with a warning saying so.
 //
@@ -26,9 +28,11 @@ public enum SnapshotDiff {
         var warnings: [String] = []
         let gaps = mutationGaps(old.mutation, new.mutation, compared: compared)
         if compared.contains(SwiftStatsCollector.name) {
+            let usrs = IndexFacts(old: old.index, new: new.index, compared: compared)
             let result = FamilyMatcher.match(
                 old: FunctionFamily.families(old.functions),
-                new: FunctionFamily.families(new.functions)
+                new: FunctionFamily.families(new.functions),
+                usrs: usrs
             )
             warnings = result.warnings
             families += result.removed.map { unmatched($0, status: .removed) }
@@ -38,7 +42,7 @@ public enum SnapshotDiff {
             let mutation = MutationMetrics(old: old.mutation, new: new.mutation, compared: compared)
             for match in result.matches {
                 let members = MemberPairing.pair(match.old, match.new)
-                if let change = change(match, members: members) {
+                if let change = change(match, members: members, usrs: usrs) {
                     families.append(change)
                 }
                 functions += members.pairs.compactMap { pair in
@@ -69,14 +73,24 @@ public enum SnapshotDiff {
             newFile: status == .added ? family.file : nil,
             matchedBy: nil,
             records: family.members.map(\.key),
-            changedRecords: []
+            changedRecords: [],
+            usrChanges: []
         )
     }
 
-    /// The change for a matched family, or nil when nothing about it changed.
+    /// The change for a matched family, its records paired as `members`,
+    /// with no USRs to compare; nil when nothing about it changed.
+    static func change(_ match: FamilyMatcher.Match, members: Pairing<FunctionRow>) -> FamilyChange? {
+        change(match, members: members, usrs: .empty)
+    }
+
+    /// The change for a matched family, its records paired as `members`,
+    /// with the records whose USR in `usrs` changed under the same key; nil
+    /// when nothing about it changed.
     static func change(
         _ match: FamilyMatcher.Match,
-        members: Pairing<FunctionRow>
+        members: Pairing<FunctionRow>,
+        usrs: IndexFacts
     ) -> FamilyChange? {
         let (old, new) = (match.old, match.new)
         let changedRecords = members.pairs.filter { $0.0.bodyHash != $0.1.bodyHash }.map(\.1.key)
@@ -94,6 +108,10 @@ public enum SnapshotDiff {
         if changedRecords.isEmpty == false {
             statuses.insert(.changed)
         }
+        let usrChanges = usrs.changes(members.pairs)
+        if usrChanges.isEmpty == false {
+            statuses.insert(.usrChanged)
+        }
         guard statuses.isEmpty == false else {
             return nil
         }
@@ -105,7 +123,8 @@ public enum SnapshotDiff {
             newFile: new.file,
             matchedBy: match.method,
             records: new.members.map(\.key),
-            changedRecords: changedRecords.sorted()
+            changedRecords: changedRecords.sorted(),
+            usrChanges: usrChanges
         )
     }
 

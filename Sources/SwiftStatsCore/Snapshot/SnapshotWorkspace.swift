@@ -25,7 +25,7 @@ public struct SnapshotWorkspace {
     /// The configuration file given on the command line, if any.
     let configurationFile: URL?
     /// Scans with snapshot metadata.
-    let scanner: SnapshotScanner
+    private(set) var scanner: SnapshotScanner
     /// Learns the package's name.
     let describer: any PackageDescriber
     /// The store's path from the package root when it is kept inside the
@@ -67,6 +67,16 @@ public struct SnapshotWorkspace {
         return commit
     }
 
+    /// The same workspace, its scans' `index` collector reading the stores
+    /// `factory` opens (tests pass recorded sources); backfill keeps it.
+    func readingIndex(
+        with factory: @escaping @Sendable (_ store: URL, _ library: URL) throws -> any IndexStoreSource
+    ) -> Self {
+        var workspace = self
+        workspace.scanner = scanner.readingIndex(with: factory)
+        return workspace
+    }
+
     /// The signals of snapshot `id`, with this workspace's thresholds, and
     /// for divergent clones the earlier snapshot it chooses.
     public func signals(id: Int64) throws -> [SignalResult] {
@@ -74,29 +84,32 @@ public struct SnapshotWorkspace {
     }
 
     /// Scans the working tree, reading history from `history` and running
-    /// the coverage and SwiftMutator collectors when `tiers` asks for them,
-    /// stores the snapshot as `save(_:drop:)` does and returns what it
-    /// stored with its id. Before anything runs, `--since` chooses the
-    /// stored snapshot it merges with and is refused when there is none it
-    /// can merge with (`StoreError.noMutationBase`, `MutationBase`), and
+    /// the coverage collector, the T1 group and the SwiftMutator collector
+    /// when `tiers` asks for them, stores the snapshot as `save(_:drop:)`
+    /// does and returns what it stored with its id. Before anything runs,
+    /// `--since` chooses the stored snapshot it merges with and is refused
+    /// when there is none it can merge with (`StoreError.noMutationBase`, `MutationBase`), and
     /// `--resume` is refused (`ScanError.mutationRefused`) when no run is
     /// pending, or when the tree, the settings, the copy or the results
     /// file don't let it go on (`MutationResume`); the resume of a
     /// `--since` run chooses its base again. Neither is checked when the
     /// collector's tools aren't found, which skips it. A scan asking for
-    /// coverage or SwiftMutator is refused, before the run, as its save
-    /// would refuse held results it can't keep, and a SwiftMutator run
-    /// that ran is kept until its snapshot is stored
-    /// (`SnapshotWorkspace+Held`).
+    /// coverage, the T1 group or SwiftMutator is refused, before the run,
+    /// as its save would refuse held results it can't keep, and a
+    /// SwiftMutator run that ran is kept until its snapshot is stored
+    /// (`SnapshotWorkspace+Held`). A T1 build that ran and failed records
+    /// its task log in `failedBuild`, even when the scan then throws.
     public func scanWorkingTree(
         history: HistorySource = .automatic,
         tiers: RequestedTiers = .syntaxOnly,
-        drop: DropOptions = []
+        drop: DropOptions = [],
+        failedBuild: FailedBuildLog? = nil
     ) throws -> (snapshot: ScannedSnapshot, id: Int64) {
         let git = GitReader.read(packageRoot: root, ignoring: storeInPackage)
         let base = try mutationBase(tiers.mutation, git: git)
         let saving = try heldResultsChecks(git: git, tiers: tiers, drop: drop)
-        let snapshot = try scanner.saving(saving).scan(
+        let scanning = scanner.saving(saving.mutation, index: saving.index).recording(failedBuild: failedBuild)
+        let snapshot = try scanning.scan(
             packageAt: root,
             configurationFile: configurationFile ?? StoreLocation.localConfiguration(packageRoot: root),
             git: git,

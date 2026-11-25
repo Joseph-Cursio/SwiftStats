@@ -18,9 +18,10 @@ struct TopCommand: ParsableCommand {
         discussion: """
         A ranked signal (hotspot, bug-prone, clone-hotspot) lists every candidate with a score above zero \
         and marks its members; the others list only their members, highest score first, so `top` adds the \
-        ranking. Signals: \(SignalName.reportOrder.map(\.rawValue).joined(separator: ", ")). The snapshot is \
-        the one `report` would show; thresholds and the mutation signals' limits come from `signals:` in this \
-        package's configuration.
+        ranking. hidden-coupling lists pairs of families with no static dependency, by the commits that \
+        changed both. Signals: \(SignalName.reportOrder.map(\.rawValue).joined(separator: ", ")). The snapshot \
+        is the one `report` would show; thresholds and the mutation and hidden-coupling limits come from \
+        `signals:` in this package's configuration.
         """
     )
 

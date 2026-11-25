@@ -54,7 +54,7 @@ struct MutationDiffTests {
     @Test("""
         when SwiftMutator's results compare, a matched record's mutation score, function score and unkilled \
         mutants that moved are deltas, scores better higher and unkilled lower; mutation roll-up deltas come from \
-        swiftmutator; and the diff's schema is 3
+        swiftmutator; and the diff's schema is 4
         """)
     func compared() throws {
         let old = try MutationSnapshots.snapshot(commit: "c1")
@@ -62,7 +62,7 @@ struct MutationDiffTests {
 
         let diff = try Self.diff(old, new)
 
-        #expect(diff.schemaVersion == 3)
+        #expect(diff.schemaVersion == 4)
         #expect(diff.collectors.first { $0.name == MutationAdapter.name }?.outcome == .compared)
         let helperDelta = try #require(diff.functions.first { $0.key == Self.helper })
         #expect(helperDelta.metrics == [

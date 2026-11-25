@@ -21,11 +21,22 @@ public struct PackageScanner {
     /// Where the external collectors' tools come from.
     let tools: ToolLocator
     /// When set, the external tool adapters are skipped for this reason
-    /// (SwiftStats' own measurements and the dependency graph still run).
-    let toolSkipReason: String?
+    /// (SwiftStats' own measurements and the dependency graph still run);
+    /// set after `init` through `skippingTools(for:)`.
+    var toolSkipReason: String?
     /// What a scan that stores its snapshot adds to the SwiftMutator run
     /// it asks for (`MutationSaving`); nil for any other scan.
     private(set) var saving: MutationSaving?
+    /// What a scan that stores its snapshot adds to the T1 group it asks
+    /// for (`IndexSaving`); nil for any other scan.
+    private(set) var indexSaving: IndexSaving?
+    /// Where a scan records the task log of a T1 build it ran that failed;
+    /// nil when nobody asks.
+    private(set) var failedBuild: FailedBuildLog?
+    /// Opens an index store (the directory holding `v5`) with a
+    /// libIndexStore.dylib, for the `index` collector: the product's
+    /// `IndexStoreReader`, or a test's recorded source.
+    var indexSource: @Sendable (_ store: URL, _ library: URL) throws -> any IndexStoreSource = IndexStoreReader.open
 
     /// Creates a scanner that learns a package's targets through
     /// `describer` and finds external tools with `tools`, or skips them
@@ -280,9 +291,9 @@ public struct PackageScanner {
     }
 
     /// Scans the package rooted at `packageRoot`, with the `.swiftstats.yml`
-    /// in its root when there is one; the coverage and SwiftMutator
-    /// collectors run only when `tiers` asks for them (`scan --coverage`,
-    /// `scan --mutation`).
+    /// in its root when there is one; the coverage collector, the T1 group
+    /// and the SwiftMutator collector run only when `tiers` asks for them
+    /// (`scan --coverage`, `scan --index`, `scan --mutation`).
     public func scan(packageAt packageRoot: URL, tiers: RequestedTiers = .syntaxOnly) throws -> ScanReport {
         let file = packageRoot.standardizedFileURL.appendingPathComponent(SwiftStatsConfiguration.fileName)
         return try scan(
@@ -292,18 +303,28 @@ public struct PackageScanner {
         )
     }
 
-    /// The same scanner, its scans storing their snapshots as `added`
-    /// says.
-    func saving(_ added: MutationSaving?) -> Self {
+    /// The same scanner, its scans storing their snapshots as `mutation`
+    /// and `index` say.
+    func saving(_ mutation: MutationSaving?, index: IndexSaving?) -> Self {
         var scanner = self
-        scanner.saving = added
+        scanner.saving = mutation
+        scanner.indexSaving = index
+        return scanner
+    }
+
+    /// The same scanner, its scans recording in `record` the task log of a
+    /// T1 build they ran that failed, so the log can be named whether or
+    /// not the scan then returns.
+    public func recording(failedBuild record: FailedBuildLog?) -> Self {
+        var scanner = self
+        scanner.failedBuild = record
         return scanner
     }
 
     /// Scans the package rooted at `packageRoot` with the configuration in
     /// `configurationFile`, or the default configuration when it is nil;
-    /// the coverage and SwiftMutator collectors run only when `tiers` asks
-    /// for them.
+    /// the coverage collector, the T1 group and the SwiftMutator collector
+    /// run only when `tiers` asks for them.
     public func scan(
         packageAt packageRoot: URL,
         configurationFile: URL?,

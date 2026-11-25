@@ -13,8 +13,11 @@ struct ScanCommand: ParsableCommand {
         discussion: """
         The snapshot goes to the package's store (.swiftstats/stats.sqlite, or store: in .swiftstats.yml, \
         or --store), replacing any earlier snapshot of the same commit and dirtiness. --format json prints \
-        the scan's records, findings, test inventory, dependencies, law checks, property-test suggestions, \
-        clones, roll-ups and Sitrep-compatible counts; -o writes them to a file. SwiftProjectLint, SwiftLint, \
+        the scan's targets, records, types, files, findings, warnings and collector statuses, its test \
+        inventory, dependencies, side effects, law checks, property-test suggestions, clones, roll-ups and \
+        Sitrep-compatible counts, the git history's churn and fixes when it reads the history, the coverage and \
+        mutation results when it collects or keeps them, and the build, index and dead-code blocks when it \
+        collects or keeps index results; -o writes them to a file. SwiftProjectLint, SwiftLint, \
         SwiftInferProperties and SwiftCloneDetector run when found on PATH (as swiftprojectlint, swiftlint, \
         swift-infer and swift-clone-detector), or at collectors.<name>.path in .swiftstats.yml; \
         collectors.<name>.enabled: false turns one off. Side effects come from the linked SwiftEffectInference \
@@ -35,8 +38,14 @@ struct ScanCommand: ParsableCommand {
         discards that run. A scan without --mutation, or whose mutation run fails, keeps the mutation results \
         of the snapshot it replaces when the tree, the records they name, the files they test and the mapping \
         rule are the same, and otherwise stops without storing anything; --drop-mutation replaces the snapshot \
-        without them instead. A coverage or mutation run asked for that fails or is skipped doesn't fail the scan, \
-        which says so on standard error.
+        without them instead. --index also builds the package once more, in .swiftstats/index-build, with the \
+        coverage collector's swift, for type-check times, compiler warnings, USRs and references from the index \
+        store, and dead code from outskirts (outskirts on PATH, or collectors.periphery.path); a scan without it \
+        lists those collectors as not requested. A scan without --index, or whose index build fails or is \
+        skipped, keeps the index results of the snapshot it replaces when the tree, the records, the types, the \
+        files and the rules are the same, and otherwise stops without storing anything; --drop-index replaces \
+        the snapshot without them instead. A coverage, mutation or index run asked for that fails or is \
+        skipped doesn't fail the scan, which says so on standard error.
         """
     )
 
@@ -73,6 +82,12 @@ struct ScanCommand: ParsableCommand {
     @Flag(help: "Replace a snapshot holding mutation results this scan can't keep or can't read, dropping them.")
     var dropMutation = false
 
+    @Flag(help: "Also build the package's index: type-check times, warnings, USRs, coupling and dead code.")
+    var index = false
+
+    @Flag(help: "Replace a snapshot holding index results this scan can't keep or can't read, dropping them.")
+    var dropIndex = false
+
     @OptionGroup var options: PackageOptions
 
     /// The opt-in collectors the flags ask for.
@@ -85,6 +100,7 @@ struct ScanCommand: ParsableCommand {
                 resume: resume,
                 storing: noStore == false
             )
+            .asking(index: index)
         }
     }
 
@@ -99,9 +115,14 @@ struct ScanCommand: ParsableCommand {
     func run() throws {
         let requested = try tiers
         let started = Date()
+        let failedBuild = FailedBuildLog()
         defer {
-            // Named only when this scan's mutation step wrote it, whether
-            // or not the scan then stored a snapshot.
+            // Each log is named only when this scan's own run wrote it
+            // (the build's only when the build failed), whether or not the
+            // scan then stored a snapshot.
+            if let line = failedBuild.line {
+                FileHandle.standardError.write(Data((line + "\n").utf8))
+            }
             let root = URL(fileURLWithPath: path, isDirectory: true)
             if requested.mutation != nil,
                let log = StoreLocation.mutationLog(packageRoot: root, writtenSince: started) {
@@ -112,20 +133,22 @@ struct ScanCommand: ParsableCommand {
             let report: ScanReport
             if noStore {
                 let root = URL(fileURLWithPath: path, isDirectory: true)
+                let scanner = PackageScanner().recording(failedBuild: failedBuild)
                 report = try options.config.map { file in
-                    try PackageScanner().scan(
+                    try scanner.scan(
                         packageAt: root,
                         configurationFile: URL(fileURLWithPath: file),
                         tiers: requested
                     )
-                } ?? PackageScanner().scan(packageAt: root, tiers: requested)
+                } ?? scanner.scan(packageAt: root, tiers: requested)
             } else {
                 let workspace = try options.workspace(path: path)
                 let history: HistorySource = noHistory ? .skipped("--no-history") : .automatic
                 let (snapshot, _) = try workspace.scanWorkingTree(
                     history: history,
                     tiers: requested,
-                    drop: DropOptions(coverage: dropCoverage, mutation: dropMutation)
+                    drop: DropOptions(coverage: dropCoverage, mutation: dropMutation, index: dropIndex),
+                    failedBuild: failedBuild
                 )
                 report = snapshot.report
                 FileHandle.standardError.write(Data((summary(snapshot.info, store: workspace.store.url) + "\n").utf8))

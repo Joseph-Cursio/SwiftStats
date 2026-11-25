@@ -79,7 +79,7 @@ struct ScannerRobustnessTests {
         let root = try Self.makePackage([
             "Sources/Lib/A.swift": Data("struct Row: View { var body: some View { Text(\"row\") } }\n".utf8),
             "Sources/Lib/B.swift": Data("struct Row: Codable { }\n".utf8),
-            ".swiftstats.yml": Data("collectors:\n  periphery: {}\n".utf8)
+            ".swiftstats.yml": Data("collectors:\n  jazzy: {}\n".utf8)
         ])
         defer { try? FileManager.default.removeItem(at: root) }
 

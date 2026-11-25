@@ -194,7 +194,7 @@ struct StoreMutationTests {
         }
     }
 
-    @Test("a v4 store migrates to v5: old snapshots hold no mutation results, and new scans store theirs")
+    @Test("a v4 store migrates to v6: old snapshots hold no mutation results, and new scans store theirs")
     func migration() throws {
         let directory = try SnapshotHarness.temporaryDirectory("StoreMutation")
         defer { try? FileManager.default.removeItem(at: directory) }
@@ -208,7 +208,7 @@ struct StoreMutationTests {
         let store = try SnapshotStore(at: url)
         let migrated = try store.load(id: old.id)
 
-        #expect(try Self.query(url, "PRAGMA user_version") == "5\n")
+        #expect(try Self.query(url, "PRAGMA user_version") == "6\n")
         #expect(try Self.query(url, "SELECT name FROM sqlite_master WHERE name LIKE 'mutant%' ORDER BY name") == """
             mutant
             mutantOwner

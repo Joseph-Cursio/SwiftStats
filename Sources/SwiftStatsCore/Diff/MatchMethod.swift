@@ -3,7 +3,8 @@
 //  SwiftStatsCore
 //
 //  How two function families were matched (PRD §6.6, §7.13), so a guessed
-//  rename can be told from a certain one.
+//  rename can be told from a certain one. The index's USRs (M7) give a
+//  certain one of their own.
 //
 
 /// How a family in one snapshot was matched to one in the other.
@@ -23,10 +24,15 @@ public enum MatchMethod: String, Codable, Hashable, Sendable {
     /// History only: bodies of three lines or more sharing at least 70% of
     /// their lines, each the other's only best match: a guess.
     case similarBody = "similar-body"
+    /// The same primary USR on both family roots, of the same kind, held
+    /// by one root on each side once the key rules are done: the compiler's
+    /// own name for the declaration, so a certain match (M7, design §3.6,
+    /// §10.3). Only `diff` uses it, when the index compares.
+    case usr
 
     /// The methods from the most certain to the least.
     private static let certaintyOrder: [Self] = [
-        .key, .fileScopedKey, .moduleMovedKey, .bodyHash, .sameName, .similarBody
+        .key, .fileScopedKey, .moduleMovedKey, .usr, .bodyHash, .sameName, .similarBody
     ]
 
     /// How sure the match is, most certain first: a lineage keeps its

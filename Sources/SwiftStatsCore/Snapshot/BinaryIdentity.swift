@@ -4,7 +4,9 @@
 //
 //  An external tool's build identity (PRD §6.2): the SHA-256 of its binary,
 //  with the commit of its source as a label only when that commit is surely
-//  the one the binary was built from.
+//  the one the binary was built from. A tool released by tag (outskirts,
+//  M7 design §1) can have the tag that names the commit added to the
+//  label: `git:<commit> (<tag>)`.
 //
 
 import Foundation
@@ -17,19 +19,33 @@ enum BinaryIdentity {
     /// The identity and label of the binary at `executable`; nil when it
     /// can't be read.
     static func of(_ executable: URL) -> (identity: String, label: String?)? {
+        of(executable, tagged: false)
+    }
+
+    /// The identity and label of the binary at `executable`, the label
+    /// followed by ` (<tag>)` when `tagged` and a tag names its commit
+    /// exactly (`git describe --exact-match --tags`); nil when it can't be
+    /// read.
+    static func of(_ executable: URL, tagged: Bool) -> (identity: String, label: String?)? {
         let binary = executable.resolvingSymlinksInPath()
         guard let hash = ContentHash.sha256(ofFileAt: binary) else {
             return nil
         }
-        return ("sha256:\(hash)", sourceCommit(of: binary))
+        guard let source = sourceCommit(of: binary) else {
+            return ("sha256:\(hash)", nil)
+        }
+        let describe = ["describe", "--exact-match", "--tags", source.commit]
+        let tag = tagged ? GitReader.line(describe, in: source.package) : nil
+        return ("sha256:\(hash)", "git:\(source.commit)" + (tag.map { " (\($0))" } ?? ""))
     }
 
-    /// The commit of the package whose `.build` holds `binary`, when that
-    /// package is the top level of a clean work tree and the binary is newer
-    /// than both HEAD's last move (its reflog) and every tracked file;
-    /// otherwise nil. HEAD alone would name a binary built before a pull
-    /// with the commit after it, and a commit's own date predates the pull.
-    private static func sourceCommit(of binary: URL) -> String? {
+    /// The commit of the package whose `.build` holds `binary`, with that
+    /// package, when it is the top level of a clean work tree and the
+    /// binary is newer than both HEAD's last move (its reflog) and every
+    /// tracked file; otherwise nil. HEAD alone would name a binary built
+    /// before a pull with the commit after it, and a commit's own date
+    /// predates the pull.
+    private static func sourceCommit(of binary: URL) -> (commit: String, package: URL)? {
         // The nearest `.build` above the binary, found among the path's
         // components: walking up with `deletingLastPathComponent` never
         // ends, since the parent of `/` is `/..`.
@@ -46,7 +62,7 @@ enum BinaryIdentity {
               built > moved, built > newestTrackedFile(in: package) else {
             return nil
         }
-        return "git:\(commit)"
+        return (commit, package)
     }
 
     /// When HEAD last moved, from its reflog; nil without one.

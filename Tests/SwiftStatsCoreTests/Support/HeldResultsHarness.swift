@@ -69,6 +69,21 @@ struct HeldResultsHarness {
         try workspace.save(try CarrySamples.covered(plain), drop: [])
     }
 
+    /// Stores a plain scan of the working tree holding the hand-made
+    /// mutation results, recorded on the Coverage fixture, whose mutants
+    /// name no record of this one.
+    func storeMutation() throws {
+        let plain = try workspace.scanWorkingTree(history: .skipped("test")).snapshot
+        try workspace.save(try MutationCarrySamples.held(plain), drop: [])
+    }
+
+    /// Stores a plain scan of the working tree holding the hand-made T1
+    /// results, its build, index and periphery runs ran (M7, design §9.1).
+    func storeIndex() throws {
+        let plain = try workspace.scanWorkingTree(history: .skipped("test")).snapshot
+        try workspace.save(try IndexStoreSamples.indexed(plain), drop: [])
+    }
+
     /// The error a plain rescan's save gives now, which scans asking for
     /// the slow collectors must give before they run; nil when it stores
     /// the rescan (a refused save writes nothing).
@@ -93,10 +108,10 @@ struct HeldResultsHarness {
     /// run, as when the snapshot it replaces changed during the run.
     func unchecked(_ tiers: RequestedTiers, base: MutationBase?, acting name: String) throws -> ScannedSnapshot {
         try since.fake.act(SinceHarness.scenario(name))
-        let saving = MutationSaving { _, _ in
+        let saving = MutationSaving { _, _, _ in
             // No check: the save is left to refuse after the run.
         }
-        return try workspace.scanner.saving(saving).scan(
+        return try workspace.scanner.saving(saving, index: nil).scan(
             packageAt: since.root,
             configurationFile: workspace.configurationFile,
             ignoring: workspace.storeInPackage,

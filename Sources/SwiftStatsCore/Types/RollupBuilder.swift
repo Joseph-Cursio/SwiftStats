@@ -29,6 +29,19 @@ enum RollupBuilder {
         }
     }
 
+    /// The modules `rollup`, one of the roll-ups of a scan of `targets`,
+    /// covers: its module's, or every target of its part of the project.
+    static func modules(of rollup: Rollup, targets: [TargetSummary]) -> Set<String> {
+        switch rollup.scope {
+        case .module:
+            return [rollup.name]
+
+        case .project:
+            let isTest = rollup.name == "tests"
+            return Set(targets.filter { $0.isTest == isTest }.map(\.name))
+        }
+    }
+
     /// The roll-up of `input`, with its test summary; a production scope
     /// also counts law checks, and side effects and clones when they were
     /// collected.

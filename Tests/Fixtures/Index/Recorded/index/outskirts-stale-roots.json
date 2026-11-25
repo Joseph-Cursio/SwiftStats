@@ -1,0 +1,140 @@
+[
+  {
+    "accessibility": "internal",
+    "attributes": [],
+    "hints": [
+      "unused"
+    ],
+    "ids": [
+      "s:9IndexCore7StorageV14unusedComputedSivp"
+    ],
+    "kind": "var.instance",
+    "location": "@ROOT@/Sources/IndexCore/Accessors.swift:65:9",
+    "modifiers": [],
+    "modules": [
+      "IndexCore"
+    ],
+    "name": "unusedComputed"
+  },
+  {
+    "accessibility": "internal",
+    "attributes": [],
+    "hints": [
+      "unused"
+    ],
+    "ids": [
+      "s:9IndexCore9summarizeySiSaySiGF11unusedTotalL_Sivp"
+    ],
+    "kind": "var.global",
+    "location": "@ROOT@/Sources/IndexCore/Locals.swift:26:9",
+    "modifiers": [],
+    "modules": [
+      "IndexCore"
+    ],
+    "name": "unusedTotal"
+  },
+  {
+    "accessibility": "internal",
+    "attributes": [],
+    "hints": [
+      "unused"
+    ],
+    "ids": [
+      "s:9IndexCore9summarizeySiSaySiGF12unusedHelperL_SiyF"
+    ],
+    "kind": "function.free",
+    "location": "@ROOT@/Sources/IndexCore/Locals.swift:27:10",
+    "modifiers": [],
+    "modules": [
+      "IndexCore"
+    ],
+    "name": "unusedHelper()"
+  },
+  {
+    "accessibility": "internal",
+    "attributes": [],
+    "hints": [
+      "unused"
+    ],
+    "ids": [
+      "s:9IndexCore11neverCalledSiyF"
+    ],
+    "kind": "function.free",
+    "location": "@ROOT@/Sources/IndexCore/TestOnly.swift:13:6",
+    "modifiers": [],
+    "modules": [
+      "IndexCore"
+    ],
+    "name": "neverCalled()"
+  },
+  {
+    "accessibility": "internal",
+    "attributes": [],
+    "hints": [
+      "unused"
+    ],
+    "ids": [
+      "s:e:s:9IndexCore6UnusedV5thirdSiyF-IndexCore"
+    ],
+    "kind": "extension.struct",
+    "location": "@ROOT@/Sources/IndexCore/Unused+Extra.swift:1:11",
+    "modifiers": [],
+    "modules": [
+      "IndexCore"
+    ],
+    "name": "Unused"
+  },
+  {
+    "accessibility": "internal",
+    "attributes": [],
+    "hints": [
+      "unused"
+    ],
+    "ids": [
+      "s:9IndexCore6UnusedV"
+    ],
+    "kind": "struct",
+    "location": "@ROOT@/Sources/IndexCore/Unused.swift:3:8",
+    "modifiers": [],
+    "modules": [
+      "IndexCore"
+    ],
+    "name": "Unused"
+  },
+  {
+    "accessibility": "internal",
+    "attributes": [],
+    "hints": [
+      "unused"
+    ],
+    "ids": [
+      "s:13index_support5relaySiyF",
+      "s:9index_kit5relaySiyF"
+    ],
+    "kind": "function.free",
+    "location": "@ROOT@/Sources/Kits/Relay.swift:3:6",
+    "modifiers": [],
+    "modules": [
+      "index_kit",
+      "index_support"
+    ],
+    "name": "relay()"
+  },
+  {
+    "accessibility": "internal",
+    "attributes": [],
+    "hints": [
+      "unused"
+    ],
+    "ids": [
+      "s:11IndexDepKit8depValueSiyF18unusedInDependencyL_Sivp"
+    ],
+    "kind": "var.global",
+    "location": "@DEP@/Sources/IndexDepKit/DepKit.swift:4:9",
+    "modifiers": [],
+    "modules": [
+      "IndexDepKit"
+    ],
+    "name": "unusedInDependency"
+  }
+]

@@ -132,6 +132,71 @@ enum ProcessRunner {
         )
     }
 
+    /// Runs `executable` as `runToEnd(executable:arguments:in:)` does, with
+    /// standard input read from the file at `input` (outskirts gets
+    /// `/dev/null`, M7) and standard output written to the file at
+    /// `output` (created or replaced) when given, else kept: the returned
+    /// output is empty when it was written to a file.
+    static func runToEnd(
+        executable: String,
+        arguments: [String],
+        in directory: URL,
+        input: URL,
+        writingOutputTo output: URL?
+    ) throws -> ProcessOutput {
+        try run(
+            executable: executable,
+            arguments: arguments,
+            in: directory,
+            accepting: { _ in true },
+            environment: .inherited,
+            input: input,
+            output: output
+        )
+    }
+
+    /// Runs `executable` with `arguments` in `directory` to its end, with
+    /// standard input empty (`/dev/null`), standard output written to the
+    /// file at `output` and standard error to the file at `errorFile` (each
+    /// created or replaced), never kept in memory: the T1 build (M7,
+    /// design §1.3) prints a hundred megabytes of task log on a large
+    /// package. Registered with `ScratchRegistry` under the standard stop
+    /// policy while it runs. Returns how it ended, whatever its status;
+    /// throws `ScanError.commandFailed` only when it can't start or a file
+    /// can't be created.
+    static func runToEnd(
+        executable: String,
+        arguments: [String],
+        in directory: URL,
+        writingOutputTo output: URL,
+        writingErrorTo errorFile: URL
+    ) throws -> ProcessTermination {
+        let command = ([executable] + arguments).joined(separator: " ")
+        guard let nothing = FileHandle(forReadingAtPath: "/dev/null") else {
+            throw ScanError.commandFailed(command, -1, "could not open /dev/null")
+        }
+        defer { try? nothing.close() }
+        let outputHandle = try handle(writingTo: output, command: command)
+        defer { try? outputHandle.close() }
+        let errorHandle = try handle(writingTo: errorFile, command: command)
+        defer { try? errorHandle.close() }
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: executable)
+        process.arguments = arguments
+        process.currentDirectoryURL = directory
+        process.standardInput = nothing
+        process.standardOutput = outputHandle
+        process.standardError = errorHandle
+        do {
+            try ScratchRegistry.shared.start(process)
+        } catch {
+            throw ScanError.commandFailed(command, -1, error.localizedDescription)
+        }
+        process.waitUntilExit()
+        ScratchRegistry.shared.finished(process)
+        return ProcessTermination(process)
+    }
+
     /// Runs `executable` with `arguments` in `directory` to its end, in this
     /// process's environment changed by `environment`, with standard input
     /// empty (`/dev/null`) and standard output and standard error both

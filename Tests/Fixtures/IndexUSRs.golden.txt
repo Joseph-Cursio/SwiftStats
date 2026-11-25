@@ -1,0 +1,103 @@
+IndexApp::<top-level code> @ Sources/IndexApp/main.swift	-	-	topLevelCode
+IndexCore::Storage::init()	s:9IndexCore7StorageVACycfc	-	-
+IndexCore::Storage::subscript(_: Int) -> Int	s:9IndexCore7StorageVyS2icip	s:9IndexCore7StorageVyS2icig	-
+IndexCore::Storage::subscript(slot: Int) -> Int	s:9IndexCore7StorageV4slotS2i_tcip	-	-
+IndexCore::Storage::subscript(slot: Int) -> Int / { get }	s:9IndexCore7StorageV4slotS2i_tcig	-	-
+IndexCore::Storage::subscript(slot: Int) -> Int / { set }	s:9IndexCore7StorageV4slotS2i_tcis	-	-
+IndexCore::Storage::var count: Int { get }	s:9IndexCore7StorageV5countSivg	-	-
+IndexCore::Storage::var head: Int { get }	s:9IndexCore7StorageV4headSivg	-	-
+IndexCore::Storage::var head: Int { set }	s:9IndexCore7StorageV4headSivs	-	-
+IndexCore::Storage::var observed { willSet }	s:9IndexCore7StorageV8observedSivw	-	-
+IndexCore::Storage::var observed { didSet }	s:9IndexCore7StorageV8observedSivW	-	-
+IndexCore::Storage::var coroutine: Int { _read }	s:9IndexCore7StorageV9coroutineSivr	-	-
+IndexCore::Storage::var coroutine: Int { _modify }	s:9IndexCore7StorageV9coroutineSivM	-	-
+IndexCore::Storage::var unusedComputed: Int { get }	s:9IndexCore7StorageV14unusedComputedSivg	-	-
+IndexCore::Addressed::init(base: UnsafeMutablePointer<Int>)	s:9IndexCore9AddressedV4baseACSpySiG_tcfc	-	-
+IndexCore::Addressed::var value: Int { unsafeAddress }	s:9IndexCore9AddressedV5valueSivlu	-	-
+IndexCore::Addressed::var value: Int { unsafeMutableAddress }	s:9IndexCore9AddressedV5valueSivau	-	-
+IndexCore::Initialized::var value: Int { init }	s:9IndexCore11InitializedV5valueSivi	-	-
+IndexCore::Initialized::var value: Int { get }	s:9IndexCore11InitializedV5valueSivg	-	-
+IndexCore::Initialized::var value: Int { set }	s:9IndexCore11InitializedV5valueSivs	-	-
+IndexCore::Initialized::init(value: Int)	s:9IndexCore11InitializedV5valueACSi_tcfc	-	-
+IndexCore::Storage::subscript(doubled: Int) -> Int	s:9IndexCore7StorageV7doubledS2i_tcip	s:9IndexCore7StorageV7doubledS2i_tcig	-
+IndexCore::Storage::subscript(doubled: Int) -> Int / var twice: Int { get }	s:9IndexCore7StorageV7doubledS2i_tcig5twiceL_Sivg	-	-
+IndexCore::Storage::subscript(doubled: Int) -> Int / Offset::var amount: Int { get }	s:9IndexCore7StorageV7doubledS2i_tcig6OffsetL_V6amountSivg	-	-
+IndexCore::func bomFirst() -> Int	s:9IndexCore8bomFirstSiyF	-	-
+IndexCore::func bomSecond() -> Int	s:9IndexCore9bomSecondSiyF	-	-
+IndexCore::func measure(_: Data) -> Int @ Sources/IndexCore/Bytes.swift	s:9IndexCore7measureySi10Foundation4DataVF	-	-
+IndexCore::func bufferSize() -> Int	s:9IndexCore10bufferSizeSiyF	-	-
+IndexCore::func withDependency() -> Int	s:9IndexCore14withDependencySiyF	-	-
+IndexCore::func measure(_: Data) -> Int @ Sources/IndexCore/Dependency.swift	s:9IndexCore7measureySi0A6DepKit4DataVF	-	-
+IndexCore::func payloadSize() -> Int	s:9IndexCore11payloadSizeSiyF	-	-
+IndexCore::func formatLine(_: [String]) -> String	s:9IndexCore10formatLineySSSaySSGF	-	-
+IndexCore::Session::init(name: String)	s:9IndexCore7SessionC4nameACSS_tcfc	-	-
+IndexCore::Session::deinit	s:9IndexCore7SessionCfd	-	-
+IndexCore::Session::func open() -> String	s:9IndexCore7SessionC4openSSyF	-	-
+IndexCore::Session::func close() -> String	s:9IndexCore7SessionC5closeSSyF	-	-
+IndexCore::Version::init(major: Int)	s:9IndexCore7VersionV5majorACSi_tcfc	-	-
+IndexCore::Version::static func ==(lhs: Version, rhs: Version) -> Bool	s:9IndexCore7VersionV2eeoiySbAC_ACtFZ	-	-
+IndexCore::func layout(_: Int) -> Int	s:9IndexCore6layoutyS2iF	-	-
+IndexCore::func layout(_: Int) -> Int / func padded(_: Int) -> Int	s:9IndexCore6layoutyS2iF6paddedL_yS2iF	-	-
+IndexCore::func layout(_: Int) -> Int / Square::func area() -> Int	s:9IndexCore6layoutyS2iF6SquareL_V4areaSiyF	-	-
+IndexCore::func left() -> Int	s:9IndexCore4leftSiyF	-	-
+IndexCore::func right() -> Int	s:9IndexCore5rightSiyF	-	-
+IndexCore::func pair() -> Int	s:9IndexCore4pairSiyF	-	-
+IndexCore::func summarize(_: [Int]) -> Int	s:9IndexCore9summarizeySiSaySiGF	-	-
+IndexCore::func summarize(_: [Int]) -> Int / func unusedHelper() -> Int	s:9IndexCore9summarizeySiSaySiGF12unusedHelperL_SiyF	-	-
+IndexCore::func choose(_: Bool) -> Int	s:9IndexCore6chooseySiSbF	-	-
+IndexCore::func choose(_: Bool) -> Int / func pick() -> Int	s:9IndexCore6chooseySiSbF4pickL_SiyF	-	-
+IndexCore::func choose(_: Bool) -> Int / func pick() -> Int #2	s:9IndexCore6chooseySiSbF4pickL0_SiyF	-	-
+IndexCore::Tile::func area() -> Int	s:9IndexCore4TileV4areaSiyF	-	-
+IndexCore::Greeter::func greet() -> String	s:9IndexCore7GreeterPAAE5greetSSyF	-	-
+IndexCore::func totalArea(_: [any Shape]) -> Int	s:9IndexCore9totalAreaySiSayAA5Shape_pGF	-	-
+IndexCore::func unitTile() -> any Shape	s:9IndexCore8unitTileAA5Shape_pyF	-	-
+IndexCore::func welcome() -> String	s:9IndexCore7welcomeSSyF	-	-
+IndexCore::Vehicle::init()	s:9IndexCore7VehicleCACycfc	-	-
+IndexCore::Vehicle::func wheels() -> Int	s:9IndexCore7VehicleC6wheelsSiyF	-	-
+IndexCore::Bike::func wheels() -> Int	s:9IndexCore4BikeC6wheelsSiyF	-	-
+IndexCore::Bike::var description: String { get }	s:9IndexCore4BikeC11descriptionSSvg	-	-
+IndexCore::Threshold::var level: Int { get }	s:9IndexCore9ThresholdV5levelSivg	-	-
+IndexCore::Threshold::var level: Int { set }	s:9IndexCore9ThresholdV5levelSivs	-	-
+IndexCore::func currentLevel() -> Int	s:9IndexCore12currentLevelSiyF	-	-
+IndexCore::Ring::init()	s:9IndexCore4RingVACycfc	-	-
+IndexCore::Ring::var startIndex: Int { get }	s:9IndexCore4RingV05startA0Sivg	-	-
+IndexCore::Ring::var endIndex: Int { get }	s:9IndexCore4RingV03endA0Sivg	-	-
+IndexCore::Ring::func index(after: Int) -> Int	s:9IndexCore4RingV5index5afterS2i_tF	-	-
+IndexCore::Ring::subscript(_: Int) -> Int	s:9IndexCore4RingVyS2icip	s:9IndexCore4RingVyS2icig	-
+IndexCore::func totalWidth() -> Int	s:9IndexCore10totalWidthSiyF	-	-
+IndexCore::func publicOnlyTests() -> Int	s:9IndexCore15publicOnlyTestsSiyF	-	-
+IndexCore::func onlyTestsCall() -> Int	s:9IndexCore13onlyTestsCallSiyF	-	-
+IndexCore::func neverCalled() -> Int	s:9IndexCore11neverCalledSiyF	-	-
+IndexCore::func cases() -> [Int]	s:9IndexCore5casesSaySiGyF	-	-
+IndexCore::func flagged() -> Int #if INDEX_FIXTURE_FLAG	-	-	inactiveIfBranch
+IndexCore::func buildMode() -> String #if DEBUG	s:9IndexCore9buildModeSSyF	-	-
+IndexCore::func buildMode() -> String #if !(DEBUG)	-	-	inactiveIfBranch
+IndexCore::Beta::func make() -> Alpha	s:9IndexCore4BetaV4makeAA5AlphaVyF	-	-
+IndexCore::Alpha::func partner() -> Beta	s:9IndexCore5AlphaV7partnerAA4BetaVyF	-	-
+IndexCore::Ledger.Index::func entry(in: Ledger) -> Int	s:9IndexCore6LedgerV0A0V5entry2inSiAC_tF	-	-
+IndexCore::Ledger::func index(at: Int) -> Index	s:9IndexCore6LedgerV5index2atAC0A0VSi_tF	-	-
+IndexCore::Array where Element == Int::func doubledAll() -> [Int]	s:Sa9IndexCoreSiRszlE10doubledAllSaySiGyF	-	-
+IndexCore::Array::func secondItem() -> Element?	s:Sa9IndexCoreE10secondItemxSgyF	-	-
+IndexCore::func cycle() -> Int	s:9IndexCore5cycleSiyF	-	-
+IndexCore::func ledgerEntry() -> Int	s:9IndexCore11ledgerEntrySiyF	-	-
+IndexCore::func arrayUse() -> Int	s:9IndexCore8arrayUseSiyF	-	-
+IndexCore::Unused::func third() -> Int	s:9IndexCore6UnusedV5thirdSiyF	-	-
+IndexCore::Unused::func first() -> Int	s:9IndexCore6UnusedV5firstSiyF	-	-
+IndexCore::Unused::func second() -> Int	s:9IndexCore6UnusedV6secondSiyF	-	-
+IndexCore::func warned() -> Int	s:9IndexCore6warnedSiyF	-	-
+IndexCore::func legacy() -> Int	s:9IndexCore6legacySiyF	-	-
+IndexCore::func unreachable() -> Int	s:9IndexCore11unreachableSiyF	-	-
+IndexTool::Tool::static func main()	s:9IndexTool0B0V4mainyyFZ	-	-
+index-kit::func kitOnlyTests() -> Int	s:9index_kit0B9OnlyTestsSiyF	-	-
+index-kit::func relay() -> Int	s:9index_kit5relaySiyF	-	-
+index-support::func parseLine(_: String) -> [String]	s:13index_support9parseLineySaySSGSSF	-	-
+index-support::func banner() -> String	s:13index_support6bannerSSyF	-	-
+index-support::func recordName() -> String	s:13index_support10recordNameSSyF	-	-
+index-support::func samePair() -> Bool	s:13index_support8samePairSbyF	-	-
+IndexCoreTests::IndexCoreTests::func onlyTests()	s:14IndexCoreTestsAAV04onlyC0yyF	-	-
+IndexCoreTests::IndexCoreTests::func writesLevel()	s:14IndexCoreTestsAAV11writesLevelyyF	-	-
+IndexCoreTests::IndexCoreTests::func nonOptional()	s:14IndexCoreTestsAAV11nonOptionalyyF	-	-
+IndexCoreTests::IndexCoreTests::func needlessTry()	s:14IndexCoreTestsAAV11needlessTryyyF	-	-
+IndexCoreTests::IndexCoreTests::func redundantRequire()	s:14IndexCoreTestsAAV16redundantRequireyyF	-	-
+IndexCoreTests::IndexCoreTests::func positive(value: Int)	s:14IndexCoreTestsAAV8positive5valueySi_tF	-	-
+IndexXCTests::LayoutXCTests::func testLayout()	c:@M@IndexXCTests@objc(cs)LayoutXCTests(im)testLayout	-	-

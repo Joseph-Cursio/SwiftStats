@@ -14,6 +14,8 @@ enum KeyCollisions {
     /// Rounds of renaming before giving up: a rename can only collide again
     /// through a descendant whose prefix changed, so a few rounds suffice.
     private static let maximumRounds = 4
+    /// The start of a collision's warning, before the key that collided.
+    static let warningLead = "key shared by several declarations, disambiguated by location: "
 
     /// `records` with unique keys, plus one warning per original key that
     /// collided.
@@ -43,7 +45,7 @@ enum KeyCollisions {
             records[index].replacingKeys(key: state.keys[index], parentKey: state.parentKeys[index])
         }
         let warnings = collided.sorted().map { key in
-            ScanWarning(file: nil, message: "key shared by several declarations, disambiguated by location: \(key)")
+            ScanWarning(file: nil, message: warningLead + key)
         }
         return (resolved, warnings)
     }

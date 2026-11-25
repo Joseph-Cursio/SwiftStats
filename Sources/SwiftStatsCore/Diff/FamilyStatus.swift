@@ -19,6 +19,10 @@ public enum FamilyStatus: String, Codable, Hashable, Sendable, Comparable {
     case removed
     /// Its key changed other than in the file-scoped part.
     case renamed
+    /// A record kept its key but its primary USR changed: the key names
+    /// another declaration (M7, design §3.6); the family's `usrChanges`
+    /// list them.
+    case usrChanged = "usr-changed"
 
     /// Orders statuses by name, for stable output.
     public static func < (lhs: Self, rhs: Self) -> Bool {

@@ -26,7 +26,7 @@ public struct TestSummary: Codable, Hashable, Sendable {
     /// nil when it didn't run.
     public let swiftTestingWithoutAssertions: Int?
     /// The counts behind the test-to-code line ratio.
-    public let lineRatio: LineRatio
+    public internal(set) var lineRatio: LineRatio
 
     /// Creates a summary. Fields are documented on their properties.
     public init(

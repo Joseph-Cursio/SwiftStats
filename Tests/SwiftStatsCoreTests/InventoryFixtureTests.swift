@@ -108,7 +108,8 @@ struct InventoryFixtureTests {
             testLines: 25,
             testLinesByKind: ["example": 9, "parameterized": 8, "property": 5, "idempotency": 3],
             productionLines: 21,
-            deadCodeExcluded: false
+            deadCodeExcluded: false,
+            deadLines: nil
         )
 
         #expect(try Self.rollup("InventoryTests", in: report).tests.lineRatio == expected)

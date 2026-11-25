@@ -14,6 +14,9 @@ public enum SignalName: String, CaseIterable, Codable, Hashable, Sendable {
     case bugProne = "bug-prone"
     /// Cloned code that keeps changing, so each change is made in every copy.
     case cloneHotspot = "clone-hotspot"
+    /// Production functions no production code uses whose mutants the
+    /// tests run: code to delete with its tests.
+    case deadButTested = "dead-but-tested"
     /// Clone classes where one copy changed since an earlier snapshot and
     /// another didn't: perhaps a fix made in one place only.
     case divergentClones = "divergent-clones"
@@ -21,6 +24,9 @@ public enum SignalName: String, CaseIterable, Codable, Hashable, Sendable {
     /// the tests barely touch them: little run, few mutants killed, in a
     /// module with little test code.
     case genuinelyUnderTested = "genuinely-under-tested"
+    /// Production families that change together with no static
+    /// dependency between them: candidates for an explicit abstraction.
+    case hiddenCoupling = "hidden-coupling"
     /// Churn times complexity: complex code that keeps changing.
     case hotspot
     /// Pure, value-shaped functions with an algebraic shape and no
@@ -31,6 +37,9 @@ public enum SignalName: String, CaseIterable, Codable, Hashable, Sendable {
     case riskyUntested = "risky-untested"
     /// Old, unchanged, never-fixed complex code: lower priority elsewhere.
     case safeToLeave = "safe-to-leave"
+    /// Production functions only test code references: dead, or missing
+    /// a production caller.
+    case testOnlyProduction = "test-only-production"
     /// Code that changes often while its tests rarely do.
     case testsNotKeepingUp = "tests-not-keeping-up"
     /// Idempotence suggested for a function whose own body
@@ -58,7 +67,7 @@ public enum SignalName: String, CaseIterable, Codable, Hashable, Sendable {
         .hotspot, .bugProne, .unstableFixes, .testsNotKeepingUp, .safeToLeave,
         .untestedProperty, .toolDisagreement, .missingTemplate, .uncheckedLaws, .divergentClones, .cloneHotspot,
         .riskyUntested, .unevenCloneTesting, .weakTests, .genuinelyUnderTested, .bestPropertyTarget,
-        .unevenCloneMutation
+        .unevenCloneMutation, .hiddenCoupling, .deadButTested, .testOnlyProduction
     ]
 
     /// The name a report heads the signal with.
@@ -73,11 +82,17 @@ public enum SignalName: String, CaseIterable, Codable, Hashable, Sendable {
         case .cloneHotspot:
             "Clone hotspots"
 
+        case .deadButTested:
+            "Dead but tested"
+
         case .divergentClones:
             "Divergent clones"
 
         case .genuinelyUnderTested:
             "Genuinely under-tested"
+
+        case .hiddenCoupling:
+            "Hidden coupling"
 
         case .hotspot:
             "Hotspots"
@@ -90,6 +105,9 @@ public enum SignalName: String, CaseIterable, Codable, Hashable, Sendable {
 
         case .safeToLeave:
             "Safe to leave"
+
+        case .testOnlyProduction:
+            "Test-only production code"
 
         case .testsNotKeepingUp:
             "Tests not keeping up"
@@ -134,7 +152,11 @@ public enum SignalName: String, CaseIterable, Codable, Hashable, Sendable {
     /// and genuinely under-tested also needs results that list code no
     /// test ran; uneven clone testing's mutation part lists the clone
     /// detector before SwiftMutator, as its coverage part lists it before
-    /// coverage.
+    /// coverage. M7's list the M7 snapshot first (hidden coupling history
+    /// before it, as M3's signals need it), then the collectors they read:
+    /// the index for hidden coupling and test-only production code,
+    /// outskirts then SwiftMutator for dead but tested, which reads the
+    /// index only when it has it.
     var requirements: [SignalRequirement] {
         let mutation = SignalRequirement.collector(MutationAdapter.name)
         let effects = SignalRequirement.collector(EffectCollector.name)
@@ -150,6 +172,15 @@ public enum SignalName: String, CaseIterable, Codable, Hashable, Sendable {
 
         case .cloneHotspot:
             [clones, .history]
+
+        case .deadButTested:
+            [.m7Snapshot, .collector(PeripheryAdapter.name), mutation]
+
+        case .hiddenCoupling:
+            [.history, .m7Snapshot, .collector(IndexAdapter.name)]
+
+        case .testOnlyProduction:
+            [.m7Snapshot, .collector(IndexAdapter.name)]
 
         case .divergentClones:
             [.history, .m4Snapshot]

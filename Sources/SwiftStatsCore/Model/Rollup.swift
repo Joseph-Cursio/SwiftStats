@@ -41,13 +41,14 @@ public struct Rollup: Codable, Hashable, Sendable {
     /// Stripped lines of every file.
     public let fileLength: Distribution
     /// Findings by tool, then rule; only tools that ran have an entry (PRD §7.16).
-    public let findings: [String: [String: Int]]
+    public internal(set) var findings: [String: [String: Int]]
     /// Findings by tool, then kind (`census`, `defect`); only tools that ran have an entry.
-    public let findingKinds: [String: [String: Int]]
+    public internal(set) var findingKinds: [String: [String: Int]]
     /// Declarations by access level, documentation and `final` (PRD §7.5).
     public let api: APISurface
-    /// Tests by framework and kind, and the test-to-code line counts (PRD §7.8).
-    public let tests: TestSummary
+    /// Tests by framework and kind, and the test-to-code line counts (PRD
+    /// §7.8), with the dead lines once the `periphery` collector ran (M7).
+    public internal(set) var tests: TestSummary
     /// Side-effect tiers and purity verdicts (PRD §7.10); nil when
     /// SwiftEffectInference didn't run, and on test modules and the `tests` part.
     public let effects: EffectRollup?
@@ -70,11 +71,61 @@ public struct Rollup: Codable, Hashable, Sendable {
     /// left no results, and on test modules and the `tests` part, which it
     /// doesn't mutate.
     public internal(set) var mutation: MutationRollup?
+    /// Records by USR: with one, without one by reason, in a disagreement
+    /// (M7, design §3.4); nil when the `index` collector didn't run. Every
+    /// scope has it, test modules and the `tests` part included.
+    public internal(set) var index: IndexRollup?
+    /// Dead records per run and the unused production declarations by
+    /// kind (M7, design §5.4, §10.3); nil when the `periphery` collector
+    /// didn't run, and on test modules and the `tests` part, whose entries
+    /// it leaves out.
+    public internal(set) var deadCode: DeadCodeRollup?
+    /// Type-check time, the slowest record and expression, and the records
+    /// timed (M7, design §6.4); nil when the `build` collector didn't run.
+    /// Every scope has it, test modules and the `tests` part included.
+    public internal(set) var typecheck: TypeCheckRollup?
 
     /// The roll-up with `coverage` as its coverage.
     func with(coverage: CoverageRollup?) -> Self {
         var rollup = self
         rollup.coverage = coverage
+        return rollup
+    }
+
+    /// The roll-up with `deadCode` as its dead-code counts.
+    func with(deadCode: DeadCodeRollup?) -> Self {
+        var rollup = self
+        rollup.deadCode = deadCode
+        return rollup
+    }
+
+    /// The roll-up with `deadLines` as its line ratio's dead lines.
+    func with(deadLines: Int?) -> Self {
+        var rollup = self
+        rollup.tests.lineRatio = tests.lineRatio.with(deadLines: deadLines)
+        return rollup
+    }
+
+    /// The roll-up with `rules` and `kinds` as tool `tool`'s finding
+    /// counts by rule and by kind.
+    func with(findings rules: [String: Int], kinds: [String: Int], of tool: String) -> Self {
+        var rollup = self
+        rollup.findings[tool] = rules
+        rollup.findingKinds[tool] = kinds
+        return rollup
+    }
+
+    /// The roll-up with `index` as its USR counts.
+    func with(index: IndexRollup?) -> Self {
+        var rollup = self
+        rollup.index = index
+        return rollup
+    }
+
+    /// The roll-up with `typecheck` as its type-check figures.
+    func with(typecheck: TypeCheckRollup?) -> Self {
+        var rollup = self
+        rollup.typecheck = typecheck
         return rollup
     }
 

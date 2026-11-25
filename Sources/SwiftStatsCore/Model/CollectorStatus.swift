@@ -10,7 +10,8 @@
 public struct CollectorStatus: Codable, Hashable, Sendable {
     /// The collector: `swiftprojectlint`, `swiftlint`, `swifteffectinference`,
     /// `swiftinferproperties`, `swiftclonedetector`, `dependencies`, `history`,
-    /// `coverage` or `swiftmutator`.
+    /// `coverage`, `swiftmutator`, or the T1 group's `build`, `index` and
+    /// `periphery`.
     public let name: String
     /// How the run went.
     public let state: CollectorState

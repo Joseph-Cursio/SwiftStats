@@ -4,8 +4,8 @@
 //
 //  Parsing `history:` and `signals:` (PRD §10.1). Unknown sub-keys, bad
 //  durations and invalid regular expressions are errors, like unknown
-//  top-level keys. The mutation signals' limits are read in
-//  `SwiftStatsConfiguration+Signals.swift`.
+//  top-level keys. The mutation signals' and hidden coupling's limits
+//  are read in `SwiftStatsConfiguration+Signals.swift`.
 //
 
 import Foundation
@@ -108,7 +108,7 @@ extension SwiftStatsConfiguration {
             }
             percents[name] = number
         }
-        return SignalThresholds(percents: percents, limits: try mutationLimits(mapping, path: path))
+        return SignalThresholds(percents: percents, limits: try signalLimits(mapping, path: path))
     }
 
     /// `value` as a mapping whose keys are all in `allowed`.

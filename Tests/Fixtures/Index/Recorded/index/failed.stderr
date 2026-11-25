@@ -1,0 +1,138 @@
+warning: 'index': @TOOLCHAIN@/usr/bin/swift-frontend -frontend -c -primary-file @ROOT@/Package.swift -target arm64-apple-macosx14.0 -Xllvm -aarch64-use-tbi -enable-objc-interop -stack-check -sdk @DEVELOPER@/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.2.sdk -I @DEVELOPER@/Platforms/MacOSX.platform/Developer/usr/lib -I @TOOLCHAIN@/usr/lib/swift/pm/ManifestAPI -F @DEVELOPER@/Platforms/MacOSX.platform/Developer/Library/Frameworks -vfsoverlay @TMP@/TemporaryDirectory.XXXXXX/vfs.yaml -no-color-diagnostics -Xcc -fno-color-diagnostics -swift-version 6 -package-description-version 6.0.0 -new-driver-path @TOOLCHAIN@/usr/bin/swift-driver -empty-abi-descriptor -plugin-path @TOOLCHAIN@/usr/lib/swift/host/plugins/testing -no-auto-bridging-header-chaining -module-name main -disable-clang-spi -target-sdk-version 27.2 -target-sdk-name macosx27.2 -external-plugin-path '@DEVELOPER@/Platforms/MacOSX.platform/Developer/usr/lib/swift/host/plugins#@DEVELOPER@/Platforms/MacOSX.platform/Developer/usr/bin/swift-plugin-server' -external-plugin-path '@DEVELOPER@/Platforms/MacOSX.platform/Developer/usr/local/lib/swift/host/plugins#@DEVELOPER@/Platforms/MacOSX.platform/Developer/usr/bin/swift-plugin-server' -in-process-plugin-server-path @TOOLCHAIN@/usr/lib/swift/host/libSwiftInProcPluginServer.dylib -plugin-path @TOOLCHAIN@/usr/lib/swift/host/plugins -plugin-path @TOOLCHAIN@/usr/local/lib/swift/host/plugins -o @TMP@/TemporaryDirectory.XXXXXX/Package-1.o
+@TOOLCHAIN@/usr/bin/clang @TMP@/TemporaryDirectory.XXXXXX/Package-1.o -F @DEVELOPER@/Platforms/MacOSX.platform/Developer/Library/Frameworks --sysroot @DEVELOPER@/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.2.sdk --target=arm64-apple-macosx14.0 -L @TOOLCHAIN@/usr/lib/swift/macosx -L @DEVELOPER@/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.2.sdk/usr/lib/swift -rpath /usr/lib/swift -L @TOOLCHAIN@/usr/lib/swift/pm/ManifestAPI -L @DEVELOPER@/Platforms/MacOSX.platform/Developer/usr/lib -lPackageDescription -Xlinker -rpath -Xlinker @TOOLCHAIN@/usr/lib/swift/pm/ManifestAPI -o @TMP@/TemporaryDirectory.XXXXXX/index-manifest
+Apple Swift version 6.4.2 (swiftlang-6.4.2.1.9 clang-2100.4.1.1)
+Target: arm64-apple-macosx14.0
+Running resolver because the following dependencies were added: 'indexdep' (@DEP@)
+warning: 'indexdep': @TOOLCHAIN@/usr/bin/swift-frontend -frontend -c -primary-file @DEP@/Package.swift -target arm64-apple-macosx14.0 -Xllvm -aarch64-use-tbi -enable-objc-interop -stack-check -sdk @DEVELOPER@/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.2.sdk -I @DEVELOPER@/Platforms/MacOSX.platform/Developer/usr/lib -I @TOOLCHAIN@/usr/lib/swift/pm/ManifestAPI -F @DEVELOPER@/Platforms/MacOSX.platform/Developer/Library/Frameworks -vfsoverlay @TMP@/TemporaryDirectory.XXXXXX/vfs.yaml -no-color-diagnostics -Xcc -fno-color-diagnostics -swift-version 6 -package-description-version 6.0.0 -new-driver-path @TOOLCHAIN@/usr/bin/swift-driver -empty-abi-descriptor -plugin-path @TOOLCHAIN@/usr/lib/swift/host/plugins/testing -no-auto-bridging-header-chaining -module-name main -disable-clang-spi -target-sdk-version 27.2 -target-sdk-name macosx27.2 -external-plugin-path '@DEVELOPER@/Platforms/MacOSX.platform/Developer/usr/lib/swift/host/plugins#@DEVELOPER@/Platforms/MacOSX.platform/Developer/usr/bin/swift-plugin-server' -external-plugin-path '@DEVELOPER@/Platforms/MacOSX.platform/Developer/usr/local/lib/swift/host/plugins#@DEVELOPER@/Platforms/MacOSX.platform/Developer/usr/bin/swift-plugin-server' -in-process-plugin-server-path @TOOLCHAIN@/usr/lib/swift/host/libSwiftInProcPluginServer.dylib -plugin-path @TOOLCHAIN@/usr/lib/swift/host/plugins -plugin-path @TOOLCHAIN@/usr/local/lib/swift/host/plugins -o @TMP@/TemporaryDirectory.XXXXXX/Package-1.o
+@TOOLCHAIN@/usr/bin/clang @TMP@/TemporaryDirectory.XXXXXX/Package-1.o -F @DEVELOPER@/Platforms/MacOSX.platform/Developer/Library/Frameworks --sysroot @DEVELOPER@/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.2.sdk --target=arm64-apple-macosx14.0 -L @TOOLCHAIN@/usr/lib/swift/macosx -L @DEVELOPER@/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.2.sdk/usr/lib/swift -rpath /usr/lib/swift -L @TOOLCHAIN@/usr/lib/swift/pm/ManifestAPI -L @DEVELOPER@/Platforms/MacOSX.platform/Developer/usr/lib -lPackageDescription -Xlinker -rpath -Xlinker @TOOLCHAIN@/usr/lib/swift/pm/ManifestAPI -o @TMP@/TemporaryDirectory.XXXXXX/indexdep-manifest
+Apple Swift version 6.4.2 (swiftlang-6.4.2.1.9 clang-2100.4.1.1)
+Target: arm64-apple-macosx14.0
+warning: 'index': found 1 file(s) which are unhandled; explicitly declare them as resources or exclude from the target
+    @ROOT@/Sources/Kits/Support.swift
+warning: 'index': found 2 file(s) which are unhandled; explicitly declare them as resources or exclude from the target
+    @ROOT@/Sources/Kits/Kit.swift
+    @ROOT@/Sources/Kits/Relay.swift
+info: Building targets in dependency order
+info: Target dependency graph (12 targets)
+info: Target 'AllIncludingTests' in project 'Aggregate'
+info: ➜ Explicit dependency on target 'IndexXCTests-product' in project 'IndexFixture'
+info: ➜ Dependency on target 'IndexXCTests-product' in project 'IndexFixture' via transitive dependency through 'IndexXCTests-test-runner'
+info: ➜ Explicit dependency on target 'IndexCoreTests-product' in project 'IndexFixture'
+info: ➜ Dependency on target 'IndexCoreTests-product' in project 'IndexFixture' via transitive dependency through 'IndexCoreTests-test-runner'
+info: ➜ Explicit dependency on target 'IndexCore-product' in project 'IndexFixture'
+info: ➜ Explicit dependency on target 'IndexKit-product' in project 'IndexFixture'
+info: ➜ Explicit dependency on target 'IndexTool-product' in project 'IndexFixture'
+info: ➜ Explicit dependency on target 'IndexApp-product' in project 'IndexFixture'
+info: ➜ Explicit dependency on target 'IndexCore' in project 'IndexFixture'
+info: ➜ Explicit dependency on target 'index-kit' in project 'IndexFixture'
+info: ➜ Explicit dependency on target 'index-support' in project 'IndexFixture'
+info: Target 'IndexApp-product' in project 'IndexFixture'
+info: ➜ Explicit dependency on target 'IndexCore' in project 'IndexFixture'
+info: ➜ Explicit dependency on target 'index-support' in project 'IndexFixture'
+info: ➜ Explicit dependency on target 'IndexDepKit-product' in project 'IndexDep'
+info: Target 'IndexTool-product' in project 'IndexFixture' (no dependencies)
+info: Target 'IndexKit-product' in project 'IndexFixture'
+info: ➜ Explicit dependency on target 'index-kit' in project 'IndexFixture'
+info: Target 'IndexCore-product' in project 'IndexFixture'
+info: ➜ Explicit dependency on target 'IndexCore' in project 'IndexFixture'
+info: ➜ Explicit dependency on target 'IndexDepKit-product' in project 'IndexDep'
+info: Target 'IndexCoreTests-product' in project 'IndexFixture'
+info: ➜ Explicit dependency on target 'IndexCore' in project 'IndexFixture'
+info: ➜ Explicit dependency on target 'index-support' in project 'IndexFixture'
+info: ➜ Explicit dependency on target 'index-kit' in project 'IndexFixture'
+info: ➜ Explicit dependency on target 'IndexDepKit-product' in project 'IndexDep'
+info: Target 'index-kit' in project 'IndexFixture' (no dependencies)
+info: Target 'index-support' in project 'IndexFixture' (no dependencies)
+info: Target 'IndexXCTests-product' in project 'IndexFixture'
+info: ➜ Explicit dependency on target 'IndexCore' in project 'IndexFixture'
+info: ➜ Explicit dependency on target 'IndexDepKit-product' in project 'IndexDep'
+info: Target 'IndexCore' in project 'IndexFixture'
+info: ➜ Explicit dependency on target 'IndexDepKit-product' in project 'IndexDep'
+info: Target 'IndexDepKit-product' in project 'IndexDep'
+info: ➜ Explicit dependency on target 'IndexDepKit' in project 'IndexDep'
+info: Target 'IndexDepKit' in project 'IndexDep' (no dependencies)
+Build description signature: 00000000000000000000000000000000
+Build description path: @BUILD@/out/Intermediates.noindex/XCBuildData/00000000000000000000000000000000.xcbuilddata
+0.01ms	<invalid loc>
+0.01ms	<invalid loc>
+0.01ms	<invalid loc>
+0.01ms	<invalid loc>
+0.01ms	<invalid loc>
+0.01ms	<invalid loc>
+0.01ms	<invalid loc>
+0.01ms	<invalid loc>
+0.01ms	<invalid loc>
+0.01ms	<invalid loc>
+0.01ms	<invalid loc>
+0.01ms	<invalid loc>
+0.01ms	<invalid loc>
+0.01ms	<invalid loc>
+0.01ms	<invalid loc>
+0.01ms	<invalid loc>
+0.01ms	<invalid loc>
+0.01ms	<invalid loc>
+0.01ms	<invalid loc>
+0.01ms	<invalid loc>
+0.01ms	<invalid loc>
+0.01ms	<invalid loc>
+0.01ms	<invalid loc>
+0.01ms	<invalid loc>
+0.01ms	<invalid loc>	getter index_support.(file).Record.CodingKeys.hashValue.getter
+0.01ms	<invalid loc>	getter index_support.(file).Record.CodingKeys.intValue.getter
+0.01ms	<invalid loc>	getter index_support.(file).Record.CodingKeys.stringValue.getter
+0.01ms	<invalid loc>	initializer index_support.(file).Record.CodingKeys.init(intValue:)
+0.01ms	<invalid loc>	initializer index_support.(file).Record.CodingKeys.init(stringValue:)
+0.01ms	<invalid loc>	initializer index_support.(file).Record.init(from:)
+0.01ms	<invalid loc>	instance method index_support.(file).Record.CodingKeys.hash(into:)
+0.01ms	<invalid loc>	instance method index_support.(file).Record.encode(to:)
+0.01ms	<invalid loc>	static method IndexTool.(file).Tool.$main()
+0.01ms	<invalid loc>	static method index_support.(file).Pair.__derived_struct_equals
+0.01ms	<invalid loc>	static method index_support.(file).Record.CodingKeys.__derived_enum_equals
+0.01ms	@DEP@/Sources/IndexDepKit/DepKit.swift:2:13	global function IndexDepKit.(file).depValue()@@DEP@/Sources/IndexDepKit/DepKit.swift:2:13
+0.01ms	@DEP@/Sources/IndexDepKit/DepKit.swift:4:30
+0.01ms	@DEP@/Sources/IndexDepKit/DepKit.swift:5:12
+0.01ms	@DEP@/Sources/IndexDepKit/Payload.swift:10:9
+0.01ms	@DEP@/Sources/IndexDepKit/Payload.swift:6:16	getter IndexDepKit.(file).Data.size.getter@@DEP@/Sources/IndexDepKit/Payload.swift:6:16
+0.01ms	@DEP@/Sources/IndexDepKit/Payload.swift:6:16	getter IndexDepKit.(file).Data.size.getter@@DEP@/Sources/IndexDepKit/Payload.swift:6:16
+0.01ms	@DEP@/Sources/IndexDepKit/Payload.swift:9:12	initializer IndexDepKit.(file).Data.init(size:)@@DEP@/Sources/IndexDepKit/Payload.swift:9:12
+0.01ms	@ROOT@/Sources/IndexTool/Tool.swift:2:1
+0.01ms	@ROOT@/Sources/IndexTool/Tool.swift:3:8	initializer IndexTool.(file).Tool.init()@@ROOT@/Sources/IndexTool/Tool.swift:3:8
+0.01ms	@ROOT@/Sources/IndexTool/Tool.swift:5:17	static method IndexTool.(file).Tool.main()@@ROOT@/Sources/IndexTool/Tool.swift:5:17
+0.01ms	@ROOT@/Sources/IndexTool/Tool.swift:6:9
+0.01ms	@ROOT@/Sources/Kits/Kit.swift:3:13	global function index_kit.(file).kitOnlyTests()@@ROOT@/Sources/Kits/Kit.swift:3:13
+0.01ms	@ROOT@/Sources/Kits/Kit.swift:4:5
+0.01ms	@ROOT@/Sources/Kits/Relay.swift:3:6	global function index_kit.(file).relay()@@ROOT@/Sources/Kits/Relay.swift:3:6
+0.01ms	@ROOT@/Sources/Kits/Relay.swift:4:5
+0.01ms	@ROOT@/Sources/Kits/Support.swift:10:13	global function index_support.(file).banner()@@ROOT@/Sources/Kits/Support.swift:10:13
+0.01ms	@ROOT@/Sources/Kits/Support.swift:11:21
+0.01ms	@ROOT@/Sources/Kits/Support.swift:11:23
+0.01ms	@ROOT@/Sources/Kits/Support.swift:11:35
+0.01ms	@ROOT@/Sources/Kits/Support.swift:11:35
+0.01ms	@ROOT@/Sources/Kits/Support.swift:11:5
+0.01ms	@ROOT@/Sources/Kits/Support.swift:11:6
+0.01ms	@ROOT@/Sources/Kits/Support.swift:11:7
+0.01ms	@ROOT@/Sources/Kits/Support.swift:17:9	getter index_support.(file).Record.name.getter@@ROOT@/Sources/Kits/Support.swift:17:9
+0.01ms	@ROOT@/Sources/Kits/Support.swift:19:9	getter index_support.(file).Record.note.getter@@ROOT@/Sources/Kits/Support.swift:19:9
+0.01ms	@ROOT@/Sources/Kits/Support.swift:25:9	getter index_support.(file).Pair.left.getter@@ROOT@/Sources/Kits/Support.swift:25:9
+0.01ms	@ROOT@/Sources/Kits/Support.swift:27:9	getter index_support.(file).Pair.right.getter@@ROOT@/Sources/Kits/Support.swift:27:9
+0.01ms	@ROOT@/Sources/Kits/Support.swift:31:6	global function index_support.(file).recordName()@@ROOT@/Sources/Kits/Support.swift:31:6
+0.01ms	@ROOT@/Sources/Kits/Support.swift:32:16
+0.01ms	@ROOT@/Sources/Kits/Support.swift:33:12
+0.01ms	@ROOT@/Sources/Kits/Support.swift:37:6	global function index_support.(file).samePair()@@ROOT@/Sources/Kits/Support.swift:37:6
+0.01ms	@ROOT@/Sources/Kits/Support.swift:38:5
+0.01ms	@ROOT@/Sources/Kits/Support.swift:5:13	global function index_support.(file).parseLine@@ROOT@/Sources/Kits/Support.swift:5:13
+0.01ms	@ROOT@/Sources/Kits/Support.swift:6:5
+@DEP@/Sources/IndexDepKit/DepKit.swift:4:9: warning: initialization of immutable value 'unusedInDependency' was never used; consider replacing with assignment to '_' or removing it [pbd_never_used] [#NoUsage]
+2 | public func depValue() -> Int {
+3 |     // An unused `let`: a warning in a local path dependency.
+4 |     let unusedInDependency = 1
+  |         `- warning: initialization of immutable value 'unusedInDependency' was never used; consider replacing with assignment to '_' or removing it [pbd_never_used] [#NoUsage]
+5 |     return 7
+6 | }
+
+[#NoUsage]: <https://docs.swift.org/compiler/documentation/diagnostics/no-usage>
+error: @ROOT@/Sources/IndexCore/Formatting.swift:8:1 expected expression in list of expressions [expected_expr_in_expr_list]
+warning: @ROOT@/Sources/IndexCore/Warnings.swift:19:10 remember to finish this [pound_warning]
+error: SwiftDriver IndexCore normal arm64 com.apple.xcode.tools.swift.compiler failed with a nonzero exit code. Command line:     cd @PARENT@
+    builtin-SwiftDriver -- @TOOLCHAIN@/usr/bin/swiftc -parse-as-library -module-name IndexCore -Onone @@BUILD@/out/Intermediates.noindex/IndexFixture.build/Debug/IndexCore-t.build/Objects-normal/arm64/IndexCore.SwiftFileList -DSWIFT_PACKAGE -DDEBUG -DSWIFT_MODULE_RESOURCE_BUNDLE_UNAVAILABLE -DXcode -index-include-locals -Xfrontend -debug-time-function-bodies -Xfrontend -debug-time-expression-type-checking -Xfrontend -debug-diagnostic-names -plugin-path @TOOLCHAIN@/usr/lib/swift/host/plugins/testing -enable-experimental-feature DebugDescriptionMacro -sdk @DEVELOPER@/Platforms/MacOSX.platform/Developer/SDKs/MacOSX27.2.sdk -target arm64-apple-macos14.0 -g -module-cache-path @BUILD@/out/ModuleCache.noindex -Xfrontend -serialize-debugging-options -enable-testing -index-store-path @BUILD@/out -Xcc -D_LIBCPP_HARDENING_MODE\=_LIBCPP_HARDENING_MODE_DEBUG -swift-version 6 -I @BUILD@/out/Products/Debug -Isystem @DEVELOPER@/Platforms/MacOSX.platform/Developer/usr/lib -F @BUILD@/out/Products/Debug/PackageFrameworks -F @BUILD@/out/Products/Debug -F @DEVELOPER@/Platforms/MacOSX.platform/Developer/Library/Frameworks -c -j8 -enable-batch-mode -incremental -Xcc -ivfsstatcache -Xcc @BUILD@/out/SDKStatCaches.noindex/macosx27.2-26B118-d56355c2f463f349a93388c94f7bc0b5a7ff82d74745d5ef33555b35c4238456.sdkstatcache -output-file-map @BUILD@/out/Intermediates.noindex/IndexFixture.build/Debug/IndexCore-t.build/Objects-normal/arm64/IndexCore-OutputFileMap.json -save-temps -no-color-diagnostics -explicit-module-build -module-cache-path @BUILD@/out/Intermediates.noindex/SwiftExplicitPrecompiledModules -clang-scanner-module-cache-path @BUILD@/out/ModuleCache.noindex -sdk-module-cache-path @BUILD@/out/SDKExplicitPrecompiledModules -emit-dependencies -emit-module -emit-module-path @BUILD@/out/Intermediates.noindex/IndexFixture.build/Debug/IndexCore-t.build/Objects-normal/arm64/IndexCore.swiftmodule -serialize-diagnostics -dependency-scan-serialize-diagnostics-path @BUILD@/out/Intermediates.noindex/IndexFixture.build/Debug/IndexCore-t.build/Objects-normal/arm64/IndexCore-dependency-scan.dia -validate-clang-modules-once -clang-build-session-file @BUILD@/out/ModuleCache.noindex/Session.modulevalidation -Xcc -fmodules-prune-interval\=86400 -Xcc -fmodules-prune-after\=345600 -package-name index -emit-const-values -const-gather-protocols-list @BUILD@/out/Intermediates.noindex/IndexFixture.build/Debug/IndexCore-t.build/Objects-normal/arm64/IndexCore_const_extract_protocols.json -Xcc -I@BUILD@/out/Products/Debug/include -Xcc -I@BUILD@/out/Intermediates.noindex/IndexFixture.build/Debug/IndexCore-t.build/DerivedSources-normal/arm64 -Xcc -I@BUILD@/out/Intermediates.noindex/IndexFixture.build/Debug/IndexCore-t.build/DerivedSources/arm64 -Xcc -I@BUILD@/out/Intermediates.noindex/IndexFixture.build/Debug/IndexCore-t.build/DerivedSources -Xcc -DSWIFT_PACKAGE -Xcc -DDEBUG\=1 -emit-objc-header -emit-objc-header-path @BUILD@/out/Intermediates.noindex/IndexFixture.build/Debug/IndexCore-t.build/Objects-normal/arm64/IndexCore-Swift.h -working-directory @PARENT@ -experimental-emit-module-separately -disable-cmo
+error: Build failed

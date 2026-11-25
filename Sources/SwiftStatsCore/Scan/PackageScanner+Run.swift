@@ -2,11 +2,12 @@
 //  PackageScanner+Run.swift
 //  SwiftStatsCore
 //
-//  The scan itself (PRD M0–M2, M4–M6): describe the package, start
+//  The scan itself (PRD M0–M2, M4–M7): describe the package, start
 //  SwiftInferProperties and, when asked for, the coverage run, measure its
 //  files, infer side effects, run the other external collectors,
-//  SwiftCloneDetector among them, then, when asked for, SwiftMutator alone,
-//  attach the suggestions and clones and assemble the report, timing each
+//  SwiftCloneDetector among them, then, when asked for, the T1 group
+//  (`scan --index`) alone and SwiftMutator alone, attach the suggestions,
+//  the clones and the build's timings and assemble the report, timing each
 //  collector for the snapshot (PRD §6.2).
 //
 
@@ -77,13 +78,14 @@ extension PackageScanner {
     }
 
     /// The scan of `packageRoot`, with each collector's run time and binary;
-    /// the coverage and SwiftMutator collectors run only when `tiers` asks
-    /// for them. SwiftMutator's copy checks out the commit of `git`, the
-    /// package's state as read before the scan (read when it runs when
-    /// nil), and leaves out the files at `ignoring`; a `--since` run, or
-    /// the resume of one, merges with the base `tiers` carries. For a scan
-    /// that stores its snapshot, `saving`'s gate runs before SwiftMutator
-    /// starts and may stop the scan.
+    /// the coverage collector, the T1 group and the SwiftMutator collector
+    /// run only when `tiers` asks for them. SwiftMutator's copy checks out
+    /// the commit of `git`, the package's state as read before the scan
+    /// (read when it runs when nil), and leaves out the files at
+    /// `ignoring`; a `--since` run, or the resume of one, merges with the
+    /// base `tiers` carries. For a scan that stores its snapshot,
+    /// `indexSaving`'s gate runs before the T1 build starts and `saving`'s
+    /// before SwiftMutator starts, and either may stop the scan.
     func run(
         packageAt packageRoot: URL,
         configurationFile: URL?,
@@ -96,7 +98,7 @@ extension PackageScanner {
         let package = try describer.describePackage(at: root)
         let (targets, excludedFiles) = Self.excluding(TargetResolver.resolve(package), by: configuration)
         var pending = startBackground(root: root, targets: targets, configuration: configuration, tiers: tiers)
-        pending.prepareMutation(git: git, ignoring: ignoring, saving: saving)
+        pending.prepareMutation(git: git, ignoring: ignoring, saving: saving, indexSaving: indexSaving)
         let scan = Self.measured(targets, root: root, configuration: configuration)
         let (measured, effects) = (scan.measurements, scan.effects)
         let external = try externalRuns(
@@ -132,7 +134,7 @@ extension PackageScanner {
             laws: measured.laws.with(kitDependency: KitProtocols.isDependency(in: dependencies.report)),
             coverage: external.coverage,
             mutation: external.mutationReport
-        )
+        ).with(external.index)
         return ScanOutcome(
             report: report,
             configuration: configuration,
@@ -141,5 +143,14 @@ extension PackageScanner {
             effects: effects,
             dependencies: dependencies
         )
+    }
+
+    /// The same scanner, its external tool adapters skipped for `reason`,
+    /// or run when it is nil; everything else it was given is kept (a
+    /// backfill scans with it).
+    func skippingTools(for reason: String?) -> Self {
+        var scanner = self
+        scanner.toolSkipReason = reason
+        return scanner
     }
 }

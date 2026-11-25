@@ -13,7 +13,8 @@ struct FindingCounts {
     /// Counts in the newer snapshot.
     let new: [String: [String: Int]]
 
-    /// The counts of `old` and `new` findings from `tools`.
+    /// The counts of `old` and `new` findings from the tools of the
+    /// collectors `tools` (`RollupMetrics.collector(ofTool:)`).
     init(old: [FindingRow], new: [FindingRow], tools: Set<String>) {
         self.old = Self.count(old, tools: tools)
         self.new = Self.count(new, tools: tools)
@@ -22,7 +23,10 @@ struct FindingCounts {
     /// Function-attached `rows` from `tools`, counted by owner and metric name.
     private static func count(_ rows: [FindingRow], tools: Set<String>) -> [String: [String: Int]] {
         var counts: [String: [String: Int]] = [:]
-        for row in rows where row.attachedTo == .function && tools.contains(row.tool) {
+        let counted = rows.filter { row in
+            row.attachedTo == .function && tools.contains(RollupMetrics.collector(ofTool: row.tool))
+        }
+        for row in counted {
             guard let owner = row.owner else {
                 continue
             }

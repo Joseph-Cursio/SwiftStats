@@ -10,8 +10,11 @@ public struct SnapshotDiffReport: Codable, Hashable, Sendable {
     /// The version of this document's format: 1 is M2's; 2 adds records'
     /// coverage percentages and the test bundles that changed (M5); 3
     /// adds records' mutation figures, the mutation roll-ups and where
-    /// each side's mutation results came from (M6).
-    public static let currentSchemaVersion = 3
+    /// each side's mutation results came from (M6); 4 adds the `usr`
+    /// match method, the `usr-changed` status with each family's
+    /// `usrChanges`, and the index, compiler-warning and dead-code
+    /// roll-ups among the deltas (M7).
+    public static let currentSchemaVersion = 4
 
     /// The document's format version.
     public let schemaVersion: Int

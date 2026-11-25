@@ -40,10 +40,21 @@ enum MutationCarry {
     /// package, commit and dirtiness whose SwiftMutator collector didn't
     /// run; nil when it can.
     static func refusal(of held: HeldMutation, onto snapshot: ScannedSnapshot) -> String? {
-        stateRefusal(of: held, git: snapshot.info.git)
-            ?? recordsRefusal(of: held, onto: snapshot.report.records)
-            ?? filesRefusal(of: held.results.report.mutants, onto: snapshot.report.files)
-            ?? unparsedRefusal(of: held.results.report.mutants, onto: snapshot.report.files)
+        refusal(of: held, git: snapshot.info.git, records: snapshot.report.records, files: snapshot.report.files)
+    }
+
+    /// Why `held` can't be carried onto a scan at `git` whose records and
+    /// files are `records` and `files`; nil when it can.
+    static func refusal(
+        of held: HeldMutation,
+        git: GitState,
+        records: [FunctionRecord],
+        files: [FileRecord]
+    ) -> String? {
+        stateRefusal(of: held, git: git)
+            ?? recordsRefusal(of: held, onto: records)
+            ?? filesRefusal(of: held.results.report.mutants, onto: files)
+            ?? unparsedRefusal(of: held.results.report.mutants, onto: files)
     }
 
     /// Why `held` can't be carried onto any scan at `git` by this build,

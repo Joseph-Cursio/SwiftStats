@@ -10,19 +10,23 @@
 //  fixed: every Nth commit counts from the first commit holding the
 //  package, and a week's pick is its latest commit by committer time in
 //  UTC, so a later run only adds new points. A snapshot that holds results
-//  a backfill doesn't collect (history, coverage, mutation results, tools,
-//  the dependency graph) is never replaced; one holding history, coverage
-//  or mutation results, which a backfill never collects, isn't even
-//  rescanned. Snapshots are stored as every scan is (`save(_:drop:)`).
+//  a backfill doesn't collect (history, coverage, mutation results, T1
+//  results, tools, the dependency graph) is never replaced; one holding
+//  history, coverage, mutation results or T1 results (the build's, the
+//  index's and outskirts'), which a backfill never collects, isn't even
+//  rescanned, also with `--rerun`. Snapshots are stored as every scan is
+//  (`save(_:drop:)`).
 //
 
 import Foundation
 
 extension SnapshotWorkspace {
     /// Collectors whose results a backfill never collects: it reads no
-    /// history and never runs the tests, with coverage or mutated.
+    /// history, never runs the tests, with coverage or mutated, and never
+    /// runs the T1 group (`build`, `index`, `periphery`).
     private static let neverCollected: Set<String> = [
-        HistoryCollector.name, CoverageAdapter.name, MutationAdapter.name
+        HistoryCollector.name, CoverageAdapter.name, MutationAdapter.name, BuildAdapter.name, IndexAdapter.name,
+        PeripheryAdapter.name
     ]
     /// Why a backfill without tools skips the external collectors.
     static let backfillToolSkipReason = "backfill runs SwiftStats only; --with-tools adds the tools"
@@ -81,6 +85,16 @@ extension SnapshotWorkspace {
         return GitReader.line(arguments, in: root).flatMap { Int($0) }
     }
 
+    /// The workspace's scanner as a backfill scans with it: the same
+    /// describer, tools and index reader, its external tool adapters
+    /// skipped unless `withTools`.
+    func backfillScanner(withTools: Bool) -> SnapshotScanner {
+        SnapshotScanner(
+            scanner: scanner.scanner.skippingTools(for: withTools ? nil : Self.backfillToolSkipReason),
+            build: scanner.build
+        )
+    }
+
     /// Backfills the commits `plan` picks, reporting each step to `progress`.
     public func backfill(_ plan: BackfillPlan, progress: (BackfillStep) -> Void) throws -> [BackfillStep] {
         let name = try describer.describePackage(at: root).name
@@ -88,14 +102,7 @@ extension SnapshotWorkspace {
         guard git.commit != nil else {
             throw StoreError.noSnapshot("\(name): backfill follows git history, and this package has none")
         }
-        let backfillScanner = SnapshotScanner(
-            scanner: PackageScanner(
-                describer: describer,
-                tools: scanner.scanner.tools,
-                toolSkipReason: plan.withTools ? nil : Self.backfillToolSkipReason
-            ),
-            build: scanner.build
-        )
+        let backfillScanner = backfillScanner(withTools: plan.withTools)
         var steps: [BackfillStep] = []
         let line = try holdingPackage(try firstParentLine(), packagePath: git.packagePath)
         for commit in Self.picks(line, plan: plan) {

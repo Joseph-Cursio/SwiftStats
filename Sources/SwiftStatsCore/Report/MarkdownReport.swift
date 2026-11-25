@@ -3,10 +3,11 @@
 //  SwiftStatsCore
 //
 //  `swiftstats report --format markdown` (PRD §10): derived signals first,
-//  then the collectors, coverage (M5), mutation (M6), the project roll-up
-//  with findings per 1k stripped lines (D6), the side-effect,
-//  property-candidate, law-check and clone counts, the history's notes,
-//  and per-module detail.
+//  then the collectors, coverage (M5), mutation (M6), the build and index
+//  and the dead code (M7), the project roll-up with findings per 1k
+//  stripped lines (D6), the side-effect, property-candidate, law-check and
+//  clone counts, the history's notes with its change-coupling pairs (read
+//  from the store's `couplingPair` table from M7), and per-module detail.
 //
 
 /// Renders a snapshot report as Markdown.
@@ -23,6 +24,8 @@ public enum MarkdownReport {
         lines += ["", "## Collectors", ""] + collectors(report.snapshot.collectors)
         lines += ["", "## Coverage", ""] + MarkdownCoverage.render(report.scan)
         lines += ["", "## Mutation", ""] + MarkdownMutation.render(report.scan)
+        lines += ["", "## Build and index", ""] + MarkdownIndex.render(report.scan)
+        lines += ["", "## Dead code", ""] + MarkdownDeadCode.render(report.scan, runs: report.snapshot.collectors)
         let project = projectParts.compactMap { part in
             report.scan.rollups.first { $0.scope == .project && $0.name == part }
         }

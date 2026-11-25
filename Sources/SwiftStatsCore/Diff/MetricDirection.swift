@@ -3,14 +3,20 @@
 //  SwiftStatsCore
 //
 //  Which way is better for each metric (PRD §6.6): lower for sizes,
-//  complexity, nesting, parameters, findings, unchecked law pairs, clones,
-//  unmapped coverage entries, unlinked public functions, and mutants
-//  left unkilled (a roll-up's survived, no-coverage, timed-out and
-//  not-covered counts, a record's unkilled count) or unmapped; higher for
-//  tests, assertions, documentation, the test line ratio, coverage
-//  percentages (a roll-up's or a record's), linked public functions and
-//  mutation scores (a roll-up's, a record's, and a record's function
-//  score); neutral for counts, kills and scored mutants among them.
+//  complexity, nesting, parameters, findings (the compiler's warnings
+//  among them), unchecked law pairs, clones, unmapped coverage entries,
+//  unlinked public functions, mutants left unkilled (a roll-up's
+//  survived, no-coverage, timed-out and not-covered counts, a record's
+//  unkilled count) or unmapped, USR disagreements, USR type cycles and the
+//  types in them, unused declarations, dead records and the line ratio's
+//  dead lines; higher for tests, assertions, documentation, the test line
+//  ratio, coverage percentages (a roll-up's or a record's), linked public
+//  functions and mutation scores (a roll-up's, a record's, and a record's
+//  function score); neutral for counts, kills and scored mutants among
+//  them, records with a USR and those without one by reason (an inactive
+//  `#if` branch isn't worse), module edges, declarations without a line
+//  count, and type-check times, which depend on the machine and its load
+//  (M7, design §10.3).
 //
 
 /// Whether a metric going up is good, bad or neither.
@@ -38,7 +44,9 @@ public enum MetricDirection: String, Codable, Hashable, Sendable {
         "strippedLines", "parameterCount", "cognitive", "decisionCount", "swiftLintCompatible", "maxNesting",
         "laws.state.notRun", "clones.", "coverage.unmapped", "coverage.publicFunctions.unlinked",
         "mutation.survived", "mutation.noCoverage", "mutation.timedOut", "mutation.notCovered", "mutation.unmapped",
-        "mutation.unkilled"
+        "mutation.unkilled",
+        "index.disagreements", "index.typeCycles", "index.typesInCycles",
+        "deadCode.unused.", "deadCode.records", "deadCode.productionRecords", "tests.lineRatio.deadLines"
     ]
     /// Paths, or path prefixes ending in a dot, that are better higher.
     private static let higherPaths = [

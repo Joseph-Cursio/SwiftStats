@@ -42,4 +42,43 @@ struct PositionPlacementTests {
         #expect(place(5, 24, nil) == .type("Lib::Holder"))
         #expect(place(8, 14, nil) == .file)
     }
+
+    @Test("production placement, the default, never places on a test; placing on every role does")
+    func roles() throws {
+        let package = try TemporaryPackage([
+            "Sources/Lib/Lib.swift": Self.source,
+            "Tests/LibTests/LibTests.swift": "import Testing\n\n@Test func checksFirst() {\n    #expect(true)\n}\n"
+        ])
+        defer { package.remove() }
+        let targets = TargetResolver.resolve(try package.describer.describePackage(at: package.root))
+        let measured = PackageScanner.measure(targets, root: package.root, configuration: SwiftStatsConfiguration())
+        let test = try #require(measured.records.first { $0.name == "checksFirst" }).key
+        let file = "Tests/LibTests/LibTests.swift"
+        let position = SourcePosition(line: 3, column: 12)
+        let byDefault = PositionPlacement(measured: measured)
+        let production = PositionPlacement(measured: measured, roles: .production)
+        let every = PositionPlacement(measured: measured, roles: .every)
+        #expect(byDefault.place(at: position, end: nil, in: file) == .file)
+        #expect(production.place(at: position, end: nil, in: file) == .file)
+        #expect(every.place(at: position, end: nil, in: file) == .record(test))
+        let first = try #require(measured.records.first { $0.name == "first" }).key
+        let inLibrary = SourcePosition(line: 2, column: 5)
+        #expect(every.place(at: inLibrary, end: nil, in: "Sources/Lib/Lib.swift") == .record(first))
+    }
+
+    /// To accept a deliberate change to where coverage and mutation place,
+    /// run with `SWIFTSTATS_UPDATE_GOLDEN=1` and review the diff of
+    /// `Tests/Fixtures/ProductionPlacement.golden.txt`.
+    @Test("the default placement places every position of the Coverage and Mutation fixtures as recorded before M7")
+    func productionAsRecorded() throws {
+        let actual = try PlacementTable.text()
+        if ProcessInfo.processInfo.environment["SWIFTSTATS_UPDATE_GOLDEN"] == "1" {
+            try actual.write(to: PlacementTable.golden, atomically: true, encoding: .utf8)
+        }
+        let expected = try String(contentsOf: PlacementTable.golden, encoding: .utf8)
+        #expect(
+            actual == expected,
+            "placement differs from ProductionPlacement.golden.txt; to accept, set SWIFTSTATS_UPDATE_GOLDEN=1"
+        )
+    }
 }

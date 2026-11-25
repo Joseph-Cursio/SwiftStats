@@ -1,0 +1,179 @@
+{
+  "dependencies" : [
+    {
+      "identity" : "indexdep",
+      "path" : "@DEP@",
+      "type" : "fileSystem"
+    }
+  ],
+  "manifest_display_name" : "IndexFixture",
+  "name" : "IndexFixture",
+  "path" : "@ROOT@",
+  "platforms" : [
+    {
+      "name" : "macos",
+      "version" : "14.0"
+    }
+  ],
+  "products" : [
+    {
+      "name" : "IndexCore",
+      "targets" : [
+        "IndexCore"
+      ],
+      "type" : {
+        "library" : [
+          "automatic"
+        ]
+      }
+    },
+    {
+      "name" : "IndexKit",
+      "targets" : [
+        "index-kit"
+      ],
+      "type" : {
+        "library" : [
+          "automatic"
+        ]
+      }
+    },
+    {
+      "name" : "IndexTool",
+      "targets" : [
+        "IndexTool"
+      ],
+      "type" : {
+        "executable" : null
+      }
+    },
+    {
+      "name" : "IndexApp",
+      "targets" : [
+        "IndexApp"
+      ],
+      "type" : {
+        "executable" : null
+      }
+    }
+  ],
+  "targets" : [
+    {
+      "c99name" : "index_support",
+      "module_type" : "SwiftTarget",
+      "name" : "index-support",
+      "path" : "Sources/Kits",
+      "product_memberships" : [
+        "IndexApp"
+      ],
+      "sources" : [
+        "Support.swift"
+      ],
+      "type" : "library"
+    },
+    {
+      "c99name" : "index_kit",
+      "module_type" : "SwiftTarget",
+      "name" : "index-kit",
+      "path" : "Sources/Kits",
+      "product_memberships" : [
+        "IndexKit"
+      ],
+      "sources" : [
+        "Kit.swift",
+        "Relay.swift"
+      ],
+      "type" : "library"
+    },
+    {
+      "c99name" : "IndexXCTests",
+      "module_type" : "SwiftTarget",
+      "name" : "IndexXCTests",
+      "path" : "Tests/IndexXCTests",
+      "sources" : [
+        "LayoutXCTests.swift"
+      ],
+      "target_dependencies" : [
+        "IndexCore"
+      ],
+      "type" : "test"
+    },
+    {
+      "c99name" : "IndexTool",
+      "module_type" : "SwiftTarget",
+      "name" : "IndexTool",
+      "path" : "Sources/IndexTool",
+      "product_memberships" : [
+        "IndexTool"
+      ],
+      "sources" : [
+        "Tool.swift"
+      ],
+      "type" : "executable"
+    },
+    {
+      "c99name" : "IndexCoreTests",
+      "module_type" : "SwiftTarget",
+      "name" : "IndexCoreTests",
+      "path" : "Tests/IndexCoreTests",
+      "sources" : [
+        "IndexCoreTests.swift"
+      ],
+      "target_dependencies" : [
+        "IndexCore",
+        "index-support",
+        "index-kit"
+      ],
+      "type" : "test"
+    },
+    {
+      "c99name" : "IndexCore",
+      "module_type" : "SwiftTarget",
+      "name" : "IndexCore",
+      "path" : "Sources/IndexCore",
+      "product_dependencies" : [
+        "IndexDepKit"
+      ],
+      "product_memberships" : [
+        "IndexCore",
+        "IndexApp"
+      ],
+      "sources" : [
+        "Accessors.swift",
+        "Bom.swift",
+        "Bytes.swift",
+        "Dependency.swift",
+        "Formatting.swift",
+        "Lifecycle.swift",
+        "Locals.swift",
+        "Protocols.swift",
+        "References.swift",
+        "Ring.swift",
+        "TestOnly.swift",
+        "Types.swift",
+        "Unused+Extra.swift",
+        "Unused.swift",
+        "Warnings.swift"
+      ],
+      "type" : "library"
+    },
+    {
+      "c99name" : "IndexApp",
+      "module_type" : "SwiftTarget",
+      "name" : "IndexApp",
+      "path" : "Sources/IndexApp",
+      "product_memberships" : [
+        "IndexApp"
+      ],
+      "sources" : [
+        "main.swift"
+      ],
+      "target_dependencies" : [
+        "IndexCore",
+        "index-support"
+      ],
+      "type" : "executable"
+    }
+  ],
+  "tools_version" : "6.0"
+}

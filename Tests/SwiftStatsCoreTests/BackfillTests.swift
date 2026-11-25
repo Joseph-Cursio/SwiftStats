@@ -109,6 +109,10 @@ struct BackfillTests {
         #expect(runs["coverage"]?.reason == "not requested; scan --coverage runs it")
         #expect(runs["swiftmutator"]?.state == .skipped)
         #expect(runs["swiftmutator"]?.reason == "not requested; scan --mutation runs it")
+        for name in ["build", "index", "periphery"] {
+            #expect(runs[name]?.state == .skipped, "\(name)")
+            #expect(runs[name]?.reason == "not requested; scan --index runs it", "\(name)")
+        }
         #expect(runs["swiftstats"]?.state == .ran)
         #expect(runs["swifteffectinference"]?.state == .ran)
         #expect(runs["swifteffectinference"]?.identity == EffectInferenceRevision.identity)

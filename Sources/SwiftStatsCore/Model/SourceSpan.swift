@@ -25,4 +25,9 @@ public struct SourceSpan: Codable, Hashable, Sendable {
     public func contains(_ position: SourcePosition) -> Bool {
         start <= position && position <= end
     }
+
+    /// Whether `span` falls inside this span, ends included.
+    func contains(_ span: Self) -> Bool {
+        start <= span.start && span.end <= end
+    }
 }
