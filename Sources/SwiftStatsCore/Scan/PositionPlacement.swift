@@ -2,15 +2,21 @@
 //  PositionPlacement.swift
 //  SwiftStatsCore
 //
-//  Where something at a position of a kept file goes (M5, M6): coverage
+//  Where something at a position of a kept file goes (M5, M6, M7): coverage
 //  places an export entry by the start of its first region, mutation a
-//  mutant by its anchor. The position, compared by (line, column), goes to
-//  the innermost production record holding it (the latest start, then the
-//  earliest end, then the key; a file's top-level-code record only on its
-//  statement lines), else to the innermost type holding it, else to its
-//  file. Columns compare as they are: the records count a byte order
-//  mark's bytes on line 1, and callers give positions counted the same
-//  way. Given an end, a span ending past its record is unmapped.
+//  mutant by its anchor, the build a type-check timing entry by its
+//  declaration's name. The position, compared by (line, column), goes to
+//  the innermost record holding it (the latest start, then the earliest
+//  end, then the key; a file's top-level-code record only on its statement
+//  lines), else to the innermost type holding it, else to its file. Which
+//  records count is the placement's roles: production records only, the
+//  default, as coverage and mutation place; or every record, tests and
+//  helpers included, as the build's timings place (M7, design §6.2). The
+//  timings also ask for the local type holding a position its innermost
+//  record holds outside the type's members (`localTypeOwner`).
+//  Columns compare as they are: the records count a byte order mark's
+//  bytes on line 1, and callers give positions counted the same way. Given
+//  an end, a span ending past its record is unmapped.
 //
 
 /// Places positions on records, types and files.
@@ -27,10 +33,18 @@ struct PositionPlacement {
         case unmapped(String)
     }
 
+    /// Which records a placement places on.
+    enum Roles {
+        /// Every record: production code, tests and test helpers.
+        case every
+        /// Production records only.
+        case production
+    }
+
     /// Why a span ending past its record is unmapped.
     static let pastRecord = "region extends past its record"
 
-    /// Production records by file.
+    /// The records placed on, by file.
     private let recordsByFile: [String: [FunctionRecord]]
     /// Types by file.
     private let typesByFile: [String: [TypeRecord]]
@@ -39,9 +53,16 @@ struct PositionPlacement {
     /// Each file's file-scoped types.
     private let fileScopedTypes: [String: Set<String>]
 
-    /// A placement over `measured`'s production records and its types.
+    /// A placement over `measured`'s production records and its types, as
+    /// coverage and mutation place.
     init(measured: ScanMeasurements) {
-        recordsByFile = Dictionary(grouping: measured.records.filter { $0.role == .production }, by: \.file)
+        self.init(measured: measured, roles: .production)
+    }
+
+    /// A placement over `measured`'s records of `roles` and its types.
+    init(measured: ScanMeasurements, roles: Roles) {
+        let records = roles == .every ? measured.records : measured.records.filter { $0.role == .production }
+        recordsByFile = Dictionary(grouping: records, by: \.file)
         typesByFile = Dictionary(grouping: measured.types, by: \.file)
         topLevelLines = measured.topLevelLines
         fileScopedTypes = measured.fileScopedTypes
@@ -67,12 +88,13 @@ struct PositionPlacement {
         }
     }
 
-    /// The production records of `file`.
+    /// The records of `file` placed on.
     func records(in file: String) -> [FunctionRecord] {
         recordsByFile[file] ?? []
     }
 
-    /// The top-level-code record of `file`, if it has one.
+    /// The top-level-code record of `file`, if it has one (top-level code
+    /// is production code).
     func topLevelRecord(in file: String) -> FunctionRecord? {
         records(in: file).first { $0.kind == .topLevelCode }
     }
@@ -111,6 +133,20 @@ struct PositionPlacement {
             return .type(owner(of: type))
         }
         return .file
+    }
+
+    /// The owner text of the innermost type of `file` that holds
+    /// `position` and lies inside the record keyed `key`: a local type
+    /// holding the position outside its members, when that record is the
+    /// innermost holding it; nil when no such type does.
+    func localTypeOwner(at position: SourcePosition, inRecord key: String, in file: String) -> String? {
+        guard let record = records(in: file).first(where: { $0.key == key }) else {
+            return nil
+        }
+        let types = (typesByFile[file] ?? []).filter { type in
+            type.range.contains(position) && record.range.contains(type.range)
+        }
+        return Self.innermost(types, range: \.range, name: \.name).map(owner(of:))
     }
 
     /// The owner text of the innermost type of `file` whose lines hold
