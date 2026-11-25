@@ -3108,9 +3108,10 @@ def compare_typecheck_store(verdict, package, timings, store_path, snapshot):
     finally:
         connection.close()
     mine = timings.rollups(scopes)
-    verdict.result("the store holds typecheck.* rollupMetric rows", bool(stored),
-                   f"{sum(len(v) for v in stored.values())} rows in {len(stored)} scopes"
-                   + ("" if stored else " (not built yet in SwiftStats: the expected failure until they are)"))
+    rows = sum(len(v) for v in stored.values())
+    verdict.result("the store holds typecheck.* rollupMetric rows", rows > 0,
+                   f"{rows} rows in {sum(1 for v in stored.values() if v)} of {len(stored)} scopes"
+                   + ("" if rows else " (not built yet in SwiftStats: the expected failure until they are)"))
     wrong = {name: count for name, count in collectors.items() if name != "build"}
     verdict.result("typecheck.* rows are attributed to the build collector", not wrong,
                    ", ".join(f"{name} {count}" for name, count in sorted(wrong.items())))

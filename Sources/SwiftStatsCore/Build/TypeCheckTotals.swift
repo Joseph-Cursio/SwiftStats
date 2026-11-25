@@ -82,15 +82,6 @@ struct TypeCheckTotals: Hashable, Sendable {
         milliseconds = hundredths.mapValues(TimingMapper.milliseconds)
     }
 
-    /// The totals `rollups` hold: what a scan attaching its own build
-    /// again keeps.
-    init(rollups: [Rollup]) {
-        let held = rollups.compactMap { rollup in
-            rollup.typecheck.map { (Scope(scope: rollup.scope, name: rollup.name), $0.milliseconds.total) }
-        }
-        milliseconds = Dictionary(held) { first, _ in first }
-    }
-
     /// The total of the scope `name` of `scope`: 0 when it holds no
     /// function-body entry.
     func total(_ scope: RollupScope, _ name: String) -> Int {

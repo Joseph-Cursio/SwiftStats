@@ -7,8 +7,8 @@
 //  stored roll-up row, which the build's rows can't give (they hold whole
 //  milliseconds per record and attachment), and rebuilds the maxima and
 //  the records timed from the build's rows; a snapshot holding T1 results
-//  without those rows is a damaged store; and `diff` reads the four
-//  metrics as the build collector's, neutral.
+//  without those rows, or without one for a scope, is a damaged store;
+//  and `diff` reads the four metrics as the build collector's, neutral.
 //
 
 import Foundation
@@ -99,13 +99,20 @@ struct TypeCheckCarryTests {
         #expect(try made.store.heldIndex(id: saved)?.typeCheckTotals == IndexStoreSamples.typeCheckTotals)
     }
 
-    @Test("a snapshot holding T1 results whose roll-ups have no type-check totals, or a fraction, is a damaged store")
+    @Test("""
+        a snapshot holding T1 results whose roll-ups have no type-check totals, a scope without one, or a fraction, \
+        is a damaged store
+        """)
     func damaged() throws {
         let made = try TemporaryStore("TypeCheckDamaged")
         defer { made.remove() }
         let snapshot = try IndexStoreSamples.snapshot(commit: "c1")
         let damages = [
             "DELETE FROM rollupMetric WHERE metric = 'typecheck.milliseconds.total'",
+            """
+            DELETE FROM rollupMetric WHERE metric = 'typecheck.milliseconds.total' AND scope = 'project' \
+            AND name = 'production'
+            """,
             "UPDATE rollupMetric SET value = 1.5 WHERE metric = 'typecheck.milliseconds.total' AND name = 'Lib'"
         ]
 

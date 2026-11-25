@@ -12,8 +12,9 @@
 //  a build that ran always replaces held T1 results, even when the index
 //  or outskirts then failed. A rescan that may carry them reads them back
 //  with what the carry is checked against (`HeldIndex`): the blocks from
-//  their rows, the type-check totals from their roll-up rows, and the records, types, files, `swiftc` findings and
-//  warnings from the stored report, decoded only as far as they go.
+//  their rows, the type-check totals from their roll-up rows, and the
+//  records, types, files, `swiftc` findings and warnings from the stored
+//  report, decoded only as far as they go.
 //
 
 import Foundation
@@ -98,9 +99,10 @@ extension SnapshotStore {
 
     /// Each roll-up scope's type-check total in snapshot `id`, which holds
     /// T1 results, read in `database` from its
-    /// `typecheck.milliseconds.total` rows. A snapshot whose roll-ups hold
-    /// none, or one that isn't whole milliseconds, throws a damaged store:
-    /// a build that ran gives every scope a total.
+    /// `typecheck.milliseconds.total` rows. A build that ran gives every
+    /// roll-up scope a total, so a scope of the snapshot's roll-up rows
+    /// without one, or a total that isn't whole milliseconds, throws a
+    /// damaged store.
     private static func typeCheckTotals(id: Int64, in database: Database) throws -> TypeCheckTotals {
         let mine = Column("snapshotId") == id
         let rows: [RollupMetricRow]
@@ -114,8 +116,18 @@ extension SnapshotStore {
         let held = rows.compactMap { row in
             Int(exactly: row.value).map { (TypeCheckTotals.Scope(scope: row.scope, name: row.name), $0) }
         }
-        let scoped = try RollupMetricRow.filter(mine).fetchCount(database) > 0
-        guard held.count == rows.count, rows.isEmpty == false || scoped == false else {
+        let scopeRows = try Row.fetchAll(
+            database,
+            sql: "SELECT DISTINCT scope, name FROM rollupMetric WHERE snapshotId = ?",
+            arguments: [id]
+        )
+        let scopes = scopeRows.map { row in
+            String.fromDatabaseValue(row["scope"]).flatMap(RollupScope.init(rawValue:)).flatMap { scope in
+                String.fromDatabaseValue(row["name"]).map { TypeCheckTotals.Scope(scope: scope, name: $0) }
+            }
+        }
+        let named = scopes.compactMap(\.self)
+        guard held.count == rows.count, named.count == scopes.count, Set(held.map(\.0)) == Set(named) else {
             throw StoreError.corruptReport("the type-check roll-ups of snapshot \(id)")
         }
         return TypeCheckTotals(milliseconds: Dictionary(held) { first, _ in first })
