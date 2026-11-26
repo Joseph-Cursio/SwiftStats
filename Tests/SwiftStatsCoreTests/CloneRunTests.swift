@@ -6,7 +6,8 @@ import Testing
 /// package root over the production files given explicitly, exits 0 and 2
 /// accepted, failures reported without the file list, no run when there is
 /// nothing to read, and copies on a first line after a byte order mark
-/// lined up with their records.
+/// lined up with their records, a column too large to shift kept at the
+/// largest Int.
 @Suite("SwiftCloneDetector runs")
 struct CloneRunTests {
     /// A report of `clones`, a JSON array, as the tool writes it.
@@ -173,5 +174,47 @@ struct CloneRunTests {
         #expect(instances.map(\.range.start.column) == [4, 1])
         #expect(instances.map(\.containing) == ["Lib::func one() -> Int", "Lib::func two() -> Int"])
         #expect(instances.map(\.wholes) == [["Lib::func one() -> Int"], ["Lib::func two() -> Int"]])
+    }
+
+    @Test("""
+        a column on line 1 after a byte order mark too large to shift is kept at the largest Int instead \
+        of trapping, and the copy still lies in its record
+        """)
+    func byteOrderMarkHugeColumn() throws {
+        let package = try TemporaryPackage([
+            "Sources/Lib/Marked.swift": "\u{FEFF}func one() -> Int {\n    let value = 1\n    return value + value\n}\n"
+        ])
+        defer { package.remove() }
+        let instance = { (start: (line: Int, column: Int), end: (line: Int, column: Int)) in
+            "{\"path\": \"Sources/Lib/Marked.swift\", \"startLine\": \(start.line), \"startColumn\": \(start.column), "
+                + "\"endLine\": \(end.line), \"endColumn\": \(end.column)}"
+        }
+        let clone = """
+            [{"fingerprint": "0000000000000001", "mass": 40, "lineSpan": 1,
+              "instances": [\(instance((1, 1), (1, Int.max))), \(instance((1, Int.max), (2, 1)))]}]
+            """
+        let tool = try FakeTool.makeCloneDetector(
+            outputs: [
+                "default": Self.report(clone),
+                "--type3": Self.report("[]"),
+                "--sequence": Self.report("[]"),
+                "--type1": Self.report("[]")
+            ],
+            errors: [:],
+            statuses: [:]
+        )
+        defer { CloneHarness.remove(tool) }
+
+        let report = try Self.scan(package, tool)
+
+        #expect(CloneHarness.status(report)?.state == .ran)
+        let instances = try #require(report.clones?.classes.first?.instances)
+        #expect(instances.map(\.range) == [
+            SourceSpan(start: SourcePosition(line: 1, column: 4), end: SourcePosition(line: 1, column: Int.max)),
+            SourceSpan(start: SourcePosition(line: 1, column: Int.max), end: SourcePosition(line: 2, column: 0))
+        ])
+        #expect(instances.map(\.strippedLines) == [1, 2])
+        #expect(instances.map(\.containing) == ["Lib::func one() -> Int", "Lib::func one() -> Int"])
+        #expect(instances.map(\.wholes) == [[], []])
     }
 }
