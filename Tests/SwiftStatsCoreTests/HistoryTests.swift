@@ -163,6 +163,30 @@ struct HistoryTests {
         #expect(history.windowCommits == 1)
     }
 
+    @Test("the longest durations the configuration takes read a history without overflowing")
+    func longestDurations() throws {
+        let longest = SwiftStatsConfiguration.longestDays
+        let repository = try HistoryRepository()
+        defer { repository.remove() }
+        try repository.write([
+            ".swiftstats.yml": "history:\n  window: \(longest)d\n  repeat_window: \(longest)d\n"
+                + "  half_life: \(longest)d\n",
+            "Sources/Lib/Shape.swift": HistorySources.area()
+        ])
+        try repository.commit("Add the shape", day: 0)
+        try repository.write(["Sources/Lib/Shape.swift": HistorySources.area(extra: "_ = 1\n        ")])
+        try repository.commit("Fix the area", day: 100)
+        try repository.write(["Sources/Lib/Shape.swift": HistorySources.area(extra: "_ = 2\n        ")])
+        try repository.commit("Fix the area again", day: 200)
+
+        let history = try repository.history()
+        let area = try #require(history.family("func area()"))
+
+        #expect(history.windowDays == longest)
+        #expect(area.changes == 3)
+        #expect(area.repeatedFixes == 1)
+    }
+
     @Test("on a dirty tree, an uncommitted function has no history and an uncommitted rename keeps it")
     func dirtyTree() throws {
         let repository = try HistoryRepository()

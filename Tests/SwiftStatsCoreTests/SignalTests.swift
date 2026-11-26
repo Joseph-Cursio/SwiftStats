@@ -71,6 +71,21 @@ struct SignalTests {
         }
     }
 
+    @Test(
+        "a history duration is read up to the most days whose seconds an Int holds, and refused one day past it",
+        arguments: ["window", "repeat_window", "half_life"]
+    )
+    func longestDuration(key: String) throws {
+        let longest = SwiftStatsConfiguration.longestDays
+        #expect(longest == 106_751_991_167_300)
+        let read = try SwiftStatsConfiguration.parse("history:\n  \(key): \(longest)d\n", path: "c.yml")
+        #expect([read.history.windowDays, read.history.repeatWindowDays, read.history.halfLifeDays].contains(longest))
+        let refusal = ScanError.configurationInvalid("c.yml", "`history.\(key)` must be a number of days, such as 90d")
+        #expect(throws: refusal) {
+            try SwiftStatsConfiguration.parse("history:\n  \(key): \(longest + 1)d\n", path: "c.yml")
+        }
+    }
+
     @Test("signals rank production families with history; generated and test code stay out")
     func signals() throws {
         let repository = try Self.repository()
