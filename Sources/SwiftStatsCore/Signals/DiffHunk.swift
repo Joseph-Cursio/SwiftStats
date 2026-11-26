@@ -26,10 +26,16 @@ public struct DiffHunk: Hashable, Sendable {
     /// a replacement when the lines it replaces meet them; a pure insertion
     /// when it inserts after a line from `lower` up to, not including,
     /// `upper`, so inside the range rather than before or after it.
+    ///
+    /// A header's numbers are taken as git wrote them, so the last line
+    /// replaced, `start + count - 1`, can lie past the largest Int. As
+    /// `count - 1` isn't negative, the sum only overflows upward, and a
+    /// last line past the largest Int is past `lower` too.
     func overlaps(lower: Int, upper: Int) -> Bool {
         guard count >= 1 else {
             return lower <= start && start < upper
         }
-        return start <= upper && start + count - 1 >= lower
+        let (last, overflow) = start.addingReportingOverflow(count - 1)
+        return start <= upper && (overflow || last >= lower)
     }
 }
