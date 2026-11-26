@@ -43,6 +43,29 @@ struct PositionPlacementTests {
         #expect(place(8, 14, nil) == .file)
     }
 
+    @Test("""
+        a coverage region ending at the smallest column an Int holds ends before its record does, so its \
+        entry maps to the record instead of trapping
+        """)
+    func smallestEndColumn() throws {
+        let lib = #""@ROOT@/Sources/Lib/Lib.swift""#
+        let functions = """
+            {"name":"$s3Lib5firstSiyF","count":1,"filenames":[\(lib)],
+             "regions":[[2,5,2,-9223372036854775808,1,0,0,0]]}
+            """
+
+        let report = try CoverageMapperTests.mapping(
+            files: #"{"filename":\#(lib),"segments":[]}"#,
+            functions: functions,
+            text: "public func first() -> Int {\n    1\n}\n"
+        )
+
+        #expect(report.unmapped.isEmpty)
+        let first = try #require(report.records.first { $0.key == "Lib::func first() -> Int" })
+        #expect(first.reason == nil)
+        #expect(first.regions == CoverageTally(covered: 1, total: 1))
+    }
+
     @Test("production placement, the default, never places on a test; placing on every role does")
     func roles() throws {
         let package = try TemporaryPackage([
