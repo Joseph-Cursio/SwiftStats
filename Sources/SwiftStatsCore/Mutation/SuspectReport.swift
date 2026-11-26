@@ -172,14 +172,20 @@ struct SuspectReport: Equatable, Sendable {
 
     /// Why `test`, a suspect one, is suspect: a failed control run first,
     /// then flakiness alone (it didn't fail again alone, and failed again
-    /// fewer than four times for each time it didn't), else reach.
+    /// fewer than four times for each time it didn't), else reach. When
+    /// four times the count of times it didn't fail again alone is past
+    /// what an Int holds, that is more than any count of failures alone,
+    /// so the test is flaky.
     private static func reason(of test: Test) -> SuspectReason {
         let notReproduced = test.notReproducedAlone ?? 0
         if (test.failedControlRuns ?? 0) > 0 {
             return .controlRun
         }
-        if notReproduced > 0, (test.failedAgainAlone ?? 0) < failuresAlonePerExemption * notReproduced {
-            return .flaky
+        if notReproduced > 0 {
+            let exempted = failuresAlonePerExemption.multipliedReportingOverflow(by: notReproduced)
+            if exempted.overflow || (test.failedAgainAlone ?? 0) < exempted.partialValue {
+                return .flaky
+            }
         }
         return .reach
     }
