@@ -214,7 +214,9 @@ struct PropertyJoins {
 
     /// What `record` says of `candidate`, its row's subject fingerprint
     /// being `fingerprint`; nil when a record names an interaction row,
-    /// whose fingerprint the index doesn't carry.
+    /// whose fingerprint the index doesn't carry. Whether 50 added reaches
+    /// Strong is asked of the score against Strong less 50, so a score as
+    /// large as an Int holds is lifted, as the true sum would be.
     private static func judgement(
         of record: EvidenceRecord?,
         on candidate: PropertyCandidate,
@@ -227,7 +229,7 @@ struct PropertyJoins {
             return nil
         }
         let fresh = record.subjectFingerprint != nil && record.subjectFingerprint == fingerprint
-        let lifted = candidate.tier != advisory && candidate.score + bothPassWeight >= strongScore
+        let lifted = candidate.tier != advisory && candidate.score >= strongScore - bothPassWeight
         return PropertyCandidate.Judgement(
             fresh: fresh,
             verified: fresh && record.outcome == .measuredBothPass && lifted,
