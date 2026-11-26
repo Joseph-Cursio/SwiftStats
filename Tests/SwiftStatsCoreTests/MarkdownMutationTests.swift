@@ -7,7 +7,8 @@
 //  whole percent beside every mutant's score and no run times; the
 //  Mutation fixture's `--since` merges, labelled as merged results with no
 //  percent of SwiftMutator's, their runs, carried rows, deleted, unlisted
-//  and changed test files; and a run that didn't happen. Incomplete
+//  and changed test files; a run whose time limit is too large for an
+//  `Int`, printed in full; and a run that didn't happen. Incomplete
 //  results are in `MarkdownMutationTests+Incomplete.swift`.
 //
 
@@ -153,6 +154,40 @@ struct MarkdownMutationTests {
         let text = lines.joined(separator: "\n")
         #expect(text.contains(run.startedAt) == false)
         #expect(run.endedAt.map(text.contains) == false)
+    }
+
+    @Test("a run's time limit too large for an Int prints in full instead of trapping")
+    func hugeTimeLimit() throws {
+        let scanned = try MutationSnapshots.snapshot(commit: "c1")
+        let report = try #require(scanned.report.mutation)
+        let run = try Self.edited(try #require(report.runs.first)) { fields in
+            fields["timeoutSeconds"] = 1e300
+        }
+        let mutation = MutationReport(
+            collectedAt: report.collectedAt,
+            complete: report.complete,
+            listsNotCovered: report.listsNotCovered,
+            mode: report.mode,
+            base: report.base,
+            files: report.files,
+            runs: [run],
+            suspectTests: report.suspectTests,
+            mutants: report.mutants
+        )
+
+        let lines = MarkdownMutation.render(
+            MutationSnapshots.replacing(
+                scanned,
+                git: scanned.info.git,
+                mutation: mutation,
+                run: MutationSnapshots.ran(identity: MutationSnapshots.identity)
+            ).report
+        )
+
+        let limit = "1" + String(repeating: "0", count: 300) + " s"
+        #expect(lines.contains { line in
+            line.hasPrefix("| 0 | full | c1 | finished | 1 | 33 | 10 | 0 | 0 (0) | 1 | \(limit) | ")
+        })
     }
 
     @Test("""
