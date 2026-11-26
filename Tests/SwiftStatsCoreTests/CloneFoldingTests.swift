@@ -4,7 +4,8 @@
 //
 //  Folding nested divergent classes (PRD §8): a member whose changed and
 //  unchanged families lie within another's is listed only as part of it;
-//  and the shared helper's order.
+//  the shared helper's order; and a mass as small as an Int holds, as the
+//  detector's JSON may write it, folding by the same rules.
 //
 
 import Foundation
@@ -127,5 +128,80 @@ struct CloneFoldingTests {
 
         #expect(folded.map(\.member.ordinal) == [3, 5])
         #expect(folded.map(\.folded) == [[], [1]])
+    }
+
+    @Test("a class whose mass is the smallest an Int holds stands for the class it holds each way, instead of trapping")
+    func smallestMassInGroup() throws {
+        let repository = try CloneRepository()
+        defer { repository.remove() }
+        let text = Self.twins(["Upper", "Lower"])
+        try repository.commit([Self.file: text], "Add twins", day: 0)
+        // As in `strictNesting`, with `body`'s mass the smallest an Int holds.
+        let run = FakeClone(run: "--sequence", mass: 80, spans: [(Self.file, 7...15), (Self.file, 24...32)])
+        let body = FakeClone(
+            run: "default", mass: Int.min, spans: [(Self.file, 7...10), (Self.file, 24...27)], exact: true
+        )
+        try repository.report([run, body])
+        try repository.scan()
+
+        try repository.commit([Self.file: Self.changing("body", in: text)], "Change the body", day: 1)
+        let signal = try repository.signal(.divergentClones, id: try repository.scan())
+
+        // The two hold each other; `body`, the more specific, stands.
+        #expect(signal.candidates == 2)
+        #expect(signal.items.map { $0.clone?.ordinal } == [1])
+        #expect(signal.items.map { $0.clone?.mass } == [Int.min])
+        #expect(signal.items.map { $0.clone?.divergence?.folded } == [[2]])
+        #expect(signal.items.first?.score == 8)
+    }
+
+    @Test("of equally specific classes holding each other, the larger mass stands, though the other's is Int.min")
+    func smallestMassInEqualGroup() {
+        let cloneClass = { (ordinal: Int, mass: Int) in
+            CloneClass(
+                ordinal: ordinal,
+                pass: .sequence,
+                exact: false,
+                mass: mass,
+                similarity: nil,
+                lineSpan: 4,
+                fingerprint: "f\(ordinal)",
+                instances: []
+            )
+        }
+        // Both are sequence classes, so the mass settles which stands.
+        let members = [cloneClass(1, Int.min), cloneClass(2, 10)]
+
+        let folded = CloneFolding.folded(members, cloneClass: { $0 }, holds: { _, _ in true })
+
+        #expect(folded.map(\.member.ordinal) == [2])
+        #expect(folded.map(\.folded) == [[1]])
+    }
+
+    @Test("a held member folds into the larger mass of two holders, though the other's is the smallest an Int holds")
+    func smallestMassHolder() throws {
+        let repository = try CloneRepository()
+        defer { repository.remove() }
+        let text = Self.twins(["Upper", "Lower"])
+        try repository.commit([Self.file: text], "Add twins", day: 0)
+        // As in `incomparableSupersets`, with `headAndBody`'s mass the smallest an Int holds.
+        let body = FakeClone(run: "default", mass: 40, spans: [(Self.file, 7...10), (Self.file, 24...27)])
+        let bodyAndTail = FakeClone(run: "--sequence", mass: 80, spans: [(Self.file, 7...15), (Self.file, 24...32)])
+        let headAndBody = FakeClone(run: "--type3", mass: Int.min, spans: [(Self.file, 2...10), (Self.file, 19...27)])
+        try repository.report([body, bodyAndTail, headAndBody])
+        try repository.scan()
+
+        let changed = ["head", "body", "tail"].reduce(text) { Self.changing($1, in: $0) }
+        try repository.commit([Self.file: changed], "Change every step", day: 1)
+        let signal = try repository.signal(.divergentClones, id: try repository.scan())
+
+        // Classes: head and body 1, body 2, body and tail 3. Both runs score
+        // 16; body and tail, the larger mass, lists first and takes `body`.
+        #expect(signal.candidates == 3)
+        #expect(signal.items.map { $0.clone?.ordinal } == [3, 1])
+        #expect(signal.items.map { $0.clone?.mass } == [80, Int.min])
+        #expect(signal.items.map { $0.clone?.divergence?.folded } == [[2], []])
+        #expect(signal.items.map(\.score) == [16, 16])
+        #expect(signal.items.map { $0.clone?.pass } == [.sequence, .nearMiss])
     }
 }
