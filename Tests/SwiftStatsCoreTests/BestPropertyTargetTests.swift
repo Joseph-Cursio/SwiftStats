@@ -8,7 +8,8 @@
 //  with an unkilled mutant of its own; a resolved partner's unkilled
 //  mutants added once per item and counted again where the partner has
 //  its own item; a function linked to a property test kept and flagged;
-//  the order, the funnel, the rule's advice, and when it is left out.
+//  the order (a Verified score as large as an Int holds included), the
+//  funnel, the rule's advice, and when it is left out.
 //
 
 import Foundation
@@ -133,6 +134,49 @@ struct BestPropertyTargetTests {
         #expect(item.propertyTarget?.suggestions.map(\.identity) == ["0x00000000000000C2", "0x00000000000000C1"])
         // doubled's best is now 90, above decoded's Verified 85.
         #expect(signal.items.map(\.subject) == [Samples.encoded, Samples.doubled, Samples.decoded, Samples.clamped])
+    }
+
+    /// The tool's scores are far from an `Int`'s end, so these rows are
+    /// written by hand. B1's weight, the largest `Int` plus Verified's 50,
+    /// lies past an `Int`'s end; it is compared exactly, so it outweighs
+    /// B0's largest `Int` though B0's identity is smaller, and AF's 45 ranks
+    /// last though its identity is the smallest.
+    @Test("""
+        a Verified suggestion whose score is the largest an Int holds weighs that much plus 50 when its \
+        function's suggestions are ranked, instead of trapping or tying the largest Int
+        """)
+    func largestScore() throws {
+        let signal = try Self.signal(Samples.setup { setup in
+            setup.rows = setup.rows.map { row in
+                var edited = row
+                if row.identity == "0x00000000000000B1" {
+                    edited.score = Int.max
+                }
+                return edited
+            }
+            setup.rows.append(Samples.Row(
+                identity: "0x00000000000000B0",
+                location: Samples.at("decoded"),
+                function: "decoded(_:)",
+                score: Int.max,
+                tier: "Possible"
+            ))
+            setup.rows.append(Samples.Row(
+                identity: "0x00000000000000AF",
+                location: Samples.at("decoded"),
+                function: "decoded(_:)",
+                score: Samples.likelyScore,
+                tier: "Likely"
+            ))
+        })
+        let item = try #require(signal.items.first { $0.subject == Samples.decoded })
+        let suggestions = item.propertyTarget?.suggestions ?? []
+
+        #expect(suggestions.map(\.identity) == ["0x00000000000000B1", "0x00000000000000B0", "0x00000000000000AF"])
+        #expect(suggestions.map(\.score) == [Int.max, Int.max, Samples.likelyScore])
+        #expect(suggestions.map(\.verified) == [true, false, false])
+        // decoded's best weighs the largest Int, so it still comes before doubled's 80 at the same score.
+        #expect(signal.items.map(\.subject) == [Samples.encoded, Samples.decoded, Samples.doubled, Samples.clamped])
     }
 
     @Test("the funnel counts every function carrying a suggestion, each part summing to its whole")
