@@ -4,8 +4,9 @@
 //
 //  Untested property (PRD §8): which suggestions are in the pool (Strong
 //  or Verified, production site, not disproven or rejected), that a
-//  tested one counts but isn't listed, the flags and score, and the rule
-//  for a package with no test target.
+//  tested one counts but isn't listed, the flags and score (a score past
+//  2^53 or as large as an Int holds included), and the rule for a package
+//  with no test target.
 //
 
 import Foundation
@@ -178,5 +179,75 @@ struct UntestedPropertyTests {
         #expect(signal.items.map(\.property?.identity) == [
             "0x00000000000000A7", "0x00000000000000C3", "0x00000000000000A1", "0x00000000000000C9", "0x00000000000000B2"
         ])
+    }
+
+    /// The tool's scores are far from an `Int`'s end, so this row is
+    /// written by hand: Verified's 50 is added in `Double`, as the item's
+    /// score is held, where it can't overflow.
+    @Test("""
+        a Verified suggestion whose score is the largest an Int holds is listed with Verified's 50 added \
+        instead of trapping
+        """)
+    func largestScore() throws {
+        let row = Row(
+            identity: "0x00000000000000B1",
+            location: "\(Self.values):4",
+            score: Int.max,
+            tier: "Likely",
+            fingerprint: "\"FB1\""
+        )
+        let records = """
+            {"records": [
+              {"identityHash": "00000000000000B1", "outcome": "measured-bothPass", "subjectFingerprint": "FB1"}
+            ], "schemaVersion": 1}
+            """
+        let files = ["Sources/Core/Values.swift": PropertyHarness.values, ".swiftinfer/verify-evidence.json": records]
+        let targets = [PropertyHarness.target("Core", "library", "Sources/Core", ["Values.swift"])]
+        let snapshot = try SignalHarness.stored(
+            files,
+            targets: targets,
+            indexes: ["Core": PropertyHarness.index([row])]
+        )
+        let signal = try SignalHarness.signal(.untestedProperty, of: snapshot)
+
+        #expect(snapshot.candidates.map(\.score) == [Int.max])
+        #expect(signal.items.map(\.property?.identity) == ["0x00000000000000B1"])
+        #expect(signal.items.map(\.property?.verified) == [true])
+        #expect(signal.items.map(\.score) == [Double(Int.max) + Double(UntestedProperty.verifiedBonus)])
+        // The sum rounds to 2^63, printed as the shortest decimal that reads back as it.
+        #expect(SignalHarness.rows(signal).last == "| 1 | `Money::func doubled() -> Money` "
+            + "(Sources/Core/Values.swift:4) | 9223372036854776000 | idempotence | Likely / 9223372036854775807 "
+            + "| yes | no | — | — | yes |")
+    }
+
+    /// Past 2^53 a `Double` can't hold every `Int`, so Verified's 50 is
+    /// added in `Int` and the sum rounded once: 2^53 + 51 rounds to
+    /// 2^53 + 52, where rounding the score first would give 2^53 + 50.
+    @Test("a Verified suggestion's score past 2^53 is its exact sum with Verified's 50, rounded once")
+    func scorePastDoublePrecision() throws {
+        let row = Row(
+            identity: "0x00000000000000B1",
+            location: "\(Self.values):4",
+            score: 9_007_199_254_740_993,
+            tier: "Likely",
+            fingerprint: "\"FB1\""
+        )
+        let records = """
+            {"records": [
+              {"identityHash": "00000000000000B1", "outcome": "measured-bothPass", "subjectFingerprint": "FB1"}
+            ], "schemaVersion": 1}
+            """
+        let files = ["Sources/Core/Values.swift": PropertyHarness.values, ".swiftinfer/verify-evidence.json": records]
+        let targets = [PropertyHarness.target("Core", "library", "Sources/Core", ["Values.swift"])]
+        let snapshot = try SignalHarness.stored(
+            files,
+            targets: targets,
+            indexes: ["Core": PropertyHarness.index([row])]
+        )
+        let signal = try SignalHarness.signal(.untestedProperty, of: snapshot)
+
+        #expect(snapshot.candidates.map(\.score) == [9_007_199_254_740_993])
+        #expect(signal.items.map(\.property?.verified) == [true])
+        #expect(signal.items.map(\.score) == [9_007_199_254_741_044])
     }
 }
