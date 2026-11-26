@@ -41,8 +41,10 @@ enum BuildLineGrammar {
     /// The most whole digits a time has. Assumed, not forced: no single
     /// type-check entry reaches 10^12 ms (about 31 years), so a time with
     /// more isn't one the compiler printed, and its line is counted
-    /// unparsed. The bound also keeps every time read far inside `Int`:
-    /// twelve digits are under 10^14 hundredths.
+    /// unparsed; like a timing line it ends a diagnostic's message, so it
+    /// is counted there too (`isOverlongTiming`). The bound also keeps
+    /// every time read far inside `Int`: twelve digits are under 10^14
+    /// hundredths.
     static let wholeDigits = 12
     /// The fields of an expression's timing line: time and place.
     static let expressionFields = 2
@@ -97,6 +99,17 @@ enum BuildLineGrammar {
         }
         let scale = fractionText.count == fractionDigits ? 1 : hundredthsPerTenth
         return whole * hundredthsPerMillisecond + fraction * scale
+    }
+
+    /// Whether `line` is a timing line but for a time with more than
+    /// `wholeDigits` whole digits: one the bound refuses, and which still
+    /// ends a diagnostic's message as it did before the bound.
+    static func isOverlongTiming(_ line: String) -> Bool {
+        let whole = line.prefix { $0.isASCII && $0.isNumber }
+        guard whole.count > wholeDigits else {
+            return false
+        }
+        return timingEntry("0" + line[whole.endIndex...]) != nil
     }
 
     /// The value of `text` when it is one or more ASCII digits, else nil.
@@ -157,12 +170,13 @@ enum BuildLineGrammar {
     }
 
     /// Whether `line` can continue a diagnostic's message: it isn't blank,
-    /// a timing line, a diagnostic, an excerpt, box or decorated line, a
-    /// group footnote, or a line starting `warning: `, `error: `, `note: `,
-    /// `remark: ` or `info: `.
+    /// a timing line (or one but for an overlong time), a diagnostic, an
+    /// excerpt, box or decorated line, a group footnote, or a line starting
+    /// `warning: `, `error: `, `note: `, `remark: ` or `info: `.
     static func continues(_ line: String) -> Bool {
         !(isStructural(line)
             || timingEntry(line) != nil
+            || isOverlongTiming(line)
             || header(line[...]) != nil
             || linePrefixes.contains { line.hasPrefix($0) }
             || isGroupFootnote(line))
