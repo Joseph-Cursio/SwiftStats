@@ -29,9 +29,12 @@ struct MutantKey: Hashable, Sendable, Comparable, CustomStringConvertible {
     /// 0, or n for the nth repeat of the same place and operator in a run.
     let occurrence: Int
 
-    /// The key as SwiftMutator spells it.
+    /// The key as SwiftMutator spells it. The repeat number is counted in
+    /// `UInt`, so an occurrence of `Int.max`, which a results line may
+    /// hold, spells ` (#9223372036854775808)` instead of trapping; that
+    /// spelling reads back as no key, as a number outside `Int` should.
     var description: String {
-        "\(path):\(line):\(column) \(operatorID)" + (occurrence > 0 ? " (#\(occurrence + 1))" : "")
+        "\(path):\(line):\(column) \(operatorID)" + (occurrence > 0 ? " (#\(UInt(occurrence) + 1))" : "")
     }
 
     /// The key of the five parts given.
