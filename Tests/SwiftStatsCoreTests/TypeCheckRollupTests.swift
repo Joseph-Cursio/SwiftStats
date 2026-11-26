@@ -8,8 +8,9 @@
 //  hundredths rounded once per scope; maxima and records timed over every
 //  record, nested ones included, records only; production and tests
 //  parts, a test target's type counting for tests; none when the build
-//  didn't run, and no maximum where no record has one; and the metrics
-//  attributed to the `build` collector.
+//  didn't run, and no maximum where no record has one; the metrics
+//  attributed to the `build` collector; and a scope's total that stops at
+//  `Int.max` hundredths instead of trapping.
 //
 
 import Foundation
@@ -234,5 +235,19 @@ struct TypeCheckRollupTests {
         #expect(typecheck?["milliseconds"] == ["total": 3, "max": 9])
         #expect(typecheck?["slowestExpression"] == ["max": 7])
         #expect(typecheck?["functions"] == ["timed": 3])
+    }
+
+    @Test("a scope whose entries add past what an Int holds totals Int.max hundredths instead of trapping")
+    func saturatingTotals() {
+        let halfMaximal = Int.max / 2 + 1
+        let totals = TypeCheckTotals(
+            counted: [.type("Lib::Box"): halfMaximal, .type("Lib::Other"): halfMaximal],
+            targets: [],
+            records: [],
+            files: []
+        )
+        // `Int.max` hundredths, 92233720368547758.07 ms.
+        #expect(totals.total(.module, "Lib") == 92_233_720_368_547_758)
+        #expect(totals.total(.project, "production") == 92_233_720_368_547_758)
     }
 }

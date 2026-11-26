@@ -5,10 +5,11 @@
 //  Each roll-up scope's type-check total (M7, design §6.2, §6.4): the
 //  function-body entries placed on the scope's records not nested in a
 //  body, on its types and on its files, summed in hundredths of a
-//  millisecond and rounded to whole milliseconds once, half up, as the
-//  build's own total is. A record counts for its module, a type for the
-//  module its owner names, a file for its module, and each for the
-//  production part, or the `tests` part when its module is a test target.
+//  millisecond (stopping at `Int.max`) and rounded to whole milliseconds
+//  once, half up, as the build's own total is. A record counts for its
+//  module, a type for the module its owner names, a file for its module,
+//  and each for the production part, or the `tests` part when its module
+//  is a test target.
 //  The entries' hundredths are gone once the build's results are rows,
 //  which hold whole milliseconds per record, type and file, so a scan
 //  carrying stored results reads the totals back from the snapshot's
@@ -76,7 +77,7 @@ struct TypeCheckTotals: Hashable, Sendable {
             }
             let part = testModules.contains(module) ? "tests" : "production"
             for scope in [Scope(scope: .module, name: module), Scope(scope: .project, name: part)] {
-                hundredths[scope, default: 0] += held
+                hundredths[scope] = TimingMapper.sum(hundredths[scope] ?? 0, held)
             }
         }
         milliseconds = hundredths.mapValues(TimingMapper.milliseconds)

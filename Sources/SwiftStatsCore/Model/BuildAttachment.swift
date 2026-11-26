@@ -14,8 +14,9 @@ public struct BuildAttachment: Codable, Hashable, Sendable {
     public let owner: String
     /// `type` or `file`.
     public let attachedTo: FindingTarget
-    /// The sum of its function-body entries, in whole milliseconds; nil
-    /// when it has none (only expression entries).
+    /// The sum of its function-body entries (stopping at `Int.max`
+    /// hundredths), in whole milliseconds; nil when it has none (only
+    /// expression entries).
     public let milliseconds: Int?
     /// Its largest expression entry, in whole milliseconds; nil when it has
     /// none.

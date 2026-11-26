@@ -7,7 +7,8 @@
 //  without double counting. A function's entry already includes its local
 //  functions' and local types' members, so the total adds the
 //  function-body entries placed on records not nested in a body, on types
-//  and on files, rounded to whole milliseconds once, half up.
+//  and on files (stopping at `Int.max` hundredths), rounded to whole
+//  milliseconds once, half up.
 //
 
 /// The timing totals.
@@ -16,8 +17,8 @@ public struct BuildTotals: Codable, Hashable, Sendable {
     public let functionEntries: Int
     /// Expression entries the build printed, every class.
     public let expressionEntries: Int
-    /// The mapped function-body time, records nested in a body left out,
-    /// in whole milliseconds.
+    /// The mapped function-body time, records nested in a body left out
+    /// (stopping at `Int.max` hundredths), in whole milliseconds.
     public let milliseconds: Int
 
     /// Creates the totals. Fields are documented on their properties.

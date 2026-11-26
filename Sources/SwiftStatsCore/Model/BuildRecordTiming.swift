@@ -3,9 +3,10 @@
 //  SwiftStatsCore
 //
 //  A record's type-check time in the T1 build (M7, design §6.2): the sum of
-//  the function-body entries at positions it holds, inclusive of its local
-//  functions and local types' members, and its slowest single expression,
-//  each rounded to whole milliseconds once, half up. Figures vary between
+//  the function-body entries at positions it holds (stopping at `Int.max`
+//  hundredths), inclusive of its local functions and local types' members,
+//  and its slowest single expression, each rounded to whole milliseconds
+//  once, half up. Figures vary between
 //  runs, so they are kept as collected and never compared as better or
 //  worse.
 //
@@ -14,8 +15,8 @@
 public struct BuildRecordTiming: Codable, Hashable, Sendable {
     /// The record's key.
     public let key: String
-    /// The sum of its function-body entries, in whole milliseconds; nil
-    /// when it has none.
+    /// The sum of its function-body entries (stopping at `Int.max`
+    /// hundredths), in whole milliseconds; nil when it has none.
     public let milliseconds: Int?
     /// Its largest expression entry, in whole milliseconds; nil when it has
     /// none.

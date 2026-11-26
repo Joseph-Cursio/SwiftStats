@@ -6,7 +6,8 @@
 //  design §6.2): entries left out by class, paths compared in NFC, whole
 //  milliseconds rounded once after summing in hundredths, attachments,
 //  totals that leave out records nested in a body, and a local type's
-//  members, which are not.
+//  members, which are not (`TimingFigureTests+Saturation` checks figures
+//  at the top of an `Int`).
 //
 
 import Foundation
@@ -18,7 +19,7 @@ import Testing
 @Suite("Timing figures")
 struct TimingFigureTests {
     /// A package, measured.
-    private struct Library {
+    struct Library {
         /// The package.
         let package: TemporaryPackage
         /// Its measurements.
@@ -81,15 +82,21 @@ struct TimingFigureTests {
         """
     /// The small library's file.
     private static let file = "Sources/Lib/Lib.swift"
+    /// Half of `Int.max` hundredths, rounded up: two of them pass it by
+    /// one.
+    static let halfMaximal = Int.max / 2 + 1
+    /// `Int.max` hundredths (92233720368547758.07 ms) in whole
+    /// milliseconds.
+    static let maximalMilliseconds = 92_233_720_368_547_758
 
     /// The small library, measured.
-    private static func library() throws -> Library {
+    static func library() throws -> Library {
         try Library(TemporaryPackage([file: source]))
     }
 
     /// An entry of `kind` taking `hundredths` at `line` and `column` of
     /// the small library's file under `root`.
-    private static func entry(
+    static func entry(
         _ kind: TimingEntry.Kind,
         _ hundredths: Int,
         line: Int,

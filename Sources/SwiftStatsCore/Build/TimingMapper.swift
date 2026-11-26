@@ -19,15 +19,17 @@
 //  (`SourcePaths`), so a file reached through a symbolic link or spelled
 //  in another case is the scanned file, or the source as the manifest
 //  spells it; any other path is made relative to the root's real path,
-//  compared in NFC. Per
-//  record and attachment, the function-body entries are summed and the largest
-//  expression entry kept, in hundredths, each rounded to whole milliseconds
-//  once, half up; nothing is deduplicated, since the emit-module job's
-//  second check is time the build spent too. A function's entry includes
-//  its local functions' but not its local types' members', which the
-//  compiler checks after it (the Index fixture's recorded build), so the
-//  total adds only the function-body entries on records not nested in a
-//  body, on types and on files.
+//  compared in NFC. Per record and attachment, the function-body entries
+//  are summed and the largest expression entry kept, in hundredths, each
+//  rounded to whole milliseconds once, half up; a sum stops at `Int.max`
+//  hundredths rather than trapping, and so does every other sum of entries
+//  (those left out, the totals), though the reader's twelve-digit bound
+//  keeps real builds far below it. Nothing is deduplicated, since the
+//  emit-module job's second check is time the build spent too. A
+//  function's entry includes its local functions' but not its local types'
+//  members', which the compiler checks after it (the Index fixture's
+//  recorded build), so the total adds only the function-body entries on
+//  records not nested in a body, on types and on files.
 //
 
 import Foundation
@@ -105,7 +107,8 @@ struct TimingMapper {
 
     /// One record's, type's or file's entries, in hundredths.
     private struct Figures {
-        /// The sum of its function-body entries; nil when none.
+        /// The sum of its function-body entries, stopping at `Int.max`;
+        /// nil when none.
         var functions: Int?
         /// Its largest expression entry; nil when none.
         var slowest: Int?
@@ -163,9 +166,19 @@ struct TimingMapper {
         nested = Self.nestedInBody(measured.records, types: measured.types)
     }
 
-    /// `hundredths` of a millisecond as whole milliseconds, half up.
+    /// `hundredths` of a millisecond, never negative, as whole
+    /// milliseconds, half up; it can't overflow, even at `Int.max`.
     static func milliseconds(_ hundredths: Int) -> Int {
-        (hundredths + halfMillisecond) / BuildLineGrammar.hundredthsPerMillisecond
+        let perMillisecond = BuildLineGrammar.hundredthsPerMillisecond
+        return hundredths / perMillisecond + (hundredths % perMillisecond + halfMillisecond) / perMillisecond
+    }
+
+    /// `first` plus `second`, two times or sums of them in hundredths, or
+    /// `Int.max` when that overflows: entries are tool output, bounded
+    /// one by one but not in number.
+    static func sum(_ first: Int, _ second: Int) -> Int {
+        let (total, overflow) = first.addingReportingOverflow(second)
+        return overflow ? Int.max : total
     }
 
     /// The keys of `records` nested in a body: those with an ancestor
@@ -331,7 +344,7 @@ struct TimingMapper {
                 var held = figures[placed] ?? Figures()
                 switch entry.kind {
                 case .function:
-                    held.functions = (held.functions ?? 0) + entry.hundredths
+                    held.functions = Self.sum(held.functions ?? 0, entry.hundredths)
 
                 case .expression:
                     held.slowest = max(held.slowest ?? 0, entry.hundredths)
@@ -340,7 +353,7 @@ struct TimingMapper {
                 continue
             }
             let tally = left[leftOut] ?? (0, 0)
-            left[leftOut] = (tally.entries + 1, tally.hundredths + entry.hundredths)
+            left[leftOut] = (tally.entries + 1, Self.sum(tally.hundredths, entry.hundredths))
         }
         let count = { (leftOut: LeftOut) -> BuildEntryCount in
             let tally = left[leftOut] ?? (0, 0)
@@ -365,7 +378,7 @@ struct TimingMapper {
             totals: BuildTotals(
                 functionEntries: entries.count { $0.kind == .function },
                 expressionEntries: entries.count { $0.kind == .expression },
-                milliseconds: Self.milliseconds(counted.values.reduce(0, +))
+                milliseconds: Self.milliseconds(counted.values.reduce(0, Self.sum))
             ),
             counted: counted
         )
