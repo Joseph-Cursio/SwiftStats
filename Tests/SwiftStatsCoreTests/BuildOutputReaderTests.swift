@@ -3,9 +3,10 @@
 //  SwiftStatsCoreTests
 //
 //  Reading the T1 build's output (M7, design §6.1): timing lines and their
-//  times in hundredths, escapes, refused timing lines, a line that isn't
-//  UTF-8, and the recorded fixture build's output (`BuildDiagnosticTests`
-//  covers the diagnostic grammar).
+//  times in hundredths, escapes, refused timing lines (a time past twelve
+//  whole digits among them), a line that isn't UTF-8, and the recorded
+//  fixture build's output (`BuildDiagnosticTests` covers the diagnostic
+//  grammar).
 //
 
 import Foundation
@@ -102,6 +103,26 @@ struct BuildOutputReaderTests {
         let output = Self.read([line])
         #expect(output.entries.isEmpty)
         #expect(output.unparsedTimingLines == 1)
+    }
+
+    @Test(
+        "a time with more than twelve whole digits is counted, not read, even one past what an Int holds",
+        arguments: [
+            "1000000000000ms\t<invalid loc>",
+            "92233720368547759ms\t<invalid loc>",
+            "92233720368547758.08ms\t<invalid loc>"
+        ]
+    )
+    func overlongTime(line: String) {
+        let output = Self.read([line])
+        #expect(output.entries.isEmpty)
+        #expect(output.unparsedTimingLines == 1)
+    }
+
+    @Test("a time with twelve whole digits reads exactly")
+    func twelveDigitTime() {
+        #expect(Self.entry("999999999999.99ms\t<invalid loc>")?.hundredths == 99_999_999_999_999)
+        #expect(Self.entry("100000000000ms\t\(Self.root)/A.swift:1:2")?.hundredths == 10_000_000_000_000)
     }
 
     @Test("the task log is read for diagnostics only: its timing lines are neither entries nor counted")
