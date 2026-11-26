@@ -6,15 +6,17 @@ import Testing
 /// exponentially.
 @Suite("Glob patterns")
 struct GlobPatternTests {
-    /// Stars in the long run: before runs were collapsed, 24 took 8.9 s to
-    /// fail against 12 `b`s, and each extra pair multiplied the time.
-    private static let starRun = 40
+    /// Stars in the long run: before runs were collapsed, 24 took about 4 s
+    /// to fail against 12 `b`s, and each extra pair about five times as
+    /// long. Sized so that without the fix the test fails its bound in
+    /// seconds rather than running for hours.
+    private static let starRun = 24
     /// `b`s the long run of stars fails to match.
-    private static let starPathLength = 20
-    /// `**/` pieces in the long folder run: before runs were collapsed, 12
-    /// took 0.4 s to fail against as many folders, and each extra one about
-    /// four times as long.
-    private static let folderRun = 20
+    private static let starPathLength = 12
+    /// `**/` pieces in the long folder run: before runs were collapsed, 14
+    /// took about 6 s to fail against as many folders, and each extra one
+    /// about four times as long. Sized as `starRun` is.
+    private static let folderRun = 14
     /// `***/` pieces in the repeated odd run: before an odd run's `.*` became
     /// `(.*/)?`, 14 took 22 s to fail against as many folders, and each
     /// two extra about fifteen times as long.
@@ -69,7 +71,7 @@ struct GlobPatternTests {
         #expect(GlobPattern(pattern).matches(path) == matches)
     }
 
-    @Test("a run of 40 stars fails to match 20 b's in well under a second")
+    @Test("a run of 24 stars fails to match 12 b's in well under a second")
     func longStarRun() {
         let glob = GlobPattern(String(repeating: "*", count: Self.starRun) + "a")
         let path = String(repeating: "b", count: Self.starPathLength)
@@ -81,7 +83,7 @@ struct GlobPatternTests {
         #expect(elapsed < Self.matchBound)
     }
 
-    @Test("a run of 20 **/ pieces fails to match 20 folders in well under a second")
+    @Test("a run of 14 **/ pieces fails to match 14 folders in well under a second")
     func longFolderRun() {
         let glob = GlobPattern(String(repeating: "**/", count: Self.folderRun) + "a")
         let path = String(repeating: "b/", count: Self.folderRun) + "c"

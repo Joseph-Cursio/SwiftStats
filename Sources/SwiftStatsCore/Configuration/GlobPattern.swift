@@ -10,6 +10,10 @@
 //  that ends an odd run follows `(.*/)?` rather than `.*`. Both match exactly
 //  what the run matched, so a long run can't make a failed match backtrack
 //  exponentially, and repeated odd runs backtrack no more than `**/*/` does.
+//  Stars split by other text still can: a failed match of `*?`, `**/*/`,
+//  `*/**` or `**a` repeated takes time exponential in the repeats (`*?` ten
+//  times against 30 `a`s: 13 s). Assumed, not forced: a configured glob
+//  holds a few stars, not runs of such pairs.
 //
 
 import Foundation
