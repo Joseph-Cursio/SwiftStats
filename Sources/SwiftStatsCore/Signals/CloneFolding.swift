@@ -26,6 +26,10 @@ enum CloneFolding {
     ) -> [(member: Member, folded: [Int])] {
         let ordered = members.sorted { cloneClass($0).ordinal < cloneClass($1).ordinal }
         // Members holding each other: the most specific, then largest, stands for them.
+        // Here and in choosing a holder below, "larger mass first" swaps the
+        // masses between the tuples rather than negating them, so it orders
+        // every mass the detector can write, `Int.min` included, where a
+        // negation would trap.
         var groups: [[Member]] = []
         for member in ordered {
             if let index = groups.firstIndex(where: { holds($0[0], member) && holds(member, $0[0]) }) {
@@ -38,8 +42,8 @@ enum CloneFolding {
         let representatives = groups.compactMap { group -> Member? in
             let standing = group.min { lhs, rhs in
                 let (left, right) = (cloneClass(lhs), cloneClass(rhs))
-                return (left.pass.specificity, -left.mass, left.ordinal)
-                    < (right.pass.specificity, -right.mass, right.ordinal)
+                return (left.pass.specificity, right.mass, left.ordinal)
+                    < (right.pass.specificity, left.mass, right.ordinal)
             }
             if let standing {
                 let ordinal = cloneClass(standing).ordinal
@@ -58,7 +62,7 @@ enum CloneFolding {
         for representative in held {
             let holder = maximal.filter { strictlyHolds($0, representative) }.min { lhs, rhs in
                 let (left, right) = (cloneClass(lhs), cloneClass(rhs))
-                return (-left.mass, kindRank(left), left.ordinal) < (-right.mass, kindRank(right), right.ordinal)
+                return (right.mass, kindRank(left), left.ordinal) < (left.mass, kindRank(right), right.ordinal)
             }
             guard let holder else {
                 continue

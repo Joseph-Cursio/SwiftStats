@@ -117,10 +117,19 @@ struct CloneMapper {
         return CloneMapping(report: report, linesByFile: covered)
     }
 
-    /// `raw`'s range with an inclusive end, in records' columns.
+    /// `raw`'s range with an inclusive end, in records' columns: shifted
+    /// past a byte order mark on line 1, and kept at `Int.max` when the
+    /// shift would pass it. Such a column is past every record's, as the
+    /// true one is, so where the copy lands doesn't change.
     private func span(of raw: CloneDetectorOutput.Instance) -> SourceSpan {
         let offset = parsedByPath[raw.path]?.hasByteOrderMark == true ? ParsedFile.byteOrderMarkLength : 0
-        let column = { (line: Int, column: Int) in line == 1 ? column + offset : column }
+        let column = { (line: Int, column: Int) in
+            guard line == 1 else {
+                return column
+            }
+            let shifted = column.addingReportingOverflow(offset)
+            return shifted.overflow ? Int.max : shifted.partialValue
+        }
         return SourceSpan(
             start: SourcePosition(line: raw.startLine, column: column(raw.startLine, raw.startColumn)),
             end: SourcePosition(line: raw.endLine, column: column(raw.endLine, raw.endColumn - 1))

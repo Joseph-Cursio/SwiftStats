@@ -18,8 +18,9 @@ public struct TypeCheckRollup: Codable, Hashable, Sendable {
     /// Function-body time.
     public struct Milliseconds: Codable, Hashable, Sendable {
         /// The function-body entries on the scope's records not nested in
-        /// a body, on its types and on its files, summed in hundredths and
-        /// rounded to whole milliseconds once, half up; 0 when it has none.
+        /// a body, on its types and on its files, summed in hundredths
+        /// (stopping at `Int.max` hundredths) and rounded to whole
+        /// milliseconds once, half up; 0 when it has none.
         public let total: Int
         /// The largest record figure (`BuildRecordTiming.milliseconds`),
         /// records nested in a body included; nil when no record has one.

@@ -15,7 +15,8 @@ public struct CloneInstance: Codable, Hashable, Sendable {
     /// The copy's range, both ends inclusive: SwiftCloneDetector's
     /// exclusive end column is moved back by one, and a column on the first
     /// line of a file starting with a byte order mark is moved on by its
-    /// three bytes, as records' columns are.
+    /// three bytes, as records' columns are, or kept at `Int.max` when that
+    /// would carry it past the largest integer.
     public let range: SourceSpan
     /// Lines in `range` that hold a token, attributes excluded, as a
     /// record's stripped lines are counted (PRD §7.2).

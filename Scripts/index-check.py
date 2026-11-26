@@ -89,10 +89,11 @@ line gets exactly one class (the list is ACCOUNTED_CLASSES and
 UNACCOUNTED_CLASSES below), the classes must add up to the line count, and
 none may be unaccounted:
   - every line holding `ms<TAB>` must be a whole timing entry, read by this
-    script's own patterns (tab-separated fields; `<digits>[.<1-2 digits>]ms`;
-    `<invalid loc>` or a place split from the right as path:line:column;
-    a third field, the declaration, that ends with `@` and the place), or,
-    in a combined file only, a line the other stream broke (`spliced`);
+    script's own patterns (tab-separated fields; `<digits>[.<1-2 digits>]ms`
+    with at most 12 whole digits; `<invalid loc>` or a place split from the
+    right as path:line:column; a third field, the declaration, that ends
+    with `@` and the place), or, in a combined file only, a line the other
+    stream broke (`spliced`);
   - every line holding `warning:` (and every line holding a severity
     marker) must be a diagnostic (`<path>:<l>:<c>: <severity>: ...`, a
     macro form `macro expansion #name:<l>:<c>:` or `@name`, a place in an
@@ -110,7 +111,8 @@ A diagnostic's message continues on the following lines as far as the last
 line that makes it end with a diagnostic ID (the build passes
 -debug-diagnostic-names; a quoted source line ending ` [word]` can make it
 seem to end earlier), within 20 lines none of which could not continue a
-message (blank, excerpt, box, decoration, timing, diagnostic, a
+message (blank, excerpt, box, decoration, timing, a timing line but for
+more than 12 whole digits, diagnostic, a
 `warning:`/`error:`/`note:`/`remark:`/`info:` line, a group footnote); when
 no such line ends it with an ID it has no continuation. Each excerpt echo of the
 diagnostic just read must repeat its whole joined message. The stdout log
@@ -141,15 +143,16 @@ with `--store`, with the rows of design section 9.1):
     file-scoped), else the file;
   - per record, the sum of its function-body entries and its largest
     expression entry, each in hundredths and rounded to whole ms half up
-    once, null when it has none; per type or file attachment the same
-    (null ms when it has only expressions); the total is the rounded sum
-    of function-body entries on records not nested in a body, on types and
-    on files. A record is nested in a body when an ancestor of kind func,
-    init, deinit, accessor or topLevel is reached through its parent keys
-    without passing a type: a type lying inside that ancestor's range and
-    holding the record's range. So a local function is nested, and a local
-    type's members are not (the step-2b review's rules, as the compiler
-    prints them). Nothing is deduplicated;
+    once (a sum past Int.max hundredths counting as Int.max, as the Swift
+    side's sums stop there), null when it has none; per type or file
+    attachment the same (null ms when it has only expressions); the total
+    is the rounded sum of function-body entries on records not nested in a
+    body, on types and on files. A record is nested in a body when an
+    ancestor of kind func, init, deinit, accessor or topLevel is reached
+    through its parent keys without passing a type: a type lying inside
+    that ancestor's range and holding the record's range. So a local
+    function is nested, and a local type's members are not (the step-2b
+    review's rules, as the compiler prints them). Nothing is deduplicated;
   - warnings (severity `warning`; a macro form at its origin note, none
     without one) deduplicated on (file, line, column, ID or message);
     places under the build directory or outside the root dropped and
@@ -188,11 +191,13 @@ or argue:
            entries as the build block's total: design 6.2's "Totals don't
            double count"), summed in integer hundredths of a millisecond over
            the scope, then rounded to whole ms half up ((sum + 50) // 100)
-           once per scope. Design 6.2 rounds "once, after summing" and says
-           the roll-up sums add entries, so entries are summed, not the
-           per-record rounded figures; a scope's total therefore need not
-           equal the sum of its records' `typeCheckMilliseconds`, and the two
-           parts' totals can differ from the build block's total by rounding.
+           once per scope, a sum past Int.max hundredths counting as
+           Int.max, as every Swift sum of entries stops there. Design 6.2
+           rounds "once, after summing" and says the roll-up sums add
+           entries, so entries are summed, not the per-record rounded
+           figures; a scope's total therefore need not equal the sum of
+           its records' `typeCheckMilliseconds`, and the two parts' totals
+           can differ from the build block's total by rounding.
            0 when the scope holds no such entry.
   maxima   `typecheck.milliseconds.max`: the largest `typeCheckMilliseconds`
            (the rounded per-record figure) over every record of the scope,
@@ -1786,6 +1791,7 @@ SEVERITIES = ("warning", "error", "note", "remark")
 LINE_PREFIXES = tuple(f"{word}: " for word in SEVERITIES + ("info",))
 CONTINUATION_LIMIT = 20
 INVALID_LOCATION = "<invalid loc>"
+TIME_WHOLE_DIGITS = 12          # BuildLineGrammar.wholeDigits: no type-check entry reaches 10^12 ms
 MACRO_PLACE = "macro expansion "
 MACRO_BUFFER = "@__swiftmacro_"
 ORIGIN_NOTE = "expanded code originates here"
@@ -1881,11 +1887,13 @@ def ascii_digits(text):
 
 def timing_hundredths(field):
     """`<digits>[.<one or two digits>]ms` as hundredths of a millisecond
-    (`4.35ms` 435, `4.3ms` 430, `4ms` 400), else None."""
+    (`4.35ms` 435, `4.3ms` 430, `4ms` 400), else None; None too when the
+    whole part has more than TIME_WHOLE_DIGITS digits (the reader counts
+    such a line unparsed, as no compiler prints one)."""
     if not field.endswith("ms"):
         return None
     whole, dot, fraction = field[:-2].partition(".")
-    if not ascii_digits(whole):
+    if not ascii_digits(whole) or len(whole) > TIME_WHOLE_DIGITS:
         return None
     if not dot:
         return int(whole) * 100
@@ -1896,14 +1904,17 @@ def timing_hundredths(field):
 
 def split_place(text):
     """(path, line, column) of `<path>:<line>:<column>`, split from the
-    right (a path may hold colons and spaces), else None."""
+    right (a path may hold colons and spaces), else None. Line and column
+    are read as BuildLineGrammar.splitPlace reads them: 0 is a number, and
+    one past INT_MAX (Swift's Int) is none, so the two readers take the
+    same places."""
     head, colon, column = text.rpartition(":")
     if not colon:
         return None
     path, colon, line = head.rpartition(":")
     if not colon or path == "" or not ascii_digits(line) or not ascii_digits(column):
         return None
-    if int(line) < 1 or int(column) < 1:
+    if int(line) > INT_MAX or int(column) > INT_MAX:
         return None
     return path, int(line), int(column)
 
@@ -2136,6 +2147,14 @@ def has_marker(text):
     return "ms\t" in text or any(word + ":" in text for word in SEVERITIES)
 
 
+def overlong_timing(text):
+    """A line that would be a timing entry but for a time with more than
+    TIME_WHOLE_DIGITS whole digits (BuildLineGrammar.isOverlongTiming): it
+    still ends a message, as it did before the bound."""
+    whole = len(text) - len(text.lstrip("0123456789"))
+    return whole > TIME_WHOLE_DIGITS and timing_entry("0" + text[whole:]) is not None
+
+
 def ends_message(text):
     """A line that can't continue a diagnostic's message."""
     return (text.strip() == ""
@@ -2143,6 +2162,7 @@ def ends_message(text):
             or is_box(text)
             or decorated(text) is not None
             or timing_entry(text) is not None
+            or overlong_timing(text)
             or diagnostic_header(text) is not None
             or text.startswith(LINE_PREFIXES)
             or is_group_footnote(text))
@@ -2734,9 +2754,14 @@ def range_of(record):
     return (start["line"], start["column"]), (end["line"], end["column"])
 
 
+INT_MAX = 2**63 - 1             # Swift's Int.max: TimingMapper.sum stops there
+
+
 def half_up(hundredths):
-    """Hundredths of a ms as whole ms, half up, once, after summing."""
-    return (hundredths + 50) // 100
+    """Hundredths of a ms as whole ms, half up, once, after summing; a sum
+    past INT_MAX counts as INT_MAX, as the Swift side's saturating sums do
+    (entries are never negative, so clamping the plain sum matches them)."""
+    return (min(hundredths, INT_MAX) + 50) // 100
 
 
 class BuildPackage:

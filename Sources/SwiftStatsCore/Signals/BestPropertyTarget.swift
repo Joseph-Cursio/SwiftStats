@@ -134,10 +134,20 @@ enum BestPropertyTarget {
         return nil
     }
 
+    /// Whether `candidate` is Verified, earning Verified's bonus.
+    private static func isVerified(_ candidate: PropertyCandidate) -> Bool {
+        candidate.verification?.judgement?.verified == true
+    }
+
     /// A suggestion's score with Verified's bonus, as untested property
-    /// scores it.
-    private static func weight(_ candidate: PropertyCandidate) -> Int {
-        candidate.score + (candidate.verification?.judgement?.verified == true ? UntestedProperty.verifiedBonus : 0)
+    /// scores it, kept exact: the sum taken in `Int`, with one carried for
+    /// a sum past an `Int`'s end (which lies within the bonus of it) beside
+    /// the wrapped remainder, so weights compared as tuples order by their
+    /// true sums instead of trapping or tying there.
+    private static func weight(_ candidate: PropertyCandidate) -> (carried: Int, sum: Int) {
+        let bonus = isVerified(candidate) ? UntestedProperty.verifiedBonus : 0
+        let (sum, overflow) = candidate.score.addingReportingOverflow(bonus)
+        return (overflow ? 1 : 0, sum)
     }
 
     /// The item for `row`, whose mutants `counts` count, carrying
@@ -176,7 +186,7 @@ enum BestPropertyTarget {
         let score = Double(MutationFigures(counts).unkilled + partners.reduce(0) { $0 + $1.unkilled.count })
         let order = SignalSortKey([
             .number(-score),
-            .number(-Double(best.first.map(weight) ?? 0)),
+            .number(-(best.first.map { UntestedProperty.itemScore($0.score, verified: isVerified($0)) } ?? 0)),
             .text(row.key),
             .text(row.file),
             .number(Double(row.startLine))

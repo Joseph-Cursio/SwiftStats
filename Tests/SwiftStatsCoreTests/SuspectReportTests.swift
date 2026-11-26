@@ -175,6 +175,28 @@ struct SuspectReportTests {
         ])
     }
 
+    @Test("""
+        a suspect test that didn't fail again alone so often that four times that count is past what an Int holds is \
+        flaky whatever its failures alone, instead of trapping; just under that, the rule still compares exactly
+        """)
+    func hugeNotReproducedCount() throws {
+        let tests = [
+            #"{"name":"huge()","suspect":true,"notReproducedAlone":2305843009213693952,"#
+                + #""failedAgainAlone":9223372036854775807,"files":3}"#,
+            #"{"name":"edge()","suspect":true,"notReproducedAlone":2305843009213693951,"#
+                + #""failedAgainAlone":9223372036854775804,"files":4}"#
+        ]
+
+        let summary = Self.summary(checked: true, tests: tests)
+
+        let report = try SuspectReport.decode(Self.report(applied: [], summary: summary))
+
+        #expect(report.suspectTests == [
+            .init(name: "edge()", file: nil, reason: .reach, files: 4, filesWithKills: 12),
+            .init(name: "huge()", file: nil, reason: .flaky, files: nil, filesWithKills: nil)
+        ])
+    }
+
     @Test("a report that doesn't decode fails with a reason")
     func undecodable() {
         #expect(throws: MutationFailure(description: "`swift-mutator report`'s JSON doesn't read")) {

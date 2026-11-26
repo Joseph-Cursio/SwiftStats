@@ -5,7 +5,8 @@ import Testing
 /// A mutant's key and verdict (M6, design "Verdicts" and §2): every raw
 /// outcome a results line may record maps to its verdict, crash kills
 /// apart; and a key SwiftMutator spells is read from the right, so a path
-/// with spaces and colons and a repeat's ` (#k)` give all five parts.
+/// with spaces and colons and a repeat's ` (#k)` give all five parts; a
+/// results line's occurrence at `Int.max` spells its repeat in full.
 @Suite("Mutation outcomes and keys")
 struct MutationOutcomeTests {
     /// A raw outcome, what the line says beside it, and the verdict.
@@ -153,6 +154,31 @@ struct MutationOutcomeTests {
     func spelledKeys(_ spelled: String, _ key: MutantKey) {
         #expect(MutantKey(spelled: spelled) == key)
         #expect(key.description == spelled)
+    }
+
+    @Test(
+        "a results line's occurrence at the top of what an Int holds spells its repeat in full instead of trapping",
+        arguments: [
+            (Int.max - 1, " (#9223372036854775807)", true),
+            (Int.max, " (#9223372036854775808)", false)
+        ]
+    )
+    func hugeOccurrence(_ occurrence: Int, _ suffix: String, _ readsBack: Bool) throws {
+        let lines = [
+            ResultsLines.header(.init(discovered: 1)),
+            ResultsLines.mutant(.init(occurrence: occurrence)),
+            ResultsLines.end(.init())
+        ]
+
+        guard case .results(let results) = try MutationResultsFile.read(ResultsLines.file(lines)) else {
+            Issue.record("no results")
+            return
+        }
+
+        let key = try #require(results.mutants.first).key
+        #expect(key.occurrence == occurrence)
+        #expect(key.description == "Sources/Lib/Lib.swift:3:9 RelationalBoundary" + suffix)
+        #expect((MutantKey(spelled: key.description) == key) == readsBack)
     }
 
     @Test(

@@ -3,16 +3,17 @@
 //  SwiftStatsCore
 //
 //  The line patterns of the T1 build's output (M7, design §6.1). A timing
-//  line is a time `<digits>[.<one or two digits>]ms`, a tab, `<invalid
-//  loc>` or `<path>:<line>:<column>` (split from the right, so a path may
-//  hold colons and spaces), and for a function body a tab and its
-//  declaration. A diagnostic's first line is its place, `: `, a severity,
-//  `: ` and the message; the place is the first prefix before `: <severity>:
-//  ` that reads as one: `macro expansion #name:<line>:<column>` (or
-//  `@name`), `<unknown>:<line>`, or `<path>:<line>:<column>`. Source
-//  excerpt lines (digits or nothing before a `|`), box lines (`+---`) and
-//  decorated lines (`` `- ``, `|- `) are never a diagnostic's first line;
-//  a decorated note after a macro diagnostic is its origin note.
+//  line is a time `<digits>[.<one or two digits>]ms` with at most twelve
+//  whole digits, a tab, `<invalid loc>` or `<path>:<line>:<column>` (split
+//  from the right, so a path may hold colons and spaces), and for a
+//  function body a tab and its declaration. A diagnostic's first line is
+//  its place, `: `, a severity, `: ` and the message; the place is the
+//  first prefix before `: <severity>: ` that reads as one: `macro expansion
+//  #name:<line>:<column>` (or `@name`), `<unknown>:<line>`, or
+//  `<path>:<line>:<column>`. Source excerpt lines (digits or nothing before
+//  a `|`), box lines (`+---`) and decorated lines (`` `- ``, `|- `) are
+//  never a diagnostic's first line; a decorated note after a macro
+//  diagnostic is its origin note.
 //
 
 import Foundation
@@ -37,6 +38,14 @@ enum BuildLineGrammar {
     static let hundredthsPerTenth = 10
     /// The most fraction digits a time has.
     static let fractionDigits = 2
+    /// The most whole digits a time has. Assumed, not forced: no single
+    /// type-check entry reaches 10^12 ms (about 31 years), so a time with
+    /// more isn't one the compiler printed, and its line is counted
+    /// unparsed; like a timing line it ends a diagnostic's message, so it
+    /// is counted there too (`isOverlongTiming`). The bound also keeps
+    /// every time read far inside `Int`: twelve digits are under 10^14
+    /// hundredths.
+    static let wholeDigits = 12
     /// The fields of an expression's timing line: time and place.
     static let expressionFields = 2
     /// The fields of a function body's timing line: time, place and
@@ -72,13 +81,14 @@ enum BuildLineGrammar {
     }
 
     /// `<digits>[.<one or two digits>]ms` as hundredths of a millisecond
-    /// (`4.35ms` 435, `4.3ms` 430, `4ms` 400), else nil.
+    /// (`4.35ms` 435, `4.3ms` 430, `4ms` 400), else nil; nil too when the
+    /// whole part has more than `wholeDigits` digits.
     static func hundredths(_ field: Substring) -> Int? {
         guard field.hasSuffix(unit) else {
             return nil
         }
         let parts = field.dropLast(unit.count).split(separator: ".", maxSplits: 1, omittingEmptySubsequences: false)
-        guard let whole = parts.first.flatMap(digits) else {
+        guard let wholeText = parts.first, wholeText.count <= wholeDigits, let whole = digits(wholeText) else {
             return nil
         }
         guard let fractionText = parts.dropFirst().first else {
@@ -89,6 +99,17 @@ enum BuildLineGrammar {
         }
         let scale = fractionText.count == fractionDigits ? 1 : hundredthsPerTenth
         return whole * hundredthsPerMillisecond + fraction * scale
+    }
+
+    /// Whether `line` is a timing line but for a time with more than
+    /// `wholeDigits` whole digits: one the bound refuses, and which still
+    /// ends a diagnostic's message as it did before the bound.
+    static func isOverlongTiming(_ line: String) -> Bool {
+        let whole = line.prefix { $0.isASCII && $0.isNumber }
+        guard whole.count > wholeDigits else {
+            return false
+        }
+        return timingEntry("0" + line[whole.endIndex...]) != nil
     }
 
     /// The value of `text` when it is one or more ASCII digits, else nil.
@@ -149,12 +170,13 @@ enum BuildLineGrammar {
     }
 
     /// Whether `line` can continue a diagnostic's message: it isn't blank,
-    /// a timing line, a diagnostic, an excerpt, box or decorated line, a
-    /// group footnote, or a line starting `warning: `, `error: `, `note: `,
-    /// `remark: ` or `info: `.
+    /// a timing line (or one but for an overlong time), a diagnostic, an
+    /// excerpt, box or decorated line, a group footnote, or a line starting
+    /// `warning: `, `error: `, `note: `, `remark: ` or `info: `.
     static func continues(_ line: String) -> Bool {
         !(isStructural(line)
             || timingEntry(line) != nil
+            || isOverlongTiming(line)
             || header(line[...]) != nil
             || linePrefixes.contains { line.hasPrefix($0) }
             || isGroupFootnote(line))

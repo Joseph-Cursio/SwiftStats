@@ -29,7 +29,8 @@ enum CoverageLineIterator {
         }
     }
 
-    /// The mapped lines of `segments`, which are in order, by line.
+    /// The mapped lines of `segments`, which are in order, by line. The
+    /// walk stops after line `Int.max`, as no later line can exist.
     static func lines(of segments: [CoverageSegment]) -> [Line] {
         guard var line = segments.first?.line else {
             return []
@@ -49,6 +50,9 @@ enum CoverageLineIterator {
             }
             if let mapped = stats(of: current, wrapped: wrapped, line: line) {
                 result.append(mapped)
+            }
+            guard line < Int.max else {
+                break
             }
             line += 1
         }

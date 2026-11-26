@@ -3,9 +3,10 @@
 //  SwiftStatsCoreTests
 //
 //  Reading the T1 build's output (M7, design §6.1): timing lines and their
-//  times in hundredths, escapes, refused timing lines, a line that isn't
-//  UTF-8, and the recorded fixture build's output (`BuildDiagnosticTests`
-//  covers the diagnostic grammar).
+//  times in hundredths, escapes, refused timing lines (a time past twelve
+//  whole digits among them, which still ends a diagnostic's message), a
+//  place's number edges, a line that isn't UTF-8, and the recorded fixture
+//  build's output (`BuildDiagnosticTests` covers the diagnostic grammar).
 //
 
 import Foundation
@@ -102,6 +103,47 @@ struct BuildOutputReaderTests {
         let output = Self.read([line])
         #expect(output.entries.isEmpty)
         #expect(output.unparsedTimingLines == 1)
+    }
+
+    @Test(
+        "a time with more than twelve whole digits is counted, not read, even one past what an Int holds",
+        arguments: [
+            "1000000000000ms\t<invalid loc>",
+            "92233720368547759ms\t<invalid loc>",
+            "92233720368547758.08ms\t<invalid loc>"
+        ]
+    )
+    func overlongTime(line: String) {
+        let output = Self.read([line])
+        #expect(output.entries.isEmpty)
+        #expect(output.unparsedTimingLines == 1)
+    }
+
+    @Test(
+        "a time past twelve whole digits after a diagnostic ends its message and is counted, as a timing line does",
+        arguments: [[], ["more [deprecated_declaration]"]]
+    )
+    func overlongTimeAfterDiagnostic(later: [String]) throws {
+        let output = Self.read(["\(Self.root)/A.swift:1:2: warning: w", "1234567890123ms\t<invalid loc>"] + later)
+        #expect(output.entries.isEmpty)
+        #expect(output.unparsedTimingLines == 1)
+        let diagnostic = try #require(output.diagnostics.first)
+        #expect(diagnostic.message == "w")
+    }
+
+    @Test("a place's line and column read 0 as a number, and one past what an Int holds as none, as the checker does")
+    func placeNumberEdges() {
+        let zero = Self.entry("1.00ms\t\(Self.root)/A.swift:0:0")
+        #expect(zero?.place == BuildPlace(path: "\(Self.root)/A.swift", line: 0, column: 0))
+        let past = Self.read(["1.00ms\t\(Self.root)/A.swift:9223372036854775808:1"])
+        #expect(past.entries.isEmpty)
+        #expect(past.unparsedTimingLines == 1)
+    }
+
+    @Test("a time with twelve whole digits reads exactly")
+    func twelveDigitTime() {
+        #expect(Self.entry("999999999999.99ms\t<invalid loc>")?.hundredths == 99_999_999_999_999)
+        #expect(Self.entry("100000000000ms\t\(Self.root)/A.swift:1:2")?.hundredths == 10_000_000_000_000)
     }
 
     @Test("the task log is read for diagnostics only: its timing lines are neither entries nor counted")

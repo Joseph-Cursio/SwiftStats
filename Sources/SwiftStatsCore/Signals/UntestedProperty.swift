@@ -22,7 +22,8 @@ enum UntestedProperty {
     static let rule = "algebraic suggestions on production functions, in the Strong band or Verified, "
         + "neither disproven nor rejected, that no property test checks"
 
-    /// The signal over `snapshot`.
+    /// The signal over `snapshot`. Each item is scored by `itemScore`, so a
+    /// tool score as large as an `Int` holds is listed instead of trapping.
     static func compute(_ snapshot: StoredSnapshot) -> SignalComputation {
         let functions = ProductionFunctions(snapshot)
         let pool = snapshot.candidates.filter { candidate in
@@ -44,7 +45,7 @@ enum UntestedProperty {
                     return nil
                 }
                 let property = SignalItem.Property(candidate)
-                let score = Double(candidate.score + (property.verified ? verifiedBonus : 0))
+                let score = itemScore(candidate.score, verified: property.verified)
                 let draft = SignalItem.Draft(subject: row.key, file: row.file, line: row.startLine, property: property)
                 // A function can carry several suggestions: the identity
                 // breaks the last tie.
@@ -52,5 +53,15 @@ enum UntestedProperty {
                 return SignalScore(draft, score: score, sortKey: order.appending(.text(candidate.identity)))
             }
         )
+    }
+
+    /// `score` plus Verified's 50 when `verified`, as the item's `Double`
+    /// score. The sum is taken in `Int` and rounded once; only a sum past an
+    /// `Int`'s end, which lies within 50 of it, is added in `Double` instead,
+    /// where it rounds to the same value the exact sum would.
+    static func itemScore(_ score: Int, verified: Bool) -> Double {
+        let bonus = verified ? verifiedBonus : 0
+        let (sum, overflow) = score.addingReportingOverflow(bonus)
+        return overflow ? Double(score) + Double(bonus) : Double(sum)
     }
 }

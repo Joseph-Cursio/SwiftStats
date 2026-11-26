@@ -134,7 +134,10 @@ struct PositionPlacement {
 
     /// Where something of `file` at `position` goes; given `end`, the
     /// position just past its span's last character, a span ending past
-    /// its record is unmapped.
+    /// its record is unmapped. The last character's column is kept at
+    /// `Int.min` when `end`'s column is already there: records' columns
+    /// are at least 1, so it compares with a record's end as the true
+    /// column would.
     func place(at position: SourcePosition, end: SourcePosition?, in file: String) -> Place {
         let statements = statementLines(in: file)
         let holding = records(in: file).filter { record in
@@ -145,7 +148,8 @@ struct PositionPlacement {
             guard let end else {
                 return .record(record.key)
             }
-            let last = SourcePosition(line: end.line, column: end.column - 1)
+            let column = end.column.subtractingReportingOverflow(1)
+            let last = SourcePosition(line: end.line, column: column.overflow ? Int.min : column.partialValue)
             return last <= record.range.end ? .record(record.key) : .unmapped(Self.pastRecord)
         }
         let types = (typesByFile[file] ?? []).filter { $0.range.contains(position) }

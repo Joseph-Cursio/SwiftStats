@@ -22,6 +22,9 @@ extension SwiftStatsConfiguration {
     private static let minimumCouplingSupport = 2
     /// The shortest abbreviated commit hash `history.ignore_revs` accepts.
     private static let minimumRevisionLength = 7
+    /// The most days a duration may hold: as seconds, the history
+    /// collector's arithmetic keeps it in an `Int`.
+    static let longestDays = Int.max / HistoryCollector.day
 
     /// The `history:` options, or the defaults when absent.
     static func historyOptions(_ value: Node?, path: String) throws -> HistoryOptions {
@@ -133,10 +136,11 @@ extension SwiftStatsConfiguration {
         return mapping
     }
 
-    /// A duration written `<days>d`, such as `90d`.
+    /// A duration written `<days>d`, such as `90d`, of at least one day and
+    /// at most `longestDays`.
     private static func days(_ value: Node, key: String, path: String) throws -> Int {
         guard let text = value.scalar?.string, text.hasSuffix("d"),
-              let number = Int(text.dropLast()), number > 0 else {
+              let number = Int(text.dropLast()), number > 0, number <= longestDays else {
             throw ScanError.configurationInvalid(path, "`\(key)` must be a number of days, such as 90d")
         }
         return number

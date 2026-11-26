@@ -4,7 +4,8 @@
 //
 //  The diff hunks divergent clones reads (PRD §8): the old side of each
 //  hunk of a zero-context diff, by the earlier path, and when a hunk lies
-//  in a copy's lines.
+//  in a copy's lines, even when a header's count is the largest an Int
+//  holds.
 //
 
 import Foundation
@@ -116,6 +117,33 @@ struct DiffHunkTests {
         #expect(insertion.overlaps(lower: 5, upper: 9))
         #expect(insertion.overlaps(lower: 1, upper: 5) == false)
         #expect(insertion.overlaps(lower: 6, upper: 9) == false)
+    }
+
+    @Test("a header whose count is the largest an Int holds overlaps the lines from its start, instead of trapping")
+    func largestCount() throws {
+        let diff = """
+        diff --git a/Sources/A.swift b/Sources/A.swift
+        --- a/Sources/A.swift
+        +++ b/Sources/A.swift
+        @@ -1,9223372036854775807 +1 @@
+        diff --git a/Sources/B.swift b/Sources/B.swift
+        --- a/Sources/B.swift
+        +++ b/Sources/B.swift
+        @@ -5,9223372036854775807 +5 @@
+
+        """
+
+        let hunks = GitChanges.hunks(inDiff: diff, packagePath: "")
+        let first = try #require(hunks["Sources/A.swift"]?.first)
+        let fifth = try #require(hunks["Sources/B.swift"]?.first)
+
+        #expect(first == DiffHunk(start: 1, count: Int.max))
+        #expect(fifth == DiffHunk(start: 5, count: Int.max))
+        // Lines 1 to past the largest Int meet 1–5; lines from 5 meet
+        // 100–200 but not 1–4, which ends before them.
+        #expect(first.overlaps(lower: 1, upper: 5))
+        #expect(fifth.overlaps(lower: 100, upper: 200))
+        #expect(fifth.overlaps(lower: 1, upper: 4) == false)
     }
 
     @Test("an exported GIT_DIFF_OPTS doesn't give the zero-context diff context lines")

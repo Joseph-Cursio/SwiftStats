@@ -30,14 +30,21 @@ enum MarkdownNumber {
     }
 
     /// `value` without a fraction when it is whole, else to two places.
+    /// A whole value past what an `Int` holds prints in full through
+    /// `exact`, and an infinity as `inf` or `-inf`; NaN, never whole,
+    /// prints as `nan`. So no `Double` traps.
     static func value(_ value: Double) -> String {
-        value.rounded() == value ? String(Int(value)) : String(format: "%.2f", value)
+        guard value.rounded() == value else {
+            return String(format: "%.2f", value)
+        }
+        return Int(exactly: value).map(String.init) ?? exact(value)
     }
 
     /// `value` in full, for a threshold a report states: the shortest
     /// decimal that reads back as `value`, with no exponent, no `.0` on a
     /// whole number and no sign on zero, so the number printed is the one
-    /// compared.
+    /// compared. An infinity or NaN prints as Swift writes it (`inf`,
+    /// `-inf`, `nan`).
     static func exact(_ value: Double) -> String {
         let text = "\(value == 0 ? 0 : value)"
         guard let marker = text.firstIndex(where: { $0 == "e" || $0 == "E" }),

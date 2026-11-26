@@ -9,10 +9,10 @@ import Testing
 /// working tree, which has them.
 @Suite("Property joins", .serialized)
 struct PropertyJoinTests {
-    private typealias Row = PropertyHarness.Row
+    typealias Row = PropertyHarness.Row
 
     /// The library's file, as the tool writes it; `doubled()` is on line 4.
-    private static let values = "@ROOT@/Sources/Core/Values.swift:4"
+    static let values = "@ROOT@/Sources/Core/Values.swift:4"
 
     /// Rows on `doubled()`, each with the fingerprint its case needs.
     private static let rows = [
@@ -88,8 +88,8 @@ struct PropertyJoinTests {
         """
 
     /// The harness package with `extra` files, scanned with a fake indexer
-    /// giving the library the rows and the reducer invariant.
-    private static func scan(_ extra: [String: String]) throws -> ScanReport {
+    /// giving the library `rows` and the reducer invariant.
+    static func scan(_ extra: [String: String], rows: [Row]) throws -> ScanReport {
         let package = try PropertyHarness.package(extra)
         defer { package.remove() }
         let tool = try FakeTool.makeIndexer(
@@ -138,7 +138,7 @@ struct PropertyJoinTests {
 
     /// Each candidate's verify join as `outcome fresh verified disproven`,
     /// `none` for a nil outcome and `undecided` for a nil judgement.
-    private static func verification(_ candidate: PropertyCandidate) -> String {
+    static func verification(_ candidate: PropertyCandidate) -> String {
         guard let joined = candidate.verification else {
             return "nil"
         }
@@ -159,7 +159,7 @@ struct PropertyJoinTests {
             ".swiftinfer/decisions.json": Self.decisions,
             ".swiftinfer/interaction-decisions.json": Self.interactionDecisions,
             ".swiftinfer/verify-evidence.json": Self.evidence
-        ])
+        ], rows: Self.rows)
         let properties = try #require(report.properties)
         let byIdentity = Dictionary(uniqueKeysWithValues: properties.candidates.map { ($0.identity, $0) })
 
@@ -194,7 +194,7 @@ struct PropertyJoinTests {
 
     @Test("with none of the package's files, every join is nil and nothing is counted")
     func absent() throws {
-        let report = try Self.scan([:])
+        let report = try Self.scan([:], rows: Self.rows)
         let properties = try #require(report.properties)
 
         #expect(properties.candidates.count == Self.rows.count + 1)
@@ -217,7 +217,7 @@ struct PropertyJoinTests {
             ".swiftinfer/decisions.json": "{",
             ".swiftinfer/interaction-decisions.json": Self.interactionDecisions,
             ".swiftinfer/verify-evidence.json": unknownOutcome
-        ])
+        ], rows: Self.rows)
         let properties = try #require(report.properties)
         let warnings = report.warnings.filter { $0.file?.hasPrefix(".swiftinfer/") == true }
 
