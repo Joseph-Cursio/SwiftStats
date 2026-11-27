@@ -10,7 +10,12 @@
 //  is crossed) or long without a suffix until an ID on a line past the
 //  limit, which the message never reaches. An origin note follows any
 //  header; only a macro header's message reads it, and only when the note
-//  comes right after the lines the message took.
+//  comes right after the lines the message took. Under the decided rules a
+//  diagnostic may also be interrupted: a header with no ID, up to two plain
+//  lines, a timing line, valid or one the grammar refuses (B10: either ends
+//  the message, and a refused one on the standard error is counted), and
+//  maybe a plain line with an ID, which the message would have reached had
+//  the timing line continued it.
 //
 
 import PropertyBased
@@ -34,6 +39,12 @@ extension BuildOutputGen {
     static let unsuffixedRun = BuildOutputInterpreter.continuationLimit...24
     /// How many excerpt lines follow a diagnostic (assumed).
     static let excerptCount = 0...2
+    /// How many plain lines an interrupted message takes before the refused
+    /// timing line (assumed: none, and enough for a run).
+    static let interruptedRun = 0...2
+    /// The share of interrupted diagnostics with a plain line ending in an
+    /// ID after the refused timing line.
+    static let resumedRate: Float = 0.5
 
     /// The severities, the most common first.
     static let severities: [BuildDiagnostic.Severity] = [.warning, .error, .note, .remark]
@@ -67,6 +78,72 @@ extension BuildOutputGen {
         (classWeight, continuation.array(of: longRun)),
         (classWeight, zip(unsuffixedContinuation.array(of: unsuffixedRun), identifiedContinuation).map { $0 + [$1] })
     )
+
+    /// A timing line the grammar refuses, which ends any message: one with
+    /// a fault, one valid but for its empty declaration, one with a time
+    /// past the bound, or one with a Prepend scalar before its `ms`.
+    static let refusedTiming = Gen.frequency(
+        (classWeight, malformedTiming),
+        (classWeight, emptyDeclarationTiming),
+        (classWeight, overlongTiming),
+        (classWeight, prependedTime)
+    )
+
+    /// An interrupted diagnostic (B10, decided U10; drawn only under the
+    /// decided rules): a header whose message has no ID or group, up to two
+    /// plain lines with none, a timing line, refused or valid, which ends
+    /// the message, and maybe a plain line ending in an ID, which the
+    /// message would have taken (and its ID) had the timing line continued
+    /// it.
+    static let interruptedDiagnostic = zip(
+        zip(headerPlace(.decided), Pick.element(of: severities), text),
+        unsuffixedContinuation.array(of: interruptedRun),
+        Gen.frequency((classWeight, refusedTiming), (classWeight, timing(.decided))),
+        identifiedContinuation.optional(valueRate: resumedRate)
+    )
+    .map { header, run, interruption, resumed in
+        let (place, severity, body) = header
+        let message = SuffixedText(body)
+        let first = BuildLineDraft(
+            .header(location: place.location, severity: severity, message: message),
+            text: "\(place.text): \(severity.rawValue): \(message.rendered)",
+            traits: place.traits
+        )
+        return [first] + run + [interruption] + [resumed].compactMap(\.self)
+    }
+
+    /// Whether a timing line the grammar refuses comes, in `lines`, right
+    /// after a header or a line its message took: a message is open there,
+    /// and the line must end it (B10), the antecedent P1.2's message law
+    /// needs.
+    static func refusesInMessage(_ lines: [GeneratedBuildLine]) -> Bool {
+        zip(lines, lines.dropFirst()).contains { before, line in
+            [.malformedTiming, .overlongTiming].contains(line.shape) && opensMessage(before.reading)
+        }
+    }
+
+    /// Whether a diagnostic with no ID or group takes a line, in `lines`:
+    /// the reading U10 kept (design B8), the antecedent P1.5 needs for it.
+    static func takesUnidentified(_ lines: [GeneratedBuildLine]) -> Bool {
+        zip(lines, lines.dropFirst()).contains { header, next in
+            guard case .diagnostic(let diagnostic) = header.reading, next.reading == .continuation else {
+                return false
+            }
+            return diagnostic.identifier == nil && diagnostic.group == nil
+        }
+    }
+
+    /// Whether a line reading as `reading` leaves a message open after it:
+    /// a header, or a line a message took.
+    static func opensMessage(_ reading: BuildLineReading) -> Bool {
+        switch reading {
+        case .continuation, .diagnostic:
+            true
+
+        default:
+            false
+        }
+    }
 
     /// A diagnostic block under `rules`.
     static func diagnostic(_ rules: Rules) -> Generator<[BuildLineDraft], AnySequence<Any>> {

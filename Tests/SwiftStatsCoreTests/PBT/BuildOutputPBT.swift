@@ -13,9 +13,17 @@ import Testing
 /// accounted for (P1.1, which guards B1 and B18); a time field reads as
 /// its exact value when its whole part has at most twelve digits, and as
 /// none otherwise (P1.3, `BuildOutputPBT+Hundredths`, with the walk over
-/// edge numerals). `BuildOutputReaderTests` holds the fixed examples; each
-/// property here has its own, calling its shared check, and meta-tests
-/// that feed a planted defect's output to that check.
+/// edge numerals); every standard error line holding `ms<TAB>` is an entry
+/// or counted, and no message takes one (P1.2), and every entry the grammar
+/// states reads back from its line (P1.4, `BuildOutputPBT+Timing`); a
+/// diagnostic reads as written (P1.5, `+Diagnostics`); escapes written
+/// into lines change nothing but the escaped count (P1.6, `+Escapes`), and
+/// CRLF line breaks nothing (P1.7, `+LineBreaks`); the standard error read
+/// in two halves reads as a whole, and a timing line moved into the log
+/// leaves only its entry out (P1.8, `+Split`). `BuildOutputReaderTests`
+/// holds the fixed examples; each property here has its own, calling its
+/// shared check, and meta-tests that feed a planted defect's output to
+/// that check.
 @Suite("Build output reader: properties", .tags(.pbt))
 struct BuildOutputPBT {
     /// P1.1's base runs: the engine's default.

@@ -24,8 +24,10 @@ struct BuildOutputGenTests {
     /// What `output` has: each trait any line has, each kind of reading,
     /// and whether its diagnostics are stated, one is in both files (the
     /// reader keeps it once), one repeats within a file, two function
-    /// bodies at one place have times to sum, a file is empty or at the
-    /// line cap, and a line ends in a carriage return (never
+    /// bodies at one place have times to sum, a refused timing line comes
+    /// right after a header or a line its message took (P1.2's antecedent),
+    /// a message with no ID takes a line (P1.5's), a file is empty or at
+    /// the line cap, and a line ends in a carriage return (never
     /// expected).
     static func labels(of output: GeneratedBuildOutput) -> [String] {
         let readings = Set(output.lines.map { reading(of: $0.reading) })
@@ -46,6 +48,12 @@ struct BuildOutputGenTests {
         }
         if BuildOutputGen.repeatsBody(output.entries) {
             shapes.append("a function body's times to sum")
+        }
+        if BuildOutputGen.refusesInMessage(output.stderrLines) {
+            shapes.append("a refused timing line right after a message's line")
+        }
+        if BuildOutputGen.takesUnidentified(output.stderrLines) || BuildOutputGen.takesUnidentified(output.logLines) {
+            shapes.append("a message with no ID taking a line")
         }
         if output.logLines.contains(where: { reading(of: $0.reading) == "diagnostic" }) {
             shapes.append("diagnostic in the log")
@@ -123,6 +131,8 @@ struct BuildOutputGenTests {
             counts.labels == [
                 "CRLF": 896,
                 "a function body's times to sum": 329,
+                "a message with no ID taking a line": 274,
+                "a refused timing line right after a message's line": 2,
                 "at the line cap": 41,
                 "crosses the continuation limit": 168,
                 "decoy place": 153,
@@ -165,41 +175,42 @@ struct BuildOutputGenTests {
 
         #expect(
             counts.labels == [
-                "CRLF": 880,
-                "a function body's times to sum": 318,
-                "at the line cap": 42,
-                "crosses the continuation limit": 162,
-                "decoy place": 116,
-                "diagnostic in the log": 632,
-                "diagnostic repeated across files": 87,
-                "diagnostic repeated within a file": 1,
-                "empty declaration": 331,
-                "empty standard error": 82,
-                "escaped": 826,
-                "fully stated": 685,
-                "inner suffix": 321,
-                "inserted blank": 315,
-                "invalid UTF-8": 77,
-                "lone CR": 698,
-                "macro origin": 81,
-                "near header": 252,
-                "no suffix": 398,
-                "pending B10": 82,
-                "pending B23": 438,
-                "pending B24": 294,
-                "prepend": 662,
-                "reads as continuation": 599,
-                "reads as diagnostic": 775,
-                "reads as entry": 754,
-                "reads as ignored": 876,
-                "reads as other warning": 378,
-                "reads as skipped": 872,
-                "reads as unparsed timing": 596,
-                "reads as unstated": 315,
-                "recorded": 414,
-                "surplus": 408,
-                "truncated escape": 328,
-                "unknown place": 209,
+                "CRLF": 868,
+                "a function body's times to sum": 320,
+                "a message with no ID taking a line": 489,
+                "a refused timing line right after a message's line": 262,
+                "at the line cap": 36,
+                "crosses the continuation limit": 147,
+                "decoy place": 139,
+                "diagnostic in the log": 671,
+                "diagnostic repeated across files": 73,
+                "empty declaration": 366,
+                "empty standard error": 75,
+                "escaped": 847,
+                "fully stated": 665,
+                "inner suffix": 312,
+                "inserted blank": 284,
+                "invalid UTF-8": 62,
+                "lone CR": 760,
+                "macro origin": 78,
+                "near header": 277,
+                "no suffix": 621,
+                "pending B10": 263,
+                "pending B23": 468,
+                "pending B24": 273,
+                "prepend": 682,
+                "reads as continuation": 721,
+                "reads as diagnostic": 858,
+                "reads as entry": 765,
+                "reads as ignored": 897,
+                "reads as other warning": 398,
+                "reads as skipped": 862,
+                "reads as unparsed timing": 643,
+                "reads as unstated": 335,
+                "recorded": 376,
+                "surplus": 422,
+                "truncated escape": 330,
+                "unknown place": 263,
                 "unterminated": 303
             ]
         )

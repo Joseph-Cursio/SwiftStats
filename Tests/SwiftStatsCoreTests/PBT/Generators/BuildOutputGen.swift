@@ -15,7 +15,9 @@
 //  structure, footnotes, `info:` and `warning: ` lines; real lines from
 //  the recorded builds. Near-valid blocks: timing lines with one field
 //  wrong (an empty declaration most often) or a time past the bound,
-//  headers wrong in one field, a timing line without its tab. Unrecognised blocks: wild lines of any scalars or
+//  headers wrong in one field, a timing line without its tab; under the
+//  decided rules, a diagnostic interrupted by a timing line (B10).
+//  Unrecognised blocks: wild lines of any scalars or
 //  of bytes that aren't UTF-8. Every line but a wild one may be wrapped
 //  in escapes or end with a cut-off escape; a wild line takes only its
 //  line break. Any line may end with CRLF, and the last may have no line
@@ -65,6 +67,14 @@ enum BuildOutputGen {
     /// weight brings that to more than 0.3 per output (design D14, counted
     /// by the generator's meta-test), so P1.1's 100 runs never miss it.
     static let repeatedBodyWeight = 2.0
+    /// Weight of an interrupted diagnostic under the decided rules, a block
+    /// of its own: a timing line right after a header or a line its message
+    /// took came from single blocks in about one output in 12 for a refused
+    /// line and one in 30 for a valid one; this weight brings both well
+    /// past what design D14 needs for 100 runs (counted by the generators'
+    /// meta-tests), so P1.2's runs, and P1.8's moves of a line that ended a
+    /// message, never miss them.
+    static let interruptedWeight = 3.0
     /// Weight of each pending shape under the decided rules.
     static let pendingWeight = 1.0
     /// Weight of a pending shape under the current rules: never drawn.
@@ -145,6 +155,7 @@ enum BuildOutputGen {
             (classWeight, overlongTiming.map { [$0] }),
             (rules == .decided ? pendingWeight : neverWeight, prependedTime.map { [$0] }),
             (diagnosticWeight, diagnostic(rules)),
+            (rules == .decided ? interruptedWeight : neverWeight, interruptedDiagnostic),
             (classWeight, recorded(timings: true)),
             (sharedWeight, line(rules).map { [$0] })
         )
