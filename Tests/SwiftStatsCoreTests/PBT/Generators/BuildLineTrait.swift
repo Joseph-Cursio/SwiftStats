@@ -1,0 +1,63 @@
+//
+//  BuildLineTrait.swift
+//  SwiftStatsCoreTests
+//
+//  What a generated build-output line has besides its kind, for the
+//  generator's deterministic meta-test (design D14) to count, and for a
+//  property to tally as antecedents. The `pending` traits mark shapes the
+//  decided rules read differently from the reader as built until step 7's
+//  fixes land (B10, B23, B24); only `BuildOutputGen.Rules.decided`
+//  generates them.
+//
+
+/// A trait of a generated build-output line.
+enum BuildLineTrait: String, CaseIterable, Hashable, Sendable {
+    /// Written with CRLF.
+    case carriageReturnLineFeed = "CRLF"
+    /// A header whose plain lines run past the continuation limit.
+    case crossesLimit = "crosses the continuation limit"
+    /// A header whose place is a decoy `<path>:<line>:<column>: <severity>: `
+    /// before the real one, read by the first-match rule.
+    case decoyPlace = "decoy place"
+    /// Wrapped in escape sequences, or ending in a truncated one.
+    case escaped
+    /// A header whose message takes a line ending in a suffix before the
+    /// line that ends it (M7 C2).
+    case innerSuffix = "inner suffix"
+    /// Inserted by the interpreter: a blank line around a wild line, or
+    /// before a malformed timing line a message might take (current rules).
+    case insertedBlank = "inserted blank"
+    /// A wild line of bytes that aren't UTF-8.
+    case invalidUTF8 = "invalid UTF-8"
+    /// Holds a lone carriage return inside the line.
+    case loneCarriageReturn = "lone CR"
+    /// A header in a macro expansion whose origin note is read.
+    case macroOrigin = "macro origin"
+    /// A plain line that is a header but for one field.
+    case nearHeader = "near header"
+    /// A header whose message never completes with an ID or a group.
+    case noSuffix = "no suffix"
+    /// B10: a malformed timing line just after a header or plain line,
+    /// where the reader as built may take it into the message.
+    case pendingB10 = "pending B10"
+    /// B23: a Prepend scalar just before a place's `:` or a time's `ms`.
+    case pendingB23 = "pending B23"
+    /// B24: an escape whose last scalar joins the Character after it.
+    case pendingB24 = "pending B24"
+    /// Holds a Prepend scalar where it joins no separator.
+    case prepend
+    /// Copied from a recorded build's output.
+    case recorded
+    /// A header whose message completes before the last plain line that
+    /// could have continued it, so the lines after are ignored.
+    case surplus
+    /// Written with a truncated escape sequence at its end.
+    case truncatedEscape = "truncated escape"
+    /// A header at `<unknown>:<line>`.
+    case unknownPlace = "unknown place"
+    /// The last line of its file, with no line break after it.
+    case unterminated
+
+    /// The traits that mark a shape awaiting a fix.
+    static let pending: Set<Self> = [.pendingB10, .pendingB23, .pendingB24]
+}
