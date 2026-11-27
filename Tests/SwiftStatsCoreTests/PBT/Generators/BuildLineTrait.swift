@@ -5,8 +5,9 @@
 //  What a generated build-output line has besides its kind, for the
 //  generator's deterministic meta-test (design D14) to count, and for a
 //  property to tally as antecedents. The `pending` traits mark shapes the
-//  decided rules read differently from the reader as built until step 7's
-//  fixes land (B10, B23, B24); only `BuildOutputGen.Rules.decided`
+//  decided rules read differently from the reader until step 7's fixes
+//  land (B10's has, in step 7a, with B23's `ms<TAB>` half; the rest of
+//  B23's and B24's are to come); only `BuildOutputGen.Rules.decided`
 //  generates them.
 //
 
@@ -41,9 +42,13 @@ enum BuildLineTrait: String, CaseIterable, Hashable, Sendable {
     /// A header whose message never completes with an ID or a group.
     case noSuffix = "no suffix"
     /// B10: a malformed timing line just after a header or plain line,
-    /// where the reader as built may take it into the message.
+    /// which the reader took into the message until B10's fix; it now
+    /// ends the message, as the decided rules say.
     case pendingB10 = "pending B10"
     /// B23: a Prepend scalar just before a place's `:` or a time's `ms`.
+    /// The `ms` half landed with B10's fix (step 7a: the reader finds
+    /// `ms<TAB>` in bytes), so a prepended time now reads as decided; it
+    /// keeps the trait until B23's fix moves the generator.
     case pendingB23 = "pending B23"
     /// B24: an escape whose last scalar joins the Character after it.
     case pendingB24 = "pending B24"

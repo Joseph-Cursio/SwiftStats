@@ -7,9 +7,9 @@
 //  isn't stated, gets a blank line on each side, so it can't join a
 //  message or take the lines after it, and every stated line reads as if
 //  it weren't there; a malformed timing line just after a header or plain
-//  line, which the reader as built may take into a message (B10, fixed in
-//  step 7), gets a blank line before it under the current rules and is
-//  marked pending under the decided ones. Then the first `lineCap` lines
+//  line, which the reader took into a message until B10's fix (step 7a),
+//  gets a blank line before it under the current rules and is marked
+//  pending under the decided ones. Then the first `lineCap` lines
 //  are kept (design D7). Write: each line takes its decoration's line
 //  break, and each but a wild line its escape, an escape that would join
 //  the Character after it moving to the line's end; an empty last line

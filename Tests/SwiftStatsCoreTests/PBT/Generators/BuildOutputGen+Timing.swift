@@ -15,7 +15,8 @@
 //  timed two or three times at one place, a block whose times the mapper
 //  sums. An overlong one is valid but for 13 or more
 //  whole digits, so it still ends a message. Under the decided rules a
-//  Prepend scalar may come just before `ms` (B23, pending).
+//  Prepend scalar may come just before `ms` (B23; the reader reads it as
+//  decided since step 7a, but it stays labelled pending until B23's fix).
 //
 
 import PropertyBased
@@ -224,7 +225,8 @@ extension BuildOutputGen {
         return BuildLineDraft(.overlongTiming, text: fields.joined(separator: "\t"), traits: [])
     }
 
-    /// A time with a Prepend scalar just before its `ms` (B23, pending).
+    /// A time with a Prepend scalar just before its `ms` (B23; read as
+    /// decided since step 7a, still labelled pending).
     static let prependedTime = zip(time, Pick.element(of: UnicodeGen.prepend), timingPlace(.current))
         .map { time, prepend, place in
             let text = time.text + prepend + "ms\t" + (place?.text ?? invalidLocation)

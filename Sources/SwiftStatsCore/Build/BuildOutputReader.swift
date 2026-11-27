@@ -10,15 +10,17 @@
 //  error only; one holding `ms<TAB>` that doesn't read is counted); a
 //  source excerpt, box or decorated line, which is skipped; a diagnostic's
 //  first line. A diagnostic's message takes the lines after it that can't
-//  be anything else, at most 20, up to the last of them after which the
-//  joined text ends with an ID or a group (all of them when none does),
-//  which are read from that end (`DiagnosticText`), so a quoted source line
-//  ending ` [word]` doesn't end it early; a macro
-//  diagnostic's place is the origin note on the line after its message. A
-//  line starting `warning: ` that is none of these (Swift Build's summary
-//  form, a manifest command `-v` prints as a warning, SwiftPM's own
-//  package warnings) is counted; every other line is ignored. The two
-//  files' diagnostics are kept once each, standard error first.
+//  be anything else (a line holding `ms<TAB>` is never one, so a refused
+//  timing line ends the message, and on the standard error is counted), at
+//  most 20, up to the last of them after which the joined text ends with
+//  an ID or a group (all of them when none does), which are read from that
+//  end (`DiagnosticText`), so a quoted source line ending ` [word]` doesn't
+//  end it early; a macro diagnostic's place is the origin note on the line
+//  after its message. A line starting `warning: ` that is none of these
+//  (Swift Build's summary form, a manifest command `-v` prints as a
+//  warning, SwiftPM's own package warnings) is counted; every other line
+//  is ignored. The two files' diagnostics are kept once each, standard
+//  error first.
 //
 
 import Foundation
@@ -93,7 +95,7 @@ enum BuildOutputReader {
         while index < lines.count {
             let text = lines[index]
             index += 1
-            if timings, text.contains(BuildLineGrammar.timingMark) {
+            if timings, BuildLineGrammar.holdsTimingMark(text) {
                 if let entry = BuildLineGrammar.timingEntry(text) {
                     file.entries.append(entry)
                     continue

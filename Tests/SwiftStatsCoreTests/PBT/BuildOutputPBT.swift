@@ -152,13 +152,14 @@ struct BuildOutputPBT {
     /// digits and files within 40 lines, so no sum nears `Int.max`: B18's
     /// trap is guarded by the bound, and `TimingFigureTests+Saturation`
     /// pins the saturation itself. B1's other half, an overlong time
-    /// ending a message and counted unparsed (`isOverlongTiming`), is a
-    /// diagnostics law, so here only the B1 example states it. The moved
-    /// entries must reach a record, a type or the file, and none; two of
-    /// them must be function bodies at one place, whose times the mapper
-    /// sums; and the standard error must hold a timing line valid but for
-    /// its empty declaration: each in some run (the tally). The generator
-    /// draws the last two as blocks of their own so that they do.
+    /// ending a message and counted unparsed (as every refused timing line
+    /// does since B10's fix), is a diagnostics law, so here only the B1
+    /// example states it. The moved entries must reach a record, a type or
+    /// the file, and none; two of them must be function bodies at one
+    /// place, whose times the mapper sums; and the standard error must
+    /// hold a timing line valid but for its empty declaration: each in
+    /// some run (the tally). The generator draws the last two as blocks of
+    /// their own so that they do.
     /// Oracle: the generator's labels (each line's reading, known by
     /// construction), and sums worked out apart from the mapper; planted
     /// defects: B1's bound removed, an empty declaration accepted, a

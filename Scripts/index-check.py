@@ -111,8 +111,8 @@ A diagnostic's message continues on the following lines as far as the last
 line that makes it end with a diagnostic ID (the build passes
 -debug-diagnostic-names; a quoted source line ending ` [word]` can make it
 seem to end earlier), within 20 lines none of which could not continue a
-message (blank, excerpt, box, decoration, timing, a timing line but for
-more than 12 whole digits, diagnostic, a
+message (blank, excerpt, box, decoration, any line holding `ms<TAB>`,
+whether it reads as a timing entry or not, diagnostic, a
 `warning:`/`error:`/`note:`/`remark:`/`info:` line, a group footnote); when
 no such line ends it with an ID it has no continuation. Each excerpt echo of the
 diagnostic just read must repeat its whole joined message. The stdout log
@@ -2147,22 +2147,18 @@ def has_marker(text):
     return "ms\t" in text or any(word + ":" in text for word in SEVERITIES)
 
 
-def overlong_timing(text):
-    """A line that would be a timing entry but for a time with more than
-    TIME_WHOLE_DIGITS whole digits (BuildLineGrammar.isOverlongTiming): it
-    still ends a message, as it did before the bound."""
-    whole = len(text) - len(text.lstrip("0123456789"))
-    return whole > TIME_WHOLE_DIGITS and timing_entry("0" + text[whole:]) is not None
-
-
 def ends_message(text):
-    """A line that can't continue a diagnostic's message."""
+    """A line that can't continue a diagnostic's message. A line holding
+    `ms<TAB>` is one whether or not it reads as a timing entry
+    (BuildLineGrammar.holdsTimingMark, design B10), the mark found in code
+    points, as the reader finds it in bytes (U13): a time past
+    TIME_WHOLE_DIGITS whole digits, a bad place or a stray field ends the
+    message, and the line is counted as not an entry."""
     return (text.strip() == ""
             or gutter(text) is not None
             or is_box(text)
             or decorated(text) is not None
-            or timing_entry(text) is not None
-            or overlong_timing(text)
+            or "ms\t" in text
             or diagnostic_header(text) is not None
             or text.startswith(LINE_PREFIXES)
             or is_group_footnote(text))
