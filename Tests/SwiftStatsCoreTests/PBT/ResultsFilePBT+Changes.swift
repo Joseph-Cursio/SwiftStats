@@ -31,11 +31,11 @@ extension ResultsFilePBT {
     /// a run misses it.
     static let reorderedRuns = 400
     /// What the appending law's tally counts when the file reads as
-    /// results (design D14: 596 of the meta-test's 1,000 inputs).
+    /// results (design D14: 562 of the meta-test's 1,000 inputs).
     static let appendedResults = "an appended file read as results"
     /// What the reordering law's tally counts when a line moved in a file
-    /// read as results (179 of 1,000, so even 100 runs miss it with odds
-    /// of about 3 * 10^-9).
+    /// read as results (175 of 1,000, so even 100 runs miss it with odds
+    /// of about 4 * 10^-9).
     static let movedResults = "a moved line in a file read as results"
 
     /// Whether the results of `original` and `appended` agree but for the

@@ -21,25 +21,29 @@ struct MutationOutcomeTests {
         let activated: JSONFlag?
         /// `endedBy`.
         let endedBy: String
-        /// Whether `leftOutWithOthers` is written.
-        let leftOutWithOthers: Bool
+        /// `leftOutWithOthers`, when written.
+        let leftOutWithOthers: JSONFlag?
         /// The verdict.
         let verdict: MutationVerdict
         /// Whether it is a crash kill.
         let isCrash: Bool
 
         var testDescription: String {
-            "\(outcome), activated \(activated.map { "\($0.value)" } ?? "absent"), \(endedBy) → \(verdict)"
+            let written = activated.map { "\($0.value)" } ?? "absent"
+            let leftOut = leftOutWithOthers.map { ", left out \($0.value)" } ?? ""
+            return "\(outcome), activated \(written), \(endedBy)\(leftOut) → \(verdict)"
         }
     }
 
-    /// Every raw outcome, with each `activated` a pass may record.
+    /// Every raw outcome, with each `activated` a pass may record, and a
+    /// `leftOutWithOthers` written true (a build error whatever the outcome)
+    /// or false (not left out).
     static let cases = [
         Case(
             outcome: "failed",
             activated: JSONFlag(true),
             endedBy: "stoppedAtFailedTest",
-            leftOutWithOthers: false,
+            leftOutWithOthers: nil,
             verdict: .killed,
             isCrash: false
         ),
@@ -47,7 +51,7 @@ struct MutationOutcomeTests {
             outcome: "runtimeError",
             activated: JSONFlag(true),
             endedBy: "stoppedAtCrash",
-            leftOutWithOthers: false,
+            leftOutWithOthers: nil,
             verdict: .killed,
             isCrash: true
         ),
@@ -55,7 +59,7 @@ struct MutationOutcomeTests {
             outcome: "passed",
             activated: nil,
             endedBy: "exited",
-            leftOutWithOthers: false,
+            leftOutWithOthers: nil,
             verdict: .survived,
             isCrash: false
         ),
@@ -63,7 +67,7 @@ struct MutationOutcomeTests {
             outcome: "passed",
             activated: JSONFlag(true),
             endedBy: "exited",
-            leftOutWithOthers: false,
+            leftOutWithOthers: nil,
             verdict: .survived,
             isCrash: false
         ),
@@ -71,7 +75,7 @@ struct MutationOutcomeTests {
             outcome: "passed",
             activated: JSONFlag(false),
             endedBy: "exited",
-            leftOutWithOthers: false,
+            leftOutWithOthers: nil,
             verdict: .noCoverage,
             isCrash: false
         ),
@@ -79,7 +83,7 @@ struct MutationOutcomeTests {
             outcome: "timeout",
             activated: nil,
             endedBy: "timedOut",
-            leftOutWithOthers: false,
+            leftOutWithOthers: nil,
             verdict: .timedOut,
             isCrash: false
         ),
@@ -87,7 +91,7 @@ struct MutationOutcomeTests {
             outcome: "buildError",
             activated: nil,
             endedBy: "couldNotRun",
-            leftOutWithOthers: false,
+            leftOutWithOthers: nil,
             verdict: .buildError,
             isCrash: false
         ),
@@ -95,8 +99,24 @@ struct MutationOutcomeTests {
             outcome: "buildError",
             activated: nil,
             endedBy: "couldNotRun",
-            leftOutWithOthers: true,
+            leftOutWithOthers: JSONFlag(true),
             verdict: .buildError,
+            isCrash: false
+        ),
+        Case(
+            outcome: "failed",
+            activated: JSONFlag(true),
+            endedBy: "exited",
+            leftOutWithOthers: JSONFlag(true),
+            verdict: .buildError,
+            isCrash: false
+        ),
+        Case(
+            outcome: "failed",
+            activated: JSONFlag(true),
+            endedBy: "stoppedAtFailedTest",
+            leftOutWithOthers: JSONFlag(false),
+            verdict: .killed,
             isCrash: false
         )
     ]
@@ -257,5 +277,6 @@ struct MutationOutcomeTests {
         #expect(keys.sorted().map(\.description) == [
             "a.swift:1:4 Z", "a.swift:1:5 Z", "a.swift:2:1 A", "a.swift:2:1 A (#2)", "a.swift:2:1 B", "b.swift:1:1 A"
         ])
+        #expect(zip(keys, keys).allSatisfy { key, same in (key < same) == false })
     }
 }

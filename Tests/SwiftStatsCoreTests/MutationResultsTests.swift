@@ -242,7 +242,7 @@ struct MutationResultsTests {
         #expect(results.mutants.map(\.after) == ["0", ">=", "0"])
         let entry = try #require(results.mutants.last)
         #expect(entry.outcome == nil && entry.endedBy == nil && entry.session == nil && entry.activated == .unknown)
-        #expect(entry.killedByComplete == .notRecorded)
+        #expect(entry.killedByComplete == .notRecorded && entry.reused == false)
         #expect(entry.before == "1" && entry.after == "0")
         #expect(results.end == nil)
         #expect(results.incompleteReason == "the results file is incomplete (1 of 1 mutants, with no end line)")

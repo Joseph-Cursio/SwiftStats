@@ -22,17 +22,18 @@ import Testing
 /// P3.5, its examples and its planted defects.
 extension ResultsFilePBT {
     /// P3.5's base runs, over the engine's 100: its rarest antecedent, a
-    /// tested key retired, fires in 78 of the meta-test's 1,000 files
-    /// (design D14; `ResultsFileGenTests`), and `(1 - 0.078)^200`, about
-    /// 10^-7, is the most a run misses it.
-    static let mutantRuns = 200
+    /// tested key retired, fires in 64 of the meta-test's 1,000 files
+    /// (design D14; `ResultsFileGenTests`), and `(1 - 0.064)^220`, about
+    /// 5 * 10^-7, is the most a run misses it (200 runs, enough at 78 of
+    /// 1,000, fell short once more headers were drawn mistyped).
+    static let mutantRuns = 220
     /// What P3.5's tally counts when a key's later line replaces an
-    /// earlier readable one (106 of 1,000 files).
+    /// earlier readable one (92 of 1,000 files).
     static let replaced = "a key tested twice"
     /// What it counts when a readable `retired` line drops a winning key
-    /// (78 of 1,000).
+    /// (64 of 1,000).
     static let retiredKey = "a tested key retired"
-    /// What it counts when a not-covered entry adds a key (323 of 1,000).
+    /// What it counts when a not-covered entry adds a key (317 of 1,000).
     static let addedNotCovered = "a not-covered mutant added"
     /// The antecedents P3.5 must reach at least once each.
     static let mutantAntecedents = [readsAsResults, replaced, retiredKey, addedNotCovered]

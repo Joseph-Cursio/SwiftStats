@@ -23,21 +23,26 @@ struct ResultsFilePBT {
     /// costs well under a millisecond, and an `end` line whose only fault
     /// is a reason SwiftMutator doesn't write, the only input on which a
     /// reader that doesn't check the reason skips too few lines, comes in
-    /// 37 of the meta-test's 1,000 files (design D14; 100 runs detected
-    /// that defect in 19 of 20 calibration runs), so `(1 - 0.037)^300`,
-    /// about 10^-5, is the most a run misses it.
+    /// 44 of the meta-test's 1,000 files (design D14; 100 runs detected
+    /// that defect in 19 of 20 calibration runs), so `(1 - 0.044)^300`,
+    /// about 10^-6, is the most a run misses it.
     static let skippedRuns = 300
     /// What P3.4's tally counts when the model reads the file as results
-    /// (design D14: `ResultsFileGenTests` counts 572 of 1,000 files).
+    /// (design D14: `ResultsFileGenTests` counts 574 of 1,000 files).
     static let readsAsResults = "a file read as results"
-    /// What it counts when such a file has a line skipped (500 of 1,000).
+    /// What it counts when such a file has a line skipped (488 of 1,000).
     static let skipsLines = "a file read as results with a line skipped"
-    /// What it counts when such a file has a line with no bytes (159 of
-    /// 1,000, so `(1 - 0.159)^300`, about 3 * 10^-23, is the most a run of
+    /// What it counts when such a file has a line with no bytes (161 of
+    /// 1,000, so `(1 - 0.161)^300`, about 10^-23, is the most a run of
     /// `skippedRuns` misses it).
     static let hasBlank = "a file read as results with a line that isn't counted"
+    /// What it counts when such a file skips a header whose
+    /// `provenance.toolchain` is written as a string (design D14: counted
+    /// by `ResultsFileGenTests`), the input on which a reader that takes
+    /// such a header reads a line written unreadable.
+    static let mistypedToolchainSkipped = "a file read as results skipping a header with a mistyped toolchain"
     /// The antecedents P3.4 must reach at least once each.
-    static let skippedAntecedents = [readsAsResults, skipsLines, hasBlank]
+    static let skippedAntecedents = [readsAsResults, skipsLines, hasBlank, mistypedToolchainSkipped]
     /// The recorded runs whose results files hold results: each fixture
     /// and case.
     static let recordedCases = [
@@ -48,6 +53,20 @@ struct ResultsFilePBT {
 
     /// No flaw.
     static let intact = ResultsLineDraft.Flaw(kind: .intact, slot: 0)
+    /// The nested key the reader decodes only when the header holds it.
+    static let toolchainKey = "provenance.toolchain"
+
+    /// Whether `draft`, read by the model as `expected`, skips a header
+    /// whose `provenance.toolchain` is written as a string.
+    static func skipsMistypedToolchain(_ draft: ResultsFileDraft, expected: ResultsFileModel.Expected) -> Bool {
+        zip(draft.lines, expected.labels).contains { line, label in
+            guard label == .unreadable, case let .header(header) = line.draft, header.flaw.kind == .nestedMistyped
+            else {
+                return false
+            }
+            return ResultsLineRenderer.flawedKey(of: line.draft, flaw: header.flaw) == toolchainKey
+        }
+    }
 
     /// The results `read` holds; nil when it refused the file or found only
     /// a `stopped` line.
@@ -160,7 +179,10 @@ struct ResultsFilePBT {
     /// it is a lone CR, which doesn't read.
     /// Why it might not: only files the model reads as results say which
     /// lines were skipped; a refused or `stopped`-only file is P3.6's.
-    /// "Increasing and 1-based" holds by construction and isn't stated.
+    /// "Increasing and 1-based" holds by construction and isn't stated. A
+    /// header whose `provenance.toolchain` is mistyped is drawn often (the
+    /// reader takes a header with none, so a reader that took a mistyped
+    /// one for none would read it).
     /// Oracle: the generating model (`ResultsFileModel`); planted defects:
     /// line numbers counted from 0, a lone CR not counted, unknown kinds
     /// skipped, empty lines counted, a `mutant` line read without its
@@ -186,6 +208,9 @@ struct ResultsFilePBT {
             }
             if expected.labels.contains(.notCounted) {
                 tally.fire(Self.hasBlank)
+            }
+            if Self.skipsMistypedToolchain(file.draft, expected: expected) {
+                tally.fire(Self.mistypedToolchainSkipped)
             }
             let read = Read { () throws(MutationFailure) in try MutationResultsFile.read(file.data) }
             if Self.checkSkipped(expected.unreadable, results: Self.results(of: read)) == false {

@@ -19,12 +19,12 @@ import Testing
 /// P1.5.
 extension BuildOutputPBT {
     /// P1.5's base runs, over the engine's 100: its rarest antecedent, a
-    /// decoy place, comes in 88 of 1,000 outputs (the generator's
-    /// meta-test), and design D14 needs `n >= ln(10^-6) / ln(1 - 0.088)`,
-    /// about 150, for a random run to miss it with probability below
+    /// decoy place, comes in 82 of 1,000 outputs (the generator's
+    /// meta-test), and design D14 needs `n >= ln(10^-6) / ln(1 - 0.082)`,
+    /// about 160, for a random run to miss it with probability below
     /// 10^-6. The run was sized at 180 when a read origin note, then in 78
     /// of 1,000, was the rarest; it stays, so the near headers (each of
-    /// nine faults in a few outputs in a hundred) are met in every run.
+    /// ten faults in a few outputs in a hundred) are met in every run.
     static let diagnosticRuns = 180
     /// What P1.5's tally counts when a diagnostic is read.
     static let readDiagnostic = "a diagnostic"
@@ -61,11 +61,18 @@ extension BuildOutputPBT {
     static let paddedOrigin = "a macro diagnostic before a padded origin"
     /// What P1.5's tally counts when a header's message is empty.
     static let emptyMessage = "a header with an empty message"
-    /// The antecedents P1.5 must reach at least once each.
+    /// What P1.5's tally counts when an empty line written with LF alone
+    /// ends a message, a plain line after it.
+    static let emptyLine = "an empty line ending a message before a plain line"
+    /// What P1.5's tally counts when a group's footnote ends a message with
+    /// no ID or group.
+    static let footnoteEnd = "a footnote ending a message with no ID"
+    /// The antecedents P1.5 must reach at least once each: those above,
+    /// and a message taking each form of near footnote.
     static let diagnosticAntecedents = [
         readDiagnostic, unidentifiedRun, innerSuffix, pastLimit, decoy, origin, barInMessage, otherDigitsGutter,
-        trailingWhiteSpace, otherBlank, nearOrigin, paddedOrigin, emptyMessage
-    ]
+        trailingWhiteSpace, otherBlank, nearOrigin, paddedOrigin, emptyMessage, emptyLine, footnoteEnd
+    ] + BuildOutputGen.NearFootnote.allCases.map(\.label)
 
     /// The diagnostics `sample`'s labels state, standard error first, each
     /// kept once, as the reader's doc comment states.
@@ -159,8 +166,12 @@ extension BuildOutputPBT {
             (files.contains(where: BuildOutputGen.endsAtOtherBlank), otherBlank),
             (files.contains { BuildOutputGen.macroBefore(.nearOrigin, in: $0) }, nearOrigin),
             (files.contains { BuildOutputGen.macroBefore(.paddedOrigin, in: $0) }, paddedOrigin),
-            (traits.contains(.emptyMessage), emptyMessage)
-        ]
+            (traits.contains(.emptyMessage), emptyMessage),
+            (files.contains(where: BuildOutputGen.endsAtEmptyLine), emptyLine),
+            (files.contains(where: BuildOutputGen.endsAtFootnote), footnoteEnd)
+        ] + BuildOutputGen.NearFootnote.allCases.map { form in
+            (files.contains { BuildOutputGen.takesNearFootnote(form, in: $0) }, form.label)
+        }
         for (didFire, label) in fired where didFire {
             tally.fire(label)
         }
@@ -186,9 +197,11 @@ extension BuildOutputPBT {
     /// can't spell a severity, so a header is only where a block wrote one.
     /// Each rule's edge must come up in some run (the tally): a bar after
     /// text or after other digits (no excerpt), white space ending a line
-    /// (dropped only at a message's end), a blank line not of spaces
-    /// ending a message, an origin note near miss or padded, an empty
-    /// message; the generator draws the rarer ones as blocks of their own.
+    /// (dropped only at a message's end), a blank line not of spaces, an
+    /// empty line or a footnote ending a message, a line that is a
+    /// footnote but for one part taken into one (each of four forms), an
+    /// origin note near miss or padded, an empty message; the generator
+    /// draws the rarer ones as blocks of their own.
     /// The run of 180 is sized for the rarest antecedent.
     /// Oracle: the generator's labels (each diagnostic known by
     /// construction from the interpreter's statement of these rules);
@@ -237,7 +250,7 @@ extension BuildOutputPBT {
     }
 
     /// The decided-rules generator draws a diagnostic twice within one file
-    /// in only 2 of 1,000 outputs (its meta-test), so P1.5's random runs
+    /// in only 1 of 1,000 outputs (its meta-test), so P1.5's random runs
     /// leave this case to this example: a reader keeping diagnostics once
     /// only across the two files would almost always pass them.
     @Test("the recorded diagnostics printed twice in the standard error are each kept once")

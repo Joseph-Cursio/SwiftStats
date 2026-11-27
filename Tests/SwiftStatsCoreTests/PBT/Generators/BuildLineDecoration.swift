@@ -6,7 +6,8 @@
 //  LF, and escape sequences Swift prints when colours aren't turned off
 //  (a CSI colour pair, a CSI with an intermediate byte, an OSC-8 link
 //  ended by `ESC \` or by BEL, a two-character escape, or a sequence cut
-//  off at the end of the line).
+//  off at the end of the line, an OSC cut just after its terminator's
+//  escape among them).
 //  Escapes go only into lines without one, at Character boundaries, and
 //  `BuildLineEscapes.strip` takes each out whole, so the line still reads
 //  as its text. One shape was B24's (U13, fixed in step 7c): when an
@@ -61,8 +62,11 @@ struct BuildLineDecoration: Hashable, Sendable {
     /// being a CSI's intermediates) and its final: the cursor's style.
     static let cursorStyleEscape = "\u{1B}[2 q"
     /// The sequences a line can end in, cut off: a bare escape, a CSI with
-    /// no final, part of one, and an OSC with no terminator.
-    static let truncations = ["\u{1B}", "\u{1B}[", "\u{1B}[1;3", "\u{1B}]8;;https://swift.org"]
+    /// no final, part of one, an OSC with no terminator, and one cut just
+    /// after its string terminator's escape, the line's last scalar.
+    static let truncations = [
+        "\u{1B}", "\u{1B}[", "\u{1B}[1;3", "\u{1B}]8;;https://swift.org", "\u{1B}]8;;https://swift.org\u{1B}"
+    ]
 
     /// Whether the line ends with CRLF rather than LF.
     let carriageReturn: Bool

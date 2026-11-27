@@ -19,12 +19,12 @@ extension BuildOutputPBT {
     /// P1.7's base runs: the engine's default.
     static let lineBreakRuns = 100
     /// What P1.7's tally counts when a line ended with LF now ends with
-    /// CRLF (design D14: the generator's meta-test counts it in 981 of
+    /// CRLF (design D14: the generator's meta-test counts it in 979 of
     /// 1,000 outputs, so 100 runs never miss it).
     static let lineFeedChanged = "a line feed made CRLF"
     /// What P1.7's tally counts when a last line with no line break now
-    /// ends with CRLF (the meta-test counts the `unterminated` trait in 294
-    /// of 1,000 outputs, so `(1 - 0.294)^100`, about 8 * 10^-16, is the
+    /// ends with CRLF (the meta-test counts the `unterminated` trait in 326
+    /// of 1,000 outputs, so `(1 - 0.326)^100`, about 7 * 10^-18, is the
     /// most a run misses it).
     static let unterminatedChanged = "an unterminated last line ended with CRLF"
     /// The antecedents P1.7 must reach at least once each.

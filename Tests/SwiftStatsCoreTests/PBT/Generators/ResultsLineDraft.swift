@@ -49,6 +49,12 @@ enum ResultsLineDraft: Sendable {
         case intact
         /// A required key's value written with another JSON type.
         case mistyped
+        /// A header's nested object, `provenance.toolchain` or
+        /// `provenance.swiftMutator`, written as a string: both are keys
+        /// SwiftMutator always writes, and a header that holds either
+        /// mistyped doesn't read. A required key's value mistyped, for any
+        /// other kind of line.
+        case nestedMistyped
         /// A required key's value written as `null`.
         case null
         /// An optional key's value written with another JSON type; a

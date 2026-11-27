@@ -18,7 +18,10 @@
 //  jamo included. Generated lines rarely hold a joining scalar, so a third
 //  of the wraps first write one into the line, where their first sequence
 //  then goes: in the line as read without the wrap too, so both readings
-//  the law compares see the same text. No sequence or scalar goes before
+//  the law compares see the same text. A quarter of the wraps likewise
+//  write a backslash into the line just after their last sequence (but a
+//  cut-off one, which a backslash would end): after a BEL-ended OSC it is
+//  text, where after `ESC` it would end the OSC. No sequence or scalar goes before
 //  a byte order mark that starts a line: the reader decodes each line with
 //  Foundation, which drops a mark there and keeps one anywhere else, so a
 //  sequence before it would change the line's text (outside P1.6's law;
@@ -71,6 +74,9 @@ enum EscapeWrapGen {
         /// The joining scalar written into the line first, at `start`, by
         /// its index in `EscapeWrapGen.joiningScalars`; nil for none.
         let joiner: Int?
+        /// Whether a backslash is written into the line just after the
+        /// last sequence, when it isn't a cut-off one.
+        let backslash: Bool
     }
 
     /// One line, as read without its wrap and as wrapped.
@@ -138,6 +144,15 @@ enum EscapeWrapGen {
             (stderrLines + logLines).count(where: \.isWrapped)
         }
 
+        /// Whether a line was wrapped in an OSC-8 link ended by BEL with a
+        /// backslash written just after its last sequence.
+        var bellBeforeBackslash: Bool {
+            let lines = stderrLines + logLines
+            return lines.indices.contains { index in
+                lines[index].isWrapped && wrap(at: index).map { $0.kind == .oscBell && $0.backslash } == true
+            }
+        }
+
         /// How many lines both files have.
         var lineCount: Int {
             original.stderrLines.count + original.logLines.count
@@ -175,6 +190,11 @@ enum EscapeWrapGen {
     static let joinerRate: Float = 0.5
     /// The share of wraps that write a joining scalar into the line first.
     static let writtenJoinerRate: Float = 0.33
+    /// The share of wraps that write a backslash after their last sequence.
+    static let backslashRate: Float = 0.25
+    /// The backslash a wrap may write after its last sequence: text after
+    /// a BEL, the end of a string terminator after `ESC`.
+    static let backslash: Unicode.Scalar = "\\"
     /// Scalars that join any scalar but a control before them: combining
     /// marks, a zero-width joiner, an emoji modifier.
     static let joiningScalars: [Unicode.Scalar] = ["\u{301}", "\u{308}", "\u{200D}", "\u{1F3FD}"]
@@ -195,9 +215,10 @@ enum EscapeWrapGen {
         Gen<Int>.value(in: 0...positionBound),
         Gen<Int>.value(in: 0...positionBound),
         Gen.bool(joinerRate),
-        Gen<Int>.value(in: joiningScalars.indices).optional(valueRate: writtenJoinerRate)
+        Gen<Int>.value(in: joiningScalars.indices).optional(valueRate: writtenJoinerRate),
+        Gen.bool(backslashRate)
     )
-    .map { Wrap(line: $0, kind: $1, start: $2, end: $3, beforeJoiner: $4, joiner: $5) }
+    .map { Wrap(line: $0, kind: $1, start: $2, end: $3, beforeJoiner: $4, joiner: $5, backslash: $6) }
 
     /// Generated output under the decided rules, and wraps for its lines.
     static let wrapped = zip(BuildOutputGen.output(.decided), wrap.array(of: wrapCount))
@@ -224,8 +245,6 @@ enum EscapeWrapGen {
             scalars.insert(joiningScalars[joiner], at: offset)
             forced = offset
         }
-        let plain = String(String.UnicodeScalarView(scalars))
-        let inside = insidePlaces(of: plain)
         let joiners = scalars.indices.filter { (letter + String(scalars[$0])).count == 1 }
         func place(_ position: Int) -> Int {
             let offset = wrap.beforeJoiner && joiners.isEmpty == false
@@ -234,6 +253,11 @@ enum EscapeWrapGen {
             return max(offset, firstPlace)
         }
         let inserts = inserts(of: wrap, scalarCount: scalars.count, first: forced, place: place)
+        if wrap.backslash, wrap.kind != .truncated, let last = inserts.map(\.offset).max() {
+            scalars.insert(backslash, at: last)
+        }
+        let plain = String(String.UnicodeScalarView(scalars))
+        let inside = insidePlaces(of: plain)
         var written = String.UnicodeScalarView()
         for offset in 0...scalars.count {
             for insert in inserts where insert.offset == offset {

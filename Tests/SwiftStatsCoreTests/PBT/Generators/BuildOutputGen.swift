@@ -15,7 +15,8 @@
 //  structure, footnotes, `info:` and `warning: ` lines; real lines from
 //  the recorded builds. Near-valid blocks: timing lines with one field
 //  wrong (an empty declaration most often) or a time past the bound,
-//  headers wrong in one field, a timing line without its tab; under the
+//  headers wrong in one field, a timing line without its tab, a line
+//  that is a footnote but for one part, which a message takes; under the
 //  decided rules, a diagnostic interrupted by a timing line (B10).
 //  Unrecognised blocks: wild lines of any scalars or
 //  of bytes that aren't UTF-8. Every line but a wild one may be wrapped
@@ -58,7 +59,7 @@ enum BuildOutputGen {
     /// of its own: the near-valid line closest to a function body's, which
     /// only `BuildLineGrammar.timingEntry`'s own guard refuses. Drawn only
     /// as one of the malformed branch's eleven faults, it reached about one
-    /// output in 36; this weight brings it to more than 0.3 per output
+    /// output in 36; this weight brings it to about 0.3 per output
     /// (design D14, counted by the generator's meta-test), so P1.1's 100
     /// runs never miss it.
     static let emptyDeclarationWeight = 2.0
@@ -90,9 +91,21 @@ enum BuildOutputGen {
     /// design D14 needs for P1.5's runs (counted by the generator's
     /// meta-test).
     static let blankEndedWeight = 2.0
+    /// Weight of a message with no ID taking a line that is a group's
+    /// footnote but for one part, a block of its own: no text starts `[#`
+    /// or ends `>`, so single blocks never draw one; this weight brings
+    /// each of the four forms past what design D14 needs for P1.5's runs
+    /// (counted by the generator's meta-test).
+    static let nearFootnoteWeight = 2.0
+    /// Weight of a message with no ID ended by an empty line or a group's
+    /// footnote, a plain line after it, a block of its own: single blocks
+    /// put either right after an open message, before a plain line, in
+    /// few outputs; this weight brings each past what design D14 needs for
+    /// P1.5's runs (counted by the generator's meta-test).
+    static let stopEndedWeight = 2.0
     /// Weight of a near miss among the single lines: each near header is
     /// where one of the grammar's refusal rules shows (an empty path, a
-    /// bare sigil, a white-space-led path among nine faults), and at the
+    /// bare sigil, a white-space-led path among ten faults), and at the
     /// weight of the other kinds each fault came in about two outputs in a
     /// hundred.
     static let nearMissWeight = 3.0
@@ -180,6 +193,8 @@ enum BuildOutputGen {
             (diagnosticWeight, diagnostic(rules)),
             (macroOriginWeight, macroOrigin(rules)),
             (blankEndedWeight, blankEnded(rules)),
+            (nearFootnoteWeight, nearFootnoted(rules)),
+            (stopEndedWeight, stopEnded(rules)),
             (rules == .decided ? interruptedWeight : neverWeight, interruptedDiagnostic),
             (classWeight, recorded(timings: true)),
             (sharedWeight, line(rules).map { [$0] })
@@ -193,6 +208,8 @@ enum BuildOutputGen {
             (diagnosticWeight, diagnostic(rules)),
             (macroOriginWeight, macroOrigin(rules)),
             (blankEndedWeight, blankEnded(rules)),
+            (nearFootnoteWeight, nearFootnoted(rules)),
+            (stopEndedWeight, stopEnded(rules)),
             (classWeight, recorded(timings: false)),
             (sharedWeight, line(rules).map { [$0] })
         )

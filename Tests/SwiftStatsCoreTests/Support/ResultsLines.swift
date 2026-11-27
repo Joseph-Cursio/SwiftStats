@@ -98,8 +98,8 @@ enum ResultsLines {
         var rerunBecause: String?
         /// Whether `reusedFrom` is written.
         var reused = false
-        /// Whether `leftOutWithOthers` is written.
-        var leftOutWithOthers = false
+        /// `leftOutWithOthers`, when written.
+        var leftOutWithOthers: JSONFlag?
     }
 
     /// The time limit a header records by default, in seconds.
@@ -227,8 +227,8 @@ enum ResultsLines {
         if mutant.reused {
             record["reusedFrom"] = ["resultsFile": "/earlier/results.jsonl", "session": 1]
         }
-        if mutant.leftOutWithOthers {
-            record["leftOutWithOthers"] = true
+        if let leftOut = mutant.leftOutWithOthers {
+            record["leftOutWithOthers"] = leftOut.value
         }
         return line(record)
     }

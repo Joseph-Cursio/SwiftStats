@@ -28,8 +28,8 @@ extension BuildOutputPBT {
     static let refusedLine = "a refused timing line"
     /// What P1.2's tally counts when a refused timing line comes right after
     /// a header or a line its message took (design D14: the generator's
-    /// meta-test counts it in 220 of 1,000 outputs, and `(1 - 0.22)^100`,
-    /// about 2 * 10^-11, is below 10^-6, so 100 runs suffice).
+    /// meta-test counts it in 208 of 1,000 outputs, and `(1 - 0.208)^100`,
+    /// about 7 * 10^-11, is below 10^-6, so 100 runs suffice).
     static let refusedInMessage = "a refused timing line right after a message's line"
     /// The antecedents P1.2 must reach at least once each.
     static let timingLineAntecedents = [refusedLine, refusedInMessage]

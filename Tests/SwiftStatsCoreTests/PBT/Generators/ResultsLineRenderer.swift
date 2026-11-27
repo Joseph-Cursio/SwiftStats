@@ -115,6 +115,18 @@ enum ResultsLineRenderer {
         }
     }
 
+    /// The nested keys a line of each kind must hold, as dotted paths, each
+    /// an object the reader decodes: a header's `provenance.toolchain` and
+    /// `provenance.swiftMutator`. Only a `nestedMistyped` flaw falls on
+    /// them: a header with no `provenance.toolchain` reads, as the reader
+    /// is built (an open question, so none is drawn).
+    static func nestedKeys(of draft: ResultsLineDraft) -> [String] {
+        if case .header = draft {
+            return ["provenance.toolchain", "provenance.swiftMutator"]
+        }
+        return []
+    }
+
     /// The optional keys a line of each kind holds whose type the reader
     /// checks, and that change nothing else when `null`.
     static func optionalKeys(of draft: ResultsLineDraft) -> [String] {
@@ -135,15 +147,21 @@ enum ResultsLineRenderer {
         }
     }
 
-    /// The key `flaw` falls on in a line drafted as `draft`; nil for a
-    /// flaw that falls on no key (intact, a cut, unknown keys), or on an
-    /// optional key's `null`.
+    /// The key `flaw` falls on in a line drafted as `draft`, a nested one
+    /// as a dotted path; nil for a flaw that falls on no key (intact, a
+    /// cut, unknown keys), or on an optional key's `null`.
     static func flawedKey(of draft: ResultsLineDraft, flaw: ResultsLineDraft.Flaw) -> String? {
         let required = requiredKeys(of: draft)
         let optional = optionalKeys(of: draft)
         switch flaw.kind {
         case .absent, .mistyped, .null:
             return required.isEmpty ? nil : required[flaw.slot % required.count]
+        case .nestedMistyped:
+            let nested = nestedKeys(of: draft)
+            if nested.isEmpty {
+                return required.isEmpty ? nil : required[flaw.slot % required.count]
+            }
+            return nested[flaw.slot % nested.count]
         case .optionalMistyped:
             if optional.isEmpty {
                 return required.isEmpty ? nil : required[flaw.slot % required.count]
@@ -207,9 +225,9 @@ enum ResultsLineRenderer {
             if let key {
                 object.removeValue(forKey: key)
             }
-        case .mistyped, .optionalMistyped:
+        case .mistyped, .nestedMistyped, .optionalMistyped:
             if let key {
-                object[key] = object[key] is String ? mistypedNumber : mistypedText
+                mistype(key.split(separator: ".").map(String.init), in: &object)
             }
         case .null, .optionalNull:
             if let key {
@@ -224,6 +242,20 @@ enum ResultsLineRenderer {
         case .cut, .intact:
             break
         }
+    }
+
+    /// `object` with the value at the key `path`, nested objects' keys
+    /// first, written with another JSON type.
+    private static func mistype(_ path: [String], in object: inout [String: Any]) {
+        guard let key = path.first else {
+            return
+        }
+        guard path.count > 1, var nested = object[key] as? [String: Any] else {
+            object[key] = object[key] is String ? mistypedNumber : mistypedText
+            return
+        }
+        mistype(Array(path.dropFirst()), in: &nested)
+        object[key] = nested
     }
 
     /// `object` as one JSON line, keys sorted and slashes unescaped, as

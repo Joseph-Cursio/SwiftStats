@@ -11,8 +11,8 @@
 //  words can't spell a severity, so a `: ` inside it never starts a
 //  header. Under the decided rules a Prepend scalar may end the path,
 //  just before the `:` of its line (B23, read so since step 7c). A
-//  header's place is a
-//  file's, a macro expansion's (`#name` or `@name`) or `<unknown>:<line>`.
+//  header's place is a file's, a macro expansion's (`#name` or `@name`,
+//  the name holding a digit, `_` or `.` too) or `<unknown>:<line>`.
 //
 
 import PropertyBased
@@ -52,8 +52,9 @@ extension BuildOutputGen {
     /// Where paths start: absolute, the recordings' root token, one with a
     /// space, a relative one, and one with a colon.
     static let roots = ["/Users/dev/Package", "@ROOT@", "/tmp/a b", "Sources", "/Volumes/x:y"]
-    /// The macros a diagnostic can be in.
-    static let macroNames = ["#expect", "#require", "@Test", "@Observable", "#Macros.stringify"]
+    /// The macros a diagnostic can be in: a name may hold a digit, `_`
+    /// and `.` after its sigil.
+    static let macroNames = ["#expect", "#require", "@Test", "@Observable", "#Macros.stringify", "#my_macro2"]
     /// What a timing line holds in place of a location.
     static let invalidLocation = "<invalid loc>"
 

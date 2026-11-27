@@ -43,7 +43,11 @@ struct ResultsFileGenTests {
             (expected.labels.contains(.notCounted), "a line not counted"),
             (draft.crlf, "CRLF"),
             (hasEndFaultyOnlyInReason(draft, expected: expected), "an end line whose only fault is its reason"),
-            (draft.finalBreak == false, "no final break")
+            (draft.finalBreak == false, "no final break"),
+            (
+                ResultsFilePBT.skipsMistypedToolchain(draft, expected: expected),
+                "a header with a mistyped toolchain skipped"
+            )
         ]
         .filter(\.0)
         .map(\.1) + Array(Set(labels)).sorted()
@@ -145,30 +149,32 @@ struct ResultsFileGenTests {
         let counts = try Self.counts(ResultsFileGen.file, labels: Self.labels(of:))
 
         #expect(counts == [
-            "CRLF": 148,
-            "a delta read": 67,
-            "a flawed delta": 11,
-            "a key retired then tested again": 76,
-            "a key tested twice": 106,
-            "a line flawed: absent": 51,
-            "a line flawed: cut": 54,
-            "a line flawed: mistyped": 50,
-            "a line flawed: null": 57,
-            "a line flawed: optionalMistyped": 60,
-            "a line flawed: optionalNull": 51,
-            "a line flawed: unknownKey": 65,
-            "a line not counted": 159,
-            "a line skipped": 500,
-            "a lone CR skipped": 56,
-            "a mutant line of a session no header started": 280,
-            "a not-covered mutant added": 323,
-            "a tested key retired": 78,
-            "a whole delta not read": 125,
-            "an end line whose only fault is its reason": 37,
+            "CRLF": 140,
+            "a delta read": 54,
+            "a flawed delta": 47,
+            "a header with a mistyped toolchain skipped": 62,
+            "a key retired then tested again": 61,
+            "a key tested twice": 92,
+            "a line flawed: absent": 36,
+            "a line flawed: cut": 42,
+            "a line flawed: mistyped": 53,
+            "a line flawed: nestedMistyped": 149,
+            "a line flawed: null": 45,
+            "a line flawed: optionalMistyped": 56,
+            "a line flawed: optionalNull": 43,
+            "a line flawed: unknownKey": 49,
+            "a line not counted": 161,
+            "a line skipped": 488,
+            "a lone CR skipped": 47,
+            "a mutant line of a session no header started": 283,
+            "a not-covered mutant added": 317,
+            "a tested key retired": 64,
+            "a whole delta not read": 97,
+            "an end line whose only fault is its reason": 44,
             "no final break": 92,
-            "outcome: refused: no header": 172,
-            "outcome: results": 572,
-            "outcome: stopped": 256
+            "outcome: refused: no header": 196,
+            "outcome: results": 574,
+            "outcome: stopped": 230
         ])
     }
 
@@ -179,14 +185,14 @@ struct ResultsFileGenTests {
         }
 
         #expect(counts == [
-            "outcome: refused by a newer format": 216,
-            "outcome: refused: no header": 189,
-            "outcome: results": 350,
-            "outcome: stopped": 245,
-            "refused after a header": 166,
-            "refused before any header": 50,
-            "refused by a flawed header": 68,
-            "refused by a whole header": 148
+            "outcome: refused by a newer format": 223,
+            "outcome: refused: no header": 191,
+            "outcome: results": 345,
+            "outcome: stopped": 241,
+            "refused after a header": 170,
+            "refused before any header": 53,
+            "refused by a flawed header": 82,
+            "refused by a whole header": 141
         ])
     }
 
@@ -201,11 +207,11 @@ struct ResultsFileGenTests {
         }
 
         #expect(appended == [
-            "appended results": 596
+            "appended results": 562
         ])
         #expect(reordered == [
-            "moved": 297,
-            "moved in results": 179
+            "moved": 280,
+            "moved in results": 175
         ])
     }
 

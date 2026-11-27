@@ -26,8 +26,12 @@ extension BuildOutputPBT {
     /// scalar after it into one Character (B24's shape; design D14: the
     /// wrap generator's meta-test counts it in more than 0.3 of inputs).
     static let joiningSequence = "a sequence joining the scalar after it"
+    /// What P1.6's tally counts when a backslash follows an OSC-8 link
+    /// ended by BEL, where it is text (design D14: counted by the wrap
+    /// generator's meta-test).
+    static let bellBeforeBackslash = "a BEL-ended sequence before a backslash"
     /// The antecedents P1.6 must reach at least once each.
-    static let escapeAntecedents = [wrappedLine, insideCharacter, joiningSequence]
+    static let escapeAntecedents = [wrappedLine, insideCharacter, joiningSequence, bellBeforeBackslash]
     /// How far apart the colour resets of the recorded example's lines are,
     /// in scalars, so each line's reset goes somewhere else.
     static let colourStep = 7
@@ -80,7 +84,8 @@ extension BuildOutputPBT {
                 start: wrap.start,
                 end: wrap.end,
                 beforeJoiner: wrap.beforeJoiner,
-                joiner: wrap.joiner
+                joiner: wrap.joiner,
+                backslash: wrap.backslash
             )
         }
         return EscapeWrapGen.Wrapped(original: output(stderr, log: log), wraps: placed)
@@ -89,7 +94,15 @@ extension BuildOutputPBT {
     /// A wrap of `kind` from `start` to `end`, before joining scalars when
     /// `joining`, of the first line until `wrapped(_:log:wraps:)` places it.
     static func wrap(_ kind: EscapeWrapGen.Kind, _ start: Int, _ end: Int, joining: Bool) -> EscapeWrapGen.Wrap {
-        EscapeWrapGen.Wrap(line: 0, kind: kind, start: start, end: end, beforeJoiner: joining, joiner: nil)
+        EscapeWrapGen.Wrap(
+            line: 0,
+            kind: kind,
+            start: start,
+            end: end,
+            beforeJoiner: joining,
+            joiner: nil,
+            backslash: false
+        )
     }
 
     // MARK: P1.6
@@ -110,7 +123,9 @@ extension BuildOutputPBT {
     /// sequences go at any scalar boundary since U13, inside Characters
     /// included, so half the wraps go before a joining scalar, and a third
     /// first write one into the line (in both files compared), so a
-    /// sequence joins the next scalar in some run (the tally).
+    /// sequence joins the next scalar in some run (the tally); a quarter
+    /// write a backslash after their last sequence, which is text after a
+    /// BEL and would end the OSC only after `ESC`.
     /// Oracle: metamorphic (the reading of the same lines without the
     /// sequences);
     /// planted defects: escapes read on Characters again (B24's fix
@@ -131,7 +146,8 @@ extension BuildOutputPBT {
             let fired = [
                 (lines.contains(where: \.isWrapped), Self.wrappedLine),
                 (lines.contains(where: \.isInsideCharacter), Self.insideCharacter),
-                (lines.contains(where: \.joins), Self.joiningSequence)
+                (lines.contains(where: \.joins), Self.joiningSequence),
+                (wrapped.bellBeforeBackslash, Self.bellBeforeBackslash)
             ]
             for (didFire, label) in fired where didFire {
                 tally.fire(label)

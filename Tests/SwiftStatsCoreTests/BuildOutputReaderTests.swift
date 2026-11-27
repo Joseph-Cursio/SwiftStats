@@ -200,6 +200,21 @@ struct BuildOutputReaderTests {
         #expect(output.unparsedTimingLines == 0)
     }
 
+    @Test("a timing line that is also a diagnostic's first line is a diagnostic in the task log, an entry on stderr")
+    func timingShapedHeader() throws {
+        let line = "1ms\t<invalid loc>\tp:1:2: warning: m"
+        let logged = Self.read([], log: [line])
+        let diagnostic = try #require(logged.diagnostics.first)
+        #expect(logged.diagnostics.count == 1 && logged.entries.isEmpty)
+        #expect(diagnostic.severity == .warning && diagnostic.message == "m")
+        #expect(diagnostic.location == .file(BuildPlace(path: "1ms\t<invalid loc>\tp", line: 1, column: 2)))
+        let errors = Self.read([line])
+        #expect(errors.diagnostics.isEmpty)
+        #expect(errors.entries == [
+            TimingEntry(kind: .function, hundredths: 100, place: nil, declaration: "p:1:2: warning: m")
+        ])
+    }
+
     @Test("a line ending with a carriage return reads as without it")
     func carriageReturn() {
         let output = BuildOutputReader.read(

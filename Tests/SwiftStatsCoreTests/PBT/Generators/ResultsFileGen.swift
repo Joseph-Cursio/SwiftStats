@@ -11,7 +11,9 @@
 //  lines with no bytes. Sessions are numbered 1 to 3, and lines name 1 to
 //  4, so a line of a session no readable header started comes up. Each
 //  typed line may be flawed (`ResultsLineDraft.FlawKind`), readable or
-//  not. Keys come from a pool: three at one place that differ only in the
+//  not; a header's nested `provenance.toolchain` or `swiftMutator`
+//  written as a string comes most often among a header's flaws. Keys come
+//  from a pool: three at one place that differ only in the
 //  operator or the occurrence, one path in both its composed and its
 //  decomposed spelling (one key to the reader), and two drawn from
 //  `MutantKeyGen`. Lines break with LF or CRLF, the last one or not. In
@@ -93,6 +95,13 @@ enum ResultsFileGen {
     static let intactAnyHeaderWeight = 1.0
     /// Weight of the other flaws, together.
     static let flawWeight = 1.0
+    /// Weight of a header's nested object mistyped, beside its other flaws:
+    /// drawn only as one of them, a file read as results skipping a header
+    /// whose `provenance.toolchain` is mistyped came in 2 of the meta-test's
+    /// 1,000 files, and a reader that takes such a header passed every
+    /// property; this weight brings it to 62 of 1,000, past what design D14
+    /// needs for P3.4's 300 runs (`(1 - 0.062)^300`, about 4 * 10^-9).
+    static let nestedHeaderWeight = 5.0
     /// Weight of a `mutant` line among the lines.
     static let mutantWeight = 6.0
     /// Weight of a header among the lines.
@@ -156,9 +165,16 @@ enum ResultsFileGen {
     /// A flaw of a line: intact, most of the time.
     static let flaw = zip(flawKind(intact: intactWeight), Gen<Int>.value(in: 0...largestSlot))
         .map(ResultsLineDraft.Flaw.init)
-    /// A flaw of a header: intact more often.
-    static let headerFlaw = zip(flawKind(intact: intactHeaderWeight), Gen<Int>.value(in: 0...largestSlot))
-        .map(ResultsLineDraft.Flaw.init)
+    /// A flaw of a header: intact more often, and its nested objects
+    /// mistyped more often than the other flaws.
+    static let headerFlaw = zip(
+        Gen.frequency(
+            (intactHeaderWeight + flawWeight, flawKind(intact: intactHeaderWeight)),
+            (nestedHeaderWeight, Gen.always(ResultsLineDraft.FlawKind.nestedMistyped))
+        ),
+        Gen<Int>.value(in: 0...largestSlot)
+    )
+    .map(ResultsLineDraft.Flaw.init)
     /// A flaw of a header in P3.6's files: intact less often.
     static let anyHeaderFlaw = zip(flawKind(intact: intactAnyHeaderWeight), Gen<Int>.value(in: 0...largestSlot))
         .map(ResultsLineDraft.Flaw.init)

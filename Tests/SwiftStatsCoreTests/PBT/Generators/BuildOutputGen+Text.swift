@@ -10,9 +10,11 @@
 //  header only where a block wrote one. Gaps are spaces, any inline
 //  fragment of `UnicodeGen` (accents, Hangul, emoji, Prepend scalars,
 //  controls, any scalar but a line break, tab or escape), a lone carriage
-//  return, which a word always follows, or a bar (` | `, `||`, `|=`),
+//  return, which a word always follows, a bar (` | `, `||`, `|=`),
 //  which a word always comes before, so the line is no excerpt: its first
-//  `|` has text before it that isn't spaces and digits. A continuation
+//  `|` has text before it that isn't spaces and digits, or a suffix part's
+//  opening (` [`, ` [#`), which a word always follows, so it is never
+//  closed and reads as message text. A continuation
 //  line may start with digits that aren't ASCII and a bar, which isn't an
 //  excerpt's gutter either. Suffix parts are a well-formed or malformed ID
 //  or group; continuation lines draw them rarely, so a long message often
@@ -73,6 +75,9 @@ extension BuildOutputGen {
     static let indentations = ["", "    ", "        ", "\t", "\u{661}\u{662} | ", "  \u{FF13}| "]
     /// The gaps that hold a bar, a word always before them.
     static let barGaps = [" | ", "||", "|="]
+    /// The gaps that open a suffix part, a word always after them, so the
+    /// part is never closed: an ID's or a group's opening.
+    static let bracketGaps = [SuffixedText.identifierOpening, SuffixedText.groupOpening]
     /// The white space a message line may end in: spaces, a no-break and
     /// an ideographic space (no tab: after a word ending `ms`, it would
     /// make a timing mark).
@@ -90,7 +95,8 @@ extension BuildOutputGen {
         (spaceWeight, Gen.always(" ")),
         (classWeight, UnicodeGen.inlineFragment),
         (classWeight, Gen.always("\r")),
-        (classWeight, Pick.element(of: barGaps))
+        (classWeight, Pick.element(of: barGaps)),
+        (classWeight, Pick.element(of: bracketGaps))
     )
 
     /// What a message line ends in after its parts: mostly nothing,

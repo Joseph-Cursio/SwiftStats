@@ -123,7 +123,9 @@ enum ResultsFileModel {
     /// The keys whose fault keeps a header's format from being read.
     static let versionKeys: Set<String> = ["kind", "formatVersion"]
     /// The flaws that fall on a key and keep it from decoding.
-    static let breakingKinds: Set<ResultsLineDraft.FlawKind> = [.absent, .mistyped, .null, .optionalMistyped]
+    static let breakingKinds: Set<ResultsLineDraft.FlawKind> = [
+        .absent, .mistyped, .nestedMistyped, .null, .optionalMistyped
+    ]
 
     /// What `draft` reads as.
     static func expected(of draft: ResultsFileDraft) -> Expected {

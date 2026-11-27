@@ -30,13 +30,13 @@ struct BuildOutputPBT {
     static let readingRuns = 100
     /// What P1.1's tally counts when the standard error holds a timing line
     /// valid but for its empty declaration, which must read as no entry
-    /// (design D14: the generator's meta-test counts it in more than 0.3 of
+    /// (design D14: the generator's meta-test counts it in 299 of 1,000
     /// outputs, so 100 runs never miss it).
     static let emptyDeclaration = "an empty-declaration timing line"
     /// What P1.1's tally counts when two of the moved function bodies share
     /// a place, so the mapper sums their times (design D14: the generator's
-    /// meta-test counts it in 269 of 1,000 outputs, so `(1 - 0.269)^100`,
-    /// about 2 * 10^-14, is the most a run misses it).
+    /// meta-test counts it in 256 of 1,000 outputs, so `(1 - 0.256)^100`,
+    /// about 10^-13, is the most a run misses it).
     static let summedBodies = "two function bodies' times to sum"
     /// The antecedents P1.1 must reach at least once each.
     static let readingAntecedents = placements + [emptyDeclaration, summedBodies]

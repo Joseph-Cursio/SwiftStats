@@ -5,8 +5,8 @@
 //  The single lines both files hold. Plain text (a message line's text at
 //  the top level, ignored there, taken by a header above it). Near misses:
 //  a header wrong in one field (no column, a capital severity, no space
-//  after the place's colon, a macro name with a space or only its sigil,
-//  an empty path, a path led by a tab or a no-break space, `<unknown>`
+//  after the place's colon, a macro name with a space, only its sigil or
+//  no sigil, an empty path, a path led by a tab or a no-break space, `<unknown>`
 //  with no line), or a timing line with a space for its tab; each is plain
 //  text.
 //  Structure: excerpts (one may end ` [word]`, M7 C2), excerpt notes,
@@ -39,6 +39,8 @@ extension BuildOutputGen {
         case noColumn
         /// No space after the place's last colon.
         case noSpace
+        /// A macro expansion's place whose name has no sigil.
+        case sigilLess
         /// A path led by a tab.
         case tabLedPath
         /// `<unknown>` with no line.
@@ -68,6 +70,9 @@ extension BuildOutputGen {
 
             case .noSpace:
                 "\(place.text):\(severity.rawValue): "
+
+            case .sigilLess:
+                "macro expansion expect:1:2: \(severity.rawValue): "
 
             case .tabLedPath:
                 "\t\(place.text): \(severity.rawValue): "
@@ -149,13 +154,16 @@ extension BuildOutputGen {
     )
     .map { BuildLineDraft(.structural, text: $0, traits: []) }
 
+    /// A group's footnote.
+    static let footnote = zip(Pick.element(of: groups), word).map { group, slug in
+        "[#\(group)]: <https://docs.swift.org/compiler/documentation/diagnostics/\(slug)>"
+    }
+
     /// A line that ends a message and is otherwise ignored.
     static let stopper = Gen.frequency(
         (classWeight, zip(Pick.element(of: stopperStarts), text).map { $0 + $1 }),
         (classWeight, Gen.always("error: Build failed")),
-        (classWeight, zip(Pick.element(of: groups), word).map { group, slug in
-            "[#\(group)]: <https://docs.swift.org/compiler/documentation/diagnostics/\(slug)>"
-        })
+        (classWeight, footnote)
     )
     .map { BuildLineDraft(.stopper, text: $0, traits: []) }
 

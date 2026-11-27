@@ -16,7 +16,8 @@
 //  decorated line with the origin text and another severity or a trailing
 //  form feed, names no origin. A block of its own puts a macro header
 //  right before one of these. Another ends a message with no ID at a blank
-//  line that isn't spaces only, a plain line after it. Under the decided rules a
+//  line that isn't spaces only, a plain line after it (the blocks around
+//  footnotes are in `BuildOutputGen+Footnotes`). Under the decided rules a
 //  diagnostic may also be interrupted: a header with no ID, up to two plain
 //  lines, a timing line, valid or one the grammar refuses (B10: either ends
 //  the message, and a refused one on the standard error is counted), and

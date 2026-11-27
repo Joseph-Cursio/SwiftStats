@@ -264,11 +264,15 @@ struct MarkdownNumberPBT {
         #expect(printed == "17976931348623157" + String(repeating: "0", count: 292))
     }
 
+    /// The generator's own finite edges, walked (design D14), values either
+    /// side of where Swift switches to an exponent among them: P7.1 draws
+    /// each about once in 210 cases, so `-0.0` printed with its sign slipped
+    /// past a quarter of its runs.
     @Test(
-        "values either side of where Swift switches to an exponent print in full",
-        arguments: [9_007_199_254_740_994.0, 0.00009999999999999999]
+        "every named finite edge prints in full as the shortest decimal that reads back as it",
+        arguments: NumberGen.finiteEdges
     )
-    func exponentEdges(value: Double) {
+    func finiteEdges(value: Double) {
         #expect(Self.checkExact(value, printed: MarkdownNumber.exact(value)))
     }
 

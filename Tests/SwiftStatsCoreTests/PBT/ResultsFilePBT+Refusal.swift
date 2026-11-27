@@ -24,8 +24,8 @@ extension ResultsFilePBT {
     /// P3.6's base runs, over the engine's 100: each outcome comes in 19
     /// to 35 files in a hundred, but a newer header that doesn't otherwise
     /// read, the only input on which a reader checking the format only of
-    /// readable headers fails, comes in about 7 (design D14: 68 of the
-    /// meta-test's 1,000), and 200 runs miss it with odds near 10^-6.
+    /// readable headers fails, comes in about 8 (design D14: 82 of the
+    /// meta-test's 1,000), and 200 runs miss it with odds below 10^-7.
     static let refusalRuns = 200
     /// What P3.6's tally counts when the model expects a refusal by a newer
     /// format.

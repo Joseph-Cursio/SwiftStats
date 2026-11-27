@@ -7,8 +7,9 @@ import Testing
 /// condition on an exact number of times, counted per input (a property's
 /// chance per run). Escapes: lines newly wrapped, a sequence inside a
 /// Character, a sequence whose last scalar joins the scalar after it (B24),
-/// each kind of sequence, a wild line wrapped, a line already escaped or
-/// not UTF-8 left as written, a byte order mark starting a wrapped line.
+/// each kind of sequence, a BEL-ended one before a backslash, a wild line
+/// wrapped, a line already escaped or not UTF-8 left as written, a byte
+/// order mark starting a wrapped line.
 /// Splits: a split, none, one right after a message, one right after a
 /// message with no ID, one before a timing line. Moves: a line moved,
 /// none, one that ended a message, one written with an escape or with no
@@ -39,6 +40,7 @@ struct BuildOutputChangeGenTests {
             (lines.contains(where: \.isInsideCharacter), "a sequence inside a Character"),
             (lines.contains(where: \.joins), "a sequence joining the scalar after it"),
             (applied.contains { original[$0].shape == .wild }, "a wild line wrapped"),
+            (wrapped.bellBeforeBackslash, "a BEL-ended sequence before a backslash"),
             (
                 offered.contains { original[$0].written.contains(EscapeWrapGen.escapeByte) },
                 "an escaped line left as written"
@@ -114,19 +116,20 @@ struct BuildOutputChangeGenTests {
         let counts = try Self.counts(EscapeWrapGen.wrapped, labels: Self.labels(of:))
 
         #expect(counts == [
-            "a line newly wrapped": 949,
-            "a line not UTF-8 left as written": 22,
-            "a sequence inside a Character": 794,
-            "a sequence joining the scalar after it": 773,
-            "a wild line wrapped": 75,
-            "a wrapped line starting with a byte order mark": 3,
-            "an escaped line left as written": 618,
-            "csi written": 647,
-            "cursorStyle written": 660,
-            "oscBell written": 633,
-            "oscTerminated written": 643,
-            "truncated written": 657,
-            "twoCharacter written": 636
+            "a BEL-ended sequence before a backslash": 266,
+            "a line newly wrapped": 947,
+            "a line not UTF-8 left as written": 16,
+            "a sequence inside a Character": 725,
+            "a sequence joining the scalar after it": 697,
+            "a wild line wrapped": 73,
+            "a wrapped line starting with a byte order mark": 7,
+            "an escaped line left as written": 610,
+            "csi written": 650,
+            "cursorStyle written": 681,
+            "oscBell written": 647,
+            "oscTerminated written": 651,
+            "truncated written": 636,
+            "twoCharacter written": 656
         ])
     }
 
@@ -135,11 +138,11 @@ struct BuildOutputChangeGenTests {
         let counts = try Self.counts(BuildOutputSplitGen.split, labels: Self.labels(of:))
 
         #expect(counts == [
-            "a split": 847,
-            "a split before a timing line": 233,
-            "a split right after a header with no ID": 191,
-            "a split right after a message": 402,
-            "no place to split": 153
+            "a split": 856,
+            "a split before a timing line": 202,
+            "a split right after a header with no ID": 228,
+            "a split right after a message": 468,
+            "no place to split": 144
         ])
     }
 
@@ -148,13 +151,13 @@ struct BuildOutputChangeGenTests {
         let counts = try Self.counts(BuildOutputSplitGen.move, labels: Self.labels(of:))
 
         #expect(counts == [
-            "a moved line that ended a message": 186,
-            "a moved line with no line break": 33,
-            "a moved line written with an escape": 92,
-            "a timing line moved": 723,
+            "a moved line that ended a message": 216,
+            "a moved line with no line break": 21,
+            "a moved line written with an escape": 96,
+            "a timing line moved": 696,
             "moved after a log line with no line break": 13,
-            "moved into an empty log": 73,
-            "nothing to move": 277
+            "moved into an empty log": 75,
+            "nothing to move": 304
         ])
     }
 }
