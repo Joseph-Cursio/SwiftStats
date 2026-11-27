@@ -19,10 +19,12 @@ import Testing
 /// P1.5.
 extension BuildOutputPBT {
     /// P1.5's base runs, over the engine's 100: its rarest antecedent, a
-    /// macro diagnostic whose origin note is read, comes in 78 of 1,000
-    /// outputs (the generator's meta-test), and design D14 needs
-    /// `n >= ln(10^-6) / ln(1 - 0.078)`, about 171, for a random run to
-    /// miss it with probability below 10^-6.
+    /// decoy place, comes in 88 of 1,000 outputs (the generator's
+    /// meta-test), and design D14 needs `n >= ln(10^-6) / ln(1 - 0.088)`,
+    /// about 150, for a random run to miss it with probability below
+    /// 10^-6. The run was sized at 180 when a read origin note, then in 78
+    /// of 1,000, was the rarest; it stays, so the near headers (each of
+    /// nine faults in a few outputs in a hundred) are met in every run.
     static let diagnosticRuns = 180
     /// What P1.5's tally counts when a diagnostic is read.
     static let readDiagnostic = "a diagnostic"
@@ -38,8 +40,32 @@ extension BuildOutputPBT {
     static let decoy = "a decoy place"
     /// What P1.5's tally counts when a macro diagnostic's origin is read.
     static let origin = "an origin note read"
+    /// What P1.5's tally counts when a header or a line its message took
+    /// holds a bar after text, which is no excerpt.
+    static let barInMessage = "a bar in a message line"
+    /// What P1.5's tally counts when a message takes a line led by digits
+    /// that aren't ASCII and a bar, which is no excerpt.
+    static let otherDigitsGutter = "a message taking a line led by other digits and a bar"
+    /// What P1.5's tally counts when a header or a line its message took
+    /// ends in white space.
+    static let trailingWhiteSpace = "a message line ending in white space"
+    /// What P1.5's tally counts when a blank line that isn't spaces only
+    /// ends a message, a plain line after it.
+    static let otherBlank = "a blank line not of spaces ending a message before a plain line"
+    /// What P1.5's tally counts when a macro diagnostic comes right before
+    /// a decorated line that is an origin note but for its severity or a
+    /// form feed.
+    static let nearOrigin = "a macro diagnostic before a near-miss origin"
+    /// What P1.5's tally counts when a macro diagnostic comes right before
+    /// an origin note whose text ends in white space.
+    static let paddedOrigin = "a macro diagnostic before a padded origin"
+    /// What P1.5's tally counts when a header's message is empty.
+    static let emptyMessage = "a header with an empty message"
     /// The antecedents P1.5 must reach at least once each.
-    static let diagnosticAntecedents = [readDiagnostic, unidentifiedRun, innerSuffix, pastLimit, decoy, origin]
+    static let diagnosticAntecedents = [
+        readDiagnostic, unidentifiedRun, innerSuffix, pastLimit, decoy, origin, barInMessage, otherDigitsGutter,
+        trailingWhiteSpace, otherBlank, nearOrigin, paddedOrigin, emptyMessage
+    ]
 
     /// The diagnostics `sample`'s labels state, standard error first, each
     /// kept once, as the reader's doc comment states.
@@ -119,13 +145,21 @@ extension BuildOutputPBT {
     /// Fires `tally`'s labels for what `sample` holds.
     static func tallyDiagnostics(_ sample: GeneratedBuildOutput, in tally: AntecedentTally) {
         let traits = sample.traits
+        let files = [sample.stderrLines, sample.logLines]
         let fired = [
             (labelledDiagnostics(sample).isEmpty == false, readDiagnostic),
-            ([sample.stderrLines, sample.logLines].contains(where: BuildOutputGen.takesUnidentified), unidentifiedRun),
+            (files.contains(where: BuildOutputGen.takesUnidentified), unidentifiedRun),
             (traits.contains(.innerSuffix), innerSuffix),
             (traits.contains(.crossesLimit), pastLimit),
             (traits.contains(.decoyPlace), decoy),
-            (traits.contains(.macroOrigin), origin)
+            (traits.contains(.macroOrigin), origin),
+            (files.contains(where: BuildOutputGen.barInMessage), barInMessage),
+            (files.contains(where: BuildOutputGen.takesNonASCIIGutter), otherDigitsGutter),
+            (files.contains(where: BuildOutputGen.endsInWhiteSpace), trailingWhiteSpace),
+            (files.contains(where: BuildOutputGen.endsAtOtherBlank), otherBlank),
+            (files.contains { BuildOutputGen.macroBefore(.nearOrigin, in: $0) }, nearOrigin),
+            (files.contains { BuildOutputGen.macroBefore(.paddedOrigin, in: $0) }, paddedOrigin),
+            (traits.contains(.emptyMessage), emptyMessage)
         ]
         for (didFire, label) in fired where didFire {
             tally.fire(label)
@@ -150,14 +184,24 @@ extension BuildOutputPBT {
     /// Why it might not: a wild line may read as anything, so with one
     /// present only the labelled diagnostics are required, in order; words
     /// can't spell a severity, so a header is only where a block wrote one.
-    /// The run of 180 is sized for the rarest antecedent (the tally).
+    /// Each rule's edge must come up in some run (the tally): a bar after
+    /// text or after other digits (no excerpt), white space ending a line
+    /// (dropped only at a message's end), a blank line not of spaces
+    /// ending a message, an origin note near miss or padded, an empty
+    /// message; the generator draws the rarer ones as blocks of their own.
+    /// The run of 180 is sized for the rarest antecedent.
     /// Oracle: the generator's labels (each diagnostic known by
     /// construction from the interpreter's statement of these rules);
     /// planted defects: the first completing line taken rather than the
     /// last (C2), a message with no ID taking no line (the checker's old
     /// B8 rule), the last matching place taken rather than the first, the
-    /// origin note never read, and the limit one line longer, each
-    /// detected in 20 of 20 calibration runs.
+    /// origin note never read, and the limit one line longer; and, since
+    /// the review, any line with a bar read as an excerpt, other digits
+    /// counted as an excerpt's, blank meaning spaces only, the trailing
+    /// white space kept, an origin note of any severity or untrimmed, a
+    /// bare sigil or an empty or white-space-led path read as a place, and
+    /// a header ending at its severity refused; each detected in 20 of 20
+    /// calibration runs.
     /// Tier: Strict (stop-ship).
     @Test(
         "a diagnostic's header and the lines that only continue it read as one diagnostic with what was written",
@@ -192,10 +236,10 @@ extension BuildOutputPBT {
         #expect(read.diagnostics.map(\.identifier) == ["pound_warning", "no_throw_in_try", "bridged_warning"])
     }
 
-    /// The decided-rules generator draws no diagnostic twice within one
-    /// file (its meta-test), so P1.5's random runs leave this case to this
-    /// example: a reader keeping diagnostics once only across the two files
-    /// would pass them.
+    /// The decided-rules generator draws a diagnostic twice within one file
+    /// in only 2 of 1,000 outputs (its meta-test), so P1.5's random runs
+    /// leave this case to this example: a reader keeping diagnostics once
+    /// only across the two files would almost always pass them.
     @Test("the recorded diagnostics printed twice in the standard error are each kept once")
     func repeatedDiagnosticsKeptOnce() {
         let sample = GeneratedBuildOutput(

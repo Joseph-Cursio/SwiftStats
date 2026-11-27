@@ -8,9 +8,15 @@
 //  rule the decoy is the place and the rest of the line is the message.
 //  Continuations come short (0 to 3), long (18 to 25, so the limit of 20
 //  is crossed) or long without a suffix until an ID on a line past the
-//  limit, which the message never reaches. An origin note follows any
+//  limit, which the message never reaches. A header's message is sometimes
+//  empty: the line ends at `<severity>:`. An origin note follows any
 //  header; only a macro header's message reads it, and only when the note
-//  comes right after the lines the message took. Under the decided rules a
+//  comes right after the lines the message took. Its text may end in
+//  spaces, a tab or a no-break space, which are trimmed; a near miss, a
+//  decorated line with the origin text and another severity or a trailing
+//  form feed, names no origin. A block of its own puts a macro header
+//  right before one of these. Another ends a message with no ID at a blank
+//  line that isn't spaces only, a plain line after it. Under the decided rules a
 //  diagnostic may also be interrupted: a header with no ID, up to two plain
 //  lines, a timing line, valid or one the grammar refuses (B10: either ends
 //  the message, and a refused one on the standard error is counted), and
@@ -45,6 +51,10 @@ extension BuildOutputGen {
     /// The share of interrupted diagnostics with a plain line ending in an
     /// ID after the refused timing line.
     static let resumedRate: Float = 0.5
+    /// The share of headers whose message is empty.
+    static let emptyMessageRate: Float = 0.1
+    /// Weight of an origin note written exactly.
+    static let exactOriginWeight = 3.0
 
     /// The severities, the most common first.
     static let severities: [BuildDiagnostic.Severity] = [.warning, .error, .note, .remark]
@@ -53,6 +63,14 @@ extension BuildOutputGen {
     /// The text of the note that names a macro expansion's origin, as
     /// `BuildLineGrammar`'s doc comment states it.
     static let originNote = "expanded code originates here"
+    /// What an origin note's text may end in, trimmed before it is matched
+    /// (Foundation's whitespaces: spaces and tabs).
+    static let originTrailings = [" ", "  ", "\t", "\u{A0}"]
+    /// The severities a near-miss origin line has instead of `note`.
+    static let otherSeverities: [BuildDiagnostic.Severity] = [.warning, .error, .remark]
+    /// What a near-miss origin line's text ends in that isn't trimmed: a
+    /// form feed.
+    static let untrimmedEnding = "\u{C}"
 
     /// A continuation line.
     static let continuation = continuationText.map { BuildLineDraft(.plain($0), text: $0.rendered, traits: []) }
@@ -159,26 +177,130 @@ extension BuildOutputGen {
         .eraseToAny()
     }
 
-    /// A diagnostic's first line under `rules`.
+    /// A diagnostic's first line under `rules`: its message sometimes
+    /// empty, the line ending at `<severity>:` (`emptyMessage`).
     static func header(_ rules: Rules) -> Generator<BuildLineDraft, AnySequence<Any>> {
         zip(
             headerPlace(rules),
             Pick.element(of: severities),
             headerMessage,
-            zip(filePlace(.current), Pick.element(of: severities)).optional(valueRate: decoyRate)
+            zip(filePlace(.current), Pick.element(of: severities)).optional(valueRate: decoyRate),
+            Gen.bool(emptyMessageRate)
         )
-        .map(headerLine)
+        .map { place, severity, message, decoy, empty in
+            guard empty else {
+                return headerLine(place: place, severity: severity, message: message, decoy: decoy)
+            }
+            return BuildLineDraft(
+                .header(location: place.location, severity: severity, message: SuffixedText("")),
+                text: "\(place.text): \(severity.rawValue):",
+                traits: place.traits.union([.emptyMessage])
+            )
+        }
         .eraseToAny()
     }
 
-    /// A macro expansion's origin note under `rules`.
+    /// A macro expansion's origin note under `rules`: written exactly, or
+    /// ending in white space that is trimmed (`paddedOrigin`); or a near
+    /// miss, a decorated line that names no origin (`nearOrigin`): another
+    /// severity, or a form feed after the text.
     static func origin(_ rules: Rules) -> Generator<BuildLineDraft, AnySequence<Any>> {
-        zip(Pick.element(of: originDecorations), filePlace(rules))
-            .map { decoration, place in
+        Gen.frequency(
+            (exactOriginWeight, zip(Pick.element(of: originDecorations), filePlace(rules)).map { decoration, place in
                 let text = "\(decoration)\(place.text): note: \(originNote)"
                 return BuildLineDraft(.origin(place.place), text: text, traits: place.traits)
+            }),
+            (classWeight, zip(Pick.element(of: originDecorations), filePlace(rules), Pick.element(of: originTrailings))
+                .map { decoration, place, padding in
+                    let text = "\(decoration)\(place.text): note: \(originNote)\(padding)"
+                    return BuildLineDraft(.origin(place.place), text: text, traits: place.traits.union([.paddedOrigin]))
+                }),
+            (classWeight, zip(Pick.element(of: originDecorations), filePlace(rules), Pick.element(of: otherSeverities))
+                .map { decoration, place, severity in
+                    let text = "\(decoration)\(place.text): \(severity.rawValue): \(originNote)"
+                    return BuildLineDraft(.structural, text: text, traits: place.traits.union([.nearOrigin]))
+                }),
+            (classWeight, zip(Pick.element(of: originDecorations), filePlace(rules)).map { decoration, place in
+                let text = "\(decoration)\(place.text): note: \(originNote)\(untrimmedEnding)"
+                return BuildLineDraft(.structural, text: text, traits: place.traits.union([.nearOrigin]))
+            })
+        )
+        .eraseToAny()
+    }
+
+    /// A macro diagnostic right before an origin note or a near miss (a
+    /// block of its own, so P1.5 meets both often): its message takes no
+    /// line, as the decorated line after it can't continue one.
+    static func macroOrigin(_ rules: Rules) -> Generator<[BuildLineDraft], AnySequence<Any>> {
+        zip(Pick.element(of: macroNames), number, number, Pick.element(of: severities), headerMessage, origin(rules))
+            .map { name, line, column, severity, message, origin in
+                let place = macroPlace(name: name, line: line, column: column)
+                return [headerLine(place: place, severity: severity, message: message, decoy: nil), origin]
             }
             .eraseToAny()
+    }
+
+    /// A diagnostic whose message has no ID or group, a blank line that
+    /// isn't spaces only (a tab, a no-break or an ideographic space), and
+    /// a plain line, which the blank line keeps out of the message (a
+    /// block of its own, so P1.5 meets it often).
+    static func blankEnded(_ rules: Rules) -> Generator<[BuildLineDraft], AnySequence<Any>> {
+        zip(headerPlace(rules), Pick.element(of: severities), text, Pick.element(of: otherBlanks), continuation)
+            .map { place, severity, body, blank, after in
+                [
+                    headerLine(place: place, severity: severity, message: SuffixedText(body), decoy: nil),
+                    BuildLineDraft(.blank, text: blank, traits: []),
+                    after
+                ]
+            }
+            .eraseToAny()
+    }
+
+    /// Whether, in `lines`, a blank line that isn't spaces only comes right
+    /// after a header or a line its message took, a plain line after it:
+    /// the blank line ends the message, the antecedent P1.5 needs for it.
+    static func endsAtOtherBlank(_ lines: [GeneratedBuildLine]) -> Bool {
+        lines.indices.dropFirst().dropLast().contains { index in
+            let blank = lines[index]
+            return blank.shape == .blank && blank.text.contains { $0 != " " }
+                && opensMessage(lines[index - 1].reading) && lines[index + 1].shape.continuesMessage
+        }
+    }
+
+    /// Whether, in `lines`, a header or a line its message took holds a bar
+    /// with text before it: no excerpt, as the reader must read it.
+    static func barInMessage(_ lines: [GeneratedBuildLine]) -> Bool {
+        lines.contains { opensMessage($0.reading) && $0.text.contains("|") }
+    }
+
+    /// Whether, in `lines`, a message took a line led by digits that aren't
+    /// ASCII and a bar: no excerpt's gutter, as the reader must read it.
+    static func takesNonASCIIGutter(_ lines: [GeneratedBuildLine]) -> Bool {
+        let leads = indentations.filter { $0.contains("|") }
+        return lines.contains { line in
+            line.reading == .continuation && leads.contains { line.text.hasPrefix($0) }
+        }
+    }
+
+    /// Whether, in `lines`, a header or a line its message took ends in
+    /// white space, which only the end of a whole message drops.
+    static func endsInWhiteSpace(_ lines: [GeneratedBuildLine]) -> Bool {
+        lines.contains { line in
+            opensMessage(line.reading) && line.text.unicodeScalars.last?.properties.isWhitespace == true
+        }
+    }
+
+    /// Whether, in `lines`, a macro diagnostic's message is followed by a
+    /// line with `trait` (`nearOrigin` or `paddedOrigin`), which decides
+    /// its origin.
+    static func macroBefore(_ trait: BuildLineTrait, in lines: [GeneratedBuildLine]) -> Bool {
+        lines.indices.contains { index in
+            guard case .diagnostic(let diagnostic) = lines[index].reading, case .macro = diagnostic.location else {
+                return false
+            }
+            let after = lines[(index + 1)...].prefix { $0.reading == .continuation }.count + index + 1
+            return lines.indices.contains(after) && lines[after].traits.contains(trait)
+        }
     }
 
     /// The header at `place` with `severity` and `message`, after `decoy`'s
@@ -195,11 +317,7 @@ extension BuildOutputGen {
             let shape = BuildLineShape.header(location: place.location, severity: severity, message: message)
             return BuildLineDraft(shape, text: line, traits: place.traits)
         }
-        let read = SuffixedText(
-            body: "\(place.text): \(severity.rawValue): \(message.body)",
-            identifier: message.identifier,
-            group: message.group
-        )
+        let read = message.with(body: "\(place.text): \(severity.rawValue): \(message.body)")
         return BuildLineDraft(
             .header(location: .file(decoyPlace.place), severity: decoySeverity, message: read),
             text: "\(decoyPlace.text): \(decoySeverity.rawValue): \(line)",

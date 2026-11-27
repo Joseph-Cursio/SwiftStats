@@ -24,6 +24,8 @@ enum BuildLineTrait: String, CaseIterable, Hashable, Sendable {
     /// A timing line valid but for its empty declaration field, which only
     /// `BuildLineGrammar.timingEntry`'s own guard refuses.
     case emptyDeclaration = "empty declaration"
+    /// A header whose line ends at `<severity>:`, its message empty.
+    case emptyMessage = "empty message"
     /// Wrapped in escape sequences, or ending in a truncated one.
     case escaped
     /// A header whose message takes a line ending in a suffix before the
@@ -40,8 +42,13 @@ enum BuildLineTrait: String, CaseIterable, Hashable, Sendable {
     case macroOrigin = "macro origin"
     /// A plain line that is a header but for one field.
     case nearHeader = "near header"
+    /// A decorated line that is an origin note but for its severity or a
+    /// form feed after its text, so it names no origin.
+    case nearOrigin = "near origin"
     /// A header whose message never completes with an ID or a group.
     case noSuffix = "no suffix"
+    /// An origin note whose text ends in white space that is trimmed.
+    case paddedOrigin = "padded origin"
     /// Holds a Prepend scalar where it joins no separator.
     case prepend
     /// Copied from a recorded build's output.

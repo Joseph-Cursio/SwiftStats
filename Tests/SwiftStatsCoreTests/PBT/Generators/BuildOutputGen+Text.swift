@@ -9,10 +9,16 @@
 //  no text spells a severity, `info` or `macro expansion`, and a line is a
 //  header only where a block wrote one. Gaps are spaces, any inline
 //  fragment of `UnicodeGen` (accents, Hangul, emoji, Prepend scalars,
-//  controls, any scalar but a line break, tab or escape) or a lone
-//  carriage return, which a word always follows. Suffix parts are a well-
-//  formed or malformed ID or group; continuation lines draw them rarely, so
-//  a long message often runs past the limit without completing.
+//  controls, any scalar but a line break, tab or escape), a lone carriage
+//  return, which a word always follows, or a bar (` | `, `||`, `|=`),
+//  which a word always comes before, so the line is no excerpt: its first
+//  `|` has text before it that isn't spaces and digits. A continuation
+//  line may start with digits that aren't ASCII and a bar, which isn't an
+//  excerpt's gutter either. Suffix parts are a well-formed or malformed ID
+//  or group; continuation lines draw them rarely, so a long message often
+//  runs past the limit without completing. A message line sometimes ends
+//  in white space after its parts, which only the end of a whole message
+//  drops.
 //
 
 import PropertyBased
@@ -29,6 +35,8 @@ extension BuildOutputGen {
     static let continuationNoPartWeight = 12.0
     /// Weight of no group part.
     static let noGroupWeight = 6.0
+    /// Weight of no trailing white space on a message line.
+    static let noTrailingWeight = 6.0
     /// The share of numbers written with a leading zero.
     static let paddedRate: Float = 0.2
 
@@ -59,8 +67,16 @@ extension BuildOutputGen {
     static let malformedIdentifiers = [" [Bad]", " [has space]", " []", " [dash-ed]"]
     /// Group parts no suffix reads: a dash, nothing, a space.
     static let malformedGroups = [" [#Bad-Group]", " [#]", " [#No Usage]"]
-    /// What a continuation line may start with: nothing, spaces, a tab.
-    static let indentations = ["", "    ", "        ", "\t"]
+    /// What a continuation line may start with: nothing, spaces, a tab, or
+    /// Arabic-Indic or fullwidth digits and a bar, which aren't an
+    /// excerpt's gutter (only spaces and ASCII digits are).
+    static let indentations = ["", "    ", "        ", "\t", "\u{661}\u{662} | ", "  \u{FF13}| "]
+    /// The gaps that hold a bar, a word always before them.
+    static let barGaps = [" | ", "||", "|="]
+    /// The white space a message line may end in: spaces, a no-break and
+    /// an ideographic space (no tab: after a word ending `ms`, it would
+    /// make a timing mark).
+    static let trailings = [" ", "   ", "\u{A0}", "\u{3000}"]
 
     /// A word: mostly one of `vocabulary`, sometimes drawn letter by letter
     /// from `safeLetters` (one draw against several, for speed).
@@ -73,7 +89,15 @@ extension BuildOutputGen {
     static let gap = Gen.frequency(
         (spaceWeight, Gen.always(" ")),
         (classWeight, UnicodeGen.inlineFragment),
-        (classWeight, Gen.always("\r"))
+        (classWeight, Gen.always("\r")),
+        (classWeight, Pick.element(of: barGaps))
+    )
+
+    /// What a message line ends in after its parts: mostly nothing,
+    /// sometimes white space.
+    static let trailing = Gen.frequency(
+        (noTrailingWeight, Gen.always("")),
+        (classWeight, Pick.element(of: trailings))
     )
 
     /// A text that starts and ends with a word.
@@ -84,18 +108,21 @@ extension BuildOutputGen {
     static let number = zip(Gen<Int>.value(in: 0...largestNumber), Gen.bool(paddedRate))
         .map { value, padded in (text: (padded ? "0" : "") + String(value), value: value) }
 
-    /// A header's message line: a text, often with an ID, sometimes a group.
-    static let headerMessage = zip(text, identifierPart(noPartWeight: headerNoPartWeight), groupPart)
-        .map { SuffixedText(body: $0, identifier: $1, group: $2) }
+    /// A header's message line: a text, often with an ID, sometimes a group,
+    /// sometimes trailing white space.
+    static let headerMessage = zip(text, identifierPart(noPartWeight: headerNoPartWeight), groupPart, trailing)
+        .map { SuffixedText(body: $0, identifier: $1, group: $2, trailing: $3) }
 
-    /// A continuation line's text: indented or not, rarely with a suffix.
+    /// A continuation line's text: indented or not, rarely with a suffix,
+    /// sometimes trailing white space.
     static let continuationText = zip(
         Pick.element(of: indentations),
         text,
         identifierPart(noPartWeight: continuationNoPartWeight),
-        groupPart
+        groupPart,
+        trailing
     )
-    .map { SuffixedText(body: $0 + $1, identifier: $2, group: $3) }
+    .map { SuffixedText(body: $0 + $1, identifier: $2, group: $3, trailing: $4) }
 
     /// A group part: mostly none, sometimes well formed or malformed.
     static let groupPart = Gen.frequency(

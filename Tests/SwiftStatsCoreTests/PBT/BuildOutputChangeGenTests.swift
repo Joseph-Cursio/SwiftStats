@@ -114,18 +114,19 @@ struct BuildOutputChangeGenTests {
         let counts = try Self.counts(EscapeWrapGen.wrapped, labels: Self.labels(of:))
 
         #expect(counts == [
-            "a line newly wrapped": 939,
-            "a line not UTF-8 left as written": 26,
-            "a sequence inside a Character": 763,
-            "a sequence joining the scalar after it": 713,
-            "a wild line wrapped": 126,
-            "a wrapped line starting with a byte order mark": 9,
-            "an escaped line left as written": 608,
-            "csi written": 689,
-            "oscBell written": 676,
-            "oscTerminated written": 683,
-            "truncated written": 703,
-            "twoCharacter written": 695
+            "a line newly wrapped": 949,
+            "a line not UTF-8 left as written": 22,
+            "a sequence inside a Character": 794,
+            "a sequence joining the scalar after it": 773,
+            "a wild line wrapped": 75,
+            "a wrapped line starting with a byte order mark": 3,
+            "an escaped line left as written": 618,
+            "csi written": 647,
+            "cursorStyle written": 660,
+            "oscBell written": 633,
+            "oscTerminated written": 643,
+            "truncated written": 657,
+            "twoCharacter written": 636
         ])
     }
 
@@ -135,9 +136,9 @@ struct BuildOutputChangeGenTests {
 
         #expect(counts == [
             "a split": 847,
-            "a split before a timing line": 282,
-            "a split right after a header with no ID": 86,
-            "a split right after a message": 375,
+            "a split before a timing line": 233,
+            "a split right after a header with no ID": 191,
+            "a split right after a message": 402,
             "no place to split": 153
         ])
     }
@@ -147,13 +148,13 @@ struct BuildOutputChangeGenTests {
         let counts = try Self.counts(BuildOutputSplitGen.move, labels: Self.labels(of:))
 
         #expect(counts == [
-            "a moved line that ended a message": 199,
-            "a moved line with no line break": 39,
-            "a moved line written with an escape": 84,
-            "a timing line moved": 761,
-            "moved after a log line with no line break": 17,
-            "moved into an empty log": 98,
-            "nothing to move": 239
+            "a moved line that ended a message": 186,
+            "a moved line with no line break": 33,
+            "a moved line written with an escape": 92,
+            "a timing line moved": 723,
+            "moved after a log line with no line break": 13,
+            "moved into an empty log": 73,
+            "nothing to move": 277
         ])
     }
 }

@@ -6,8 +6,9 @@
 //  lines, for P1.6. A line is wrapped only when it holds no escape and is
 //  UTF-8 (wild lines of any scalars included, whose reading isn't stated:
 //  the law compares two readings, not a label), and only by whole
-//  sequences: a CSI colour and its reset, an OSC-8 link ended by BEL or by
-//  `ESC \`, a two-character escape, or a sequence cut off at the line's
+//  sequences: a CSI colour and its reset, a CSI with an intermediate byte,
+//  an OSC-8 link ended by BEL or by `ESC \`, a two-character escape, or a
+//  sequence cut off at the line's
 //  end. Sequences go at Unicode scalar boundaries, not only Character
 //  ones (decided U13, which widened the law, B24): about half go just
 //  before a scalar that joins the scalar before it (a combining mark, a
@@ -40,6 +41,8 @@ enum EscapeWrapGen {
     enum Kind: CaseIterable, Hashable, Sendable {
         /// A CSI colour, and its reset after it.
         case csi
+        /// A CSI with an intermediate byte (a cursor style).
+        case cursorStyle
         /// An OSC-8 link ended by BEL, and its end.
         case oscBell
         /// An OSC-8 link ended by `ESC \`, and its end.
@@ -306,6 +309,9 @@ enum EscapeWrapGen {
 
         case .twoCharacter:
             [(start, BuildLineDecoration.twoCharacterEscape)]
+
+        case .cursorStyle:
+            [(start, BuildLineDecoration.cursorStyleEscape)]
         }
     }
 

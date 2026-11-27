@@ -65,7 +65,7 @@ enum BuildOutputGen {
     /// Weight of a function body timed more than once, a block of its own:
     /// single timing lines rarely put two function bodies at one place, so
     /// the mapper's sums were reached in about one output in 30; this
-    /// weight brings that to more than 0.3 per output (design D14, counted
+    /// weight brings that past a quarter of outputs (design D14, counted
     /// by the generator's meta-test), so P1.1's 100 runs never miss it.
     static let repeatedBodyWeight = 2.0
     /// Weight of an interrupted diagnostic under the decided rules, a block
@@ -76,6 +76,26 @@ enum BuildOutputGen {
     /// meta-tests), so P1.2's runs, and P1.8's moves of a line that ended a
     /// message, never miss them.
     static let interruptedWeight = 3.0
+    /// Weight of a macro diagnostic right before an origin note or a near
+    /// miss, a block of its own: an origin note after a macro header came
+    /// in about one output in 13, and its near misses in fewer; this weight
+    /// brings the macro header before a near miss and before a padded note
+    /// each past what design D14 needs for P1.5's runs (counted by the
+    /// generator's meta-test).
+    static let macroOriginWeight = 2.0
+    /// Weight of a message with no ID ended by a blank line that isn't
+    /// spaces only, a plain line after it, a block of its own: single
+    /// blocks put such a blank right after an open message, before a
+    /// plain line, in very few outputs; this weight brings it past what
+    /// design D14 needs for P1.5's runs (counted by the generator's
+    /// meta-test).
+    static let blankEndedWeight = 2.0
+    /// Weight of a near miss among the single lines: each near header is
+    /// where one of the grammar's refusal rules shows (an empty path, a
+    /// bare sigil, a white-space-led path among nine faults), and at the
+    /// weight of the other kinds each fault came in about two outputs in a
+    /// hundred.
+    static let nearMissWeight = 3.0
     /// Weight of each of B10's, B23's and B24's shapes under the decided
     /// rules.
     static let fixedShapeWeight = 1.0
@@ -116,7 +136,8 @@ enum BuildOutputGen {
         (classWeight, zip(position, position).map { BuildLineDecoration.Escape.oscBell(start: $0, end: $1) }),
         (classWeight, zip(position, position).map { BuildLineDecoration.Escape.oscTerminated(start: $0, end: $1) }),
         (classWeight, Pick.element(of: BuildLineDecoration.truncations).map(BuildLineDecoration.Escape.truncated)),
-        (classWeight, position.map { BuildLineDecoration.Escape.twoCharacter($0) })
+        (classWeight, position.map { BuildLineDecoration.Escape.twoCharacter($0) }),
+        (classWeight, position.map { BuildLineDecoration.Escape.cursorStyle($0) })
     )
 
     /// One line's decoration.
@@ -157,6 +178,8 @@ enum BuildOutputGen {
             (classWeight, overlongTiming.map { [$0] }),
             (rules == .decided ? fixedShapeWeight : neverWeight, prependedTime.map { [$0] }),
             (diagnosticWeight, diagnostic(rules)),
+            (macroOriginWeight, macroOrigin(rules)),
+            (blankEndedWeight, blankEnded(rules)),
             (rules == .decided ? interruptedWeight : neverWeight, interruptedDiagnostic),
             (classWeight, recorded(timings: true)),
             (sharedWeight, line(rules).map { [$0] })
@@ -168,6 +191,8 @@ enum BuildOutputGen {
     static func logBlock(_ rules: Rules) -> Generator<[BuildLineDraft], AnySequence<Any>> {
         Gen.frequency(
             (diagnosticWeight, diagnostic(rules)),
+            (macroOriginWeight, macroOrigin(rules)),
+            (blankEndedWeight, blankEnded(rules)),
             (classWeight, recorded(timings: false)),
             (sharedWeight, line(rules).map { [$0] })
         )
@@ -178,7 +203,7 @@ enum BuildOutputGen {
     static func line(_ rules: Rules) -> Generator<BuildLineDraft, AnySequence<Any>> {
         Gen.frequency(
             (classWeight, plain),
-            (classWeight, nearMiss),
+            (nearMissWeight, nearMiss),
             (classWeight, structural),
             (classWeight, stopper),
             (classWeight, otherWarning),

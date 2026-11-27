@@ -4,13 +4,16 @@
 //
 //  A line of a generated diagnostic's message, as the generator built it:
 //  a body that ends in a word, then an ID part and a group part, each
-//  absent, well formed or malformed. How it reads is stated from
-//  `DiagnosticText`'s doc comment, not by calling it: a trailing
-//  ` [#<letters and digits>]` is the group, a trailing ` [<lowercase
-//  letters, digits and _>]` before it the ID. A malformed group ends the
-//  text with `]` that no suffix reads, so nothing is taken off; a
-//  malformed ID stays in the message. The body never ends in white space
-//  or `]`, so only the parts the generator chose can read as suffixes.
+//  absent, well formed or malformed, then maybe trailing white space. How
+//  it reads is stated from `DiagnosticText`'s doc comment, not by calling
+//  it: trailing white space is dropped first, then a trailing ` [#<letters
+//  and digits>]` is the group, a trailing ` [<lowercase letters, digits
+//  and _>]` before it the ID. A malformed group ends the text with `]`
+//  that no suffix reads, so nothing is taken off; a malformed ID stays in
+//  the message. The body never ends in white space or `]`, so only the
+//  parts the generator chose can read as suffixes. Trailing white space
+//  is dropped only from the end of a whole message: a line the message
+//  takes before its last keeps it.
 //
 
 /// A message line's body and its ID and group parts.
@@ -39,10 +42,16 @@ struct SuffixedText: Hashable, Sendable {
     let identifier: Part
     /// The group part, after the ID part.
     let group: Part
+    /// White space after the parts (spaces, a no-break or an ideographic
+    /// space; never a tab, which after a word ending `ms` would make a
+    /// timing mark), or nothing.
+    let trailing: String
 
-    /// The text as written: body, ID part, group part.
+    /// The text as written: body, ID part, group part, trailing white
+    /// space.
     var rendered: String {
         body + Self.render(identifier, opening: Self.identifierOpening) + Self.render(group, opening: Self.groupOpening)
+            + trailing
     }
 
     /// The group the text ends with, when its group part is well formed.
@@ -65,7 +74,8 @@ struct SuffixedText: Hashable, Sendable {
         return nil
     }
 
-    /// The text without the parts that read as suffixes.
+    /// The text without the parts that read as suffixes or its trailing
+    /// white space: how it reads when it ends a message.
     var readMessage: String {
         let identifierText = readIdentifier == nil ? Self.render(identifier, opening: Self.identifierOpening) : ""
         let groupText = readGroup == nil ? Self.render(group, opening: Self.groupOpening) : ""
@@ -84,9 +94,16 @@ struct SuffixedText: Hashable, Sendable {
 
     /// `body` followed by its `identifier` and `group` parts.
     init(body: String, identifier: Part, group: Part) {
+        self.init(body: body, identifier: identifier, group: group, trailing: "")
+    }
+
+    /// `body` followed by its `identifier` and `group` parts and the white
+    /// space `trailing`.
+    init(body: String, identifier: Part, group: Part, trailing: String) {
         self.body = body
         self.identifier = identifier
         self.group = group
+        self.trailing = trailing
     }
 
     /// The text of `part`, opened by `opening` when well formed.
@@ -101,5 +118,11 @@ struct SuffixedText: Hashable, Sendable {
         case .valid(let name):
             opening + name + closing
         }
+    }
+
+    /// This text with `body` in place of its own: the same parts and
+    /// trailing white space.
+    func with(body: String) -> Self {
+        Self(body: body, identifier: identifier, group: group, trailing: trailing)
     }
 }

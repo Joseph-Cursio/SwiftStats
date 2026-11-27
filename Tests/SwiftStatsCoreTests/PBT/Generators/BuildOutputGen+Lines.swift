@@ -5,8 +5,10 @@
 //  The single lines both files hold. Plain text (a message line's text at
 //  the top level, ignored there, taken by a header above it). Near misses:
 //  a header wrong in one field (no column, a capital severity, no space
-//  after the place's colon, a macro name with a space, `<unknown>` with no
-//  line), or a timing line with a space for its tab; each is plain text.
+//  after the place's colon, a macro name with a space or only its sigil,
+//  an empty path, a path led by a tab or a no-break space, `<unknown>`
+//  with no line), or a timing line with a space for its tab; each is plain
+//  text.
 //  Structure: excerpts (one may end ` [word]`, M7 C2), excerpt notes,
 //  boxes and decorated notes. Stoppers: footnotes, `info:`, `error:`,
 //  `note:` and `remark:` lines that are no diagnostic. Other warnings:
@@ -25,12 +27,20 @@ extension BuildOutputGen {
     enum NearHeader: CaseIterable, Sendable {
         /// A macro name with a space.
         case badMacro
+        /// A macro name that is only its sigil.
+        case bareSigil
         /// The severity capitalised.
         case capitalized
+        /// No path before the line and column.
+        case emptyPath
+        /// A path led by a no-break space.
+        case noBreakLedPath
         /// No column.
         case noColumn
         /// No space after the place's last colon.
         case noSpace
+        /// A path led by a tab.
+        case tabLedPath
         /// `<unknown>` with no line.
         case unknownWithoutLine
 
@@ -41,14 +51,26 @@ extension BuildOutputGen {
             case .badMacro:
                 "macro expansion #bad name:1:2: \(severity.rawValue): "
 
+            case .bareSigil:
+                "macro expansion #:1:2: \(severity.rawValue): "
+
             case .capitalized:
                 "\(place.text): \(severity.rawValue.capitalized): "
+
+            case .emptyPath:
+                ":\(place.place.line):\(place.place.column): \(severity.rawValue): "
+
+            case .noBreakLedPath:
+                "\u{A0}\(place.text): \(severity.rawValue): "
 
             case .noColumn:
                 "\(place.place.path):\(place.place.line): \(severity.rawValue): "
 
             case .noSpace:
                 "\(place.text):\(severity.rawValue): "
+
+            case .tabLedPath:
+                "\t\(place.text): \(severity.rawValue): "
 
             case .unknownWithoutLine:
                 "<unknown>: \(severity.rawValue): "
@@ -66,6 +88,8 @@ extension BuildOutputGen {
     /// White space lines: empty, spaces, a tab, a no-break space and an
     /// ideographic space.
     static let blanks = ["", "    ", "\t", "\u{A0}", "\u{3000}"]
+    /// The blank lines that aren't spaces only.
+    static let otherBlanks = ["\t", "\u{A0}", "\u{3000}", " \t "]
     /// Structure lines with no text of their own.
     static let structureLines = ["   |", "   +--- macro expansion #expect ----------", "   +------------------"]
     /// How decorated notes start.
@@ -89,11 +113,7 @@ extension BuildOutputGen {
     /// Plain text at the top level, maybe indented, maybe with suffixes.
     static let plain = zip(Pick.element(of: indentations), headerMessage)
         .map { indentation, message in
-            let line = SuffixedText(
-                body: indentation + message.body,
-                identifier: message.identifier,
-                group: message.group
-            )
+            let line = message.with(body: indentation + message.body)
             return BuildLineDraft(.plain(line), text: line.rendered, traits: [])
         }
 
@@ -114,11 +134,7 @@ extension BuildOutputGen {
         headerMessage
     )
     .map { fault, place, severity, message in
-        let line = SuffixedText(
-            body: fault.prefix(place, severity: severity) + message.body,
-            identifier: message.identifier,
-            group: message.group
-        )
+        let line = message.with(body: fault.prefix(place, severity: severity) + message.body)
         return BuildLineDraft(.plain(line), text: line.rendered, traits: [.nearHeader])
     }
 

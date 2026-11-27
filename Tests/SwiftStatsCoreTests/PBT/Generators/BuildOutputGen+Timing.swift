@@ -9,8 +9,9 @@
 //  from the drawn numbers, never parsed. A malformed one holds `ms<TAB>`
 //  and states no entry: one fault in the time (none, signed, fullwidth
 //  digits, an empty or three-digit fraction) or in the fields (an empty
-//  declaration, a fourth field, a place without its column, starting with
-//  a space, or `<invalid>`); a line whose only fault is an empty
+//  declaration, a fourth field, a place without its column, with no path,
+//  starting with a space or a no-break space, or `<invalid>`); a line
+//  whose only fault is an empty
 //  declaration also comes as a block of its own. A function body may be
 //  timed two or three times at one place, a block whose times the mapper
 //  sums. An overlong one is valid but for 13 or more
@@ -78,10 +79,14 @@ extension BuildOutputGen {
     enum FieldFault: CaseIterable, Sendable {
         /// A third field, empty.
         case emptyDeclaration
+        /// A place with no path before its line and column.
+        case emptyPath
         /// A fourth field.
         case extraField
         /// `<invalid>` in place of `<invalid loc>`.
         case misspelledInvalid
+        /// A place starting with a no-break space.
+        case noBreakPath
         /// A place without its column.
         case noColumn
         /// A place starting with a space.
@@ -96,8 +101,14 @@ extension BuildOutputGen {
             case .extraField:
                 place.text + "\tfunc\textra"
 
+            case .emptyPath:
+                ":\(place.place.line):\(place.place.column)"
+
             case .misspelledInvalid:
                 "<invalid>"
+
+            case .noBreakPath:
+                "\u{A0}" + place.text
 
             case .noColumn:
                 "\(place.place.path):\(place.place.line)"

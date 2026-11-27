@@ -4,8 +4,9 @@
 //
 //  How a generated build-output line is written around its text: CRLF or
 //  LF, and escape sequences Swift prints when colours aren't turned off
-//  (a CSI colour pair, an OSC-8 link ended by `ESC \` or by BEL, a
-//  two-character escape, or a sequence cut off at the end of the line).
+//  (a CSI colour pair, a CSI with an intermediate byte, an OSC-8 link
+//  ended by `ESC \` or by BEL, a two-character escape, or a sequence cut
+//  off at the end of the line).
 //  Escapes go only into lines without one, at Character boundaries, and
 //  `BuildLineEscapes.strip` takes each out whole, so the line still reads
 //  as its text. One shape was B24's (U13, fixed in step 7c): when an
@@ -26,6 +27,9 @@ struct BuildLineDecoration: Hashable, Sendable {
         /// A CSI colour, opened before the Character at `start` and reset
         /// before the one at `end`.
         case csi(start: Int, end: Int)
+        /// A CSI with an intermediate byte (a cursor style) before the
+        /// Character at the position.
+        case cursorStyle(Int)
         /// An OSC-8 link ended by BEL, around the same span.
         case oscBell(start: Int, end: Int)
         /// An OSC-8 link ended by `ESC \`, around the same span.
@@ -53,6 +57,9 @@ struct BuildLineDecoration: Hashable, Sendable {
     static let oscTerminatedClose = "\u{1B}]8;;\u{1B}\\"
     /// A two-character escape (save cursor).
     static let twoCharacterEscape = "\u{1B}7"
+    /// A CSI with a parameter, an intermediate byte (a space, 0x20 to 0x2F
+    /// being a CSI's intermediates) and its final: the cursor's style.
+    static let cursorStyleEscape = "\u{1B}[2 q"
     /// The sequences a line can end in, cut off: a bare escape, a CSI with
     /// no final, part of one, and an OSC with no terminator.
     static let truncations = ["\u{1B}", "\u{1B}[", "\u{1B}[1;3", "\u{1B}]8;;https://swift.org"]
@@ -102,6 +109,9 @@ struct BuildLineDecoration: Hashable, Sendable {
 
         case .twoCharacter(let position):
             [(placed(position, after: twoCharacterEscape), twoCharacterEscape)]
+
+        case .cursorStyle(let position):
+            [(placed(position, after: cursorStyleEscape), cursorStyleEscape)]
         }
         var written = ""
         for (index, character) in characters.enumerated() {

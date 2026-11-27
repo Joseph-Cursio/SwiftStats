@@ -35,7 +35,8 @@ struct BuildOutputPBT {
     static let emptyDeclaration = "an empty-declaration timing line"
     /// What P1.1's tally counts when two of the moved function bodies share
     /// a place, so the mapper sums their times (design D14: the generator's
-    /// meta-test counts it in more than 0.3 of outputs).
+    /// meta-test counts it in 269 of 1,000 outputs, so `(1 - 0.269)^100`,
+    /// about 2 * 10^-14, is the most a run misses it).
     static let summedBodies = "two function bodies' times to sum"
     /// The antecedents P1.1 must reach at least once each.
     static let readingAntecedents = placements + [emptyDeclaration, summedBodies]
