@@ -238,6 +238,8 @@ struct MutationResultsTests {
         #expect(results.mutants.map(\.key.line) == [1, 3, 4])
         #expect(results.mutants.map(\.verdict) == [.notCovered, .killed, .notCovered])
         #expect(results.mutants.map(\.fileSHA256) == [nil, nil, Self.firstHash])
+        #expect(results.mutants.map(\.before) == ["1", ">", "1"])
+        #expect(results.mutants.map(\.after) == ["0", ">=", "0"])
         let entry = try #require(results.mutants.last)
         #expect(entry.outcome == nil && entry.endedBy == nil && entry.session == nil && entry.activated == .unknown)
         #expect(entry.killedByComplete == .notRecorded)

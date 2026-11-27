@@ -85,11 +85,16 @@ enum ResultsFileModel {
         /// A not-covered mutant's file hash in the last readable tree; nil
         /// for a tested one.
         let notCoveredFileSHA256: String?
+        /// The code its snapshot replaces.
+        let before: String
+        /// What its snapshot puts in that code's place.
+        let after: String
 
-        /// The three, for a failure report.
+        /// The five, for a failure report.
         var testDescription: String {
             "\(marker), session \(session.map(String.init) ?? "none"), "
-                + "hash \(notCoveredFileSHA256.map { String($0.prefix(Self.shownHashLength)) } ?? "none")"
+                + "hash \(notCoveredFileSHA256.map { String($0.prefix(Self.shownHashLength)) } ?? "none"), "
+                + "\(before) -> \(after)"
         }
     }
 

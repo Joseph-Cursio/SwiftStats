@@ -34,6 +34,19 @@ enum ResultsLineObjects {
         "listed by draft \(tag)"
     }
 
+    /// The code a `mutant` line tagged `tag` replaces, and what it puts in
+    /// its place: the two differ, and differ from line to line, so a reader
+    /// that swaps or mixes them up reads something else.
+    static func snapshot(_ tag: Int) -> (before: String, after: String) {
+        ("x > \(tag)", "x >= \(tag)")
+    }
+
+    /// The code a not-covered entry of the header tagged `tag` replaces,
+    /// and what it puts in its place.
+    static func listedSnapshot(_ tag: Int) -> (before: String, after: String) {
+        ("\(tag) + 1", "\(tag) - 1")
+    }
+
     /// The object of `line`, before its flaw, its keys from `keys`; empty
     /// for a line that isn't an object.
     static func object(of line: ResultsFileDraft.Line, keys: [MutantKey]) -> [String: Any] {
@@ -126,7 +139,8 @@ enum ResultsLineObjects {
         if header.listsNotCovered {
             object["mutantsNotCovered"] = header.notCovered.map { index in
                 var entry = keyObject(key(at: index, in: keys))
-                entry["snapshot"] = ["after": "0", "before": "1", "description": listedMarker(tag)]
+                let (before, after) = listedSnapshot(tag)
+                entry["snapshot"] = ["after": after, "before": before, "description": listedMarker(tag)]
                 return entry
             }
         }
@@ -141,7 +155,7 @@ enum ResultsLineObjects {
             "session": mutant.session,
             "outcome": ResultsLineRenderer.outcomes[mutant.outcome % ResultsLineRenderer.outcomes.count],
             "endedBy": ResultsLineRenderer.endings[mutant.ending % ResultsLineRenderer.endings.count],
-            "snapshot": ["after": ">=", "before": ">", "description": marker(tag)],
+            "snapshot": ["after": snapshot(tag).after, "before": snapshot(tag).before, "description": marker(tag)],
             "exitStatus": exitStatus,
             "durationSeconds": durationSeconds,
             "killedBy": [["name": "checks()"]],

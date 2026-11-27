@@ -133,20 +133,26 @@ extension ResultsFileModel {
             }
             var mutants: [MutantKey: Mutant] = [:]
             for (key, winner) in winners {
+                let snapshot = ResultsLineObjects.snapshot(winner.tag)
                 mutants[key] = Mutant(
                     marker: ResultsLineObjects.marker(winner.tag),
                     session: winner.session,
-                    notCoveredFileSHA256: nil
+                    notCoveredFileSHA256: nil,
+                    before: snapshot.before,
+                    after: snapshot.after
                 )
             }
             let tree = lastHeader.tree.map { ResultsLineRenderer.trees[$0] } ?? [:]
             for index in lastHeader.notCovered {
                 let key = ResultsLineObjects.key(at: index, in: keys)
                 if mutants[key] == nil {
+                    let snapshot = ResultsLineObjects.listedSnapshot(lastHeader.tag)
                     mutants[key] = Mutant(
                         marker: ResultsLineObjects.listedMarker(lastHeader.tag),
                         session: nil,
-                        notCoveredFileSHA256: tree[key.path]
+                        notCoveredFileSHA256: tree[key.path],
+                        before: snapshot.before,
+                        after: snapshot.after
                     )
                 }
             }

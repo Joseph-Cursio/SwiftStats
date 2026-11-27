@@ -6,7 +6,8 @@
 //  readable `mutant` line of each key wins, a readable `retired` line drops
 //  the key, a line of a session with no readable header is skipped, and
 //  the last readable header's not-covered entries add every key absent
-//  from the winning set, with their file hash from that header's tree.
+//  from the winning set, with their file hash from that header's tree;
+//  each mutant keeps its line's snapshot, before and after.
 //  With its examples (a key tested then retired comes back not covered;
 //  the two spellings of an accented path are one key, the later line
 //  winning) and the meta-test feeding planted defects' readings to its
@@ -41,7 +42,33 @@ extension ResultsFilePBT {
         ResultsFileModel.Mutant(
             marker: recorded.description,
             session: recorded.session,
-            notCoveredFileSHA256: recorded.session == nil ? recorded.fileSHA256 : nil
+            notCoveredFileSHA256: recorded.session == nil ? recorded.fileSHA256 : nil,
+            before: recorded.before,
+            after: recorded.after
+        )
+    }
+
+    /// `mutant` with its snapshot's `after` read as its `before` too: a
+    /// planted defect's reading.
+    static func beforeFromAfter(_ mutant: RecordedMutant) -> RecordedMutant {
+        RecordedMutant(
+            key: mutant.key,
+            verdict: mutant.verdict,
+            outcome: mutant.outcome,
+            activated: mutant.activated,
+            endedBy: mutant.endedBy,
+            exitStatus: mutant.exitStatus,
+            killedBy: mutant.killedBy,
+            failedTestCount: mutant.failedTestCount,
+            killedByComplete: mutant.killedByComplete,
+            fileSHA256: mutant.fileSHA256,
+            before: mutant.after,
+            after: mutant.after,
+            description: mutant.description,
+            session: mutant.session,
+            durationSeconds: mutant.durationSeconds,
+            rerunBecause: mutant.rerunBecause,
+            reused: mutant.reused
         )
     }
 
@@ -127,8 +154,8 @@ extension ResultsFilePBT {
     /// line per key wins, `retired` removes a key, a line of a session with
     /// no readable header is skipped, and the last readable header's
     /// not-covered entries add every key absent from the final winning
-    /// set, with that header's tree's file hash; as many tested as winning
-    /// keys.
+    /// set, with that header's tree's file hash; each keeps its line's
+    /// snapshot, before and after; as many tested as winning keys.
     /// Why it holds: `MutationResultsFile`'s header (the last `mutant` line
     /// of a key wins and a `retired` line drops the earlier ones; the last
     /// readable header's `mutantsNotCovered` entries that no line tested
@@ -144,7 +171,8 @@ extension ResultsFilePBT {
     /// not covered, a `projectDelta`'s base not checked, and lines keyed
     /// without the occurrence, each detected in 20 of 20 calibration runs;
     /// the delta's tree hash not checked, in 18 of 20 (P3.4 detects that
-    /// one in 20 of 20).
+    /// one in 20 of 20); since the review, a tested mutant's `before` read
+    /// from its `after`, in 20 of 20.
     /// Tier: Strict (stop-ship).
     @Test(
         "the mutants are the model's: the last readable line of a key wins, retired drops it, not-covered fills in",
@@ -199,12 +227,16 @@ extension ResultsFilePBT {
             ResultsFileGen.fixedKeys[0]: ResultsFileModel.Mutant(
                 marker: "listed by draft 3",
                 session: nil,
-                notCoveredFileSHA256: ResultsLineRenderer.hashB
+                notCoveredFileSHA256: ResultsLineRenderer.hashB,
+                before: "3 + 1",
+                after: "3 - 1"
             ),
             ResultsFileGen.fixedKeys[2]: ResultsFileModel.Mutant(
                 marker: "draft 2",
                 session: 1,
-                notCoveredFileSHA256: nil
+                notCoveredFileSHA256: nil,
+                before: "x > 2",
+                after: "x >= 2"
             )
         ])
         #expect(Self.checkMutants(expected, results: results))
@@ -260,6 +292,12 @@ extension ResultsFilePBT {
             Self.checkMutants(
                 ResultsFileModel.expected(of: retired),
                 results: Self.results(retiredRead, mutants: retiredRead.mutants, tested: 1)
+            )
+        }
+        PlantedDefect.expectDetected("a snapshot's before read from its after", sourceLocation: #_sourceLocation) {
+            Self.checkMutants(
+                ResultsFileModel.expected(of: Self.draft([header, tested])),
+                results: Self.results(firstRead, mutants: mutants.map(Self.beforeFromAfter), tested: 1)
             )
         }
     }

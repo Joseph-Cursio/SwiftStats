@@ -33,8 +33,8 @@ struct ResultsFilePBT {
     /// What it counts when such a file has a line skipped (500 of 1,000).
     static let skipsLines = "a file read as results with a line skipped"
     /// What it counts when such a file has a line with no bytes (159 of
-    /// 1,000, so `(1 - 0.159)^100`, about 3 * 10^-8, is the most a run
-    /// misses it).
+    /// 1,000, so `(1 - 0.159)^300`, about 3 * 10^-23, is the most a run of
+    /// `skippedRuns` misses it).
     static let hasBlank = "a file read as results with a line that isn't counted"
     /// The antecedents P3.4 must reach at least once each.
     static let skippedAntecedents = [readsAsResults, skipsLines, hasBlank]
