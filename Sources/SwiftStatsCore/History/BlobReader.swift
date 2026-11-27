@@ -47,8 +47,9 @@ enum BlobReader {
             let headerText = String(bytes: output[position..<lineEnd], encoding: .utf8) ?? ""
             let header = headerText.split(separator: " ")
             position = output.index(after: lineEnd)
-            // `<name> missing` has no content.
-            guard header.count == headerFieldCount, let size = Int(header.last ?? "") else {
+            // `<name> missing` has no content, and git never writes a
+            // negative size: either is skipped as a header line alone.
+            guard header.count == headerFieldCount, let size = Int(header.last ?? ""), size >= 0 else {
                 continue
             }
             let end = output.index(position, offsetBy: size, limitedBy: output.endIndex) ?? output.endIndex
