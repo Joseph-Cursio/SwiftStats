@@ -48,6 +48,20 @@ struct PBTTraceTests {
         #expect(second == nil)
     }
 
+    @Test("a printed input is ASCII, each scalar past it written as a Swift escape")
+    func asciiOnly() {
+        // `swift test` lost a whole first-failure line holding emoji and
+        // Arabic scalars (step 6b's calibration, one seed of 20); the same
+        // line written in ASCII arrived.
+        let latch = FirstFailureLatch()
+
+        let first = PBTTrace.firstFailureText("caf\u{E9} \u{1F44D}\u{600}", test: nil, latch: latch)
+        let traced = PBTTrace.noteText("\u{FEFF}x", test: nil)
+
+        #expect(first == "PBT first failing input, before shrinking [no test]: \"caf\\u{E9} \\u{1F44D}\\u{600}\"")
+        #expect(traced == "PBT trace [no test]: \"\\u{FEFF}x\"")
+    }
+
     @Test("each check a test runs prints its own first failing input")
     func firstFailurePerCheck() {
         // Two checks in one body, or one test repeated in one process: each

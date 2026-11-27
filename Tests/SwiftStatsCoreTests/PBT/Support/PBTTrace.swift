@@ -12,6 +12,10 @@
 //  anything, so under `SWIFTSTATS_PBT_TRACE=1` `note(_:)` prints every input
 //  a property draws: run the one test with `--no-parallel`, and the last
 //  line before the crash is the input. Tracing is a logging switch only.
+//  Each line is ASCII, every other scalar written as a Swift escape
+//  (`\u{E9}`): `swift test` relays a test's output in chunks, and a whole
+//  first-failure line holding emoji and Arabic scalars never arrived
+//  (step 6b's calibration), where the same line in ASCII did.
 //
 
 import Foundation
@@ -22,6 +26,8 @@ import Testing
 enum PBTTrace {
     /// The environment variable that turns tracing on, when it is `1`.
     static let traceVariable = "SWIFTSTATS_PBT_TRACE"
+    /// The radix a scalar past ASCII is written in.
+    static let hexadecimal = 16
 
     /// Whether this process traces every input, read once.
     static let isTracing = isTracing(in: ProcessInfo.processInfo.environment)
@@ -48,19 +54,29 @@ enum PBTTrace {
         }
     }
 
-    /// The line `note(_:)` prints for `input` drawn in `test`.
+    /// The line `note(_:)` prints for `input` drawn in `test`, in ASCII.
     static func noteText(_ input: some Any, test: Test?) -> String {
-        "PBT trace [\(name(of: test))]: \(String(describingForTest: input))"
+        ascii("PBT trace [\(name(of: test))]: \(String(describingForTest: input))")
     }
 
     /// The line `firstFailure(_:latch:)` prints for `input` failing in
-    /// `test`, or nil when `latch` shows its check has printed one already.
+    /// `test`, in ASCII, or nil when `latch` shows its check has printed one
+    /// already.
     static func firstFailureText(_ input: some Any, test: Test?, latch: FirstFailureLatch) -> String? {
         guard latch.claim() else {
             return nil
         }
-        return "PBT first failing input, before shrinking [\(name(of: test))]: "
-            + String(describingForTest: input)
+        let description = String(describingForTest: input)
+        return ascii("PBT first failing input, before shrinking [\(name(of: test))]: " + description)
+    }
+
+    /// `text` with every scalar past ASCII written as a Swift escape,
+    /// `\u{` and its code point in uppercase hexadecimal, then `}`.
+    static func ascii(_ text: String) -> String {
+        text.unicodeScalars.map { scalar in
+            scalar.isASCII ? String(scalar) : "\\u{" + String(scalar.value, radix: hexadecimal, uppercase: true) + "}"
+        }
+        .joined()
     }
 
     /// `test`'s display name, else its name, else a placeholder outside a test.

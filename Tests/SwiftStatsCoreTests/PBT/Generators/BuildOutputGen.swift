@@ -7,14 +7,15 @@
 //  writes and labels line by line (`BuildOutputInterpreter`). Valid
 //  blocks: timing lines (times within B1's twelve-digit bound, `<invalid
 //  loc>` or a path with spaces, colons and non-ASCII text, a declaration
-//  or none); diagnostics in every place form, each severity, with an ID,
-//  a group, both or neither, 0 to 25 continuation lines (so the limit of
-//  20 is crossed), a line ending ` [word]` before the real ID (M7 C2), a
-//  decoy place read by the first-match rule, an origin note, excerpts;
+//  or none; a function body timed more than once at one place);
+//  diagnostics in every place form, each severity, with an ID, a group,
+//  both or neither, 0 to 25 continuation lines (so the limit of 20 is
+//  crossed), a line ending ` [word]` before the real ID (M7 C2), a decoy
+//  place read by the first-match rule, an origin note, excerpts;
 //  structure, footnotes, `info:` and `warning: ` lines; real lines from
 //  the recorded builds. Near-valid blocks: timing lines with one field
-//  wrong or a time past the bound, headers wrong in one field, a timing
-//  line without its tab. Unrecognised blocks: wild lines of any scalars or
+//  wrong (an empty declaration most often) or a time past the bound,
+//  headers wrong in one field, a timing line without its tab. Unrecognised blocks: wild lines of any scalars or
 //  of bytes that aren't UTF-8. Every line but a wild one may be wrapped
 //  in escapes or end with a cut-off escape; a wild line takes only its
 //  line break. Any line may end with CRLF, and the last may have no line
@@ -49,6 +50,20 @@ enum BuildOutputGen {
     static let sharedWeight = 6.0
     /// Weight of each other kind of block.
     static let classWeight = 1.0
+    /// Weight of a timing line valid but for its empty declaration, a block
+    /// of its own: the near-valid line closest to a function body's, which
+    /// only `BuildLineGrammar.timingEntry`'s own guard refuses. Drawn only
+    /// as one of the malformed branch's eleven faults, it reached about one
+    /// output in 36; this weight brings it to more than 0.3 per output
+    /// (design D14, counted by the generator's meta-test), so P1.1's 100
+    /// runs never miss it.
+    static let emptyDeclarationWeight = 2.0
+    /// Weight of a function body timed more than once, a block of its own:
+    /// single timing lines rarely put two function bodies at one place, so
+    /// the mapper's sums were reached in about one output in 30; this
+    /// weight brings that to more than 0.3 per output (design D14, counted
+    /// by the generator's meta-test), so P1.1's 100 runs never miss it.
+    static let repeatedBodyWeight = 2.0
     /// Weight of each pending shape under the decided rules.
     static let pendingWeight = 1.0
     /// Weight of a pending shape under the current rules: never drawn.
@@ -124,6 +139,8 @@ enum BuildOutputGen {
         Gen.frequency(
             (timingWeight, timing(rules).map { [$0] }),
             (classWeight, malformedTiming.map { [$0] }),
+            (emptyDeclarationWeight, emptyDeclarationTiming.map { [$0] }),
+            (repeatedBodyWeight, repeatedTiming),
             (classWeight, overlongTiming.map { [$0] }),
             (rules == .decided ? pendingWeight : neverWeight, prependedTime.map { [$0] }),
             (diagnosticWeight, diagnostic(rules)),

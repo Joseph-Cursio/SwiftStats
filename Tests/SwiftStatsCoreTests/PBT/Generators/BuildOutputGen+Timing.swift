@@ -10,7 +10,10 @@
 //  and states no entry: one fault in the time (none, signed, fullwidth
 //  digits, an empty or three-digit fraction) or in the fields (an empty
 //  declaration, a fourth field, a place without its column, starting with
-//  a space, or `<invalid>`). An overlong one is valid but for 13 or more
+//  a space, or `<invalid>`); a line whose only fault is an empty
+//  declaration also comes as a block of its own. A function body may be
+//  timed two or three times at one place, a block whose times the mapper
+//  sums. An overlong one is valid but for 13 or more
 //  whole digits, so it still ends a message. Under the decided rules a
 //  Prepend scalar may come just before `ms` (B23, pending).
 //
@@ -108,6 +111,10 @@ extension BuildOutputGen {
     static let smallTimeWeight = 3.0
     /// The share of timing lines with a declaration (a function body's).
     static let declarationRate: Float = 0.4
+    /// How many lines a function body timed more than once has (assumed:
+    /// a body the compiler checked again, for each specialisation or
+    /// accessor at one place).
+    static let repeatedTimings = 2...3
 
     /// The most whole digits a time has (forced: B1's bound).
     static let wholeDigits = 12
@@ -165,13 +172,44 @@ extension BuildOutputGen {
     /// A timing line with one fault, holding `ms<TAB>`.
     static let malformedTiming = Gen.frequency(
         (classWeight, zip(Pick.element(of: TimeFault.allCases), time, timingPlace(.current)).map { fault, time, place in
-            fault.field(time) + "\t" + (place?.text ?? invalidLocation)
+            let text = fault.field(time) + "\t" + (place?.text ?? invalidLocation)
+            return BuildLineDraft(.malformedTiming, text: text, traits: [])
         }),
         (classWeight, zip(Pick.element(of: FieldFault.allCases), time, filePlace(.current)).map { fault, time, place in
-            time.text + "ms\t" + fault.fields(place)
+            BuildLineDraft(
+                .malformedTiming,
+                text: time.text + "ms\t" + fault.fields(place),
+                traits: fault == .emptyDeclaration ? [.emptyDeclaration] : []
+            )
         })
     )
-    .map { BuildLineDraft(.malformedTiming, text: $0, traits: []) }
+
+    /// A timing line valid but for its empty declaration: a function body's
+    /// line with nothing after the place's tab, at a place or `<invalid
+    /// loc>`.
+    static let emptyDeclarationTiming = zip(time, timingPlace(.current))
+        .map { time, place in
+            let text = time.text + "ms\t" + (place?.text ?? invalidLocation) + "\t"
+            let traits = (place?.traits ?? []).union([.emptyDeclaration])
+            return BuildLineDraft(.malformedTiming, text: text, traits: traits)
+        }
+
+    /// A function body timed more than once: valid timing lines at one
+    /// place with one declaration, each with its own time, which the
+    /// mapper sums on whatever holds that place.
+    static let repeatedTiming = zip(time.array(of: repeatedTimings), filePlace(.current), declaration)
+        .map { times, place, declaration in
+            times.map { time in
+                let entry = TimingEntry(
+                    kind: .function,
+                    hundredths: time.hundredths,
+                    place: place.place,
+                    declaration: declaration
+                )
+                let text = time.text + "ms\t" + place.text + "\t" + declaration
+                return BuildLineDraft(.timing(entry), text: text, traits: place.traits)
+            }
+        }
 
     /// A timing line but for a time past the bound.
     static let overlongTiming = zip(
@@ -207,6 +245,13 @@ extension BuildOutputGen {
                 return BuildLineDraft(.timing(entry), text: fields.joined(separator: "\t"), traits: place?.traits ?? [])
             }
             .eraseToAny()
+    }
+
+    /// Whether two of `entries` are function bodies at one place with
+    /// times to sum: the antecedent of the mapping laws' sums.
+    static func repeatsBody(_ entries: [TimingEntry]) -> Bool {
+        let timed = entries.filter { $0.kind == .function && $0.place != nil && $0.hundredths > 0 }
+        return Dictionary(grouping: timed, by: \.place).values.contains { $0.count > 1 }
     }
 
     /// A two-digit fraction of `value` hundredths.

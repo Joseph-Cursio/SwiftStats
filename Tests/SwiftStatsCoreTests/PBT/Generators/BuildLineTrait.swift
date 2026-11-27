@@ -19,6 +19,9 @@ enum BuildLineTrait: String, CaseIterable, Hashable, Sendable {
     /// A header whose place is a decoy `<path>:<line>:<column>: <severity>: `
     /// before the real one, read by the first-match rule.
     case decoyPlace = "decoy place"
+    /// A timing line valid but for its empty declaration field, which only
+    /// `BuildLineGrammar.timingEntry`'s own guard refuses.
+    case emptyDeclaration = "empty declaration"
     /// Wrapped in escape sequences, or ending in a truncated one.
     case escaped
     /// A header whose message takes a line ending in a suffix before the

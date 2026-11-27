@@ -5,7 +5,7 @@ import Testing
 /// thousand draws reach each class a property's laws depend on an exact
 /// number of times (zeros, subnormals, fractions, whole values within and
 /// past what an `Int` holds, values Swift prints with an exponent, NaN and
-/// the infinities, and `Int`'s limits), so a generator that stops reaching
+/// the infinities, `Int`'s limits, and each length of a digit string), so a generator that stops reaching
 /// one fails here, deterministically, rather than leaving a random
 /// property to pass without checking it. The counts hold under this
 /// engine's generator code and this standard library; a change to either
@@ -20,6 +20,9 @@ struct NumberGenTests {
     static let attempts = 1
     /// The fixed seed every meta-test draws from.
     static let seeded = Xoshiro(seed: (1, 2, 3, 4))
+    /// The lengths the digit-string meta-test draws: an empty string, and
+    /// up to three digits.
+    static let digitLengths = 0...3
 
     /// The classes `value` falls in: exactly one of NaN, infinite, zero,
     /// subnormal, fraction, whole within an `Int` and whole past one; and
@@ -58,6 +61,15 @@ struct NumberGenTests {
         }
         let sign = value < 0 ? ["negative"] : value == 0 ? ["zero"] : []
         return [kind] + sign
+    }
+
+    /// The classes a digit string falls in: its length, `leading zero`
+    /// when it has more than one digit and starts with a zero, and `not
+    /// ASCII digits` when any character isn't one (expected never).
+    static func labels(of digits: String) -> [String] {
+        let leadingZero = digits.count > 1 && digits.hasPrefix("0") ? ["leading zero"] : []
+        let notDigits = digits.allSatisfy { ("0"..."9").contains($0) } ? [] : ["not ASCII digits"]
+        return ["length \(digits.count)"] + leadingZero + notDigits
     }
 
     /// How often each label of `labels` comes up over `draws` draws from
@@ -117,5 +129,12 @@ struct NumberGenTests {
         let counts = try Self.counts(NumberGen.int, labels: Self.labels(of:))
 
         #expect(counts == ["large": 451, "limit": 54, "negative": 506, "small": 495, "zero": 33])
+    }
+
+    @Test("digit strings reach every length and a leading zero, and hold nothing but ASCII digits")
+    func digitStrings() throws {
+        let counts = try Self.counts(NumberGen.digitString(lengths: Self.digitLengths), labels: Self.labels(of:))
+
+        #expect(counts == ["leading zero": 49, "length 0": 265, "length 1": 226, "length 2": 261, "length 3": 248])
     }
 }

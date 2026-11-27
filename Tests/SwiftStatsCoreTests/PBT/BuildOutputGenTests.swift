@@ -23,8 +23,9 @@ struct BuildOutputGenTests {
 
     /// What `output` has: each trait any line has, each kind of reading,
     /// and whether its diagnostics are stated, one is in both files (the
-    /// reader keeps it once), one repeats within a file, a file is empty
-    /// or at the line cap, and a line ends in a carriage return (never
+    /// reader keeps it once), one repeats within a file, two function
+    /// bodies at one place have times to sum, a file is empty or at the
+    /// line cap, and a line ends in a carriage return (never
     /// expected).
     static func labels(of output: GeneratedBuildOutput) -> [String] {
         let readings = Set(output.lines.map { reading(of: $0.reading) })
@@ -42,6 +43,9 @@ struct BuildOutputGenTests {
         }
         if output.stderrLines.isEmpty {
             shapes.append("empty standard error")
+        }
+        if BuildOutputGen.repeatsBody(output.entries) {
+            shapes.append("a function body's times to sum")
         }
         if output.logLines.contains(where: { reading(of: $0.reading) == "diagnostic" }) {
             shapes.append("diagnostic in the log")
@@ -117,37 +121,39 @@ struct BuildOutputGenTests {
 
         #expect(
             counts.labels == [
-                "CRLF": 866,
+                "CRLF": 896,
+                "a function body's times to sum": 329,
                 "at the line cap": 41,
-                "crosses the continuation limit": 183,
-                "decoy place": 170,
-                "diagnostic in the log": 640,
-                "diagnostic repeated across files": 90,
+                "crosses the continuation limit": 168,
+                "decoy place": 153,
+                "diagnostic in the log": 651,
+                "diagnostic repeated across files": 81,
                 "diagnostic repeated within a file": 1,
-                "empty standard error": 93,
-                "escaped": 794,
-                "fully stated": 642,
-                "inner suffix": 383,
-                "inserted blank": 375,
-                "invalid UTF-8": 86,
-                "lone CR": 736,
-                "macro origin": 86,
-                "near header": 334,
-                "no suffix": 402,
-                "prepend": 472,
-                "reads as continuation": 648,
-                "reads as diagnostic": 809,
-                "reads as entry": 753,
-                "reads as ignored": 892,
-                "reads as other warning": 442,
-                "reads as skipped": 909,
-                "reads as unparsed timing": 420,
-                "reads as unstated": 358,
-                "recorded": 428,
-                "surplus": 463,
-                "truncated escape": 313,
-                "unknown place": 225,
-                "unterminated": 306
+                "empty declaration": 374,
+                "empty standard error": 86,
+                "escaped": 801,
+                "fully stated": 631,
+                "inner suffix": 327,
+                "inserted blank": 419,
+                "invalid UTF-8": 81,
+                "lone CR": 739,
+                "macro origin": 76,
+                "near header": 308,
+                "no suffix": 401,
+                "prepend": 499,
+                "reads as continuation": 630,
+                "reads as diagnostic": 793,
+                "reads as entry": 760,
+                "reads as ignored": 862,
+                "reads as other warning": 405,
+                "reads as skipped": 913,
+                "reads as unparsed timing": 554,
+                "reads as unstated": 369,
+                "recorded": 388,
+                "surplus": 428,
+                "truncated escape": 321,
+                "unknown place": 213,
+                "unterminated": 308
             ]
         )
         #expect(counts.longest <= BuildOutputInterpreter.lineCap)
@@ -159,40 +165,42 @@ struct BuildOutputGenTests {
 
         #expect(
             counts.labels == [
-                "CRLF": 872,
-                "at the line cap": 39,
-                "crosses the continuation limit": 175,
-                "decoy place": 175,
-                "diagnostic in the log": 644,
-                "diagnostic repeated across files": 95,
+                "CRLF": 880,
+                "a function body's times to sum": 318,
+                "at the line cap": 42,
+                "crosses the continuation limit": 162,
+                "decoy place": 116,
+                "diagnostic in the log": 632,
+                "diagnostic repeated across files": 87,
                 "diagnostic repeated within a file": 1,
-                "empty standard error": 95,
-                "escaped": 833,
-                "fully stated": 658,
-                "inner suffix": 370,
-                "inserted blank": 342,
-                "invalid UTF-8": 83,
-                "lone CR": 717,
-                "macro origin": 92,
-                "near header": 266,
-                "no suffix": 421,
-                "pending B10": 66,
-                "pending B23": 465,
-                "pending B24": 350,
-                "prepend": 652,
-                "reads as continuation": 654,
-                "reads as diagnostic": 804,
-                "reads as entry": 703,
-                "reads as ignored": 875,
-                "reads as other warning": 375,
-                "reads as skipped": 888,
-                "reads as unparsed timing": 490,
-                "reads as unstated": 342,
-                "recorded": 420,
-                "surplus": 439,
-                "truncated escape": 300,
-                "unknown place": 221,
-                "unterminated": 309
+                "empty declaration": 331,
+                "empty standard error": 82,
+                "escaped": 826,
+                "fully stated": 685,
+                "inner suffix": 321,
+                "inserted blank": 315,
+                "invalid UTF-8": 77,
+                "lone CR": 698,
+                "macro origin": 81,
+                "near header": 252,
+                "no suffix": 398,
+                "pending B10": 82,
+                "pending B23": 438,
+                "pending B24": 294,
+                "prepend": 662,
+                "reads as continuation": 599,
+                "reads as diagnostic": 775,
+                "reads as entry": 754,
+                "reads as ignored": 876,
+                "reads as other warning": 378,
+                "reads as skipped": 872,
+                "reads as unparsed timing": 596,
+                "reads as unstated": 315,
+                "recorded": 414,
+                "surplus": 408,
+                "truncated escape": 328,
+                "unknown place": 209,
+                "unterminated": 303
             ]
         )
         #expect(counts.longest <= BuildOutputInterpreter.lineCap)

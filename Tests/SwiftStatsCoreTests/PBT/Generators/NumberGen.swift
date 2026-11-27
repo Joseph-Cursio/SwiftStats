@@ -8,7 +8,8 @@
 //  Swift prints with an exponent, an infinity), so each generator mixes
 //  branches: every binade alike, drawn as sign, exponent and significand
 //  bit patterns; the named edges; whole numbers from the full `Int` range;
-//  and short decimals like the thresholds a configuration states. Every
+//  and short decimals like the thresholds a configuration states. Digit
+//  strings, for fields read as numbers, draw each digit alone. Every
 //  branch is total (no filter, so nothing is rejected), and the engine
 //  shrinks within the branch it drew: the drawn branches toward zero, a
 //  list of named edges toward its first edge, which is zero in the finite
@@ -91,6 +92,9 @@ enum NumberGen {
     /// The infinities and NaNs, a negative and a signalling one included.
     static let nonFiniteEdges: [Double] = [.infinity, -.infinity, .nan, -.nan, .signalingNaN]
 
+    /// The ASCII digits, zero first, so a drawn digit shrinks toward it.
+    static let asciiDigits = Array("0123456789")
+
     /// The integer edges: zero first, so a failure drawn here shrinks to it,
     /// then its neighbours, and `Int`'s limits and theirs.
     static let intEdges = [0, -1, 1, Int.min, Int.min + 1, Int.max - 1, Int.max]
@@ -139,6 +143,14 @@ enum NumberGen {
         (smallIntWeight, Gen<Int>.value(in: -smallIntBound...smallIntBound)),
         (edgeWeight, element(of: intEdges))
     )
+
+    /// A string of ASCII digits, as many as `lengths` allows, each digit
+    /// drawn alone, so a leading zero comes up as often as any other first
+    /// digit: a field the code reads as a number (a time in build output,
+    /// P1.3). It shrinks by dropping digits and toward zeros.
+    static func digitString(lengths: ClosedRange<Int>) -> Generator<String, AnySequence<Any>> {
+        element(of: asciiDigits).array(of: lengths).map { String($0) }.eraseToAny()
+    }
 
     /// An element of `values`, which must not be empty, drawn by index so
     /// it shrinks toward the first.
