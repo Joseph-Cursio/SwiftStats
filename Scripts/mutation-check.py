@@ -266,6 +266,9 @@ LIMIT = 20
 HERE = os.path.dirname(os.path.abspath(__file__))
 BOM = b"\xef\xbb\xbf"
 NEWEST_FORMAT = 4
+INT_MAX = 2**63 - 1  # Swift's Int.max: a spelled key's number above it reads as no key
+CANONICAL_NUMBER = re.compile(r"[1-9][0-9]*")  # ASCII digits, no sign, no leading zero (decided U11)
+FIRST_REPEAT = 2  # the smallest k of a spelled " (#k)"
 LINK_PREFIX = "link:"
 
 # The counts every record, attachment and roll-up holds.
@@ -350,21 +353,36 @@ def key_text(key):
     return f"{path}:{line}:{column} {operator}" + (f" (#{occurrence + 1})" if occurrence else "")
 
 
+def canonical_number(text):
+    """The positive number `text` spells as SwiftMutator prints one: ASCII digits with no sign and
+    no leading zero, within Swift's Int; None otherwise (decided U11: SwiftStats' `MutantKey.number`
+    is the spec, and `int()` would also take `+3`, `0003` and other scripts' digits)."""
+    if not CANONICAL_NUMBER.fullmatch(text):
+        return None
+    value = int(text)
+    return value if value <= INT_MAX else None
+
+
 def parse_report_key(text):
     """A report entry's `key` (`path:line:column Operator`, plus ` (#k)` for
-    occurrence k−1), parsed from the right, so a path may hold spaces and colons."""
+    occurrence k−1), parsed from the right, so a path may hold spaces and colons,
+    by SwiftStats' `MutantKey(spelled:)` rules (decided U11): a text ending in `)`
+    that holds ` (#` must end in a repeat k ≥ 2, and every number is canonical."""
     occurrence = 0
     if text.endswith(")") and " (#" in text:
         head, _, tail = text.rpartition(" (#")
-        if tail[:-1].isdigit():
-            occurrence = int(tail[:-1]) - 1
-            text = head
+        repeat = canonical_number(tail[:-1])
+        if repeat is None or repeat < FIRST_REPEAT:
+            return None
+        occurrence = repeat - 1
+        text = head
     location, _, operator = text.rpartition(" ")
     rest, _, column = location.rpartition(":")
     path, _, line = rest.rpartition(":")
-    if not (operator and column.isdigit() and line.isdigit() and path):
+    line, column = canonical_number(line), canonical_number(column)
+    if not (operator and column and line and path):
         return None
-    return (path, operator, int(line), int(column), occurrence)
+    return (path, operator, line, column, occurrence)
 
 
 # --------------------------------------------------------------------------

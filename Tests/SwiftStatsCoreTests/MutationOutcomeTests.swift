@@ -7,8 +7,10 @@ import Testing
 /// apart; and a key SwiftMutator spells is read from the right, so a path
 /// with spaces and colons and a repeat's ` (#k)` give all five parts, on
 /// Unicode scalars, so a Prepend scalar or a combining mark beside a
-/// separator moves no part's boundary (design B23); a results line's
-/// occurrence at `Int.max` spells its repeat in full.
+/// separator moves no part's boundary (design B23); a number counts only
+/// as SwiftMutator prints one, ASCII digits with no sign and no leading
+/// zero (decided U11); a results line's occurrence at `Int.max` spells its
+/// repeat in full.
 @Suite("Mutation outcomes and keys")
 struct MutationOutcomeTests {
     /// A raw outcome, what the line says beside it, and the verdict.
@@ -150,6 +152,9 @@ struct MutationOutcomeTests {
             )),
             ("/abs/x y.swift:1:1 ReplaceReturnValue", MutantKey(
                 path: "/abs/x y.swift", operatorID: "ReplaceReturnValue", line: 1, column: 1, occurrence: 0
+            )),
+            ("Sources/Bar.swift:100:10 SwapTernary (#20)", MutantKey(
+                path: "Sources/Bar.swift", operatorID: "SwapTernary", line: 100, column: 10, occurrence: 19
             ))
         ]
     )
@@ -218,6 +223,23 @@ struct MutationOutcomeTests {
         ]
     )
     func malformedKeys(_ spelled: String) {
+        #expect(MutantKey(spelled: spelled) == nil)
+    }
+
+    @Test(
+        """
+        a number spelled with a sign, a leading zero or a digit outside ASCII is no key: SwiftMutator prints \
+        only canonical numbers (decided U11)
+        """,
+        arguments: [
+            "Sources/Bar.swift:+12:9 SwapTernary", "Sources/Bar.swift:12:+9 SwapTernary",
+            "Sources/Bar.swift:12:9 SwapTernary (#+2)", "Sources/Bar.swift:-12:9 SwapTernary",
+            "Sources/Bar.swift:0012:9 SwapTernary", "Sources/Bar.swift:12:0003 SwapTernary",
+            "Sources/Bar.swift:12:9 SwapTernary (#02)", "Sources/Bar.swift:\u{FF11}\u{FF12}:9 SwapTernary",
+            "Sources/Bar.swift:12:\u{669} SwapTernary", "Sources/Bar.swift:12:9 SwapTernary (#\u{B2})"
+        ]
+    )
+    func uncanonicalNumbers(_ spelled: String) {
         #expect(MutantKey(spelled: spelled) == nil)
     }
 

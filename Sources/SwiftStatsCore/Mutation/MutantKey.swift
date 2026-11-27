@@ -7,7 +7,9 @@
 //  SwiftMutator's `Results/MutantKey.swift`. The JSON report spells a key
 //  `path:line:column Operator`, plus ` (#k)` for occurrence k − 1 > 0; the
 //  path may hold spaces and colons, so a spelled key is read from the
-//  right, on Unicode scalars (design B23).
+//  right, on Unicode scalars (design B23). A number counts only as
+//  SwiftMutator prints one: ASCII digits, no sign, no leading zero
+//  (decided U11).
 //
 
 /// A mutant's key.
@@ -19,6 +21,8 @@ struct MutantKey: Hashable, Sendable, Comparable, CustomStringConvertible {
     static let repeatOpen = " (#".unicodeScalars
     /// What closes it.
     static let repeatClose: Unicode.Scalar = ")"
+    /// The scalars a spelled number is written in.
+    static let digits: ClosedRange<Unicode.Scalar> = "0"..."9"
 
     /// The path relative to the project SwiftMutator ran in; absolute when
     /// outside it.
@@ -53,7 +57,8 @@ struct MutantKey: Hashable, Sendable, Comparable, CustomStringConvertible {
     /// The key `spelled` spells, read from the right: an optional
     /// ` (#k)` with k ≥ 2, the operator after the last space, then the
     /// column and the line after the last two colons; the rest is the path.
-    /// Nil when any part is missing or isn't a positive number. The
+    /// Nil when any part is missing or a number isn't spelled as
+    /// SwiftMutator spells one (`number(_:)`, decided U11). The
     /// separators are found among the spelling's Unicode scalars, not its
     /// Characters, so a Prepend scalar just before one, or a combining mark
     /// just after one, stays in its part (design B23, decided U13).
@@ -61,7 +66,7 @@ struct MutantKey: Hashable, Sendable, Comparable, CustomStringConvertible {
         var rest = Substring(spelled).unicodeScalars
         var repeated = 0
         if rest.last == Self.repeatClose, let open = rest.ranges(of: Self.repeatOpen).last {
-            guard let repeatNumber = Int(Substring(rest[open.upperBound..<rest.index(before: rest.endIndex)])),
+            guard let repeatNumber = Self.number(rest[open.upperBound..<rest.index(before: rest.endIndex)]),
                   repeatNumber >= Self.firstRepeat
             else {
                 return nil
@@ -76,13 +81,13 @@ struct MutantKey: Hashable, Sendable, Comparable, CustomStringConvertible {
         rest = rest[..<space]
         guard spelledOperator.isEmpty == false,
               let columnColon = rest.lastIndex(of: ":"),
-              let spelledColumn = Int(Substring(rest[rest.index(after: columnColon)...])), spelledColumn > 0
+              let spelledColumn = Self.number(rest[rest.index(after: columnColon)...])
         else {
             return nil
         }
         rest = rest[..<columnColon]
         guard let lineColon = rest.lastIndex(of: ":"),
-              let spelledLine = Int(Substring(rest[rest.index(after: lineColon)...])), spelledLine > 0,
+              let spelledLine = Self.number(rest[rest.index(after: lineColon)...]),
               lineColon > rest.startIndex
         else {
             return nil
@@ -94,6 +99,17 @@ struct MutantKey: Hashable, Sendable, Comparable, CustomStringConvertible {
             column: spelledColumn,
             occurrence: repeated
         )
+    }
+
+    /// The positive number `spelled` spells as SwiftMutator prints one:
+    /// ASCII digits with no sign and no leading zero, within `Int`. Nil for
+    /// anything else, such as `+3`, `0003` or a fullwidth digit;
+    /// `Int(_:)` alone reads the first two as 3 (decided U11).
+    static func number(_ spelled: Substring.UnicodeScalarView) -> Int? {
+        guard let first = spelled.first, first != "0", spelled.allSatisfy(Self.digits.contains) else {
+            return nil
+        }
+        return Int(Substring(spelled))
     }
 
     /// By path, line, column, operator and occurrence, the order mutants
