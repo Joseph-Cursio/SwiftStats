@@ -6,7 +6,9 @@ import Testing
 /// items 7 and 11), from hand-written lines: the run's workers and time
 /// limit, which a resumed session with nothing left to test doesn't
 /// record, and whether each mutant's `killedBy` list is whole, not
-/// recorded where nothing was collected.
+/// recorded where nothing was collected; the toolchain facts come from a
+/// `provenance.toolchain` object, and a header where it is mistyped
+/// doesn't read.
 @Suite("Mutation results facts")
 struct MutationResultsFactsTests {
     /// The library file the hand-written runs mutate.
@@ -56,6 +58,36 @@ struct MutationResultsFactsTests {
         #expect(firstTested.facts.workers == 4 && firstTested.facts.timeoutSeconds == 20)
         #expect(laterTested.sessions == 3 && laterTested.complete)
         #expect(laterTested.facts.workers == 2 && laterTested.facts.timeoutSeconds == 30)
+    }
+
+    /// The first pair is a resume with nothing left and
+    /// `mutationTestTimeout` set, which SwiftMutator writes; it never writes
+    /// the other two, but the reader takes them and `facts(of:)` names both
+    /// conditions.
+    @Test(
+        """
+        a later header is the testing session's only with workers above 0 and a timeoutSeconds: a resume with \
+        nothing left that records its time limit keeps the earlier session's settings
+        """,
+        arguments: [(0, 30), (2, nil), (-1, 30)] as [(Int, Int?)]
+    )
+    func testingSessionNeedsBoth(workers: Int, timeoutSeconds: Int?) throws {
+        let tree = [Self.path: Self.firstHash]
+        let results = try ResultsLines.results([
+            ResultsLines.header(.init(discovered: 1, tree: tree, workers: 4)),
+            ResultsLines.mutant(.init(line: 3)),
+            ResultsLines.header(.init(
+                session: 2,
+                discovered: 1,
+                delta: .init(base: tree, files: [:]),
+                workers: workers,
+                timeoutSeconds: timeoutSeconds
+            )),
+            ResultsLines.end(.init(session: 2))
+        ])
+
+        #expect(results.sessions == 2 && results.complete)
+        #expect(results.facts.workers == 4 && results.facts.timeoutSeconds == 20)
     }
 
     @Test("""
@@ -110,5 +142,21 @@ struct MutationResultsFactsTests {
 
         #expect(results.mutants.map(\.key.line) == [3, 4, 5, 9])
         #expect(results.mutants.map(\.killedByComplete) == [.notRecorded, .incomplete, .complete, .notRecorded])
+    }
+
+    @Test("a header whose provenance.toolchain isn't an object doesn't read, so a file with only it has no header")
+    func mistypedToolchain() throws {
+        let header = ResultsLines.header(.init(discovered: 1))
+        var object = try #require(try JSONSerialization.jsonObject(with: Data(header.utf8)) as? [String: Any])
+        var provenance = try #require(object["provenance"] as? [String: Any])
+        provenance["toolchain"] = "x"
+        object["provenance"] = provenance
+        let options: JSONSerialization.WritingOptions = [.sortedKeys, .withoutEscapingSlashes]
+        let data = try JSONSerialization.data(withJSONObject: object, options: options)
+        let mistyped = try #require(String(bytes: data, encoding: .utf8))
+
+        #expect(throws: MutationFailure(description: MutationResultsFile.noHeaderReason)) {
+            try MutationResultsFile.read(ResultsLines.file([mistyped, ResultsLines.mutant(.init())]))
+        }
     }
 }

@@ -106,17 +106,40 @@ none may be unaccounted:
     '<package>': .../swift-frontend -frontend ...`) or a SwiftPM package
     warning (`warning: '<package>': <text>`);
   - no escape or bell character may be left once ANSI CSI and OSC-8
-    sequences are removed (lines that held one are counted).
+    sequences are removed (lines that held one are counted, a message's
+    or an echo's continuation lines among them).
 A diagnostic's message continues on the following lines as far as the last
-line that makes it end with a diagnostic ID (the build passes
+line that makes it end with a diagnostic ID or a group (the build passes
 -debug-diagnostic-names; a quoted source line ending ` [word]` can make it
 seem to end earlier), within 20 lines none of which could not continue a
-message (blank, excerpt, box, decoration, timing, a timing line but for
-more than 12 whole digits, diagnostic, a
+message (blank, excerpt, box, decoration, any line holding `ms<TAB>`,
+whether it reads as a timing entry or not, diagnostic, a
 `warning:`/`error:`/`note:`/`remark:`/`info:` line, a group footnote); when
-no such line ends it with an ID it has no continuation. Each excerpt echo of the
-diagnostic just read must repeat its whole joined message. The stdout log
-must hold no timing entry (the reader takes timings from stderr only).
+no such line ends it so, it has no continuation if its first line ends so,
+and otherwise takes all of those lines, as the reader does (design B8,
+decided U10). A diagnostic's first line and a group footnote end a message
+as the reader reads them, even when this script refuses the line (a
+relative path, a macro name of another class, a footnote name with a
+dash): the line is then classed on its own, and one holding a severity
+marker fails the check, so a line the reader reads as the next diagnostic
+is never joined to the message before it. Each excerpt echo of the diagnostic just read must repeat
+its whole joined message, taking as many lines as the message did. A line
+is blank when every code point is Unicode White_Space, an excerpt's gutter
+holds spaces and ASCII digits only before its first `|`, and a box's `+-`,
+a decoration, a group footnote's `[#` and `]: <`, and the prefixes of lines
+that can't continue a message are matched on code points, as the reader
+matches them on Unicode scalars (U13), so a combining mark after one, or a
+Prepend scalar before it, moves no boundary. An origin note's text is
+compared trimmed of TAB, the Zs spaces and U+200B (Foundation's
+whitespaces), as the reader trims it, so a trailing form feed or U+0085
+leaves a macro diagnostic with no origin on both sides. Two name classes still differ
+from the reader's, both open for a decision: a macro name's characters
+(the reader takes a letter followed by a combining mark, such as `e` and
+U+0301, as one letter; this script takes letters and digits code point by
+code point, so it refuses the mark), and a group footnote's name (the
+reader takes any text between `[#` and `]: <`, this script ASCII letters
+and digits only). The stdout log must hold no
+timing entry (the reader takes timings from stderr only).
 `--json` writes this parse (classes per file, counters, the entries, the
 unique diagnostics with joined messages, IDs, groups and macro origins,
 the spliced lines); `--compare` reads a reader's parse in that shape
@@ -1800,6 +1823,16 @@ LISTED = 20
 SOURCE_EXTENSIONS = {"swift", "swiftinterface", "h", "c", "m", "mm", "cpp", "cc", "hpp"}
 ESCAPE = "\x1b"
 BELL = "\x07"
+# Unicode's White_Space code points (Unicode.Scalar.Properties.isWhitespace),
+# not Python's wider str.isspace, which takes U+001C to U+001F as well.
+WHITE_SPACE = ("\t\n\x0b\x0c\r \x85\xa0\u1680\u2000\u2001\u2002\u2003\u2004\u2005"
+               "\u2006\u2007\u2008\u2009\u200a\u2028\u2029\u202f\u205f\u3000")
+# Foundation's CharacterSet.whitespaces, which BuildLineGrammar.originPlace
+# trims an origin note's text of: TAB, general category Zs and U+200B (as
+# measured on macOS 27), not the line controls, U+0085, U+2028 or U+2029
+# that WHITE_SPACE and str.strip also take.
+FOUNDATION_WHITESPACES = ("\t \xa0\u1680\u2000\u2001\u2002\u2003\u2004\u2005"
+                          "\u2006\u2007\u2008\u2009\u200a\u200b\u202f\u205f\u3000")
 
 # Line classes. Every line of every input gets exactly one; the ones in
 # UNACCOUNTED fail the check.
@@ -1997,8 +2030,9 @@ def spliced_entry(text):
 
 def split_suffixes(message):
     """(message without its trailing ` [id]` and ` [#Group]`, id, group);
-    the id comes before the group (`[shared_mutable_state_decl] [#MutableGlobalVariable]`)."""
-    text = message.rstrip()
+    the id comes before the group (`[shared_mutable_state_decl] [#MutableGlobalVariable]`).
+    Only trailing WHITE_SPACE is dropped first, as DiagnosticText drops it."""
+    text = message.rstrip(WHITE_SPACE)
     group = None
     if text.endswith("]"):
         start = text.rfind(" [#")
@@ -2050,6 +2084,42 @@ def diagnostic_header(text):
     return None
 
 
+def reader_place(prefix):
+    """Whether BuildLineGrammar.header would take `prefix` as a place,
+    whatever diagnostic_header makes of it: `macro expansion ` and a
+    sigil-led name of more than the sigil, in any name class, before
+    `:<line>:<column>`; `<unknown>:<line>`; or `<path>:<line>:<column>`
+    whose path is not empty and doesn't start with a WHITE_SPACE code
+    point (BuildLineGrammar.splitPlace), relative paths and interface
+    buffers included. It is the reader's place rule or wider, never
+    narrower: it decides only where a message ends."""
+    if prefix.startswith(MACRO_PLACE):
+        place = split_place(prefix[len(MACRO_PLACE):])
+        return place is not None and place[0][:1] in ("#", "@") and len(place[0]) > 1
+    if prefix.startswith("<unknown>:") and ascii_digits(prefix[len("<unknown>:"):]):
+        return True
+    place = split_place(prefix)
+    return place is not None and place[0][:1] not in WHITE_SPACE
+
+
+def reader_header(text):
+    """Whether BuildLineGrammar.header would read `text` as a diagnostic's
+    first line: some `: <severity>: ` (or a closing `: <severity>:`) whose
+    prefix is a place by reader_place. A line it reads ends a message
+    (ends_message) even when diagnostic_header refuses its place (a
+    relative path, a macro name of another class); such a line is then
+    classed on its own, and its severity marker leaves it unaccounted, so
+    the check fails rather than joining it to the message before it."""
+    position = text.find(": ")
+    while position >= 0:
+        rest = text[position + 2:]
+        if any(rest.startswith(word + ": ") or rest == word + ":" for word in SEVERITIES) \
+                and reader_place(text[:position]):
+            return True
+        position = text.find(": ", position + 1)
+    return False
+
+
 def buffer_place(text):
     """`<Module>.<Type>.<member>:<line>:<column>`: a place in a buffer the
     compiler printed from a module's interface (a note on a declaration in
@@ -2068,9 +2138,10 @@ def buffer_place(text):
 
 def gutter(text):
     """The text after a source excerpt's gutter (`  12 | `, `   | `), or None:
-    the part before the first `|` holds only spaces and digits."""
+    the part before the first `|` holds only spaces and ASCII digits, as
+    BuildLineGrammar.isStructural reads it."""
     lead, bar, after = text.partition("|")
-    if not bar or not all(c == " " or c.isdigit() for c in lead):
+    if not bar or not all(c == " " or c in "0123456789" for c in lead):
         return None
     return after
 
@@ -2104,6 +2175,14 @@ def echoed(text):
                 index = after.find(mark, index + 1)
         after = None
     return None
+
+
+def reader_footnote(text):
+    """Whether BuildLineGrammar.isGroupFootnote would read `text` as a
+    group's footnote: `[#`, then `]: <` somewhere, and a closing `>`,
+    whatever the name between. Like reader_header, it decides only where
+    a message ends; is_group_footnote decides what the line is."""
+    return text.startswith("[#") and "]: <" in text and text.endswith(">")
 
 
 def is_group_footnote(text):
@@ -2147,44 +2226,73 @@ def has_marker(text):
     return "ms\t" in text or any(word + ":" in text for word in SEVERITIES)
 
 
-def overlong_timing(text):
-    """A line that would be a timing entry but for a time with more than
-    TIME_WHOLE_DIGITS whole digits (BuildLineGrammar.isOverlongTiming): it
-    still ends a message, as it did before the bound."""
-    whole = len(text) - len(text.lstrip("0123456789"))
-    return whole > TIME_WHOLE_DIGITS and timing_entry("0" + text[whole:]) is not None
+def is_blank(text):
+    """Whether `text` is empty or WHITE_SPACE only, read on code points, as
+    BuildLineGrammar.isStructural reads Unicode scalars (U13): a white space
+    followed by a combining mark is not blank."""
+    return text.strip(WHITE_SPACE) == ""
 
 
 def ends_message(text):
-    """A line that can't continue a diagnostic's message."""
-    return (text.strip() == ""
+    """A line that can't continue a diagnostic's message
+    (BuildLineGrammar.continues). A line holding `ms<TAB>` is one whether
+    or not it reads as a timing entry (BuildLineGrammar.holdsTimingMark,
+    design B10), the mark found in code points, as the reader finds it in
+    bytes (U13): a time past TIME_WHOLE_DIGITS whole digits, a bad place or
+    a stray field ends the message, and the line is counted as not an
+    entry. A diagnostic's first line and a group footnote end it as the
+    reader reads them (reader_header, reader_footnote), not only as this
+    script accepts them, so a message never takes a line the reader reads
+    as the next diagnostic."""
+    return (is_blank(text)
             or gutter(text) is not None
             or is_box(text)
             or decorated(text) is not None
-            or timing_entry(text) is not None
-            or overlong_timing(text)
-            or diagnostic_header(text) is not None
+            or "ms\t" in text
+            or reader_header(text)
             or text.startswith(LINE_PREFIXES)
-            or is_group_footnote(text))
+            or reader_footnote(text))
 
 
-def continuation_count(lines, start, message):
-    """How many lines from `start` continue a message: as many as it takes
-    to reach the last line, of the CONTINUATION_LIMIT lines at most that
-    follow and none of which can't continue a message, after which the
-    joined message ends with a diagnostic ID (the build passes
-    -debug-diagnostic-names); 0 when none does. A quoted source line that
+def complete_message(text):
+    """Whether a joined message ends with a diagnostic ID or a group
+    (DiagnosticText.isComplete): it can end there."""
+    _, identifier, group = split_suffixes(text)
+    return identifier is not None or group is not None
+
+
+def continuation_count(lines, start, message, take_all=True):
+    """How many lines from `start` continue a message, of the
+    CONTINUATION_LIMIT lines at most that follow and none of which can't
+    continue a message: as many as it takes to reach the last of them after
+    which the joined message ends with a diagnostic ID or a group (the build
+    passes -debug-diagnostic-names); when none does, 0 if the first line
+    ends so, and otherwise all of them (BuildOutputReader's reading, design
+    B8, decided U10), or 0 when `take_all` is off. A quoted source line that
     ends in ` [word]` reads as an ID, so the first such line isn't
     necessarily the message's end."""
     joined = message
-    count = 0
+    complete = 0 if complete_message(message) else None
+    taken = 0
     for offset in range(CONTINUATION_LIMIT):
         index = start + offset
         if index >= len(lines) or ends_message(lines[index]):
             break
         joined += "\n" + lines[index]
-        if split_suffixes(joined)[1] is not None:
-            count = offset + 1
+        taken = offset + 1
+        if complete_message(joined):
+            complete = taken
+    if complete is None:
+        return taken if take_all else 0
+    return complete
+
+
+def leading_continuable(lines, start, limit):
+    """How many of the `limit` lines at most from `start` can continue a
+    message, counted up to the first that can't."""
+    count = 0
+    while count < limit and start + count < len(lines) and not ends_message(lines[start + count]):
+        count += 1
     return count
 
 
@@ -2237,17 +2345,16 @@ class BuildLines:
         texts = [clean for clean, _ in self.lines]
         assigned = [None] * len(texts)
         for index, text in enumerate(texts):
-            if assigned[index] is not None:
-                self.note(index, assigned[index])
-                continue
-            kind = self.line_class(texts, index, assigned)
+            kind = assigned[index]
+            if kind is None:
+                kind = self.line_class(texts, index, assigned)
             if self.lines[index][1]:
                 kind = "escapeLeft"
             self.note(index, kind)
 
     def line_class(self, texts, index, assigned):
         text = texts[index]
-        if text.strip() == "":
+        if is_blank(text):
             return "blank"
         entry = timing_entry(text)
         if entry is not None:
@@ -2258,10 +2365,15 @@ class BuildLines:
             echo = echoed(text)
             if echo is None:
                 return "snippet"
-            count = continuation_count(texts, index + 1, echo[1])
+            last = self.echoed_diagnostic(echo)
+            if last is None:
+                count = continuation_count(texts, index + 1, echo[1], take_all=False)
+            else:
+                count = leading_continuable(texts, index + 1, last["continuationLines"])
             for offset in range(count):
                 assigned[index + 1 + offset] = "echoContinuation"
-            self.check_echo(echo, texts[index + 1:index + 1 + count])
+            if last is not None:
+                self.check_echo(last, echo, texts[index + 1:index + 1 + count])
             return "snippetEcho"
         if is_box(text):
             return "snippetBox"
@@ -2308,7 +2420,8 @@ class BuildLines:
             following = index + 1 + count
             inner = decorated(texts[following]) if following < len(texts) else None
             note = diagnostic_header(inner) if inner is not None else None
-            if note is not None and note[0] == "file" and note[4] == "note" and note[5].strip() == ORIGIN_NOTE:
+            if note is not None and note[0] == "file" and note[4] == "note" \
+                    and note[5].strip(FOUNDATION_WHITESPACES) == ORIGIN_NOTE:
                 origin = {"file": note[1], "line": note[2], "column": note[3]}
         self.diagnostics.append({
             "severity": severity, "place": kind,
@@ -2322,17 +2435,25 @@ class BuildLines:
         return {"file": "diagnostic", "macro": "macroDiagnostic", "buffer": "bufferDiagnostic",
                 "unknown": "unknownPlaceDiagnostic"}[kind]
 
-    def check_echo(self, echo, continuation):
-        """An excerpt's echo of the diagnostic just read must repeat its whole
-        message, continuation lines included."""
+    def echoed_diagnostic(self, echo):
+        """The diagnostic just read when `echo` (severity, first line) echoes
+        it, else None."""
         severity, first = echo
         if not self.diagnostics:
-            return
+            return None
         last = self.diagnostics[-1]
         if last["severity"] != severity or last["text"].split("\n", 1)[0] != first:
-            return
+            return None
+        return last
+
+    def check_echo(self, last, echo, continuation):
+        """An excerpt's echo of the diagnostic just read must repeat its whole
+        message, continuation lines included. The echo takes as many lines
+        as the diagnostic's message did, up to the first that can't continue
+        a message, so an echo is never sized by text the diagnostic didn't
+        take (an ID-less one-line diagnostic's echo takes none)."""
         self.echo_checked += 1
-        echo_text = "\n".join([first] + continuation)
+        echo_text = "\n".join([echo[1]] + continuation)
         if echo_text != last["text"]:
             self.echo_disagreements.append((last["lineNumber"], last["text"][:200], echo_text[:200]))
 

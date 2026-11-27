@@ -3,9 +3,10 @@
 //  SwiftStatsCoreTests
 //
 //  The diagnostic grammar of the T1 build's output (M7, design §6.1): IDs
-//  and groups, the macro forms and their origin notes, continuation lines,
-//  places read from the first prefix that is one, the lines counted rather
-//  than read, and duplicates kept once.
+//  and groups, the macro forms and their origin notes, continuation lines
+//  (those of a message with no ID among them), places read from the first
+//  prefix that is one, the lines counted rather than read (SwiftPM's
+//  manifest command among them), and duplicates kept once.
 //
 
 import Foundation
@@ -17,6 +18,17 @@ import Testing
 struct BuildDiagnosticTests {
     /// A package root as the compiler spells it.
     private static let root = "/work/Pkg"
+
+    /// The three lines SwiftPM prints after a manifest's compile command
+    /// under `-v`, as a recorded build of SwiftEffectInference printed them
+    /// (its `swiftstats-build.stderr`, lines 2 to 4), paths replaced and
+    /// the clang line's arguments shortened.
+    private static let manifestFollowers = [
+        "/Toolchain/usr/bin/clang /tmp/TemporaryDirectory.nA5Xmh/Package-1.o -F /Developer/Library/Frameworks "
+            + "--target=arm64-apple-macosx14.0 -lPackageDescription -o /tmp/TemporaryDirectory.vOnqLm/sei-manifest",
+        "Apple Swift version 6.4.2 (swiftlang-6.4.2.1.9 clang-2100.4.1.1)",
+        "Target: arm64-apple-macosx14.0"
+    ]
 
     /// The output of a build whose standard error is `stderr` and whose
     /// task log is `log`, each given as lines.
@@ -85,6 +97,26 @@ struct BuildDiagnosticTests {
         #expect(diagnostic.origin == BuildPlace(path: "\(Self.root)/Tests/T/T.swift", line: 12, column: 6))
     }
 
+    @Test(
+        """
+        an origin note's text is matched trimmed of tabs and spaces (Foundation's whitespaces), so a trailing \
+        tab, no-break or zero-width space keeps the origin and a trailing form feed, line tabulation or next-line \
+        control loses it, as the checker reads it
+        """,
+        arguments: [
+            ("\t", true), ("\u{A0}", true), ("\u{200B}", true), ("\u{C}", false), ("\u{B}", false), ("\u{85}", false)
+        ]
+    )
+    func originNoteTrim(trailing: String, keepsOrigin: Bool) throws {
+        let found = Self.diagnostics([
+            "macro expansion #expect:1:22: warning: w [no_throw_in_try]",
+            "`- \(Self.root)/Tests/T/T.swift:33:36: note: expanded code originates here" + trailing
+        ])
+        let diagnostic = try #require(found.first)
+        let place = BuildPlace(path: "\(Self.root)/Tests/T/T.swift", line: 33, column: 36)
+        #expect(diagnostic.origin == (keepsOrigin ? place : nil))
+    }
+
     @Test("a message spanning lines is joined up to the line ending with its ID, as SIP's three-line warning")
     func continuation() throws {
         let output = Self.read([
@@ -134,6 +166,64 @@ struct BuildDiagnosticTests {
             "a stray line"
         ])
         #expect(found.first?.message == "done")
+    }
+
+    @Test("""
+        SwiftPM's manifest command and the three lines it prints after it are one counted warning line and no \
+        diagnostic, as a recorded build printed them
+        """)
+    func manifestCommandLines() {
+        let output = Self.read(
+            ["warning: 'sei': /Toolchain/usr/bin/swift-frontend -frontend -c -primary-file \(Self.root)/Package.swift"]
+                + Self.manifestFollowers
+                + ["info: Building targets in dependency order"]
+        )
+        #expect(output.diagnostics.isEmpty)
+        #expect(output.otherWarningLines == 1)
+    }
+
+    @Test("""
+        a diagnostic with no ID takes the lines after it that can continue a message, so the lines SwiftPM \
+        prints after a manifest command, after a placed warning with no ID, are its three-line continuation \
+        (design B8, decided U10)
+        """)
+    func continuationWithoutIdentifier() throws {
+        let output = Self.read(
+            ["\(Self.root)/Package.swift:1:1: warning: 'sei': manifest compiled"]
+                + Self.manifestFollowers
+                + ["info: Building targets in dependency order"]
+        )
+        let diagnostic = try #require(output.diagnostics.first)
+        #expect(output.diagnostics.count == 1)
+        #expect(diagnostic.identifier == nil)
+        #expect(diagnostic.group == nil)
+        #expect(diagnostic.message == (["'sei': manifest compiled"] + Self.manifestFollowers).joined(separator: "\n"))
+        #expect(output.otherWarningLines == 0)
+    }
+
+    @Test("""
+        a recorded error with no ID takes the failed frontend command printed after it as its message, \
+        escapes stripped, paths replaced and the command shortened (design B8, decided U10)
+        """)
+    func recordedErrorWithoutIdentifier() throws {
+        let command = "/Toolchain/usr/bin/swift-frontend -frontend -c "
+            + "\(Self.root)/Sources/RealModule/AlgebraicField.swift -module-name RealModule"
+        let output = Self.read([
+            "<unknown>:0: \u{1B}[1;31merror: \u{1B}[1;39mindex output filenames do not match input source files"
+                + "\u{1B}[0;0m",
+            "Failed frontend command:",
+            command,
+            "info: SwiftCompile normal arm64 Compiling\\ AlgebraicField.swift",
+            "error: Build failed"
+        ])
+        let diagnostic = try #require(output.diagnostics.first)
+        #expect(output.diagnostics.count == 1)
+        #expect(diagnostic.location == .unknown(line: 0))
+        #expect(diagnostic.severity == .error)
+        #expect(diagnostic.identifier == nil)
+        #expect(diagnostic.message == "index output filenames do not match input source files\n"
+            + "Failed frontend command:\n" + command)
+        #expect(output.escapedLines == 1)
     }
 
     @Test("""

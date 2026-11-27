@@ -4,9 +4,10 @@
 //
 //  Reading the T1 build's output (M7, design §6.1): timing lines and their
 //  times in hundredths, escapes, refused timing lines (a time past twelve
-//  whole digits among them, which still ends a diagnostic's message), a
-//  place's number edges, a line that isn't UTF-8, and the recorded fixture
-//  build's output (`BuildDiagnosticTests` covers the diagnostic grammar).
+//  whole digits among them), each of which still ends a diagnostic's
+//  message (design B10), a place's number edges, a line that isn't UTF-8,
+//  and the recorded fixture build's output (`BuildDiagnosticTests` covers
+//  the diagnostic grammar).
 //
 
 import Foundation
@@ -19,6 +20,21 @@ import Testing
 struct BuildOutputReaderTests {
     /// A package root as the compiler spells it.
     private static let root = "/work/Pkg"
+
+    /// Lines holding `ms<TAB>` that the timing grammar refuses: too many
+    /// fraction digits, no digits, no column, an extra field, an empty
+    /// declaration, text before the time, and a Prepend scalar before `ms`
+    /// (it joins the `m` into one Character, but the mark is found on
+    /// scalars, as the checker finds it; design U13).
+    static let refusedTimings = [
+        "4.355ms\t/work/Pkg/A.swift:1:2",
+        "abcms\t/work/Pkg/A.swift:1:2",
+        "4.35ms\t/work/Pkg/A.swift:1",
+        "4.35ms\t/work/Pkg/A.swift:1:2\tgetter\textra",
+        "4.35ms\t/work/Pkg/A.swift:1:2\t",
+        "Compiling 4.35ms\t/work/Pkg/A.swift:1:2",
+        "4.35\u{600}ms\t/work/Pkg/A.swift:1:2"
+    ]
 
     /// The output of a build whose standard error is `stderr` and whose
     /// task log is `log`, each given as lines.
@@ -88,17 +104,7 @@ struct BuildOutputReaderTests {
         #expect(output.entries.count == 1)
     }
 
-    @Test(
-        "a line holding a timing mark that the grammar refuses is counted, not read",
-        arguments: [
-            "4.355ms\t/work/Pkg/A.swift:1:2",
-            "abcms\t/work/Pkg/A.swift:1:2",
-            "4.35ms\t/work/Pkg/A.swift:1",
-            "4.35ms\t/work/Pkg/A.swift:1:2\tgetter\textra",
-            "4.35ms\t/work/Pkg/A.swift:1:2\t",
-            "Compiling 4.35ms\t/work/Pkg/A.swift:1:2"
-        ]
-    )
+    @Test("a line holding a timing mark that the grammar refuses is counted, not read", arguments: refusedTimings)
     func refused(line: String) {
         let output = Self.read([line])
         #expect(output.entries.isEmpty)
@@ -131,6 +137,47 @@ struct BuildOutputReaderTests {
         #expect(diagnostic.message == "w")
     }
 
+    @Test(
+        "a refused timing line after a diagnostic ends its message and is counted, even when a later line holds an ID",
+        arguments: refusedTimings, [[], ["more [deprecated_declaration]"]]
+    )
+    func refusedTimingAfterDiagnostic(line: String, later: [String]) throws {
+        let output = Self.read(["\(Self.root)/A.swift:1:2: warning: w", line] + later)
+        #expect(output.entries.isEmpty)
+        #expect(output.unparsedTimingLines == 1)
+        let diagnostic = try #require(output.diagnostics.first)
+        #expect(output.diagnostics.count == 1)
+        #expect(diagnostic.message == "w")
+        #expect(diagnostic.identifier == nil)
+    }
+
+    @Test("a refused timing line inside a message keeps the lines before it, which a message with no ID takes")
+    func refusedTimingInsideMessage() throws {
+        let output = Self.read([
+            "\(Self.root)/A.swift:1:2: warning: w",
+            "second",
+            "abcms\t\(Self.root)/A.swift:1:2",
+            "third [deprecated_declaration]"
+        ])
+        #expect(output.unparsedTimingLines == 1)
+        let diagnostic = try #require(output.diagnostics.first)
+        #expect(diagnostic.message == "w\nsecond")
+        #expect(diagnostic.identifier == nil)
+    }
+
+    @Test("in the task log a refused timing line also ends a diagnostic's message, and isn't counted")
+    func refusedTimingInLog() throws {
+        let output = Self.read([], log: [
+            "\(Self.root)/A.swift:1:2: warning: w",
+            "abcms\t\(Self.root)/A.swift:1:2",
+            "more [deprecated_declaration]"
+        ])
+        #expect(output.unparsedTimingLines == 0)
+        let diagnostic = try #require(output.diagnostics.first)
+        #expect(diagnostic.message == "w")
+        #expect(diagnostic.identifier == nil)
+    }
+
     @Test("a place's line and column read 0 as a number, and one past what an Int holds as none, as the checker does")
     func placeNumberEdges() {
         let zero = Self.entry("1.00ms\t\(Self.root)/A.swift:0:0")
@@ -151,6 +198,21 @@ struct BuildOutputReaderTests {
         let output = Self.read([], log: ["4.35ms\t\(Self.root)/A.swift:1:2", "nonsense ms\tthing"])
         #expect(output.entries.isEmpty)
         #expect(output.unparsedTimingLines == 0)
+    }
+
+    @Test("a timing line that is also a diagnostic's first line is a diagnostic in the task log, an entry on stderr")
+    func timingShapedHeader() throws {
+        let line = "1ms\t<invalid loc>\tp:1:2: warning: m"
+        let logged = Self.read([], log: [line])
+        let diagnostic = try #require(logged.diagnostics.first)
+        #expect(logged.diagnostics.count == 1 && logged.entries.isEmpty)
+        #expect(diagnostic.severity == .warning && diagnostic.message == "m")
+        #expect(diagnostic.location == .file(BuildPlace(path: "1ms\t<invalid loc>\tp", line: 1, column: 2)))
+        let errors = Self.read([line])
+        #expect(errors.diagnostics.isEmpty)
+        #expect(errors.entries == [
+            TimingEntry(kind: .function, hundredths: 100, place: nil, declaration: "p:1:2: warning: m")
+        ])
     }
 
     @Test("a line ending with a carriage return reads as without it")

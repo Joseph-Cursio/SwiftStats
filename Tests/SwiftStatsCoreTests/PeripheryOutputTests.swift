@@ -4,9 +4,10 @@ import Testing
 
 /// outskirts' JSON read and classed (M7, design §5.3): the nine keys each
 /// required and typed, extra keys ignored, one hint split as
-/// `name(text)`, locations read from the right, modules made target
-/// names; then each entry's class, the first that applies, on the Index
-/// fixture's recorded runs and on hand-written entries placed in it.
+/// `name(text)`, locations read from the right on scalars (design B23),
+/// modules made target names; then each entry's class, the first that
+/// applies, on the Index fixture's recorded runs and on hand-written
+/// entries placed in it.
 @Suite("outskirts output")
 struct PeripheryOutputTests {
     /// One entry's JSON object, its fields as given.
@@ -119,6 +120,26 @@ struct PeripheryOutputTests {
         #expect(Self.failure(Data("{}".utf8), context: context) == "JSON isn't an array in the production run")
         let text = Self.failure(Data("not json".utf8), context: context) ?? ""
         #expect(text.hasPrefix("JSON doesn't decode in the production run: "))
+    }
+
+    @Test(
+        """
+        a location whose path ends in a Prepend scalar, which joins the colon after it into one Character, reads \
+        from the right on scalars, the scalar staying in the path (design B23, decided U13)
+        """,
+        arguments: ["\u{600}", "\u{6DD}"]
+    )
+    func prependBeforeLocationColon(prepend: String) throws {
+        let path = "/NoSuchPeripheryPackage/Sources/a:b c.swift" + prepend
+        #expect(PeripheryFields.Location(path + ":36:17") == PeripheryFields.Location(path: path, line: 36, column: 17))
+        let entries = try PeripheryOutput.decode(
+            try Self.json([Self.entry(location: path + ":36:17")]),
+            run: .roots,
+            context: try Self.plainContext()
+        )
+        let entry = try #require(entries.first)
+        #expect(entry.path == path && entry.file == "Sources/a:b c.swift" + prepend)
+        #expect(entry.line == 36 && entry.column == 17)
     }
 
     @Test("""
