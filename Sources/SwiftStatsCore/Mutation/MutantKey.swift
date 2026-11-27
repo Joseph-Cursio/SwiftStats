@@ -7,7 +7,7 @@
 //  SwiftMutator's `Results/MutantKey.swift`. The JSON report spells a key
 //  `path:line:column Operator`, plus ` (#k)` for occurrence k − 1 > 0; the
 //  path may hold spaces and colons, so a spelled key is read from the
-//  right.
+//  right, on Unicode scalars (design B23).
 //
 
 /// A mutant's key.
@@ -15,6 +15,10 @@ struct MutantKey: Hashable, Sendable, Comparable, CustomStringConvertible {
     /// The smallest `k` of a spelled ` (#k)`: occurrence 1, the second
     /// of a place and operator.
     static let firstRepeat = 2
+    /// What opens a spelled repeat number, as scalars.
+    static let repeatOpen = " (#".unicodeScalars
+    /// What closes it.
+    static let repeatClose: Unicode.Scalar = ")"
 
     /// The path relative to the project SwiftMutator ran in; absolute when
     /// outside it.
@@ -49,12 +53,15 @@ struct MutantKey: Hashable, Sendable, Comparable, CustomStringConvertible {
     /// The key `spelled` spells, read from the right: an optional
     /// ` (#k)` with k ≥ 2, the operator after the last space, then the
     /// column and the line after the last two colons; the rest is the path.
-    /// Nil when any part is missing or isn't a positive number.
+    /// Nil when any part is missing or isn't a positive number. The
+    /// separators are found among the spelling's Unicode scalars, not its
+    /// Characters, so a Prepend scalar just before one, or a combining mark
+    /// just after one, stays in its part (design B23, decided U13).
     init?(spelled: String) {
-        var rest = Substring(spelled)
+        var rest = Substring(spelled).unicodeScalars
         var repeated = 0
-        if rest.hasSuffix(")"), let open = rest.range(of: " (#", options: .backwards) {
-            guard let repeatNumber = Int(rest[open.upperBound..<rest.index(before: rest.endIndex)]),
+        if rest.last == Self.repeatClose, let open = rest.ranges(of: Self.repeatOpen).last {
+            guard let repeatNumber = Int(Substring(rest[open.upperBound..<rest.index(before: rest.endIndex)])),
                   repeatNumber >= Self.firstRepeat
             else {
                 return nil
@@ -69,20 +76,20 @@ struct MutantKey: Hashable, Sendable, Comparable, CustomStringConvertible {
         rest = rest[..<space]
         guard spelledOperator.isEmpty == false,
               let columnColon = rest.lastIndex(of: ":"),
-              let spelledColumn = Int(rest[rest.index(after: columnColon)...]), spelledColumn > 0
+              let spelledColumn = Int(Substring(rest[rest.index(after: columnColon)...])), spelledColumn > 0
         else {
             return nil
         }
         rest = rest[..<columnColon]
         guard let lineColon = rest.lastIndex(of: ":"),
-              let spelledLine = Int(rest[rest.index(after: lineColon)...]), spelledLine > 0,
+              let spelledLine = Int(Substring(rest[rest.index(after: lineColon)...])), spelledLine > 0,
               lineColon > rest.startIndex
         else {
             return nil
         }
         self.init(
-            path: String(rest[..<lineColon]),
-            operatorID: String(spelledOperator),
+            path: String(Substring(rest[..<lineColon])),
+            operatorID: String(Substring(spelledOperator)),
             line: spelledLine,
             column: spelledColumn,
             occurrence: repeated

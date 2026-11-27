@@ -5,8 +5,10 @@ import Testing
 /// A mutant's key and verdict (M6, design "Verdicts" and §2): every raw
 /// outcome a results line may record maps to its verdict, crash kills
 /// apart; and a key SwiftMutator spells is read from the right, so a path
-/// with spaces and colons and a repeat's ` (#k)` give all five parts; a
-/// results line's occurrence at `Int.max` spells its repeat in full.
+/// with spaces and colons and a repeat's ` (#k)` give all five parts, on
+/// Unicode scalars, so a Prepend scalar or a combining mark beside a
+/// separator moves no part's boundary (design B23); a results line's
+/// occurrence at `Int.max` spells its repeat in full.
 @Suite("Mutation outcomes and keys")
 struct MutationOutcomeTests {
     /// A raw outcome, what the line says beside it, and the verdict.
@@ -154,6 +156,32 @@ struct MutationOutcomeTests {
     func spelledKeys(_ spelled: String, _ key: MutantKey) {
         #expect(MutantKey(spelled: spelled) == key)
         #expect(key.description == spelled)
+    }
+
+    @Test(
+        """
+        a Prepend scalar just before a separator, or a combining mark just after one, moves no part's boundary: \
+        the key is read on scalars, the scalar staying in its part (design B23, decided U13)
+        """,
+        arguments: [
+            ("Sources/Bar.swift\u{600}:12:9 SwapTernary", MutantKey(
+                path: "Sources/Bar.swift\u{600}", operatorID: "SwapTernary", line: 12, column: 9, occurrence: 0
+            )),
+            ("Sources/Bar.swift:12:9 SwapTernary\u{6DD} (#2)", MutantKey(
+                path: "Sources/Bar.swift", operatorID: "SwapTernary\u{6DD}", line: 12, column: 9, occurrence: 1
+            )),
+            ("Sources/Bar.swift:12:9 \u{301}SwapTernary", MutantKey(
+                path: "Sources/Bar.swift", operatorID: "\u{301}SwapTernary", line: 12, column: 9, occurrence: 0
+            )),
+            ("My Sources/Bar.swift:12:9 \u{301}SwapTernary (#3)", MutantKey(
+                path: "My Sources/Bar.swift", operatorID: "\u{301}SwapTernary", line: 12, column: 9, occurrence: 2
+            ))
+        ]
+    )
+    func scalarKeys(_ spelled: String, _ key: MutantKey) {
+        #expect(MutantKey(spelled: spelled) == key)
+        // Compared as scalars: a String compares a lone mark canonically.
+        #expect(Array(key.description.unicodeScalars) == Array(spelled.unicodeScalars))
     }
 
     @Test(

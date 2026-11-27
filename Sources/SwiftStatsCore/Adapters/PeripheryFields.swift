@@ -5,7 +5,8 @@
 //  The nine fields of one outskirts JSON entry, checked for type before
 //  `PeripheryOutput` reads them (M7, design §5.3): the string fields, the
 //  list fields and the location, read from the right as
-//  `path:line:column`, so a path holding colons reads whole.
+//  `path:line:column` on Unicode scalars, so a path holding colons, or
+//  ending in a Prepend scalar, reads whole (design B23).
 //
 
 /// One outskirts entry's fields, by key.
@@ -32,8 +33,11 @@ struct PeripheryFields {
 
         /// `text` read from the right as `path:line:column`, with a
         /// non-empty path and a positive line and column; nil otherwise.
+        /// The colons are found among the text's Unicode scalars, not its
+        /// Characters, so a Prepend scalar just before one, which joins it
+        /// into one Character, stays in the path (design B23, decided U13).
         init?(_ text: String) {
-            let parts = text.split(separator: ":", omittingEmptySubsequences: false)
+            let parts = text.unicodeScalars.split(separator: ":", omittingEmptySubsequences: false).map(Substring.init)
             let numbers = parts.suffix(Self.numberParts).compactMap(Self.positive)
             let written = parts.dropLast(Self.numberParts).joined(separator: ":")
             guard numbers.count == Self.numberParts, let first = numbers.first, let last = numbers.last,
