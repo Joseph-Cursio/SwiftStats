@@ -59,6 +59,14 @@ let kPackage = Package(
         .package(
             url: "https://github.com/swiftlang/indexstore-db.git",
             revision: "64aa0b26913249c4e7c21d351a215fba02702003"
+        ),
+        // Property-based tests, for the test target only: nothing that depends
+        // on SwiftStatsCore resolves it. `from:` like the other unforced
+        // dependencies; 2.1.0 is the first release that fails a property whose
+        // body throws (2.0.x ignored the error on Swift 6.2 and later).
+        .package(
+            url: "https://github.com/x-sheep/swift-property-based.git",
+            from: "2.1.0"
         )
     ],
     targets: [
@@ -98,7 +106,11 @@ let kPackage = Package(
         ),
         .testTarget(
             name: "SwiftStatsCoreTests",
-            dependencies: ["SwiftStatsCore", "SwiftStatsBuildInfo"],
+            dependencies: [
+                "SwiftStatsCore",
+                "SwiftStatsBuildInfo",
+                .product(name: "PropertyBased", package: "swift-property-based")
+            ],
             swiftSettings: kSwiftSettings
         )
     ]

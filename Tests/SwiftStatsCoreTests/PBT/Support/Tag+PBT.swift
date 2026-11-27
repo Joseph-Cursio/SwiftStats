@@ -3,8 +3,12 @@
 //  SwiftStatsCoreTests
 //
 //  The tags property-based suites carry. Every property suite is tagged
-//  `pbt`, so `swift test --filter tag:pbt` runs them alone; a walk too slow
-//  for every run is also tagged `soak`, and is enabled only when
+//  `pbt`, which an Xcode test plan can select or skip. `swift test` can't
+//  filter by tag (its `--filter` and `--skip` take regular expressions over
+//  test names; `--filter tag:pbt` matches nothing), so from the command
+//  line the suites' names select them: every property suite is named
+//  `<Subject>PBT`, and `swift test --filter 'PBT$'` runs them alone. A walk
+//  too slow for every run is also tagged `soak`, and is enabled only when
 //  `PBTBudget.scale` is above 1, since a plain `swift test` can't exclude
 //  a tag.
 //
