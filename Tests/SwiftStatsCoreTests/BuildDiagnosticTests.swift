@@ -97,6 +97,26 @@ struct BuildDiagnosticTests {
         #expect(diagnostic.origin == BuildPlace(path: "\(Self.root)/Tests/T/T.swift", line: 12, column: 6))
     }
 
+    @Test(
+        """
+        an origin note's text is matched trimmed of tabs and spaces (Foundation's whitespaces), so a trailing \
+        tab, no-break or zero-width space keeps the origin and a trailing form feed, line tabulation or next-line \
+        control loses it, as the checker reads it
+        """,
+        arguments: [
+            ("\t", true), ("\u{A0}", true), ("\u{200B}", true), ("\u{C}", false), ("\u{B}", false), ("\u{85}", false)
+        ]
+    )
+    func originNoteTrim(trailing: String, keepsOrigin: Bool) throws {
+        let found = Self.diagnostics([
+            "macro expansion #expect:1:22: warning: w [no_throw_in_try]",
+            "`- \(Self.root)/Tests/T/T.swift:33:36: note: expanded code originates here" + trailing
+        ])
+        let diagnostic = try #require(found.first)
+        let place = BuildPlace(path: "\(Self.root)/Tests/T/T.swift", line: 33, column: 36)
+        #expect(diagnostic.origin == (keepsOrigin ? place : nil))
+    }
+
     @Test("a message spanning lines is joined up to the line ending with its ID, as SIP's three-line warning")
     func continuation() throws {
         let output = Self.read([

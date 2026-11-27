@@ -4,13 +4,12 @@
 //
 //  What a generated build-output line has besides its kind, for the
 //  generator's deterministic meta-test (design D14) to count, and for a
-//  property to tally as antecedents. The `pending` traits mark the shapes
-//  the decided rules read differently from the reader before step 7's
-//  fixes (B10's landed in step 7a with B23's `ms<TAB>` half, the rest of
-//  B23's and B24's in step 7c), so the reader now reads each as decided;
-//  only `BuildOutputGen.Rules.decided` generates them. They keep their
-//  names, so the meta-test's counts stand, until the current rules are
-//  retired.
+//  property to tally as antecedents. The `shapeB10`, `shapeB23` and
+//  `shapeB24` traits mark the shapes the decided rules read differently
+//  from the reader before step 7's fixes (B10's landed in step 7a with
+//  B23's `ms<TAB>` half, the rest of B23's and B24's in step 7c), so the
+//  reader now reads each as decided; only `BuildOutputGen.Rules.decided`
+//  generates them.
 //
 
 /// A trait of a generated build-output line.
@@ -43,22 +42,22 @@ enum BuildLineTrait: String, CaseIterable, Hashable, Sendable {
     case nearHeader = "near header"
     /// A header whose message never completes with an ID or a group.
     case noSuffix = "no suffix"
-    /// B10: a malformed timing line just after a header or plain line,
-    /// which the reader took into the message until B10's fix; it now
-    /// ends the message, as the decided rules say.
-    case pendingB10 = "pending B10"
-    /// B23: a Prepend scalar just before a place's `:` or a time's `ms`,
-    /// read as decided since B23's fix (the `ms` half in step 7a, places
-    /// in step 7c: the reader finds both on scalars).
-    case pendingB23 = "pending B23"
-    /// B24: an escape whose last scalar joins the Character after it,
-    /// read as decided since B24's fix (step 7c: escapes are read on
-    /// scalars, so the Character's mark is kept).
-    case pendingB24 = "pending B24"
     /// Holds a Prepend scalar where it joins no separator.
     case prepend
     /// Copied from a recorded build's output.
     case recorded
+    /// B10: a malformed timing line just after a header or plain line,
+    /// which the reader took into the message until B10's fix; it now
+    /// ends the message, as the decided rules say.
+    case shapeB10 = "B10 shape"
+    /// B23: a Prepend scalar just before a place's `:` or a time's `ms`,
+    /// read as decided since B23's fix (the `ms` half in step 7a, places
+    /// in step 7c: the reader finds both on scalars).
+    case shapeB23 = "B23 shape"
+    /// B24: an escape whose last scalar joins the Character after it,
+    /// read as decided since B24's fix (step 7c: escapes are read on
+    /// scalars, so the Character's mark is kept).
+    case shapeB24 = "B24 shape"
     /// A header whose message completes before the last plain line that
     /// could have continued it, so the lines after are ignored.
     case surplus
@@ -68,7 +67,4 @@ enum BuildLineTrait: String, CaseIterable, Hashable, Sendable {
     case unknownPlace = "unknown place"
     /// The last line of its file, with no line break after it.
     case unterminated
-
-    /// The traits that mark a shape awaiting a fix.
-    static let pending: Set<Self> = [.pendingB10, .pendingB23, .pendingB24]
 }

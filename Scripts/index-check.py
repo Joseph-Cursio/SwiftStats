@@ -129,7 +129,10 @@ holds spaces and ASCII digits only before its first `|`, and a box's `+-`,
 a decoration, a group footnote's `[#` and `]: <`, and the prefixes of lines
 that can't continue a message are matched on code points, as the reader
 matches them on Unicode scalars (U13), so a combining mark after one, or a
-Prepend scalar before it, moves no boundary. Two name classes still differ
+Prepend scalar before it, moves no boundary. An origin note's text is
+compared trimmed of TAB, the Zs spaces and U+200B (Foundation's
+whitespaces), as the reader trims it, so a trailing form feed or U+0085
+leaves a macro diagnostic with no origin on both sides. Two name classes still differ
 from the reader's, both open for a decision: a macro name's characters
 (the reader takes a letter followed by a combining mark, such as `e` and
 U+0301, as one letter; this script takes letters and digits code point by
@@ -1824,6 +1827,12 @@ BELL = "\x07"
 # not Python's wider str.isspace, which takes U+001C to U+001F as well.
 WHITE_SPACE = ("\t\n\x0b\x0c\r \x85\xa0\u1680\u2000\u2001\u2002\u2003\u2004\u2005"
                "\u2006\u2007\u2008\u2009\u200a\u2028\u2029\u202f\u205f\u3000")
+# Foundation's CharacterSet.whitespaces, which BuildLineGrammar.originPlace
+# trims an origin note's text of: TAB, general category Zs and U+200B (as
+# measured on macOS 27), not the line controls, U+0085, U+2028 or U+2029
+# that WHITE_SPACE and str.strip also take.
+FOUNDATION_WHITESPACES = ("\t \xa0\u1680\u2000\u2001\u2002\u2003\u2004\u2005"
+                          "\u2006\u2007\u2008\u2009\u200a\u200b\u202f\u205f\u3000")
 
 # Line classes. Every line of every input gets exactly one; the ones in
 # UNACCOUNTED fail the check.
@@ -2411,7 +2420,8 @@ class BuildLines:
             following = index + 1 + count
             inner = decorated(texts[following]) if following < len(texts) else None
             note = diagnostic_header(inner) if inner is not None else None
-            if note is not None and note[0] == "file" and note[4] == "note" and note[5].strip() == ORIGIN_NOTE:
+            if note is not None and note[0] == "file" and note[4] == "note" \
+                    and note[5].strip(FOUNDATION_WHITESPACES) == ORIGIN_NOTE:
                 origin = {"file": note[1], "line": note[2], "column": note[3]}
         self.diagnostics.append({
             "severity": severity, "place": kind,

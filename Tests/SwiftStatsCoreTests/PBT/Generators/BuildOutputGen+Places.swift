@@ -25,7 +25,7 @@ extension BuildOutputGen {
         let text: String
         /// As read.
         let place: BuildPlace
-        /// `pendingB23` when a Prepend scalar ends the path.
+        /// `shapeB23` when a Prepend scalar ends the path.
         let traits: Set<BuildLineTrait>
     }
 
@@ -68,17 +68,17 @@ extension BuildOutputGen {
         (classWeight, zip(word, Pick.element(of: UnicodeGen.prepend), word).map { $0 + $1 + $2 })
     )
 
-    /// A path under `rules`, and `pendingB23` when a Prepend scalar ends
+    /// A path under `rules`, and `shapeB23` when a Prepend scalar ends
     /// it (decided rules only).
     static func path(_ rules: Rules) -> Generator<(text: String, traits: Set<BuildLineTrait>), AnySequence<Any>> {
         let end = Gen.frequency(
             (plainEndWeight, Gen.always("")),
-            (rules == .decided ? pendingWeight : neverWeight, Pick.element(of: UnicodeGen.prepend))
+            (rules == .decided ? fixedShapeWeight : neverWeight, Pick.element(of: UnicodeGen.prepend))
         )
         return zip(Pick.element(of: roots), segment.array(of: pathSegments), word, end)
             .map { root, segments, file, end in
                 let text = ([root] + segments + [file + ".swift"]).joined(separator: "/") + end
-                return (text: text, traits: end.isEmpty ? [] : [.pendingB23])
+                return (text: text, traits: end.isEmpty ? [] : [.shapeB23])
             }
             .eraseToAny()
     }

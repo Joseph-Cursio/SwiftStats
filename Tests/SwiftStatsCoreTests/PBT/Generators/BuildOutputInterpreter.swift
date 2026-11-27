@@ -8,8 +8,8 @@
 //  message or take the lines after it, and every stated line reads as if
 //  it weren't there; a malformed timing line just after a header or plain
 //  line, which the reader took into a message until B10's fix (step 7a),
-//  gets a blank line before it under the current rules and is marked
-//  pending under the decided ones. Then the first `lineCap` lines
+//  gets a blank line before it under the current rules and is marked as
+//  B10's shape under the decided ones. Then the first `lineCap` lines
 //  are kept (design D7). Write: each line takes its decoration's line
 //  break, and each but a wild line its escape, an escape that would join
 //  the Character after it moving to the line's end; an empty last line
@@ -171,7 +171,7 @@ enum BuildOutputInterpreter {
 
     /// `drafts` with blank lines around each wild line, and before each
     /// malformed timing line a message might take (current rules) or that
-    /// line marked pending (decided rules).
+    /// line marked as B10's shape (decided rules).
     private static func guarded(_ drafts: [BuildLineDraft], rules: BuildOutputGen.Rules) -> [BuildLineDraft] {
         var guarded: [BuildLineDraft] = []
         for draft in drafts {
@@ -180,7 +180,7 @@ enum BuildOutputInterpreter {
                 guarded += [.insertedBlank, draft, .insertedBlank]
 
             case .malformedTiming where mayContinue(guarded.last):
-                guarded += rules == .current ? [.insertedBlank, draft] : [draft.adding(.pendingB10)]
+                guarded += rules == .current ? [.insertedBlank, draft] : [draft.adding(.shapeB10)]
 
             default:
                 guarded.append(draft)
@@ -226,7 +226,7 @@ enum BuildOutputInterpreter {
                 traits.insert(.truncatedEscape)
             }
             if written.joinsKept {
-                traits.insert(.pendingB24)
+                traits.insert(.shapeB24)
             }
         }
         var lineBreak = "\n"

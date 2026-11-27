@@ -5,11 +5,13 @@ import Testing
 /// What the build-output generator draws (design D14): from a fixed seed,
 /// a thousand outputs reach each shape a build-output property reads, and
 /// each antecedent it conditions on, an exact number of times, counted per
-/// output (a property's chance per run). The current rules never draw a
-/// shape awaiting a fix; the decided rules draw each. No line ends in a
-/// carriage return, so CRLF goes only where the reader drops just the CR,
-/// and no file passes the line cap. The counts hold under this engine's generator code and this
-/// standard library; a change to either redraws them.
+/// output (a property's chance per run). The rules from before step 7's
+/// fixes (`current`, which no property draws since step 7c) never draw
+/// B10's, B23's or B24's shapes; the decided rules, which every property
+/// draws, draw each. No line ends in a carriage return, so CRLF goes only
+/// where the reader drops just the CR, and no file passes the line cap.
+/// The counts hold under this engine's generator code and this standard
+/// library; a change to either redraws them.
 @Suite("Build output generator")
 struct BuildOutputGenTests {
     /// The outputs each count draws.
@@ -147,7 +149,7 @@ struct BuildOutputGenTests {
         )
     }
 
-    @Test("the current rules reach every shape a property reads, and no shape awaiting a fix")
+    @Test("the rules from before step 7's fixes draw none of B10's, B23's or B24's shapes")
     func currentRules() throws {
         let counts = try Self.counts(.current)
 
@@ -193,12 +195,15 @@ struct BuildOutputGenTests {
         #expect(counts.longest <= BuildOutputInterpreter.lineCap)
     }
 
-    @Test("the decided rules also reach each shape awaiting a fix (B10, B23, B24)")
+    @Test("the decided rules reach every shape a property reads, B10's, B23's and B24's among them")
     func decidedRules() throws {
         let counts = try Self.counts(.decided)
 
         #expect(
             counts.labels == [
+                "B10 shape": 263,
+                "B23 shape": 468,
+                "B24 shape": 273,
                 "CRLF": 868,
                 "a function body's times to sum": 320,
                 "a message with no ID taking a line": 489,
@@ -219,9 +224,6 @@ struct BuildOutputGenTests {
                 "macro origin": 78,
                 "near header": 277,
                 "no suffix": 621,
-                "pending B10": 263,
-                "pending B23": 468,
-                "pending B24": 273,
                 "prepend": 682,
                 "reads as continuation": 721,
                 "reads as diagnostic": 858,

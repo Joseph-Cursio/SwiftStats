@@ -35,12 +35,13 @@ enum BuildOutputGen {
     /// The rules the labels follow.
     enum Rules: Sendable {
         /// The reader as built before step 7's fixes: only shapes on which
-        /// it and the decided rules agreed are generated. No property uses
-        /// them since step 7c; the meta-test still pins what they draw.
+        /// it and the decided rules agreed are generated, none of B10's,
+        /// B23's or B24's. No property uses them since step 7c; the
+        /// meta-test still pins what they draw.
         case current
         /// The rules U10 and U13 decided, which step 7's fixes (B10 in 7a,
         /// B23 and B24 in 7c) brought the reader to: the current shapes
-        /// plus the pending ones, whose reading those fixes changed.
+        /// plus B10's, B23's and B24's, whose reading those fixes changed.
         case decided
     }
 
@@ -75,9 +76,10 @@ enum BuildOutputGen {
     /// meta-tests), so P1.2's runs, and P1.8's moves of a line that ended a
     /// message, never miss them.
     static let interruptedWeight = 3.0
-    /// Weight of each pending shape under the decided rules.
-    static let pendingWeight = 1.0
-    /// Weight of a pending shape under the current rules: never drawn.
+    /// Weight of each of B10's, B23's and B24's shapes under the decided
+    /// rules.
+    static let fixedShapeWeight = 1.0
+    /// Weight of one of those shapes under the current rules: never drawn.
     static let neverWeight = 0.0
 
     /// How many blocks the standard error has (assumed: with the
@@ -153,7 +155,7 @@ enum BuildOutputGen {
             (emptyDeclarationWeight, emptyDeclarationTiming.map { [$0] }),
             (repeatedBodyWeight, repeatedTiming),
             (classWeight, overlongTiming.map { [$0] }),
-            (rules == .decided ? pendingWeight : neverWeight, prependedTime.map { [$0] }),
+            (rules == .decided ? fixedShapeWeight : neverWeight, prependedTime.map { [$0] }),
             (diagnosticWeight, diagnostic(rules)),
             (rules == .decided ? interruptedWeight : neverWeight, interruptedDiagnostic),
             (classWeight, recorded(timings: true)),
@@ -182,7 +184,7 @@ enum BuildOutputGen {
             (classWeight, otherWarning),
             (classWeight, blank),
             (classWeight, wild),
-            (rules == .decided ? pendingWeight : neverWeight, joinedEscape)
+            (rules == .decided ? fixedShapeWeight : neverWeight, joinedEscape)
         )
         .eraseToAny()
     }

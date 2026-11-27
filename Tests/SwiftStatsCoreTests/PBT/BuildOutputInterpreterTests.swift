@@ -177,7 +177,7 @@ struct BuildOutputInterpreterTests {
         #expect(current.map { $0.traits.contains(.insertedBlank) } == [false, true, false])
         #expect(current.last?.reading == .unparsedTiming)
         #expect(decided.map(\.text) == ["/p/a.swift:3:4: warning: open", "1.234ms\t<invalid loc>"])
-        #expect(decided.last?.traits.contains(.pendingB10) == true)
+        #expect(decided.last?.traits.contains(.shapeB10) == true)
         #expect(decided.last?.reading == .unparsedTiming)
     }
 
