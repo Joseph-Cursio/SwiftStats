@@ -13,7 +13,8 @@
 //  SwiftPM's and Swift Build's `warning: ` lines. Blank lines, white space
 //  included. Wild lines of any inline fragments, or of bytes that aren't
 //  UTF-8. And under the decided rules, a plain line with an escape just
-//  before a Character that joins its last scalar (B24, pending).
+//  before a Character that joins its last scalar (B24, read so since step
+//  7c).
 //
 
 import PropertyBased
@@ -166,8 +167,8 @@ extension BuildOutputGen {
     )
 
     /// A plain line with an escape just before a Character that joins the
-    /// escape's last scalar (B24, pending): a CSI, an OSC-8 link ended by
-    /// `ESC \`, or a two-character escape.
+    /// escape's last scalar (B24, fixed in step 7c): a CSI, an OSC-8 link
+    /// ended by `ESC \`, or a two-character escape.
     static let joinedEscape = zip(
         word,
         Pick.element(of: joiningControls),

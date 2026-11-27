@@ -31,10 +31,16 @@ struct GeneratedBuildLine: Hashable, Sendable {
     }
 
     /// The line as written, escapes and line break shown as Swift escapes,
-    /// and its label: `"…\n" -> entry(…)`.
+    /// and its label: `"…\n" -> entry(…)`, in ASCII, every other scalar
+    /// written as `\u{…}` (`PBTTrace.ascii`). The engine puts this in the
+    /// issue that holds a failure's seed, and `swift test` relays a test's
+    /// output in chunks and sometimes drops whole chunks, far more often
+    /// when the output holds multi-byte scalars (emoji, Arabic): step 7c's
+    /// calibration lost one seed in 20 runs that way, as `PBTTrace` found
+    /// for its own lines in step 6b.
     var testDescription: String {
         let decoded = String(bytes: written, encoding: .utf8) ?? String(bytes: written, encoding: .isoLatin1) ?? ""
         let shown = decoded + lineBreak
-        return "\(shown.debugDescription) -> \(reading)"
+        return PBTTrace.ascii("\(shown.debugDescription) -> \(reading)")
     }
 }

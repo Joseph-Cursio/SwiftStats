@@ -9,7 +9,11 @@
 //  label to have fired at least once, with the run count chosen so that a
 //  label with chance p per run stays silent with probability below 10⁻⁶.
 //  Exact floors live in the generators' deterministic meta-tests, never
-//  here, so a random run can't fail on bad luck. A class behind an
+//  here, so a random run can't fail on bad luck. A check that fails stops
+//  at its first failing input, so its tally covers only the runs before
+//  it: a property passes its `FirstFailureLatch`, and once the latch is
+//  claimed nothing is required, so the failure's report holds the law's
+//  issue and the engine's seed and no antecedent noise. A class behind an
 //  `NSLock`, safe for the engine's parallel runs; `Mutex` needs macOS 15.
 //
 
@@ -58,6 +62,18 @@ final class AntecedentTally: @unchecked Sendable { // every `var` is behind `loc
                 sourceLocation: sourceLocation
             )
         }
+    }
+
+    /// Records an issue at `sourceLocation` for each of `labels` that never
+    /// fired, as `requireFired(_:sourceLocation:)` does, unless `latch` is
+    /// claimed: its check failed, so the tally covers only the runs before
+    /// the failure, and an antecedent that hadn't fired by then says
+    /// nothing.
+    func requireFired(_ labels: [String], unlessFailed latch: FirstFailureLatch, sourceLocation: SourceLocation) {
+        guard latch.hasFailed == false else {
+            return
+        }
+        requireFired(labels, sourceLocation: sourceLocation)
     }
 
     deinit {

@@ -7,8 +7,11 @@
 //  it to every `PBTTrace.firstFailure(_:latch:)` call, so the check prints
 //  its first failing input and no later one. One latch per check, not one
 //  per process: a test that runs again in the same process (repetitions,
-//  or a second check in one body) gets a fresh latch and prints again. Safe
-//  to claim from the engine's parallel runs: a class behind an `NSLock`,
+//  or a second check in one body) gets a fresh latch and prints again. A
+//  claimed latch also tells the body, after `propertyCheck`, that its check
+//  failed (`hasFailed`), so it can leave out what a failed check's partial
+//  runs can't show (`AntecedentTally.requireFired(_:unlessFailed:sourceLocation:)`).
+//  Safe to claim from the engine's parallel runs: a class behind an `NSLock`,
 //  the pattern `ThreadRun` uses, since `Mutex` needs macOS 15 and the
 //  package targets macOS 14.
 //
@@ -21,6 +24,11 @@ final class FirstFailureLatch: @unchecked Sendable { // every `var` is behind `l
     private let lock = NSLock()
     /// Whether the latch has been claimed.
     private var isClaimed = false
+
+    /// Whether the latch has been claimed: its check failed at least once.
+    var hasFailed: Bool {
+        lock.withLock { isClaimed }
+    }
 
     /// Claims the latch; whether this was its first claim.
     func claim() -> Bool {

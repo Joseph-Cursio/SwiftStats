@@ -8,11 +8,12 @@
 //  two-character escape, or a sequence cut off at the end of the line).
 //  Escapes go only into lines without one, at Character boundaries, and
 //  `BuildLineEscapes.strip` takes each out whole, so the line still reads
-//  as its text. One exception waits on U13 (B24): when an escape's last
-//  scalar joins the Character after it, the reader as built takes that
-//  Character into the escape. A decoration's escape never stays there: it
-//  moves to the end of the line. Only the B24 block, which the decided
-//  rules alone generate, keeps such an escape in place, marked.
+//  as its text. One shape was B24's (U13, fixed in step 7c): when an
+//  escape's last scalar joins the Character after it, the reader before
+//  the fix took that Character into the escape. A decoration's escape
+//  never stays there: it moves to the end of the line. Only the B24 block,
+//  which the decided rules alone generate, keeps such an escape in place,
+//  marked.
 //  Positions are drawn as numbers and taken modulo the line's length, so
 //  any decoration fits any line.
 //

@@ -13,7 +13,13 @@
 //  `<path>:<line>:<column>`. Source excerpt lines (digits or nothing before
 //  a `|`), box lines (`+---`) and decorated lines (`` `- ``, `|- `) are
 //  never a diagnostic's first line; a decorated note after a macro
-//  diagnostic is its origin note.
+//  diagnostic is its origin note. A place's colons, a header's `: `
+//  separators and severity, the timing mark, a blank line's white space,
+//  an excerpt's `|`, a box's `+-`, a decoration, a group footnote's
+//  `]: <` and the prefixes of lines that can't continue a message are
+//  found among a line's Unicode scalars (or bytes), not its Characters,
+//  so a Prepend scalar or a combining mark beside one moves no field's
+//  boundary (design B23, decided U13).
 //
 
 import Foundation
@@ -30,6 +36,11 @@ enum BuildLineGrammar {
     static let unknownPlace = "<unknown>"
     /// What a timing line holds after its time.
     static let timingMark = "ms\t"
+    /// What separates a place's path, line and column.
+    static let colon: Unicode.Scalar = ":"
+    /// What separates a diagnostic's place, severity and message, as
+    /// scalars.
+    static let separatorScalars = ": ".unicodeScalars
     /// What a time's unit is.
     static let unit = "ms"
     /// Hundredths of a millisecond in one.
@@ -51,10 +62,17 @@ enum BuildLineGrammar {
     /// The fields of a function body's timing line: time, place and
     /// declaration.
     static let functionFields = 3
-    /// What lines that can't continue a message start with.
-    static let linePrefixes = BuildDiagnostic.Severity.allCases.map { $0.rawValue + ": " } + ["info: "]
-    /// The decorations a note's line starts with.
-    static let decorations = ["`- ", "|- "]
+    /// What lines that can't continue a message start with, as scalars.
+    static let linePrefixes = (BuildDiagnostic.Severity.allCases.map { $0.rawValue + ": " } + ["info: "])
+        .map(\.unicodeScalars)
+    /// The decorations a note's line starts with, as scalars.
+    static let decorations = ["`- ", "|- "].map(\.unicodeScalars)
+    /// What a box line starts with after its spaces, as scalars.
+    static let boxStart = "+-".unicodeScalars
+    /// What a group footnote starts with, as scalars.
+    static let footnoteStart = "[#".unicodeScalars
+    /// What separates a group footnote's name from its link, as scalars.
+    static let footnoteSeparator = "]: <".unicodeScalars
 
     /// The entry a whole timing line states, or nil.
     static func timingEntry(_ text: String) -> TimingEntry? {
@@ -120,53 +138,75 @@ enum BuildLineGrammar {
         return Int(text)
     }
 
-    /// `<path>:<line>:<column>` split from the right, the path not empty
-    /// and not starting with white space, else nil.
+    /// `<path>:<line>:<column>` split from the right at its last two
+    /// colons, the path not empty and not starting with white space, else
+    /// nil. The colons are found among the text's Unicode scalars, not its
+    /// Characters, so a Prepend scalar just before one, which joins it into
+    /// one Character, stays in the field before it and doesn't hide it
+    /// (design B23, decided U13), as the checker splits on code points.
     static func splitPlace(_ text: Substring) -> BuildPlace? {
-        guard let lastColon = text.lastIndex(of: ":") else {
+        let scalars = text.unicodeScalars
+        guard let lastColon = scalars.lastIndex(of: colon) else {
             return nil
         }
-        let head = text[..<lastColon]
-        guard let middleColon = head.lastIndex(of: ":"),
-              let column = digits(text[text.index(after: lastColon)...]),
-              let line = digits(head[head.index(after: middleColon)...])
+        let head = scalars[..<lastColon]
+        guard let middleColon = head.lastIndex(of: colon),
+              let column = digits(Substring(scalars[scalars.index(after: lastColon)...])),
+              let line = digits(Substring(head[head.index(after: middleColon)...]))
         else {
             return nil
         }
         let path = head[..<middleColon]
-        guard let first = path.first, first.isWhitespace == false else {
+        guard let first = path.first, first.properties.isWhitespace == false else {
             return nil
         }
-        return BuildPlace(path: String(path), line: line, column: column)
+        return BuildPlace(path: String(Substring(path)), line: line, column: column)
     }
 
-    /// Whether `text` can never be a diagnostic's first line: blank, a
-    /// source excerpt line (digits or nothing before a `|`), a box line
-    /// (`+---`) or a decorated line (`` `- `` or `|- `).
+    /// Whether `text` can never be a diagnostic's first line: blank (every
+    /// scalar white space), a source excerpt line (spaces and ASCII digits
+    /// or nothing before its first `|`), a box line (`+---`) or a decorated
+    /// line (`` `- `` or `|- `). Read on Unicode scalars, not Characters,
+    /// so a space that a combining mark joins isn't blank, and a mark after
+    /// a `|`, a `+-` or a decoration doesn't hide it (decided U13), as the
+    /// checker reads code points.
     static func isStructural(_ text: String) -> Bool {
-        if text.allSatisfy(\.isWhitespace) {
+        let scalars = text.unicodeScalars
+        if scalars.allSatisfy(\.properties.isWhitespace) {
             return true
         }
-        if let bar = text.firstIndex(of: "|"),
-           text[..<bar].allSatisfy({ $0 == " " || ($0.isASCII && $0.isNumber) }) {
+        if let bar = scalars.firstIndex(of: "|"),
+           scalars[..<bar].allSatisfy({ $0 == " " || ("0"..."9").contains($0) }) {
             return true
         }
-        return text.drop { $0 == " " }.hasPrefix("+-") || decorated(text) != nil
+        return scalars.drop { $0 == " " }.starts(with: boxStart) || decorated(text) != nil
     }
 
     /// The text after a `` `- `` or `|- `` decoration at the start of
-    /// `text`, spaces before it allowed; nil when it has none.
+    /// `text`, spaces before it allowed; nil when it has none. The
+    /// decoration is found among scalars, so a combining mark after its
+    /// space stays in the text after it (decided U13).
     static func decorated(_ text: String) -> Substring? {
-        let trimmed = text.drop { $0 == " " }
-        guard let mark = decorations.first(where: { trimmed.hasPrefix($0) }) else {
+        let trimmed = text.unicodeScalars.drop { $0 == " " }
+        guard let mark = decorations.first(where: { trimmed.starts(with: $0) }) else {
             return nil
         }
-        return trimmed.dropFirst(mark.count)
+        return Substring(trimmed.dropFirst(mark.count))
     }
 
-    /// Whether `text` is a group's footnote, `[#Group]: <https://…>`.
+    /// Whether `text` is a group's footnote, `[#Group]: <https://…>`, its
+    /// parts found among scalars (decided U13).
     static func isGroupFootnote(_ text: String) -> Bool {
-        text.hasPrefix("[#") && text.contains("]: <") && text.hasSuffix(">")
+        let scalars = text.unicodeScalars
+        return scalars.starts(with: footnoteStart)
+            && scalars.firstRange(of: footnoteSeparator) != nil
+            && scalars.last == ">"
+    }
+
+    /// Whether `line` starts with `prefix`, compared scalar by scalar, so a
+    /// combining mark just after the prefix doesn't hide it (decided U13).
+    static func starts(_ line: String, with prefix: String.UnicodeScalarView) -> Bool {
+        line.unicodeScalars.starts(with: prefix)
     }
 
     /// Whether `line` can continue a diagnostic's message: it isn't blank,
@@ -178,24 +218,27 @@ enum BuildLineGrammar {
         !(isStructural(line)
             || holdsTimingMark(line)
             || header(line[...]) != nil
-            || linePrefixes.contains { line.hasPrefix($0) }
+            || linePrefixes.contains { starts(line, with: $0) }
             || isGroupFootnote(line))
     }
 
-    /// A diagnostic's first line, read; nil when `text` is none.
+    /// A diagnostic's first line, read; nil when `text` is none. The `: `
+    /// separators, the severity and where the message starts are found
+    /// among the text's Unicode scalars, not its Characters, so a Prepend
+    /// scalar before a separator or a combining mark after one moves no
+    /// field's boundary (design B23, decided U13).
     static func header(_ text: Substring) -> DiagnosticHeader? {
-        var searchStart = text.startIndex
-        while let separator = text.range(of: ": ", range: searchStart..<text.endIndex) {
-            let rest = text[separator.upperBound...]
+        let scalars = text.unicodeScalars
+        var searchStart = scalars.startIndex
+        while let separator = scalars[searchStart...].firstRange(of: separatorScalars) {
+            let rest = scalars[separator.upperBound...]
             let severity = BuildDiagnostic.Severity.allCases.first { severity in
-                rest.hasPrefix(severity.rawValue + ": ") || rest == severity.rawValue + ":"
+                rest.starts(with: (severity.rawValue + ": ").unicodeScalars)
+                    || rest.elementsEqual((severity.rawValue + ":").unicodeScalars)
             }
-            if let severity, let location = location(text[..<separator.lowerBound]) {
-                return DiagnosticHeader(
-                    location: location,
-                    severity: severity,
-                    message: rest.dropFirst(severity.rawValue.count + ": ".count)
-                )
+            if let severity, let location = location(Substring(scalars[..<separator.lowerBound])) {
+                let message = Substring(rest.dropFirst(severity.rawValue.unicodeScalars.count + separatorScalars.count))
+                return DiagnosticHeader(location: location, severity: severity, message: message)
             }
             searchStart = separator.upperBound
         }
@@ -216,10 +259,13 @@ enum BuildLineGrammar {
     }
 
     /// The location a diagnostic's place prefix names, else nil: a macro
-    /// expansion's, `<unknown>:<line>`, or `<path>:<line>:<column>`.
+    /// expansion's, `<unknown>:<line>`, or `<path>:<line>:<column>`. The
+    /// forms are told apart on Unicode scalars, as `header` reads them.
     private static func location(_ prefix: Substring) -> BuildDiagnostic.Location? {
-        if prefix.hasPrefix(macroPlace) {
-            guard let place = splitPlace(prefix.dropFirst(macroPlace.count)),
+        let scalars = prefix.unicodeScalars
+        let macro = macroPlace.unicodeScalars
+        if scalars.starts(with: macro) {
+            guard let place = splitPlace(Substring(scalars.dropFirst(macro.count))),
                   let sigil = place.path.first, sigil == "#" || sigil == "@", place.path.count > 1,
                   place.path.dropFirst().allSatisfy({ $0.isLetter || $0.isNumber || $0 == "_" || $0 == "." })
             else {
@@ -227,7 +273,8 @@ enum BuildLineGrammar {
             }
             return .macro(name: place.path, line: place.line, column: place.column)
         }
-        if prefix.hasPrefix(unknownPlace + ":"), let line = digits(prefix.dropFirst(unknownPlace.count + 1)) {
+        let unknown = (unknownPlace + ":").unicodeScalars
+        if scalars.starts(with: unknown), let line = digits(Substring(scalars.dropFirst(unknown.count))) {
             return .unknown(line: line)
         }
         return splitPlace(prefix).map(BuildDiagnostic.Location.file)

@@ -93,7 +93,8 @@ struct GeneratedBuildOutput: Sendable, CustomTestStringConvertible {
         )
     }
 
-    /// Both files, line by line, as written and labelled.
+    /// Both files, line by line, as written and labelled, in ASCII (see
+    /// `GeneratedBuildLine.testDescription`).
     var testDescription: String {
         let stderrText = stderrLines.map { "  " + $0.testDescription }
         let logText = logLines.map { "  " + $0.testDescription }

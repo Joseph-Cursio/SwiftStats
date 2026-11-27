@@ -119,9 +119,19 @@ no such line ends it so, it has no continuation if its first line ends so,
 and otherwise takes all of those lines, as the reader does (design B8,
 decided U10). Each excerpt echo of the diagnostic just read must repeat
 its whole joined message, taking as many lines as the message did. A line
-is blank when every code point is Unicode White_Space, and an excerpt's
-gutter holds ASCII digits only, as the reader reads them (U13). The stdout
-log must hold no timing entry (the reader takes timings from stderr only).
+is blank when every code point is Unicode White_Space, an excerpt's gutter
+holds spaces and ASCII digits only before its first `|`, and a box's `+-`,
+a decoration, a group footnote's `[#` and `]: <`, and the prefixes of lines
+that can't continue a message are matched on code points, as the reader
+matches them on Unicode scalars (U13), so a combining mark after one, or a
+Prepend scalar before it, moves no boundary. Two name classes still differ
+from the reader's, both open for a decision: a macro name's characters
+(the reader takes a letter followed by a combining mark, such as `e` and
+U+0301, as one letter; this script takes letters and digits code point by
+code point, so it refuses the mark), and a group footnote's name (the
+reader takes any text between `[#` and `]: <`, this script ASCII letters
+and digits only). The stdout log must hold no
+timing entry (the reader takes timings from stderr only).
 `--json` writes this parse (classes per file, counters, the entries, the
 unique diagnostics with joined messages, IDs, groups and macro origins,
 the spliced lines); `--compare` reads a reader's parse in that shape
@@ -2159,10 +2169,9 @@ def has_marker(text):
 
 
 def is_blank(text):
-    """Whether `text` is empty or WHITE_SPACE only, read on code points (U13).
-    The reader reads Characters, so it also takes a white space followed by
-    a combining mark as blank; the checker doesn't (a known difference until
-    U13 reaches BuildLineGrammar.isStructural)."""
+    """Whether `text` is empty or WHITE_SPACE only, read on code points, as
+    BuildLineGrammar.isStructural reads Unicode scalars (U13): a white space
+    followed by a combining mark is not blank."""
     return text.strip(WHITE_SPACE) == ""
 
 

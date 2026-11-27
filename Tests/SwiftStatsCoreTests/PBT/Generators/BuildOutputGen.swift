@@ -32,12 +32,13 @@ import PropertyBased
 enum BuildOutputGen {
     /// The rules the labels follow.
     enum Rules: Sendable {
-        /// The reader as built: only shapes on which it and the decided
-        /// rules agree are generated, so a property over them holds today.
+        /// The reader as built before step 7's fixes: only shapes on which
+        /// it and the decided rules agreed are generated. No property uses
+        /// them since step 7c; the meta-test still pins what they draw.
         case current
-        /// The rules U10 and U13 decided, which step 7's fixes (B10, B23,
-        /// B24) bring the reader to: the current shapes plus the pending
-        /// ones, which those fixes change the reading of.
+        /// The rules U10 and U13 decided, which step 7's fixes (B10 in 7a,
+        /// B23 and B24 in 7c) brought the reader to: the current shapes
+        /// plus the pending ones, whose reading those fixes changed.
         case decided
     }
 

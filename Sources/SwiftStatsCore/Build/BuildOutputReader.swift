@@ -44,8 +44,9 @@ enum BuildOutputReader {
     /// How many lines can continue a diagnostic's message.
     static let continuationLimit = 20
     /// What a line Swift Build prints as a warning but isn't a diagnostic
-    /// starts with.
-    static let warningPrefix = "warning: "
+    /// starts with, as scalars: a combining mark after its space doesn't
+    /// hide it (decided U13).
+    static let warningPrefix = "warning: ".unicodeScalars
     /// The UTF-8 newline byte.
     private static let newline = UInt8(ascii: "\n")
     /// The UTF-8 carriage return byte.
@@ -111,7 +112,7 @@ enum BuildOutputReader {
                 index += read.consumed
                 continue
             }
-            if text.hasPrefix(warningPrefix) {
+            if BuildLineGrammar.starts(text, with: warningPrefix) {
                 file.otherWarnings += 1
             }
         }

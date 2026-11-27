@@ -16,7 +16,7 @@
 //  sums. An overlong one is valid but for 13 or more
 //  whole digits, so it still ends a message. Under the decided rules a
 //  Prepend scalar may come just before `ms` (B23; the reader reads it as
-//  decided since step 7a, but it stays labelled pending until B23's fix).
+//  decided since step 7a, and the trait keeps its pending name).
 //
 
 import PropertyBased
@@ -226,7 +226,7 @@ extension BuildOutputGen {
     }
 
     /// A time with a Prepend scalar just before its `ms` (B23; read as
-    /// decided since step 7a, still labelled pending).
+    /// decided since step 7a, the trait keeping its pending name).
     static let prependedTime = zip(time, Pick.element(of: UnicodeGen.prepend), timingPlace(.current))
         .map { time, prepend, place in
             let text = time.text + prepend + "ms\t" + (place?.text ?? invalidLocation)

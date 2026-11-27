@@ -5,7 +5,8 @@ import Testing
 /// firings are counted, safely across the engine's parallel runs; the
 /// summary lists them in label order; and requiring a label records one
 /// issue for each label that never fired, so a law that checked nothing
-/// fails rather than passing vacuously.
+/// fails rather than passing vacuously, unless the check already failed:
+/// its tally then covers only the runs before the failure.
 @Suite("Antecedent tally")
 struct AntecedentTallyTests {
     @Test("each label's firings are counted, and a label that never fired counts 0")
@@ -74,5 +75,25 @@ struct AntecedentTallyTests {
         }
 
         #expect(recorded.summary == "merged: 1, refused: 1")
+    }
+
+    @Test("once its check has failed, requiring labels records nothing; until then it records as usual")
+    func requiredAfterFailure() {
+        let tally = AntecedentTally()
+        let latch = FirstFailureLatch()
+        let recorded = AntecedentTally()
+        #expect(latch.hasFailed == false)
+
+        withKnownIssue {
+            tally.requireFired(["merged"], unlessFailed: latch, sourceLocation: #_sourceLocation)
+        } matching: { issue in
+            recorded.fire("before")
+            return String(describing: issue).contains("\"merged\" never fired")
+        }
+        _ = latch.claim()
+        tally.requireFired(["merged"], unlessFailed: latch, sourceLocation: #_sourceLocation)
+
+        #expect(latch.hasFailed)
+        #expect(recorded.summary == "before: 1")
     }
 }

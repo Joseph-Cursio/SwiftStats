@@ -10,7 +10,8 @@
 //  that has a line and column; it never starts with white space; and its
 //  words can't spell a severity, so a `: ` inside it never starts a
 //  header. Under the decided rules a Prepend scalar may end the path,
-//  just before the `:` of its line (B23, pending). A header's place is a
+//  just before the `:` of its line (B23, read so since step 7c). A
+//  header's place is a
 //  file's, a macro expansion's (`#name` or `@name`) or `<unknown>:<line>`.
 //
 

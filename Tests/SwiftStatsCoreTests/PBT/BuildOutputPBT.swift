@@ -6,7 +6,8 @@ import Testing
 /// Properties of reading the T1 build's output (M7 design §6.1, the
 /// doc comments of `BuildOutputReader` and `BuildLineGrammar`), over
 /// generated output whose every line is labelled with what it reads as
-/// (`BuildOutputGen`, under the reader's current rules): reading any
+/// (`BuildOutputGen`, under the rules U10 and U13 decided, which the
+/// reader follows since step 7's fixes, B10, B23 and B24): reading any
 /// output never traps, every valid timing line becomes its entry, and the
 /// entries map onto a measured package without trapping, every time
 /// accounted for (P1.1, which guards B1 and B18); a time field reads as
@@ -101,10 +102,10 @@ struct BuildOutputPBT {
 
     /// The output whose standard error is `stderr` and whose task log is
     /// `log`, each line written plain and ended with a line break, and
-    /// labelled under the current rules.
+    /// labelled under the decided rules.
     static func output(_ stderr: [BuildLineDraft], log: [BuildLineDraft]) -> GeneratedBuildOutput {
         GeneratedBuildOutput(
-            rules: .current,
+            rules: .decided,
             stderr: BuildFileDraft(blocks: stderr.map { [$0] }, decorations: [], terminated: true),
             log: BuildFileDraft(blocks: log.map { [$0] }, decorations: [], terminated: true)
         )
@@ -145,9 +146,10 @@ struct BuildOutputPBT {
     /// once, half up; the totals add the function-body entries on records
     /// not nested in a body, on types and on files; sums stop at `Int.max`
     /// rather than trapping, B18).
-    /// Why it might not: the generator draws only the shapes on which the
-    /// reader as built and the decided rules (U10, U13) agree; B10's, B23's
-    /// and B24's shapes join in step 7. Diagnostics, the unparsed count
+    /// Why it might not: the generator draws the decided rules' shapes (U10,
+    /// U13), B10's, B23's and B24's among them: a Prepend scalar just
+    /// before a timing place's colon stays in the path since B23's fix
+    /// (step 7c), so such a line is an entry. Diagnostics, the unparsed count
     /// and escapes are P1.2, P1.5 and P1.6's. Times stay within twelve
     /// digits and files within 40 lines, so no sum nears `Int.max`: B18's
     /// trap is guarded by the bound, and `TimingFigureTests+Saturation`
@@ -164,7 +166,8 @@ struct BuildOutputPBT {
     /// construction), and sums worked out apart from the mapper; planted
     /// defects: B1's bound removed, an empty declaration accepted, a
     /// synthesized entry's time not counted, and a function's entries
-    /// kept as their largest rather than summed, each detected in 20 of 20
+    /// kept as their largest rather than summed, and a place split on
+    /// Characters (B23's fix undone), each detected in 20 of 20
     /// calibration runs.
     /// Tier: Strict (stop-ship).
     @Test(
@@ -178,7 +181,7 @@ struct BuildOutputPBT {
         defer { library.package.remove() }
         let latch = FirstFailureLatch()
         let tally = AntecedentTally()
-        await propertyCheck(count: PBTBudget.runs(Self.readingRuns), input: BuildOutputGen.output(.current)) { sample in
+        await propertyCheck(count: PBTBudget.runs(Self.readingRuns), input: BuildOutputGen.output(.decided)) { sample in
             PBTTrace.note(sample)
             let read = BuildOutputReader.read(stderr: sample.stderr, log: sample.log)
             let rooted = Self.rooted(read.entries, at: library.root)
@@ -202,7 +205,7 @@ struct BuildOutputPBT {
             }
         }
         tally.report()
-        tally.requireFired(Self.readingAntecedents, sourceLocation: #_sourceLocation)
+        tally.requireFired(Self.readingAntecedents, unlessFailed: latch, sourceLocation: #_sourceLocation)
     }
 
     @Test("the recorded timing lines read as their entries, and map with every time accounted for")
@@ -212,7 +215,7 @@ struct BuildOutputPBT {
         }
         defer { library.package.remove() }
         let sample = GeneratedBuildOutput(
-            rules: .current,
+            rules: .decided,
             stderr: BuildFileDraft(blocks: BuildOutputGen.recordedTimings, decorations: [], terminated: true),
             log: BuildFileDraft(blocks: [BuildOutputGen.recordedGroups[0]], decorations: [], terminated: true)
         )

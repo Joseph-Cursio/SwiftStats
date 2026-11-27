@@ -7,64 +7,68 @@
 //  colours diagnostics and wraps group names in OSC-8 links when it isn't
 //  passed, even into a pipe: ANSI CSI sequences (`ESC [ … final`), OSC
 //  sequences (`ESC ] … BEL` or `ESC ] … ESC \`) and two-character escapes
-//  are taken out before a line is read.
+//  are taken out before a line is read. Sequences are read on Unicode
+//  scalars, not Characters: a combining mark just after a sequence's last
+//  scalar joins it into one Character, but it isn't part of the sequence
+//  and is kept (design B24, decided U13), as the checker reads code points.
 //
 
 /// Takes ANSI and OSC-8 escape sequences out of build output lines.
 enum BuildLineEscapes {
     /// The escape character.
-    private static let escape: Character = "\u{1B}"
+    private static let escape: Unicode.Scalar = "\u{1B}"
     /// The bell character, which ends an OSC sequence.
-    private static let bell: Character = "\u{07}"
+    private static let bell: Unicode.Scalar = "\u{07}"
     /// A CSI sequence's parameter and intermediate characters.
-    private static let parameters: ClosedRange<Character> = "\u{20}"..."\u{3F}"
+    private static let parameters: ClosedRange<Unicode.Scalar> = "\u{20}"..."\u{3F}"
 
     /// `text` without its escape sequences, and whether it held one.
     static func strip(_ text: String) -> (text: String, escaped: Bool) {
-        guard text.contains(escape) else {
+        let scalars = text.unicodeScalars
+        guard scalars.contains(escape) else {
             return (text, false)
         }
-        var kept = ""
-        var index = text.startIndex
-        while index < text.endIndex {
-            let character = text[index]
-            guard character == escape else {
-                kept.append(character)
-                index = text.index(after: index)
+        var kept = String.UnicodeScalarView()
+        var index = scalars.startIndex
+        while index < scalars.endIndex {
+            let scalar = scalars[index]
+            guard scalar == escape else {
+                kept.append(scalar)
+                index = scalars.index(after: index)
                 continue
             }
-            index = end(in: text, from: text.index(after: index))
+            index = end(in: scalars, from: scalars.index(after: index))
         }
-        return (kept, true)
+        return (String(kept), true)
     }
 
     /// Where the escape sequence whose escape character came just before
-    /// `start` ends: after a CSI's final character, an OSC's bell or string
-    /// terminator, or a two-character escape's second character.
-    private static func end(in text: String, from start: String.Index) -> String.Index {
-        guard start < text.endIndex else {
+    /// `start` ends: after a CSI's final scalar, an OSC's bell or string
+    /// terminator, or a two-character escape's second scalar.
+    private static func end(in scalars: String.UnicodeScalarView, from start: String.Index) -> String.Index {
+        guard start < scalars.endIndex else {
             return start
         }
-        var index = text.index(after: start)
-        switch text[start] {
+        var index = scalars.index(after: start)
+        switch scalars[start] {
         case "[":
-            while index < text.endIndex, parameters.contains(text[index]) {
-                index = text.index(after: index)
+            while index < scalars.endIndex, parameters.contains(scalars[index]) {
+                index = scalars.index(after: index)
             }
-            return index < text.endIndex ? text.index(after: index) : index
+            return index < scalars.endIndex ? scalars.index(after: index) : index
 
         case "]":
-            while index < text.endIndex, text[index] != bell, text[index] != escape {
-                index = text.index(after: index)
+            while index < scalars.endIndex, scalars[index] != bell, scalars[index] != escape {
+                index = scalars.index(after: index)
             }
-            guard index < text.endIndex else {
+            guard index < scalars.endIndex else {
                 return index
             }
-            let after = text.index(after: index)
-            if text[index] == escape, after < text.endIndex, text[after] == "\\" {
-                return text.index(after: after)
+            let after = scalars.index(after: index)
+            if scalars[index] == escape, after < scalars.endIndex, scalars[after] == "\\" {
+                return scalars.index(after: after)
             }
-            return text[index] == bell ? after : index
+            return scalars[index] == bell ? after : index
 
         default:
             return index

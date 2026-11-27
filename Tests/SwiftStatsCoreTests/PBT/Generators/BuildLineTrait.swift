@@ -4,11 +4,13 @@
 //
 //  What a generated build-output line has besides its kind, for the
 //  generator's deterministic meta-test (design D14) to count, and for a
-//  property to tally as antecedents. The `pending` traits mark shapes the
-//  decided rules read differently from the reader until step 7's fixes
-//  land (B10's has, in step 7a, with B23's `ms<TAB>` half; the rest of
-//  B23's and B24's are to come); only `BuildOutputGen.Rules.decided`
-//  generates them.
+//  property to tally as antecedents. The `pending` traits mark the shapes
+//  the decided rules read differently from the reader before step 7's
+//  fixes (B10's landed in step 7a with B23's `ms<TAB>` half, the rest of
+//  B23's and B24's in step 7c), so the reader now reads each as decided;
+//  only `BuildOutputGen.Rules.decided` generates them. They keep their
+//  names, so the meta-test's counts stand, until the current rules are
+//  retired.
 //
 
 /// A trait of a generated build-output line.
@@ -45,12 +47,13 @@ enum BuildLineTrait: String, CaseIterable, Hashable, Sendable {
     /// which the reader took into the message until B10's fix; it now
     /// ends the message, as the decided rules say.
     case pendingB10 = "pending B10"
-    /// B23: a Prepend scalar just before a place's `:` or a time's `ms`.
-    /// The `ms` half landed with B10's fix (step 7a: the reader finds
-    /// `ms<TAB>` in bytes), so a prepended time now reads as decided; it
-    /// keeps the trait until B23's fix moves the generator.
+    /// B23: a Prepend scalar just before a place's `:` or a time's `ms`,
+    /// read as decided since B23's fix (the `ms` half in step 7a, places
+    /// in step 7c: the reader finds both on scalars).
     case pendingB23 = "pending B23"
-    /// B24: an escape whose last scalar joins the Character after it.
+    /// B24: an escape whose last scalar joins the Character after it,
+    /// read as decided since B24's fix (step 7c: escapes are read on
+    /// scalars, so the Character's mark is kept).
     case pendingB24 = "pending B24"
     /// Holds a Prepend scalar where it joins no separator.
     case prepend
