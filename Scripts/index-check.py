@@ -117,7 +117,12 @@ whether it reads as a timing entry or not, diagnostic, a
 `warning:`/`error:`/`note:`/`remark:`/`info:` line, a group footnote); when
 no such line ends it so, it has no continuation if its first line ends so,
 and otherwise takes all of those lines, as the reader does (design B8,
-decided U10). Each excerpt echo of the diagnostic just read must repeat
+decided U10). A diagnostic's first line and a group footnote end a message
+as the reader reads them, even when this script refuses the line (a
+relative path, a macro name of another class, a footnote name with a
+dash): the line is then classed on its own, and one holding a severity
+marker fails the check, so a line the reader reads as the next diagnostic
+is never joined to the message before it. Each excerpt echo of the diagnostic just read must repeat
 its whole joined message, taking as many lines as the message did. A line
 is blank when every code point is Unicode White_Space, an excerpt's gutter
 holds spaces and ASCII digits only before its first `|`, and a box's `+-`,
@@ -2070,6 +2075,42 @@ def diagnostic_header(text):
     return None
 
 
+def reader_place(prefix):
+    """Whether BuildLineGrammar.header would take `prefix` as a place,
+    whatever diagnostic_header makes of it: `macro expansion ` and a
+    sigil-led name of more than the sigil, in any name class, before
+    `:<line>:<column>`; `<unknown>:<line>`; or `<path>:<line>:<column>`
+    whose path is not empty and doesn't start with a WHITE_SPACE code
+    point (BuildLineGrammar.splitPlace), relative paths and interface
+    buffers included. It is the reader's place rule or wider, never
+    narrower: it decides only where a message ends."""
+    if prefix.startswith(MACRO_PLACE):
+        place = split_place(prefix[len(MACRO_PLACE):])
+        return place is not None and place[0][:1] in ("#", "@") and len(place[0]) > 1
+    if prefix.startswith("<unknown>:") and ascii_digits(prefix[len("<unknown>:"):]):
+        return True
+    place = split_place(prefix)
+    return place is not None and place[0][:1] not in WHITE_SPACE
+
+
+def reader_header(text):
+    """Whether BuildLineGrammar.header would read `text` as a diagnostic's
+    first line: some `: <severity>: ` (or a closing `: <severity>:`) whose
+    prefix is a place by reader_place. A line it reads ends a message
+    (ends_message) even when diagnostic_header refuses its place (a
+    relative path, a macro name of another class); such a line is then
+    classed on its own, and its severity marker leaves it unaccounted, so
+    the check fails rather than joining it to the message before it."""
+    position = text.find(": ")
+    while position >= 0:
+        rest = text[position + 2:]
+        if any(rest.startswith(word + ": ") or rest == word + ":" for word in SEVERITIES) \
+                and reader_place(text[:position]):
+            return True
+        position = text.find(": ", position + 1)
+    return False
+
+
 def buffer_place(text):
     """`<Module>.<Type>.<member>:<line>:<column>`: a place in a buffer the
     compiler printed from a module's interface (a note on a declaration in
@@ -2127,6 +2168,14 @@ def echoed(text):
     return None
 
 
+def reader_footnote(text):
+    """Whether BuildLineGrammar.isGroupFootnote would read `text` as a
+    group's footnote: `[#`, then `]: <` somewhere, and a closing `>`,
+    whatever the name between. Like reader_header, it decides only where
+    a message ends; is_group_footnote decides what the line is."""
+    return text.startswith("[#") and "]: <" in text and text.endswith(">")
+
+
 def is_group_footnote(text):
     if not text.startswith("[#"):
         return False
@@ -2176,20 +2225,24 @@ def is_blank(text):
 
 
 def ends_message(text):
-    """A line that can't continue a diagnostic's message. A line holding
-    `ms<TAB>` is one whether or not it reads as a timing entry
-    (BuildLineGrammar.holdsTimingMark, design B10), the mark found in code
-    points, as the reader finds it in bytes (U13): a time past
-    TIME_WHOLE_DIGITS whole digits, a bad place or a stray field ends the
-    message, and the line is counted as not an entry."""
+    """A line that can't continue a diagnostic's message
+    (BuildLineGrammar.continues). A line holding `ms<TAB>` is one whether
+    or not it reads as a timing entry (BuildLineGrammar.holdsTimingMark,
+    design B10), the mark found in code points, as the reader finds it in
+    bytes (U13): a time past TIME_WHOLE_DIGITS whole digits, a bad place or
+    a stray field ends the message, and the line is counted as not an
+    entry. A diagnostic's first line and a group footnote end it as the
+    reader reads them (reader_header, reader_footnote), not only as this
+    script accepts them, so a message never takes a line the reader reads
+    as the next diagnostic."""
     return (is_blank(text)
             or gutter(text) is not None
             or is_box(text)
             or decorated(text) is not None
             or "ms\t" in text
-            or diagnostic_header(text) is not None
+            or reader_header(text)
             or text.startswith(LINE_PREFIXES)
-            or is_group_footnote(text))
+            or reader_footnote(text))
 
 
 def complete_message(text):
