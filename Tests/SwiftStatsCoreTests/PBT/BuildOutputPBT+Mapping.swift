@@ -60,7 +60,10 @@ extension BuildOutputPBT {
     static let onNothing = "a synthesized entry"
     /// The placements the mapping laws quantify over, each of which P1.1
     /// must reach at least once (design D14: refused only when one never
-    /// fires; each fires in most runs, so 100 runs never miss one).
+    /// fires). The generator's meta-test counts them in 490 (a record), 545
+    /// (a type or the file) and 263 (a synthesized entry) of 1,000 outputs,
+    /// so `(1 - 0.263)^100`, about 6 * 10^-14, is the most a run of 100
+    /// misses one.
     static let placements = [onRecord, onAttachment, onNothing]
 
     /// Whether mapping `given.entries` gave what it must for any entries:

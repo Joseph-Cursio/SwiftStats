@@ -123,6 +123,30 @@ struct BuildOutputGenTests {
         return (counts, longest)
     }
 
+    /// How often, over `draws` outputs under the decided rules starting
+    /// from `seeded`, the entries P1.1 moves into its package reach each
+    /// placement it requires (`BuildOutputPBT.placements`), and a line P1.7
+    /// ends with CRLF ended with a line feed (`lineFeedChanged`): the
+    /// antecedents those properties count per run.
+    static func readingCounts(library: TimingFigureTests.Library) throws -> [String: Int] {
+        var random = seeded
+        let tally = AntecedentTally()
+        let generator = BuildOutputGen.output(.decided)
+        for _ in 0..<draws {
+            let output = try generator.run(using: &random, limit: attempts)
+            let read = BuildOutputReader.read(stderr: output.stderr, log: output.log)
+            BuildOutputPBT.tally(library.mapper.map(BuildOutputPBT.moved(read.entries, into: library.root)), in: tally)
+            if output.lines.contains(where: { $0.lineBreak == "\n" }) {
+                tally.fire(BuildOutputPBT.lineFeedChanged)
+            }
+        }
+        return Dictionary(
+            uniqueKeysWithValues: (BuildOutputPBT.placements + [BuildOutputPBT.lineFeedChanged]).map { label in
+                (label, tally.count(label))
+            }
+        )
+    }
+
     @Test("the current rules reach every shape a property reads, and no shape awaiting a fix")
     func currentRules() throws {
         let counts = try Self.counts(.current)
@@ -215,5 +239,23 @@ struct BuildOutputGenTests {
             ]
         )
         #expect(counts.longest <= BuildOutputInterpreter.lineCap)
+    }
+
+    @Test("the decided rules' outputs reach each placement P1.1 requires and a line feed P1.7 changes")
+    func readingAntecedents() throws {
+        guard let library = try BuildOutputPBT.library() else {
+            return
+        }
+        defer { library.package.remove() }
+        let counts = try Self.readingCounts(library: library)
+
+        #expect(
+            counts == [
+                "a line feed made CRLF": 982,
+                "a synthesized entry": 263,
+                "an entry on a record": 490,
+                "an entry on a type or the file": 545
+            ]
+        )
     }
 }
