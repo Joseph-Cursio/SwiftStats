@@ -266,16 +266,16 @@ struct ResultsFilePBT {
         #expect(Self.checkSkipped(expected[0], results: fromZeroRead))
         #expect(Self.checkSkipped(expected[1], results: loneCRRead))
         #expect(Self.checkSkipped(expected[2], results: unknownRead))
-        PlantedDefect.expectCaught("line numbers counted from 0", sourceLocation: #_sourceLocation) {
+        PlantedDefect.expectDetected("line numbers counted from 0", sourceLocation: #_sourceLocation) {
             Self.checkSkipped(expected[0], results: countedFromZero)
         }
-        PlantedDefect.expectCaught("a lone CR not counted", sourceLocation: #_sourceLocation) {
+        PlantedDefect.expectDetected("a lone CR not counted", sourceLocation: #_sourceLocation) {
             Self.checkSkipped(expected[1], results: crNotCounted)
         }
-        PlantedDefect.expectCaught("a line of an unknown kind skipped", sourceLocation: #_sourceLocation) {
+        PlantedDefect.expectDetected("a line of an unknown kind skipped", sourceLocation: #_sourceLocation) {
             Self.checkSkipped(expected[2], results: unknownSkipped)
         }
-        PlantedDefect.expectCaught("a file with results refused", sourceLocation: #_sourceLocation) {
+        PlantedDefect.expectDetected("a file with results refused", sourceLocation: #_sourceLocation) {
             Self.checkSkipped(expected[3], results: nil)
         }
     }

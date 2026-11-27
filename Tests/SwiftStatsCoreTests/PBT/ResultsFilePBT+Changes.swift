@@ -269,13 +269,13 @@ extension ResultsFilePBT {
         let shorterRead = Read { () throws(MutationFailure) in try MutationResultsFile.read(shorter.data) }
         let otherRead = Read { () throws(MutationFailure) in try MutationResultsFile.read(other.data) }
 
-        PlantedDefect.expectCaught("a last unreadable line not counted", sourceLocation: #_sourceLocation) {
+        PlantedDefect.expectDetected("a last unreadable line not counted", sourceLocation: #_sourceLocation) {
             Self.checkAppended(shorterRead, appended: shorterRead, line: 3)
         }
-        PlantedDefect.expectCaught("an unreadable line ending the file's results", sourceLocation: #_sourceLocation) {
+        PlantedDefect.expectDetected("an unreadable line ending the file's results", sourceLocation: #_sourceLocation) {
             Self.checkAppended(shorterRead, appended: .failure(MutationFailure(description: "no results")), line: 3)
         }
-        PlantedDefect.expectCaught("another key winning after a move", sourceLocation: #_sourceLocation) {
+        PlantedDefect.expectDetected("another key winning after a move", sourceLocation: #_sourceLocation) {
             Self.checkReordered(read, reordered: otherRead)
         }
     }

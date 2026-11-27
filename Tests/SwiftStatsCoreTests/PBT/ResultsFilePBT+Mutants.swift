@@ -244,19 +244,19 @@ extension ResultsFilePBT {
         let retiredRead = try #require(Self.results(of: Self.read(retired)))
         let mutants = firstRead.mutants
 
-        PlantedDefect.expectCaught("the first line of a key winning", sourceLocation: #_sourceLocation) {
+        PlantedDefect.expectDetected("the first line of a key winning", sourceLocation: #_sourceLocation) {
             Self.checkMutants(expected, results: firstRead)
         }
-        PlantedDefect.expectCaught("a not-covered mutant left out", sourceLocation: #_sourceLocation) {
+        PlantedDefect.expectDetected("a not-covered mutant left out", sourceLocation: #_sourceLocation) {
             Self.checkMutants(expected, results: Self.results(firstRead, mutants: Array(mutants.prefix(1)), tested: 1))
         }
-        PlantedDefect.expectCaught("a key listed twice", sourceLocation: #_sourceLocation) {
+        PlantedDefect.expectDetected("a key listed twice", sourceLocation: #_sourceLocation) {
             Self.checkMutants(expected, results: Self.results(firstRead, mutants: mutants + mutants, tested: 1))
         }
-        PlantedDefect.expectCaught("retired ignored", sourceLocation: #_sourceLocation) {
+        PlantedDefect.expectDetected("retired ignored", sourceLocation: #_sourceLocation) {
             Self.checkMutants(ResultsFileModel.expected(of: retired), results: firstRead)
         }
-        PlantedDefect.expectCaught("tested counted wrong", sourceLocation: #_sourceLocation) {
+        PlantedDefect.expectDetected("tested counted wrong", sourceLocation: #_sourceLocation) {
             Self.checkMutants(
                 ResultsFileModel.expected(of: retired),
                 results: Self.results(retiredRead, mutants: retiredRead.mutants, tested: 1)

@@ -134,7 +134,7 @@ extension BuildOutputPBT {
     )
     func hundredthsDefectsDetected(field: String, read: Int?) {
         let defect = "\(field) reading as \(read.map(String.init) ?? "none")"
-        PlantedDefect.expectCaught(defect, sourceLocation: #_sourceLocation) {
+        PlantedDefect.expectDetected(defect, sourceLocation: #_sourceLocation) {
             Self.checkHundredths(field, read: read)
         }
     }

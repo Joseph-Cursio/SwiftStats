@@ -308,13 +308,13 @@ extension BuildOutputPBT {
         )
         let move = BuildOutputSplitGen.Move(sample: sample, afterMessage: false, choice: 0, position: 0)
 
-        PlantedDefect.expectCaught("the line after a message skipped", sourceLocation: #_sourceLocation) {
+        PlantedDefect.expectDetected("the line after a message skipped", sourceLocation: #_sourceLocation) {
             Self.checkSplit(split, whole: skipped, parts: Self.parts(of: split))
         }
-        PlantedDefect.expectCaught("diagnostics not kept once each", sourceLocation: #_sourceLocation) {
+        PlantedDefect.expectDetected("diagnostics not kept once each", sourceLocation: #_sourceLocation) {
             Self.checkSplit(split, whole: twice, parts: Self.parts(of: split))
         }
-        PlantedDefect.expectCaught("the log's timing lines read as entries", sourceLocation: #_sourceLocation) {
+        PlantedDefect.expectDetected("the log's timing lines read as entries", sourceLocation: #_sourceLocation) {
             Self.checkMove(move, whole: whole, moved: whole)
         }
     }

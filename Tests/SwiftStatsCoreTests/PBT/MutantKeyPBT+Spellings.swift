@@ -190,22 +190,22 @@ extension MutantKeyPBT {
         let operatorless = Self.key("a", "", occurrence: 0)
         let wrapped = MutantKey(path: "a", operatorID: "SwapTernary", line: 1, column: 9, occurrence: 0)
 
-        PlantedDefect.expectCaught("U11's fix undone: a sign accepted", sourceLocation: #_sourceLocation) {
+        PlantedDefect.expectDetected("U11's fix undone: a sign accepted", sourceLocation: #_sourceLocation) {
             Self.checkAccepted(signed, read: plain, respelled: plain.description)
         }
-        PlantedDefect.expectCaught("U11's fix undone: a leading zero accepted", sourceLocation: #_sourceLocation) {
+        PlantedDefect.expectDetected("U11's fix undone: a leading zero accepted", sourceLocation: #_sourceLocation) {
             Self.checkAccepted(padded, read: repeated, respelled: repeated.description)
         }
-        PlantedDefect.expectCaught("a repeat of 1 accepted", sourceLocation: #_sourceLocation) {
+        PlantedDefect.expectDetected("a repeat of 1 accepted", sourceLocation: #_sourceLocation) {
             Self.checkAccepted(lowRepeat, read: plain, respelled: plain.description)
         }
-        PlantedDefect.expectCaught("an empty path accepted", sourceLocation: #_sourceLocation) {
+        PlantedDefect.expectDetected("an empty path accepted", sourceLocation: #_sourceLocation) {
             Self.checkAccepted(noPath, read: pathless, respelled: pathless.description)
         }
-        PlantedDefect.expectCaught("an empty operator accepted", sourceLocation: #_sourceLocation) {
+        PlantedDefect.expectDetected("an empty operator accepted", sourceLocation: #_sourceLocation) {
             Self.checkAccepted(noOperator, read: operatorless, respelled: operatorless.description)
         }
-        PlantedDefect.expectCaught("a number past Int read wrapped", sourceLocation: #_sourceLocation) {
+        PlantedDefect.expectDetected("a number past Int read wrapped", sourceLocation: #_sourceLocation) {
             Self.checkAccepted(pastInt, read: wrapped, respelled: wrapped.description)
         }
     }

@@ -239,10 +239,10 @@ extension BuildOutputPBT {
             otherWarningLines: 0
         )
 
-        PlantedDefect.expectCaught("B10's fix undone: the refused line taken", sourceLocation: #_sourceLocation) {
+        PlantedDefect.expectDetected("B10's fix undone: the refused line taken", sourceLocation: #_sourceLocation) {
             Self.checkTimingLines(sample, read: continued)
         }
-        PlantedDefect.expectCaught("a refused line not counted", sourceLocation: #_sourceLocation) {
+        PlantedDefect.expectDetected("a refused line not counted", sourceLocation: #_sourceLocation) {
             Self.checkTimingLines(sample, read: uncounted)
         }
     }
@@ -356,13 +356,13 @@ extension BuildOutputPBT {
         )
         let unscaled = TimingEntry(kind: .function, hundredths: 403, place: place, declaration: "getter M.(file).v")
 
-        PlantedDefect.expectCaught("a place split at its first colon", sourceLocation: #_sourceLocation) {
+        PlantedDefect.expectDetected("a place split at its first colon", sourceLocation: #_sourceLocation) {
             Self.checkRendered(line, read: splitFirst)
         }
-        PlantedDefect.expectCaught("a path with a space refused", sourceLocation: #_sourceLocation) {
+        PlantedDefect.expectDetected("a path with a space refused", sourceLocation: #_sourceLocation) {
             Self.checkRendered(line, read: nil)
         }
-        PlantedDefect.expectCaught("a one-digit fraction read unscaled", sourceLocation: #_sourceLocation) {
+        PlantedDefect.expectDetected("a one-digit fraction read unscaled", sourceLocation: #_sourceLocation) {
             Self.checkRendered(line, read: unscaled)
         }
     }

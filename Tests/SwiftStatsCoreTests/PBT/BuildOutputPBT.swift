@@ -298,13 +298,13 @@ struct BuildOutputPBT {
             counted: given.mapped.counted
         )
 
-        PlantedDefect.expectCaught("B1's bound removed: an overlong time read", sourceLocation: #_sourceLocation) {
+        PlantedDefect.expectDetected("B1's bound removed: an overlong time read", sourceLocation: #_sourceLocation) {
             Self.checkReading(sample, read: unbounded, asRead: given, onFixture: given)
         }
-        PlantedDefect.expectCaught("an empty declaration read as an entry", sourceLocation: #_sourceLocation) {
+        PlantedDefect.expectDetected("an empty declaration read as an entry", sourceLocation: #_sourceLocation) {
             Self.checkReading(sample, read: declarationless, asRead: given, onFixture: given)
         }
-        PlantedDefect.expectCaught("a synthesized entry's time not counted", sourceLocation: #_sourceLocation) {
+        PlantedDefect.expectDetected("a synthesized entry's time not counted", sourceLocation: #_sourceLocation) {
             Self.checkReading(
                 sample,
                 read: read,

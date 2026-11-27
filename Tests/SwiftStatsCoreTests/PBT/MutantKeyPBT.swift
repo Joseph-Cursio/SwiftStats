@@ -179,16 +179,16 @@ struct MutantKeyPBT {
         let decomposed = Self.key("Sources/Cafe\u{301}.swift", "SwapTernary", occurrence: 0)
         let composed = Self.key("Sources/Caf\u{E9}.swift", "SwapTernary", occurrence: 0)
 
-        PlantedDefect.expectCaught("the separators found among Characters", sourceLocation: #_sourceLocation) {
+        PlantedDefect.expectDetected("the separators found among Characters", sourceLocation: #_sourceLocation) {
             Self.checkReadBack(key, read: nil)
         }
-        PlantedDefect.expectCaught("the path split at its first colon", sourceLocation: #_sourceLocation) {
+        PlantedDefect.expectDetected("the path split at its first colon", sourceLocation: #_sourceLocation) {
             Self.checkReadBack(key, read: firstColon)
         }
-        PlantedDefect.expectCaught("occurrence 1 spelled with no repeat", sourceLocation: #_sourceLocation) {
+        PlantedDefect.expectDetected("occurrence 1 spelled with no repeat", sourceLocation: #_sourceLocation) {
             Self.checkReadBack(key, read: noRepeat)
         }
-        PlantedDefect.expectCaught("the path read back composed", sourceLocation: #_sourceLocation) {
+        PlantedDefect.expectDetected("the path read back composed", sourceLocation: #_sourceLocation) {
             Self.checkReadBack(decomposed, read: composed)
         }
     }

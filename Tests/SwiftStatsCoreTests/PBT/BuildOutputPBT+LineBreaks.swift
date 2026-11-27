@@ -164,7 +164,7 @@ extension BuildOutputPBT {
         let kept = TimingEntry(kind: .function, hundredths: 59, place: place, declaration: "global function f()\r")
         let carriageReturnKept = Self.output(original, entries: [kept])
 
-        PlantedDefect.expectCaught("the carriage return kept", sourceLocation: #_sourceLocation) {
+        PlantedDefect.expectDetected("the carriage return kept", sourceLocation: #_sourceLocation) {
             Self.checkLineBreaks(sample, original: original, read: carriageReturnKept)
         }
     }

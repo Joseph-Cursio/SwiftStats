@@ -309,13 +309,13 @@ extension BuildOutputPBT {
             )
         }
 
-        PlantedDefect.expectCaught("the origin note never read", sourceLocation: #_sourceLocation) {
+        PlantedDefect.expectDetected("the origin note never read", sourceLocation: #_sourceLocation) {
             Self.checkDiagnostics(sample, read: with(noOrigin))
         }
-        PlantedDefect.expectCaught("a message taking no line after its header", sourceLocation: #_sourceLocation) {
+        PlantedDefect.expectDetected("a message taking no line after its header", sourceLocation: #_sourceLocation) {
             Self.checkDiagnostics(sample, read: with(firstLineOnly))
         }
-        PlantedDefect.expectCaught("a diagnostic kept twice", sourceLocation: #_sourceLocation) {
+        PlantedDefect.expectDetected("a diagnostic kept twice", sourceLocation: #_sourceLocation) {
             Self.checkDiagnostics(sample, read: with(read.diagnostics + read.diagnostics.prefix(1)))
         }
     }

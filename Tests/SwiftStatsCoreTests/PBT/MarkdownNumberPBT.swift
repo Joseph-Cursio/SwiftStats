@@ -286,7 +286,7 @@ struct MarkdownNumberPBT {
         ]
     )
     func exactDefectsDetected(value: Double, printed: String) {
-        PlantedDefect.expectCaught("exact printing \(value) as \(printed)", sourceLocation: #_sourceLocation) {
+        PlantedDefect.expectDetected("exact printing \(value) as \(printed)", sourceLocation: #_sourceLocation) {
             Self.checkExact(value, printed: printed)
         }
     }
@@ -373,13 +373,13 @@ struct MarkdownNumberPBT {
         let perThousand = MarkdownNumber.perThousand(input.count, lines: input.lines)
         let seconds = MarkdownNumber.seconds(input.milliseconds)
 
-        PlantedDefect.expectCaught("value printing a whole number to two places", sourceLocation: #_sourceLocation) {
+        PlantedDefect.expectDetected("value printing a whole number to two places", sourceLocation: #_sourceLocation) {
             Self.checkFormats(input, value: "20.00", perThousand: perThousand, seconds: seconds)
         }
-        PlantedDefect.expectCaught("perThousand forgetting to scale by a thousand", sourceLocation: #_sourceLocation) {
+        PlantedDefect.expectDetected("perThousand not scaling by a thousand", sourceLocation: #_sourceLocation) {
             Self.checkFormats(input, value: value, perThousand: "0.0", seconds: seconds)
         }
-        PlantedDefect.expectCaught("seconds dividing by a hundred", sourceLocation: #_sourceLocation) {
+        PlantedDefect.expectDetected("seconds dividing by a hundred", sourceLocation: #_sourceLocation) {
             Self.checkFormats(input, value: value, perThousand: perThousand, seconds: "15.0 s")
         }
     }

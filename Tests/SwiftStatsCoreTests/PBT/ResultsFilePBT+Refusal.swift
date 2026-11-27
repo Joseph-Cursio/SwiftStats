@@ -209,16 +209,16 @@ extension ResultsFilePBT {
 
         let formatFour = MutationFailure(description: MutationResultsFile.newerFormatReason(4))
 
-        PlantedDefect.expectCaught("format 4 refused", sourceLocation: #_sourceLocation) {
+        PlantedDefect.expectDetected("format 4 refused", sourceLocation: #_sourceLocation) {
             Self.checkContents(.results, read: .failure(formatFour))
         }
-        PlantedDefect.expectCaught("a newer header that doesn't read skipped", sourceLocation: #_sourceLocation) {
+        PlantedDefect.expectDetected("a newer header that doesn't read skipped", sourceLocation: #_sourceLocation) {
             Self.checkContents(.newer(5), read: .failure(noHeader))
         }
-        PlantedDefect.expectCaught("a stopped line taken over results", sourceLocation: #_sourceLocation) {
+        PlantedDefect.expectDetected("a stopped line taken over results", sourceLocation: #_sourceLocation) {
             Self.checkContents(.results, read: .success(.stopped(stop)))
         }
-        PlantedDefect.expectCaught("the first stopped line kept", sourceLocation: #_sourceLocation) {
+        PlantedDefect.expectDetected("the first stopped line kept", sourceLocation: #_sourceLocation) {
             Self.checkContents(.stopped(tag: 4), read: .success(.stopped(stop)))
         }
     }

@@ -246,10 +246,13 @@ extension BuildOutputPBT {
             otherWarningLines: 0
         )
 
-        PlantedDefect.expectCaught("B24's fix undone: a mark after a sequence lost", sourceLocation: #_sourceLocation) {
+        PlantedDefect.expectDetected(
+            "B24's fix undone: a mark after a sequence lost",
+            sourceLocation: #_sourceLocation
+        ) {
             Self.checkEscapes(wrapped, original: original, read: markLost)
         }
-        PlantedDefect.expectCaught("an escaped line not counted", sourceLocation: #_sourceLocation) {
+        PlantedDefect.expectDetected("an escaped line not counted", sourceLocation: #_sourceLocation) {
             Self.checkEscapes(wrapped, original: original, read: original)
         }
     }
