@@ -133,6 +133,14 @@ enum SwiftCloneDetectorAdapter {
             let count = files.count == 1 ? "1 file" : "\(files.count) files"
             throw Failure(description: "`\(command)` over \(count) exited with status \(status): \(message)")
         }
+        return try read(data, pass: pass)
+    }
+
+    /// `pass`'s report in `data`, the run's standard output: decoded, its
+    /// tool's name checked, and every copy's positions checked; throws
+    /// naming the pass when the JSON doesn't decode, names another tool,
+    /// or holds a copy the mapper can't place.
+    private static func read(_ data: Data, pass: CloneDetectorPass) throws -> CloneDetectorOutput {
         let output: CloneDetectorOutput
         do {
             output = try JSONDecoder().decode(CloneDetectorOutput.self, from: data)
