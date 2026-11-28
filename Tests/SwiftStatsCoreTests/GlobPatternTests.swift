@@ -2,9 +2,12 @@
 import Testing
 
 /// Globs for `excluded` (PRD §10.1), every match extending to the paths
-/// under it, and their stars, in runs or split by other text, which match
-/// what they always matched but can't make a failed match take exponential
-/// time (design B4, B27).
+/// under it, their edges (design B17: a line break ending the path, `?` on
+/// a scalar, `a/**`, the empty glob; each of the seven line breaks; a
+/// wildcard a combining mark joins), and their stars, in runs or split by
+/// other text, which match what they always matched but can't make a
+/// failed match take exponential time (design B4, B27). `GlobPatternPBT`
+/// holds the properties.
 @Suite("Glob patterns")
 struct GlobPatternTests {
     /// Stars in the long run: under the regular expression, before B4
@@ -128,6 +131,62 @@ struct GlobPatternTests {
     )
     func starRuns(pattern: String, path: String, matches: Bool) {
         #expect(GlobPattern(pattern).matches(path) == matches)
+    }
+
+    @Test(
+        """
+        B17: one line break ending the path is ignored, \\r\\n as one; ? is one scalar; a/** needs a component \
+        under a; the empty glob matches only the empty path and the paths under it, and ./ is the empty glob, not .
+        """,
+        arguments: [
+            ("Sources/Generated", "Sources/Generated\n", true),
+            ("a", "a\r\n", true),
+            ("a", "a\r", true),
+            ("a", "a\u{2028}", true),
+            ("a", "a\n\n", false),
+            ("a?", "a\r\n", false),
+            ("a?", "a\r", true),
+            ("a**", "a/b\nc", false),
+            ("a*", "a\nb", true),
+            ("?", "e\u{301}", false),
+            ("??", "e\u{301}", true),
+            ("?", "\u{E9}", true),
+            ("?", "\u{1F1EF}\u{1F1F5}", false),
+            ("a/**", "a", false),
+            ("a/**", "a/", true),
+            ("", "", true),
+            ("", "a", false),
+            ("", "/a", true),
+            ("./", "", true),
+            ("./", ".", false),
+            (".//", ".", false),
+            (".", ".", true)
+        ]
+    )
+    func edges(pattern: String, path: String, matches: Bool) {
+        #expect(GlobPattern(pattern).matches(path) == matches)
+    }
+
+    @Test(
+        """
+        each line break PRD 10.1 names, ending the path, is ignored, and stops ** and the folder extension but not \
+        a star
+        """,
+        arguments: ["\n", "\u{0B}", "\u{0C}", "\r", "\u{85}", "\u{2028}", "\u{2029}"]
+    )
+    func everyLineBreak(lineBreak: String) {
+        #expect(GlobPattern("a").matches("a" + lineBreak))
+        #expect(GlobPattern("a**").matches("a/b" + lineBreak + "c") == false)
+        #expect(GlobPattern("a").matches("a/b" + lineBreak + "c") == false)
+        #expect(GlobPattern("a*").matches("a" + lineBreak + "b"))
+    }
+
+    @Test("a star or ? a combining mark joins is ordinary text, not a wildcard before the mark")
+    func markedWildcards() {
+        #expect(GlobPattern("*\u{301}").matches("*\u{301}"))
+        #expect(GlobPattern("*\u{301}").matches("a\u{301}") == false)
+        #expect(GlobPattern("?\u{301}").matches("?\u{301}"))
+        #expect(GlobPattern("?\u{301}").matches("e\u{301}") == false)
     }
 
     @Test("a run of 24 stars fails to match 12 b's in well under a second")
