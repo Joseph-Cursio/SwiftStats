@@ -19,11 +19,13 @@ import Testing
 extension CoveragePBT {
     /// P2.3's base runs, over the engine's 100: three builds and walks of
     /// up to 30 regions cost well under a millisecond, and the rarest
-    /// antecedent, a line no region touches between regions, comes in 87
-    /// of the meta-test's 1,000 changes (design D14: `(1 - 0.087)^160`,
-    /// about 5 * 10^-7, is the most a run misses it; 100 runs would miss it
-    /// about 10^-4 of the time).
-    static let monotoneRuns = 160
+    /// antecedent, a line no region touches between regions, came in
+    /// 16,806 of 200,000 changes drawn from 200 seeds (8.4%; at least 8.2%
+    /// at 99.9% confidence; the meta-test's one seed gives 87 of 1,000,
+    /// above the rate). Design D14: `(1 - 0.082)^180`, about 2 * 10^-7, is
+    /// the most a run misses it; 160 runs would miss it about 10^-6 of the
+    /// time.
+    static let monotoneRuns = 180
     /// What P2.3's tally counts when raising a count raised a line's.
     static let raisedLine = "a raised count raising a line's"
     /// What it counts when leaving out the skipped region maps a line.

@@ -18,12 +18,13 @@ extension ConfigurationPBT {
     /// P11.3's base runs, over the engine's 100: drawing and reading one
     /// text costs about a third of a millisecond. The rarest antecedent, a
     /// key YAML reads as two types repeated at the top, the one input on
-    /// which the reader's own repeat check shows, comes in 19 of the
-    /// meta-test's 1,000 faults (design D14: `(1 - 0.019)^800`, about
-    /// 2 * 10^-7, is the most a run misses it; 400 runs would miss it
-    /// about 5 * 10^-4 of the time); unknown keys in swiftmutator's
-    /// options come in 34.
-    static let keyRuns = 800
+    /// which the reader's own repeat check shows, came in 3,454 of 200,000
+    /// faults drawn from 200 seeds (1.73%; at least 1.63% at 99.9%
+    /// confidence; the meta-test's one seed gives 19 of 1,000, above the
+    /// rate). Design D14: `(1 - 0.0163)^900`, about 4 * 10^-7, is the most
+    /// a run misses it; 800 runs would miss it about 10^-6 of the time.
+    /// Unknown keys in swiftmutator's options came in 3.8%.
+    static let keyRuns = 900
     /// What P11.3's tally counts for unknown keys at the top level.
     static let unknownAtTop = "an unknown key at the top"
     /// What it counts for unknown keys under `history` or `signals`.

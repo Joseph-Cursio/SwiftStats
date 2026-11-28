@@ -28,12 +28,13 @@ extension IntegerEdgesPBT {
 
     /// The clone path's base runs, over the engine's 100: reading four
     /// small reports and mapping two copies costs about a hundred
-    /// microseconds. The rarest antecedent, a copy held by a record, comes
-    /// in 52 of the meta-test's 1,000 reports, and a column too large to
-    /// shift in 55 (design D14: `(1 - 0.052)^300`, about 1.1 * 10^-7, is
-    /// the most a run misses one; 100 runs would miss it about 5 * 10^-3
-    /// of the time).
-    static let cloneRuns = 300
+    /// microseconds. The rarest antecedent, a copy held by a record, came
+    /// in 9,086 of 200,000 reports drawn from 200 seeds (4.54%; at least
+    /// 4.39% at 99.9% confidence; the meta-test's one seed gives 52 of
+    /// 1,000, above the rate), and a column too large to shift in 5.6%.
+    /// Design D14: `(1 - 0.0439)^350`, about 1.5 * 10^-7, is the most a run
+    /// misses one; 300 runs would miss it about 10^-6 of the time.
+    static let cloneRuns = 350
     /// What the clone path's tally counts when a copy has a position below
     /// 1, the first fault of the run.
     static let belowOne = "a copy with a position below 1"

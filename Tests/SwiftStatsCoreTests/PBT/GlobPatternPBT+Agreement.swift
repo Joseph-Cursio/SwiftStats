@@ -39,10 +39,12 @@ extension GlobPatternPBT {
     /// costs tens of microseconds, most of it compiling the reference's
     /// expression. The rarest antecedent, a `?` filled with a letter and a
     /// combining mark, the input on which a `?` matching a Character shows,
-    /// comes in 18 of the meta-test's 1,000 bounded cases (design D14:
-    /// `(1 - 0.018)^800`, about 5 * 10^-7, is the most a run misses it;
-    /// 300 runs would miss it about 4 * 10^-3 of the time).
-    static let agreementRuns = 800
+    /// came in 2,860 of 200,000 bounded cases drawn from 200 seeds (1.43%;
+    /// at least 1.34% at 99.9% confidence; the meta-test's one seed gives
+    /// 18 of 1,000, above the rate). Design D14: `(1 - 0.0134)^1100`,
+    /// about 4 * 10^-7, is the most a run misses it; 800 runs would miss
+    /// it about 10^-5 of the time.
+    static let agreementRuns = 1_100
     /// What the differential's tally counts when both match.
     static let bothMatch = "both matching"
     /// What it counts when both miss.
