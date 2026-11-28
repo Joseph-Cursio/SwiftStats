@@ -109,16 +109,34 @@ def c99_name(name):
     return "_" + text[1:] if text[:1].isdigit() else text
 
 
+# ICU's line terminators, which PRD §10.1's globs read as line breaks: its
+# `.` matches none of them, and its `$` also matches before one that ends
+# the text, `\r\n` counting as one.
+LINE_BREAKS = "\n\x0b\x0c\r\x85\u2028\u2029"
+# Any run of characters but line breaks: ICU's `.*`.
+ANY_RUN = "[^" + LINE_BREAKS + "]*"
+# One line break, or none, ending the path: what ICU's `$` lets go. A `\n`
+# after `\r` is the end of `\r\n`, so it can't be the break alone.
+FINAL_BREAK = "(?:\r\n|(?<!\r)\n|[\x0b\x0c\r\x85\u2028\u2029])?"
+
+
 def glob_regex(pattern):
-    """A configuration glob (`**`, `*`, `?`) as a regular expression."""
+    """A configuration glob (`**`, `*`, `?`) as a regular expression, read as
+    PRD §10.1 says: one leading `./` and any trailing `/` are ignored, and
+    every match extends to the paths under it, so `Gen*` matches
+    `Generated/x.swift`. `**` and that extension stop at a line break, and
+    one line break ending the path is ignored, as in Swift's ICU reading."""
+    if pattern.startswith("./"):
+        pattern = pattern[2:]
+    pattern = pattern.rstrip("/")
     out = ""
     index = 0
     while index < len(pattern):
         if pattern.startswith("**/", index):
-            out += "(?:.*/)?"
+            out += "(?:" + ANY_RUN + "/)?"
             index += 3
         elif pattern.startswith("**", index):
-            out += ".*"
+            out += ANY_RUN
             index += 2
         elif pattern[index] == "*":
             out += "[^/]*"
@@ -129,7 +147,7 @@ def glob_regex(pattern):
         else:
             out += re.escape(pattern[index])
             index += 1
-    return re.compile(out + r"\Z")
+    return re.compile(out + "(?:/" + ANY_RUN + ")?" + FINAL_BREAK + r"\Z")
 
 
 class Region:

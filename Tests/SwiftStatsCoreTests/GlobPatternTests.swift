@@ -1,9 +1,9 @@
 @testable import SwiftStatsCore
 import Testing
 
-/// Globs for `excluded` (PRD §10.1), and their runs of stars, which
-/// match what they always matched but can't make a failed match backtrack
-/// exponentially.
+/// Globs for `excluded` (PRD §10.1), every match extending to the paths
+/// under it, and their runs of stars, which match what they always matched
+/// but can't make a failed match backtrack exponentially.
 @Suite("Glob patterns")
 struct GlobPatternTests {
     /// Stars in the long run: before runs were collapsed, 24 took about 4 s
@@ -40,6 +40,14 @@ struct GlobPatternTests {
         #expect(GlobPattern("./Sources/Generated/").matches("Sources/Generated/A.swift"))
         #expect(GlobPattern("Sources/Gen").matches("Sources/Generated/A.swift") == false)
         #expect(GlobPattern("Sources/A.swift").matches("Sources/A.swift"))
+    }
+
+    @Test("a wildcard pattern also matches everything under what it matches")
+    func wildcardFolders() {
+        #expect(GlobPattern("a*").matches("ab/c"))
+        #expect(GlobPattern("Gen*").matches("Generated/x.swift"))
+        #expect(GlobPattern("Sources/?").matches("Sources/A/B.swift"))
+        #expect(GlobPattern("Gen*").matches("Sources/Generated/x.swift") == false)
     }
 
     @Test(

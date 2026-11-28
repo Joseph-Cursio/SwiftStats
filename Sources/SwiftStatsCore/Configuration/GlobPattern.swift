@@ -4,8 +4,14 @@
 //
 //  Path globs for `.swiftstats.yml` (PRD §10.1), matched against paths
 //  relative to the package root: `*` and `?` stay within one path component,
-//  `**` spans any number of them, and a pattern with no wildcard also
-//  matches everything under it, so `Sources/Generated` excludes that folder.
+//  `?` matching one Unicode scalar, and `**` spans any number of them, stars
+//  read two at a time from the left. Every match extends to the paths under
+//  it, wildcard or not (design B20, decided U8): a glob matches a path when
+//  it matches the whole path or a folder holding it, so `Sources/Generated`
+//  excludes that folder, and `Gen*` excludes `Generated/x.swift`. ICU's line
+//  breaks are the exception: `**` and that extension stop at one, and one
+//  ending the path is ignored. The glob is read in Characters, so a `*`,
+//  `?` or `/` that a combining mark joins is ordinary text.
 //  A run of `**` and `**/` becomes one piece of the regex, and the lone `*`
 //  that ends an odd run follows `(.*/)?` rather than `.*`. Both match exactly
 //  what the run matched, so a long run can't make a failed match backtrack
