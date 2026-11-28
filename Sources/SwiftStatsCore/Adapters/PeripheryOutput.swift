@@ -9,9 +9,11 @@
 //  later release's `range`) are ignored. An entry lacking a key, a value of
 //  another type, a `hints` list without exactly one hint or a location
 //  that isn't `path:line:column` is a format failure the collector reports
-//  naming outskirts' version and hash. A hint written `name(text)` is read
-//  as the name with the text kept. A location is read from the right, its
-//  path made real (NFC) and looked up among the scanned files' real paths,
+//  naming outskirts' version and hash. A hint written `name(text)`, the
+//  name ASCII letters, is read as the name with the text kept, its
+//  parentheses found among Unicode scalars (design B23). A location is
+//  read from the right, its path made real (NFC) and looked up among the
+//  scanned files' real paths,
 //  then the describe's other sources' (`SourcePaths`): a scanned file's
 //  spelling, else a source's manifest spelling, else, under the package
 //  root, a path in the package. Modules, C99 names in the JSON, become
@@ -207,16 +209,23 @@ struct PeripheryOutput: Sendable {
     }
 
     /// `hint` split into its name and the text in its parentheses, when it
-    /// is written `name(text)`; else the hint and nil.
+    /// is written `name(text)` with a name of ASCII letters; else the hint
+    /// and nil. The parentheses, the first opening one and the closing one
+    /// that ends the hint, are found among its Unicode scalars, not its
+    /// Characters, so a combining mark after the opening one or a Prepend
+    /// scalar before the closing one, which joins it into one Character,
+    /// stays in the text (design B23, decided U13).
     private static func split(_ hint: String) -> (String, String?) {
-        guard hint.hasSuffix(")"), let open = hint.firstIndex(of: "(") else {
+        let scalars = hint.unicodeScalars
+        guard scalars.last == ")", let open = scalars.firstIndex(of: "(") else {
             return (hint, nil)
         }
-        let name = hint[..<open]
-        guard name.isEmpty == false, name.allSatisfy({ $0.isASCII && $0.isLetter }) else {
+        let name = scalars[..<open]
+        guard name.isEmpty == false, name.allSatisfy({ $0.isASCII && $0.properties.isAlphabetic }) else {
             return (hint, nil)
         }
-        return (String(name), String(hint[hint.index(after: open)..<hint.index(before: hint.endIndex)]))
+        let text = scalars[scalars.index(after: open)..<scalars.index(before: scalars.endIndex)]
+        return (String(Substring(name)), String(Substring(text)))
     }
 
     /// The nine fields of `element`, the `ordinal`th entry of `run`'s

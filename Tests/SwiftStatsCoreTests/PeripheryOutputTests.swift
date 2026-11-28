@@ -7,7 +7,8 @@ import Testing
 /// `name(text)`, locations read from the right on scalars (design B23),
 /// modules made target names; then each entry's class, the first that
 /// applies, on the Index fixture's recorded runs and on hand-written
-/// entries placed in it.
+/// entries placed in it. Hints read on scalars are in
+/// `PeripheryOutputTests+Scalars`.
 @Suite("outskirts output")
 struct PeripheryOutputTests {
     /// One entry's JSON object, its fields as given.
@@ -25,14 +26,14 @@ struct PeripheryOutputTests {
     }
 
     /// `objects` as a run's JSON.
-    private static func json(_ objects: [Any]) throws -> Data {
+    static func json(_ objects: [Any]) throws -> Data {
         try JSONSerialization.data(withJSONObject: objects, options: [.sortedKeys])
     }
 
     /// A context for a package at `/NoSuchPeripheryPackage`, which doesn't
     /// exist, described as the recorded T1 describe gives the Index
     /// fixture, with no records.
-    private static func plainContext() throws -> PeripheryOutput.Context {
+    static func plainContext() throws -> PeripheryOutput.Context {
         let package = try IndexWalkHarness.recordedPackage()
         return PeripheryOutput.Context(
             root: "/NoSuchPeripheryPackage",
