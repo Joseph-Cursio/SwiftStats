@@ -7,7 +7,9 @@
 //  working directory gets the `/private` spelling, while Foundation drops
 //  `/private` when it resolves symlinks. A reason can redact a directory
 //  only where a path ends, so that a folder beside it whose name starts
-//  with its name keeps its path.
+//  with its name keeps its path; a path on its own is redacted by its
+//  components, so that a folder whose name goes on with punctuation
+//  (`Pkg.old`) keeps its path too.
 //
 
 import Foundation
@@ -56,5 +58,29 @@ enum PathSpellings {
             }
         }
         return redacted
+    }
+
+    /// `path` with the longest spelling of a directory in `replacements`
+    /// that it is, or lies in, replaced by that directory's placeholder:
+    /// `/x/Pkg` is redacted in `/x/Pkg` and `/x/Pkg/A.swift`, not in
+    /// `/x/PkgKit/A.swift` or `/x/Pkg.old/A.swift`. Compared scalar by
+    /// scalar, so a mark after a separator doesn't hide it.
+    static func redactedPath(_ path: String, replacing replacements: [(URL, String)]) -> String {
+        let scalars = Array(path.unicodeScalars)
+        let separator: Unicode.Scalar = "/"
+        let candidates = replacements
+            .flatMap { directory, placeholder in
+                of(directory).map { (spelling: Array($0.unicodeScalars), placeholder: placeholder) }
+            }
+            .sorted { ($0.spelling.count, $1.placeholder) > ($1.spelling.count, $0.placeholder) }
+        for candidate in candidates where scalars.starts(with: candidate.spelling) {
+            guard scalars.count == candidate.spelling.count || scalars[candidate.spelling.count] == separator else {
+                continue
+            }
+            var rest = String.UnicodeScalarView()
+            rest.append(contentsOf: scalars[candidate.spelling.count...])
+            return candidate.placeholder + String(rest)
+        }
+        return path
     }
 }

@@ -7,7 +7,8 @@
 //  whose files and function entries are kept, each file's segments sorted
 //  by line, then column (design B3, decided U6). Anything else fails the
 //  coverage collector with a reason; one naming a file names it by the
-//  export's real path, which the collector redacts where a path ends.
+//  export's real path, as the caller's `naming` writes it, so that the
+//  collector can redact that path by its components.
 //
 
 import Foundation
@@ -17,6 +18,26 @@ struct CoverageExport: Decodable, Sendable {
     /// The keys read.
     private enum CodingKeys: String, CodingKey {
         case data, type, version
+    }
+
+    /// A file whose segments go back, found while decoding; its reason is
+    /// written once the caller has named the file.
+    private struct MisorderedFile: Error {
+        /// The file's real path.
+        let filename: String
+        /// The segment the later one lies before.
+        let earlier: CoverageSegment
+        /// The segment that goes back.
+        let later: CoverageSegment
+
+        /// The reason, the file named by `name`.
+        func failure(naming name: (String) -> String) -> CoverageFailure {
+            CoverageFailure(
+                description: "`llvm-cov export` wrote the segments of \(name(filename)) out of order "
+                    + "(\(later.line):\(later.column) after \(earlier.line):\(earlier.column)); "
+                    + "SwiftStats reads them sorted by line, then column"
+            )
+        }
     }
 
     /// The one `data` element.
@@ -60,12 +81,7 @@ struct CoverageExport: Decodable, Sendable {
         }
         for file in payload.files {
             if let pair = file.misordered {
-                let later = "\(pair.later.line):\(pair.later.column)"
-                let earlier = "\(pair.earlier.line):\(pair.earlier.column)"
-                throw CoverageFailure(
-                    description: "`llvm-cov export` wrote the segments of \(file.filename) out of order "
-                        + "(\(later) after \(earlier)); SwiftStats reads them sorted by line, then column"
-                )
+                throw MisorderedFile(filename: file.filename, earlier: pair.earlier, later: pair.later)
             }
         }
         files = payload.files
@@ -73,20 +89,29 @@ struct CoverageExport: Decodable, Sendable {
     }
 
     /// The export in `data`; a `CoverageFailure` when it isn't one this
-    /// reads.
+    /// reads, a file it names written as found.
     static func decode(_ data: Data) throws -> Self {
+        try decode(data) { $0 }
+    }
+
+    /// The export in `data`; a `CoverageFailure` when it isn't one this
+    /// reads, a file it names written as `name` gives it.
+    static func decode(_ data: Data, naming name: (String) -> String) throws -> Self {
         do {
             return try JSONDecoder().decode(Self.self, from: data)
         } catch let failure as CoverageFailure {
             throw failure
+        } catch let misordered as MisorderedFile {
+            throw misordered.failure(naming: name)
         } catch let error as DecodingError {
             throw CoverageFailure(description: "could not read `llvm-cov export`'s output: \(describe(error))")
         }
     }
 
-    /// The export written to `url`.
-    static func read(_ url: URL) throws -> Self {
-        try decode(Data(contentsOf: url))
+    /// The export written to `url`, a file a failure names written as
+    /// `name` gives it.
+    static func read(_ url: URL, naming name: (String) -> String) throws -> Self {
+        try decode(Data(contentsOf: url), naming: name)
     }
 
     /// `error` in one line: where in the document, and what.

@@ -17,8 +17,8 @@
 //  it, when a bundle's XCTest or Swift Testing process wrote no profile
 //  (it crashed or was killed), or when the export isn't one SwiftStats
 //  reads (a file's segments out of order among them, named with the
-//  package redacted where its path ends); the scan maps the export it
-//  decodes.
+//  package redacted where the path lies in it); the scan maps the export
+//  it decodes.
 //
 
 import Foundation
@@ -129,17 +129,12 @@ enum CoverageAdapter {
         return (found, CoverageCommand(root: root, build: build, toolchain: found.directory))
     }
 
-    /// The export at `url`; a failure to read it has `command`'s
-    /// directories redacted where a path ends, as a reason naming one of
-    /// the export's files names it by its real path, which may lie in a
-    /// folder beside the package whose name starts with the package's.
+    /// The export at `url`; a reason naming one of the export's files
+    /// names it by its real path with `command`'s directories redacted by
+    /// components, since the file may lie in a folder beside the package
+    /// whose name is the package's followed by more (`PkgKit`, `Pkg.old`).
     private static func readExport(_ url: URL, command: CoverageCommand) throws -> CoverageExport {
-        do {
-            return try CoverageExport.read(url)
-        } catch let failure as CoverageFailure {
-            let redacted = PathSpellings.redactedWherePathsEnd(failure.description, replacing: command.replacements)
-            throw CoverageFailure(description: redacted)
-        }
+        try CoverageExport.read(url) { PathSpellings.redactedPath($0, replacing: command.replacements) }
     }
 
     /// Why a run whose tests failed still ran: its coverage comes from the

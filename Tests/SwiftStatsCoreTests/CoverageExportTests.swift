@@ -165,16 +165,23 @@ struct CoverageExportTests {
         }
     }
 
-    @Test("a reason naming a file beside the package, in a folder whose name starts with the package's, keeps its path")
-    func unsortedSibling() throws {
+    @Test(
+        """
+        a reason naming a file beside the package, in a folder whose name is the package's followed by a letter, \
+        a dot or a comma, keeps its path
+        """,
+        arguments: ["Kit", ".old", ",v2"]
+    )
+    func unsortedSibling(suffix: String) throws {
         var scenario = try FakeToolchain.recorded()
-        scenario.export = #"{"data":[{"files":[{"filename":"@ROOT@Kit/Sources/Kit/Shared.swift","#
-            + #""segments":[[4,24,2,true,true,false],[4,2,0,false,false,false]]}],"functions":[]}],"#
-            + #""type":"llvm.coverage.json.export","version":"3.0.1"}"#
+        scenario.export = #"{"data":[{"files":[{"filename":"@ROOT@"#
+            + suffix
+            + #"/Sources/Kit/Shared.swift","segments":[[4,24,2,true,true,false],[4,2,0,false,false,false]]}],"#
+            + #""functions":[]}],"type":"llvm.coverage.json.export","version":"3.0.1"}"#
 
         try CoverageHarness.run(scenario) { outcome in
             let named = PathSpellings.of(outcome.root).map { spelling in
-                "`llvm-cov export` wrote the segments of \(spelling)Kit/Sources/Kit/Shared.swift out of order "
+                "`llvm-cov export` wrote the segments of \(spelling)\(suffix)/Sources/Kit/Shared.swift out of order "
                     + "(4:2 after 4:24); SwiftStats reads them sorted by line, then column"
             }
             #expect(outcome.run.status.state == .failed)
