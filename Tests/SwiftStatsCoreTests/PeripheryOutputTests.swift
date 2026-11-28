@@ -7,7 +7,8 @@ import Testing
 /// `name(text)`, locations read from the right on scalars (design B23),
 /// modules made target names; then each entry's class, the first that
 /// applies, on the Index fixture's recorded runs and on hand-written
-/// entries placed in it.
+/// entries placed in it. Hints read on scalars and a string's leading byte
+/// order mark are in `PeripheryOutputTests+Scalars`.
 @Suite("outskirts output")
 struct PeripheryOutputTests {
     /// One entry's JSON object, its fields as given.
@@ -25,14 +26,14 @@ struct PeripheryOutputTests {
     }
 
     /// `objects` as a run's JSON.
-    private static func json(_ objects: [Any]) throws -> Data {
+    static func json(_ objects: [Any]) throws -> Data {
         try JSONSerialization.data(withJSONObject: objects, options: [.sortedKeys])
     }
 
     /// A context for a package at `/NoSuchPeripheryPackage`, which doesn't
     /// exist, described as the recorded T1 describe gives the Index
     /// fixture, with no records.
-    private static func plainContext() throws -> PeripheryOutput.Context {
+    static func plainContext() throws -> PeripheryOutput.Context {
         let package = try IndexWalkHarness.recordedPackage()
         return PeripheryOutput.Context(
             root: "/NoSuchPeripheryPackage",
@@ -219,7 +220,8 @@ struct PeripheryOutputTests {
 
     @Test("""
         a top-level variable in main.swift stays production by its place but is local when the index marks its \
-        USR local; a parameter is never local; the first class that applies wins
+        USR local, and so does a variable in its top-level code; a parameter is never local; an unscanned file \
+        listing no modules is unscanned; the first class that applies wins
         """)
     func classOrder() throws {
         let fixture = try BuildFixture()
@@ -239,6 +241,8 @@ struct PeripheryOutputTests {
             Self.entry(location: core + "TestOnly.swift:7:6", modules: ["IndexCoreTests", "IndexXCTests"]),
             Self.entry(location: root + "/Tests/IndexCoreTests/Unparsed.swift:1:6"),
             Self.entry(location: core + "Unparsed.swift:1:6", modules: ["IndexCoreTests"]),
+            Self.entry(location: core + "Unparsed.swift:2:6", modules: []),
+            Self.entry(location: root + "/Sources/IndexApp/main.swift:7:7", kind: "var.local", modules: ["IndexApp"]),
             Self.entry(location: root + "/Package.swift:1:1"),
             Self.entry(location: fixture.build + "/checkouts/Dep/Dep.swift:2:3")
         ])
@@ -260,15 +264,12 @@ struct PeripheryOutputTests {
 
         // TestOnly.swift is IndexCore's, so its modules don't make it test
         // code; only the unparsed files fall back to the folder or modules.
-        #expect(byPlace.map(\.entryClass) == [
-            .production, .production, .local, .test, .production, .test, .test, .unscanned, .build
-        ])
-        #expect(byIndex.map(\.entryClass) == [
-            .local, .production, .local, .test, .production, .test, .test, .unscanned, .build
-        ])
-        #expect(changed.map(\.entryClass) == [
-            .production, .fileChanged, .fileChanged, .test, .production, .test, .test, .unscanned, .build
-        ])
+        let rest: [PeripheryEntryClass] = [
+            .test, .production, .test, .test, .unscanned, .production, .unscanned, .build
+        ]
+        #expect(byPlace.map(\.entryClass) == [.production, .production, .local] + rest)
+        #expect(byIndex.map(\.entryClass) == [.local, .production, .local] + rest)
+        #expect(changed.map(\.entryClass) == [.production, .fileChanged, .fileChanged] + rest)
         #expect(byPlace.last?.file == ".swiftstats/index-build/checkouts/Dep/Dep.swift")
     }
 

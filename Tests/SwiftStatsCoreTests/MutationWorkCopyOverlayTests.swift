@@ -98,27 +98,33 @@ struct MutationWorkCopyOverlayTests {
         #expect(WorkCopyHarness.entries(of: copy.project) == ["Package.swift", "Sources/Gen/X.swift"])
     }
 
-    @Test("the work tree's pins above the package are the copy's: an edited one as edited, a deleted one gone")
+    @Test("""
+        the work tree's pins above the package are the copy's: an edited one as edited, a deleted one gone, one \
+        git ignores as the work tree holds it
+        """)
     func pinsAbovePackage() throws {
         let repository = try HistoryRepository()
         defer { repository.remove() }
         try repository.write([
+            ".gitignore": "Packages/Kit/.swift-version\n",
             ".swift-version": "6.3\n",
             "Packages/.swift-version": "6.3\n",
-            "Packages/Pkg/Package.swift": "// swift-tools-version: 6.0\n",
-            "Packages/Pkg/\(Self.library)": WorkCopyHarness.swift
+            "Packages/Kit/Pkg/Package.swift": "// swift-tools-version: 6.0\n",
+            "Packages/Kit/Pkg/\(Self.library)": WorkCopyHarness.swift
         ])
         try repository.commit("one", day: 0)
-        try repository.write([".swift-version": "6.4\n"])
+        try repository.write([".swift-version": "6.4\n", "Packages/Kit/.swift-version": "6.5\n"])
         try FileManager.default.removeItem(at: repository.root.appendingPathComponent("Packages/.swift-version"))
-        let packageRoot = repository.root.appendingPathComponent("Packages/Pkg")
+        let packageRoot = repository.root.appendingPathComponent("Packages/Kit/Pkg")
 
         let (_, copy) = try WorkCopyHarness.copy(packageRoot, scanning: [Self.library], ignoring: [])
 
         let clone = copy.work.appendingPathComponent(repository.root.lastPathComponent)
         #expect(try WorkCopyHarness.text(".swift-version", in: clone) == "6.4\n")
+        #expect(try WorkCopyHarness.text("Packages/Kit/.swift-version", in: clone) == "6.5\n")
         #expect(WorkCopyHarness.entries(of: clone) == [
-            ".swift-version", "Package.swift", "Packages/Pkg/Package.swift", "Packages/Pkg/\(Self.library)"
+            ".gitignore", ".swift-version", "Package.swift", "Packages/Kit/.swift-version",
+            "Packages/Kit/Pkg/Package.swift", "Packages/Kit/Pkg/\(Self.library)"
         ])
     }
 
@@ -131,6 +137,28 @@ struct MutationWorkCopyOverlayTests {
             try MutationWorkCopy.decodedPaths(data)
         }
         #expect(try MutationWorkCopy.decodedPaths(Data("a b\0c:d\0".utf8)) == ["a b", "c:d"])
+    }
+
+    @Test("""
+        a path git prints starting with a byte order mark keeps it, in the listing and in SwiftMutator's \
+        selection read from git (design B36)
+        """)
+    func leadingByteOrderMark() throws {
+        let mark: [UInt8] = [0xEF, 0xBB, 0xBF]
+        let data = Data(mark + Array("A.swift".utf8) + [0] + mark + mark + [UInt8(ascii: "B"), 0])
+        let repository = try HistoryRepository()
+        defer { repository.remove() }
+        try repository.write(["\u{FEFF}C.swift": "let c = 1\n", "D.swift": "let d = 1\n"])
+        let base = try repository.commit("Two files", day: 0)
+        try repository.write(["\u{FEFF}C.swift": "let c = 2\n"])
+
+        let paths = try MutationWorkCopy.decodedPaths(data)
+        let selection = try MutationChanges.read(in: repository.root, since: base).selection
+
+        #expect(paths.map { Array($0.unicodeScalars) } == [
+            Array("\u{FEFF}A.swift".unicodeScalars), Array("\u{FEFF}\u{FEFF}B".unicodeScalars)
+        ])
+        #expect(selection.map { Array($0.unicodeScalars) } == [Array("\u{FEFF}C.swift".unicodeScalars)])
     }
 
     @Test(

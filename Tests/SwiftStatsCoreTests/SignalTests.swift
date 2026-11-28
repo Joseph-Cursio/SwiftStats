@@ -63,7 +63,7 @@ struct SignalTests {
             "history:\n  window: 90\n", "history:\n  windw: 90d\n", "history:\n  fix_patterns: [\"(\"]\n",
             "history:\n  coupling:\n    min_support: 1\n", "history:\n  ignore_revs: [zz]\n", "history: 3\n",
             "signals:\n  safe-to-leave:\n    threshold: 5\n", "signals:\n  hotspot:\n    threshold: 0\n",
-            "signals:\n  hotspot:\n    cut: 5\n"
+            "signals:\n  hotspot:\n    cut: 5\n", "history:\n  ignore_revs: [abc123]\n"
         ] {
             #expect(throws: ScanError.self, "\(invalid)") {
                 try SwiftStatsConfiguration.parse(invalid, path: "c.yml")

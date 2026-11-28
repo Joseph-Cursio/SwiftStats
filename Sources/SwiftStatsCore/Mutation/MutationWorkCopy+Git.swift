@@ -47,6 +47,8 @@ extension MutationWorkCopy {
     private static let checkoutEnvironment = ["GIT_LFS_SKIP_SMUDGE": "1"]
     /// Options for those commands: no hook runs in the copy.
     private static let noHooks = ["-c", "core.hooksPath=/dev/null"]
+    /// The UTF-8 bytes of a byte order mark, U+FEFF.
+    private static let byteOrderMark = Array("\u{FEFF}".utf8)
 
     /// Clones the repository at `top` into `clone` and checks out
     /// `commit`, the whole tree.
@@ -200,12 +202,16 @@ extension MutationWorkCopy {
         }
     }
 
-    /// The NUL-separated paths in `data`, as git prints them with `-z`; a
-    /// failure when any name isn't UTF-8, rather than leaving that file out
-    /// of the copy unsaid.
+    /// The NUL-separated paths in `data`, as git prints them with `-z`, each
+    /// name's bytes as they are; a failure when any name isn't UTF-8, rather
+    /// than leaving that file out of the copy unsaid. Foundation's UTF-8
+    /// decoding drops one byte order mark that starts a name, which would
+    /// name another file, so it is put back (design B36).
     static func decodedPaths(_ data: Data) throws(MutationFailure) -> [String] {
         let names = data.split(separator: 0)
-        let paths = names.compactMap { String(bytes: $0, encoding: .utf8) }
+        let paths = names.compactMap { name in
+            String(bytes: name, encoding: .utf8).map { name.starts(with: byteOrderMark) ? "\u{FEFF}" + $0 : $0 }
+        }
         guard paths.count == names.count else {
             throw MutationFailure(
                 description: "making the copy failed: git lists paths that aren't UTF-8: "

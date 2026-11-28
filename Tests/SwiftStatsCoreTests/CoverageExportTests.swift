@@ -3,7 +3,8 @@ import Foundation
 import Testing
 
 /// Reading `llvm-cov export`'s JSON (M5): its type and version are checked,
-/// every count is a 64-bit integer, and one beyond `Int64.max` saturates.
+/// every count is a 64-bit integer, one beyond `Int64.max` saturates, and
+/// each file's segments must be sorted by line, then column.
 @Suite("Coverage export")
 struct CoverageExportTests {
     /// An export whose type, version and data are `type`, `version` and
@@ -18,6 +19,15 @@ struct CoverageExportTests {
             type: "llvm.coverage.json.export",
             version: "3.0.1",
             data: #"[{"files":[],"functions":[\#(functions)],"totals":{}}]"#
+        )
+    }
+
+    /// An export of one data element holding `files`.
+    private static func document(files: String) -> Data {
+        document(
+            type: "llvm.coverage.json.export",
+            version: "3.0.1",
+            data: #"[{"files":[\#(files)],"functions":[],"totals":{}}]"#
         )
     }
 
@@ -112,6 +122,85 @@ struct CoverageExportTests {
                 + "SwiftStats reads llvm.coverage.json.export 3.0.1")
             #expect(outcome.run.status.options.contains { $0.hasPrefix("map: ") } == false)
             #expect(outcome.run.export == nil && outcome.run.profiles == nil)
+        }
+    }
+
+    @Test("a file whose segments go back in line or column fails the export, naming the file and both positions")
+    func unsortedSegments() {
+        let backColumn = #"{"filename":"/p/Sources/A.swift","segments":"#
+            + #"[[3,5,1,true,true,false],[3,4,0,false,false,false]]}"#
+        let backLine = #"{"filename":"/p/Sources/B.swift","segments":"#
+            + #"[[1,1,1,true,true,false],[9,2,0,false,false,false],[8,30,0,false,false,false]]}"#
+
+        #expect(Self.failure(Self.document(files: backColumn))
+            == "`llvm-cov export` wrote the segments of /p/Sources/A.swift out of order (3:4 after 3:5); "
+            + "SwiftStats reads them sorted by line, then column")
+        #expect(Self.failure(Self.document(files: backLine))
+            == "`llvm-cov export` wrote the segments of /p/Sources/B.swift out of order (8:30 after 9:2); "
+            + "SwiftStats reads them sorted by line, then column")
+    }
+
+    @Test("a file after the first whose segments go back fails the export, naming that file, and so does a first file")
+    func unsortedLaterFile() {
+        let sorted = #"{"filename":"/p/Sources/A.swift","segments":"#
+            + #"[[1,1,1,true,true,false],[2,1,0,false,false,false]]}"#
+        let backLine = #"{"filename":"/p/Sources/B.swift","segments":"#
+            + #"[[1,1,1,true,true,false],[9,2,0,false,false,false],[8,30,0,false,false,false]]}"#
+
+        #expect(Self.failure(Self.document(files: sorted + "," + backLine))
+            == "`llvm-cov export` wrote the segments of /p/Sources/B.swift out of order (8:30 after 9:2); "
+            + "SwiftStats reads them sorted by line, then column")
+        #expect(Self.failure(Self.document(files: backLine + "," + sorted))
+            == "`llvm-cov export` wrote the segments of /p/Sources/B.swift out of order (8:30 after 9:2); "
+            + "SwiftStats reads them sorted by line, then column")
+    }
+
+    @Test("segments sharing a position are in order, as llvm's segment builder may write an uncounted one first")
+    func samePosition() throws {
+        let file = #"{"filename":"/p/Sources/A.swift","segments":[[2,1,0,false,true,false],[2,1,4,true,true,false]]}"#
+
+        let export = try CoverageExport.decode(Self.document(files: file))
+
+        #expect(export.files.first?.segments.map(\.executionCount) == [0, 4])
+    }
+
+    @Test("a run whose export holds unsorted segments fails, naming the file with the package redacted")
+    func unsortedRun() throws {
+        var scenario = try FakeToolchain.recorded()
+        scenario.export = #"{"data":[{"files":[{"filename":"@ROOT@/Sources/Probe/Counter.swift","#
+            + #""segments":[[4,24,2,true,true,false],[4,2,0,false,false,false]]}],"functions":[]}],"#
+            + #""type":"llvm.coverage.json.export","version":"3.0.1"}"#
+
+        try CoverageHarness.run(scenario) { outcome in
+            #expect(outcome.run.status.state == .failed)
+            #expect(outcome.run.status.reason
+                == "`llvm-cov export` wrote the segments of <package>/Sources/Probe/Counter.swift out of order "
+                + "(4:2 after 4:24); SwiftStats reads them sorted by line, then column")
+            #expect(outcome.run.export == nil && outcome.run.profiles == nil)
+        }
+    }
+
+    @Test(
+        """
+        a reason naming a file beside the package, in a folder whose name is the package's followed by a letter, \
+        a dot or a comma, keeps its path
+        """,
+        arguments: ["Kit", ".old", ",v2"]
+    )
+    func unsortedSibling(suffix: String) throws {
+        var scenario = try FakeToolchain.recorded()
+        scenario.export = #"{"data":[{"files":[{"filename":"@ROOT@"#
+            + suffix
+            + #"/Sources/Kit/Shared.swift","segments":[[4,24,2,true,true,false],[4,2,0,false,false,false]]}],"#
+            + #""functions":[]}],"type":"llvm.coverage.json.export","version":"3.0.1"}"#
+
+        try CoverageHarness.run(scenario) { outcome in
+            let named = PathSpellings.of(outcome.root).map { spelling in
+                "`llvm-cov export` wrote the segments of \(spelling)\(suffix)/Sources/Kit/Shared.swift out of order "
+                    + "(4:2 after 4:24); SwiftStats reads them sorted by line, then column"
+            }
+            #expect(outcome.run.status.state == .failed)
+            #expect(named.contains(outcome.run.status.reason ?? ""))
         }
     }
 }

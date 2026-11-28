@@ -103,11 +103,16 @@ struct MutationWorkCopyLifecycleTests {
         #expect(try Self.marker(in: directory.work) == "left")
     }
 
-    @Test("outside git the package is copied whole but for the folders SwiftMutator never lists and the store")
+    @Test("""
+        outside git the package is copied whole, a nested checkout's files among it, but for the folders \
+        SwiftMutator never lists and the store
+        """)
     func outsideGit() throws {
         let package = try TemporaryPackage([
             Self.library: WorkCopyHarness.swift,
             "Resources/data.json": "{}\n",
+            "Vendor/Dep/.git/HEAD": "ref: refs/heads/main\n",
+            "Vendor/Dep/Dep.swift": WorkCopyHarness.swift,
             ".build/x.swift": WorkCopyHarness.swift,
             ".swiftpm/y.json": "{}\n",
             "Nested/.build/z.swift": WorkCopyHarness.swift,
@@ -130,7 +135,7 @@ struct MutationWorkCopyLifecycleTests {
                 == WorkCopyHarness.realPath(copy.work.appendingPathComponent(package.root.lastPathComponent))
         )
         #expect(WorkCopyHarness.entries(of: copy.project) == [
-            ".build/marker", "Package.swift", "Resources/data.json", Self.library
+            ".build/marker", "Package.swift", "Resources/data.json", Self.library, "Vendor/Dep/Dep.swift"
         ])
         #expect(FileClone.isDirectory(copy.project.appendingPathComponent("Empty")))
         #expect(copy.fixedFiles == 0)

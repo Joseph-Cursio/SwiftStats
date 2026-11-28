@@ -70,9 +70,6 @@ struct MutationCommand {
     static let reportStatuses: Set<Int32> = [0, MutationExit.allBuildErrorsStatus]
     /// What the warnings about an unjudged report end with.
     static let unjudgedNote = "kills only suspect tests made aren't judged"
-    /// What a redacted path must be followed by: a separator, a space, a
-    /// quote, punctuation that ends it, or the end of the text.
-    private static let pathEnd = #"(?=[/\s'"),:;.\]>]|$)"#
 
     /// The `swift-mutator` executable.
     let mutator: URL
@@ -304,21 +301,7 @@ struct MutationCommand {
     /// project's path also starts its side folders' names
     /// (`<project>_muter_logs`), which belong to its folder.
     func redacted(_ text: String) -> String {
-        var redacted = text
-        for (folder, placeholder) in replacements {
-            for spelling in PathSpellings.of(folder) {
-                let pattern = NSRegularExpression.escapedPattern(for: spelling) + Self.pathEnd
-                guard let expression = try? NSRegularExpression(pattern: pattern) else {
-                    continue
-                }
-                redacted = expression.stringByReplacingMatches(
-                    in: redacted,
-                    range: NSRange(redacted.startIndex..., in: redacted),
-                    withTemplate: NSRegularExpression.escapedTemplate(for: placeholder)
-                )
-            }
-        }
-        return redacted
+        PathSpellings.redactedWherePathsEnd(text, replacing: replacements)
     }
 
     /// The last lines of `output`, redacted and cleaned.

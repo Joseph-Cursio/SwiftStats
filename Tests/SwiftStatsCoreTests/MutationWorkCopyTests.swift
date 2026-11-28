@@ -113,12 +113,15 @@ struct MutationWorkCopyTests {
         #expect(try repository.git(["status", "--porcelain"]).isEmpty)
     }
 
-    @Test("a nested package comes as files, without its build or an ignored checkout, with ignored Swift files")
+    @Test("""
+        a nested package comes as files, without its build or an ignored checkout, with ignored Swift files but \
+        not an ignored folder named like one
+        """)
     func nestedPackage() throws {
         let repository = try HistoryRepository()
         defer { repository.remove() }
         try repository.write([
-            ".gitignore": ".build/\nVendor/\nLocal.swift\n",
+            ".gitignore": ".build/\nVendor/\nLocal.swift\nGen.swift/\n",
             "Nested/Helper/Package.swift": "// swift-tools-version: 6.0\n",
             "Nested/Helper/Sources/H/H.swift": WorkCopyHarness.swift
         ])
@@ -128,7 +131,8 @@ struct MutationWorkCopyTests {
             "Nested/Helper/Sources/H/Local.swift": WorkCopyHarness.swift,
             "Vendor/Clone/.git/HEAD": "ref: refs/heads/main\n",
             "Vendor/Clone/V.swift": WorkCopyHarness.swift,
-            "Vendor/Loose/L.swift": WorkCopyHarness.swift
+            "Vendor/Loose/L.swift": WorkCopyHarness.swift,
+            "Gen.swift/notes.txt": "notes\n"
         ])
 
         let (_, copy) = try WorkCopyHarness.copy(repository.root, scanning: [], ignoring: [])
@@ -137,6 +141,7 @@ struct MutationWorkCopyTests {
             ".gitignore", "Nested/Helper/Package.swift", "Nested/Helper/Sources/H/H.swift",
             "Nested/Helper/Sources/H/Local.swift", "Package.swift", "Vendor/Loose/L.swift"
         ])
+        #expect(FileClone.exists(copy.project.appendingPathComponent("Gen.swift")) == false)
     }
 
     @Test("files git checks out with other bytes (eol=crlf) are copied from the package and counted")

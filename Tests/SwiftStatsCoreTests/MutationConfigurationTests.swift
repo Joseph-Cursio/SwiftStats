@@ -98,6 +98,32 @@ struct MutationConfigurationTests {
         #expect(Self.optionsError("{workers: ~}") == nil)
     }
 
+    @Test(
+        """
+        workers written in base 60 reads as YAML 1.1 reads it, plain only, underscores dropped, the sign applying \
+        to the whole sum, ten places at most, and one quoted, of more places, or whose value, a place's value or \
+        its sign would pass Int, is refused naming the key, not a trap (design B30)
+        """,
+        arguments: [
+            ("1:30", 90), ("+1:30", 90), ("1:-5", 55), ("2:0:0", 7_200),
+            ("1:0:0:0:0:0:0:0:0:0", 10_077_696_000_000_000), ("1:0:0:0:0:0:0:0:0:0:0", nil),
+            ("9223372036854775807:0", nil), ("153722867280912931:0", nil),
+            ("--153722867280912930:-8", nil), ("01:30", nil), ("1::30", nil),
+            ("'1:30'", nil), ("\"1:30\"", nil), ("1_0:30", 630), ("1_000:0", 60_000),
+            ("-1:30", nil), ("-1:-120", 60), ("+01:30", nil), ("+0:30", nil), ("+-153722867280912930:-9", nil)
+        ]
+    )
+    func baseSixtyWorkers(text: String, workers: Int?) throws {
+        let parsed = Self.parsed("collectors:\n  swiftmutator:\n    options:\n      workers: \(text)\n")
+
+        guard let workers else {
+            let message = "`collectors.swiftmutator.options.workers` must be a whole number of at least 1"
+            #expect(throws: ScanError.configurationInvalid("c.yml", message)) { try parsed.get() }
+            return
+        }
+        #expect(try parsed.get().collectors["swiftmutator"]?.workers == workers)
+    }
+
     @Test("timeout must be a number of seconds above 0 and at most a day, naming the key")
     func timeoutErrors() {
         let message = "`collectors.swiftmutator.options.timeout` must be a number of seconds above 0 "
