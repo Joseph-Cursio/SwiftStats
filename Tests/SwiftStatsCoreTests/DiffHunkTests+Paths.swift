@@ -10,7 +10,7 @@ import Testing
 /// with a combining mark, which joins the `/` before it into one
 /// Character, is still in it (design B35, decided U13), while a package
 /// path spelled in the other normalization form still matches, as Swift
-/// strings compare.
+/// strings compare; the package folder itself is not in it.
 extension DiffHunkTests {
     @Test(
         """
@@ -83,6 +83,31 @@ extension DiffHunkTests {
         ])
         #expect(atTop == inPackage)
         #expect(Set(inPackage.keys.map { Array($0.unicodeScalars).first }) == ["S", mark.unicodeScalars.first])
+    }
+
+    @Test(
+        """
+        a file whose old path is the package folder itself, a file there in the older commit, lies outside the \
+        package, so its hunks are dropped, not filed under an empty path
+        """,
+        arguments: ["Pkg", "Sub/Pkg.swift"]
+    )
+    func packageFolderItself(package: String) {
+        let diff = """
+        diff --git a/\(package) b/\(package)
+        deleted file mode 100644
+        index 7898192..0000000
+        --- a/\(package)
+        +++ /dev/null
+        @@ -1 +0,0 @@
+        diff --git a/\(package)/x.swift b/\(package)/x.swift
+        --- a/\(package)/x.swift
+        +++ b/\(package)/x.swift
+        @@ -6 +6 @@
+
+        """
+
+        #expect(GitChanges.hunks(inDiff: diff, packagePath: package) == ["x.swift": [DiffHunk(start: 6, count: 1)]])
     }
 
     @Test("a package path spelled in the other normalization form than git's paths still holds them")
