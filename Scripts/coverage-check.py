@@ -68,6 +68,7 @@ import os
 import re
 import subprocess
 import sys
+import unicodedata
 from collections import defaultdict
 
 INT64_MAX = 2**63 - 1
@@ -120,32 +121,96 @@ ANY_RUN = "[^" + LINE_BREAKS + "]*"
 FINAL_BREAK = "(?:\r\n|(?<!\r)\n|[\x0b\x0c\r\x85\u2028\u2029])?"
 
 
+# Scalars that join the scalar before them into one Character (an extended
+# grapheme cluster, UAX #29's Extend, ZWJ and SpacingMark), as far as the
+# standard library, which has no grapheme segmentation, can tell: marks
+# (Mn, Me, Mc, less the Mc letters UAX #29 leaves out), U+200C, U+200D, the
+# halfwidth sound marks, the emoji modifiers, the tag characters, and the
+# two vowel signs filed under Lo that UAX #29 counts as spacing marks.
+MARK_CATEGORIES = ("Mn", "Me", "Mc")
+NOT_SPACING_MARKS = set(
+    "\u102b\u102c\u1038\u1062\u1063\u1064\u1067\u1068\u1069\u106a\u106b\u106c\u106d\u1083\u1087"
+    "\u1088\u1089\u108a\u108b\u108c\u108f\u109a\u109b\u109c\u1a61\u1a63\u1a64\uaa7b\uaa7d"
+    "\U00011720\U00011721"
+)
+OTHER_JOINERS = set("\u200c\u200d\uff9e\uff9f\u0e33\u0eb3")
+# Scalars that join the scalar after them (UAX #29's Prepend).
+PREPEND = set(
+    "\u0600\u0601\u0602\u0603\u0604\u0605\u06dd\u070f\u0890\u0891\u08e2\u0d4e"
+    "\U000110bd\U000110cd\U000111c2\U000111c3\U0001193f\U00011941\U00011a3a\U00011a84\U00011a85"
+    "\U00011a86\U00011a87\U00011a88\U00011a89\U00011d46\U00011f02"
+)
+
+
+def joins_before(char):
+    """Whether `char` joins the scalar before it into one Character."""
+    if char in OTHER_JOINERS or "\U0001f3fb" <= char <= "\U0001f3ff" or "\U000e0020" <= char <= "\U000e007f":
+        return True
+    return unicodedata.category(char) in MARK_CATEGORIES and char not in NOT_SPACING_MARKS
+
+
+def is_control(char):
+    """Whether `char` is a control for UAX #29, which nothing joins: Cc,
+    Zl, Zp and the format characters that don't join."""
+    category = unicodedata.category(char)
+    if category == "Cf":
+        return char not in PREPEND and not joins_before(char)
+    return category in ("Cc", "Zl", "Zp")
+
+
+def characters(text):
+    """`text` in Characters, as Swift reads it, for the joins that decide
+    whether a `*`, `?`, `.` or `/` stands alone: a scalar after CR is one
+    with it when it is LF; otherwise nothing joins a control or joins one;
+    a mark, a joiner or a spacing mark joins the scalar before it, and a
+    prepended scalar the one after it. Hangul syllables, flags and emoji
+    sequences, which never hold those four, aren't joined."""
+    read = []
+    for char in text:
+        if read:
+            last = read[-1][-1]
+            if last == "\r" and char == "\n":
+                read[-1] += char
+                continue
+            if not is_control(last) and not is_control(char) and (joins_before(char) or last in PREPEND):
+                read[-1] += char
+                continue
+        read.append(char)
+    return read
+
+
 def glob_regex(pattern):
     """A configuration glob (`**`, `*`, `?`) as a regular expression, read as
     PRD §10.1 says: one leading `./` and any trailing `/` are ignored, and
     every match extends to the paths under it, so `Gen*` matches
     `Generated/x.swift`. `**` and that extension stop at a line break, and
-    one line break ending the path is ignored, CR LF counting as one."""
-    if pattern.startswith("./"):
-        pattern = pattern[2:]
-    pattern = pattern.rstrip("/")
+    one line break ending the path is ignored, CR LF counting as one. The
+    glob is read in Characters (`characters`, an approximation of Swift's
+    grapheme breaking from the standard library's Unicode data), so a `*`,
+    `?` or `/` that a mark joins is ordinary text, in `./` and `**/` too;
+    `?` matches one scalar of the path."""
+    read = characters(pattern)
+    if read[:2] == [".", "/"]:
+        read = read[2:]
+    while read and read[-1] == "/":
+        read.pop()
     out = ""
     index = 0
-    while index < len(pattern):
-        if pattern.startswith("**/", index):
+    while index < len(read):
+        if read[index:index + 3] == ["*", "*", "/"]:
             out += "(?:" + ANY_RUN + "/)?"
             index += 3
-        elif pattern.startswith("**", index):
+        elif read[index:index + 2] == ["*", "*"]:
             out += ANY_RUN
             index += 2
-        elif pattern[index] == "*":
+        elif read[index] == "*":
             out += "[^/]*"
             index += 1
-        elif pattern[index] == "?":
+        elif read[index] == "?":
             out += "[^/]"
             index += 1
         else:
-            out += re.escape(pattern[index])
+            out += re.escape(read[index])
             index += 1
     return re.compile(out + "(?:/" + ANY_RUN + ")?" + FINAL_BREAK + r"\Z")
 
