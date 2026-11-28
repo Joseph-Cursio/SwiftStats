@@ -4,8 +4,10 @@
 //
 //  Reads `llvm-cov export`'s JSON (M5): it must be type
 //  `llvm.coverage.json.export`, version 3.0.1, with one `data` element,
-//  whose files and function entries are kept. Anything else fails the
-//  coverage collector with a reason.
+//  whose files and function entries are kept, each file's segments sorted
+//  by line, then column (design B3, decided U6). Anything else fails the
+//  coverage collector with a reason; one naming a file names it by the
+//  export's real path, which the collector redacts where a path ends.
 //
 
 import Foundation
@@ -36,8 +38,8 @@ struct CoverageExport: Decodable, Sendable {
     let functions: [CoverageExportFunction]
 
     /// Decodes the type and version, then, when they are the ones read, the
-    /// data; a `CoverageFailure` when they aren't, or when there isn't
-    /// exactly one data element.
+    /// data; a `CoverageFailure` when they aren't, when there isn't
+    /// exactly one data element, or when a file's segments go back.
     init(from decoder: any Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         let found = (
@@ -55,6 +57,16 @@ struct CoverageExport: Decodable, Sendable {
             throw CoverageFailure(
                 description: "`llvm-cov export` wrote \(data.count) data elements; SwiftStats reads one"
             )
+        }
+        for file in payload.files {
+            if let pair = file.misordered {
+                let later = "\(pair.later.line):\(pair.later.column)"
+                let earlier = "\(pair.earlier.line):\(pair.earlier.column)"
+                throw CoverageFailure(
+                    description: "`llvm-cov export` wrote the segments of \(file.filename) out of order "
+                        + "(\(later) after \(earlier)); SwiftStats reads them sorted by line, then column"
+                )
+            }
         }
         files = payload.files
         functions = payload.functions

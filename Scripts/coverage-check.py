@@ -230,6 +230,16 @@ def segments_of(raw_segments):
     return [(s[0], s[1], clamp(s[2]), bool(s[3]), bool(s[4]), bool(s[5])) for s in raw_segments]
 
 
+def misordered(raw_segments):
+    """The first adjacent export segments whose second lies before the first
+    by (line, column), or None when they are sorted. SwiftStats fails the
+    collector on such a file, and line_stats would never return on it."""
+    for earlier, later in zip(raw_segments, raw_segments[1:]):
+        if (later[0], later[1]) < (earlier[0], earlier[1]):
+            return earlier, later
+    return None
+
+
 def line_stats(segments):
     """llvm-cov's line rule: {line: (count, partly_run)} for mapped lines."""
     result = {}
@@ -517,6 +527,12 @@ class Package:
         if len(document["data"]) != 1:
             fail(f"{export_path} holds {len(document['data'])} data elements")
         self.export = document["data"][0]
+        for file in self.export["files"]:
+            pair = misordered(file["segments"])
+            if pair is not None:
+                earlier, later = pair
+                fail(f"{export_path}: the segments of {file['filename']} go back "
+                     f"({later[0]}:{later[1]} after {earlier[0]}:{earlier[1]}), which SwiftStats rejects")
         self.tools = tools or self.find_tools()
         self.bundles = self.find_bundles()
 
