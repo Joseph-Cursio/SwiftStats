@@ -6,6 +6,7 @@
 //  (`CoverageMapping.cpp`) apply it to segments (M5). Each line from the
 //  first segment's to the last's is mapped when no skipped region starts
 //  it and a counted segment wraps into it or a counted region starts on
+//  it, or when a counted segment enters a region on it, whatever starts
 //  it; its count is the wrapping segment's, raised by the counts of the
 //  regions starting on it. Over a file's segments this gives llvm-cov's
 //  file view (the lines `-format=lcov` lists); over a record's own, its

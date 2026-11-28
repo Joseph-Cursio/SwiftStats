@@ -7,9 +7,17 @@
 //  per-function rule (M5): regions sorted outermost first, those of one
 //  range combined, then a segment where each region starts and, where an
 //  inner region ends, one resuming the region around it; after the last
-//  region a segment without a count. Regions of one range keep the largest
-//  count, never a sum (llvm sums them; a record's are deduplicated first,
-//  so they never meet).
+//  region a segment without a count. Regions of one range combine into the
+//  first in kind order (code, expansion, skipped, gap), which keeps the
+//  largest count among those of its own kind, never a sum (llvm sums
+//  them), and takes nothing from the others: a code and a gap region of
+//  one range count as the code region, a skipped and a gap region as the
+//  skipped one. A record's code regions are deduplicated first, so there
+//  only regions of different kinds meet. As in llvm, an empty region never
+//  becomes active: where it starts, a segment takes the count of the
+//  region around it, its own when there is none; when it comes last or is
+//  skipped, that segment has no count, and one resuming the region around
+//  it follows.
 //
 
 /// llvm's segment builder.
@@ -27,7 +35,7 @@ struct CoverageSegmentBuilder {
     }
 
     /// By start; of one start, the longer first; of one range, code before
-    /// expansion before skipped.
+    /// expansion before skipped before gap.
     private static func nestedOrder(_ lhs: CoverageRegion, _ rhs: CoverageRegion) -> Bool {
         if lhs.start != rhs.start {
             return lhs.start < rhs.start
