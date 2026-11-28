@@ -133,6 +133,28 @@ struct MutationWorkCopyOverlayTests {
         #expect(try MutationWorkCopy.decodedPaths(Data("a b\0c:d\0".utf8)) == ["a b", "c:d"])
     }
 
+    @Test("""
+        a path git prints starting with a byte order mark keeps it, in the listing and in SwiftMutator's \
+        selection read from git (design B36)
+        """)
+    func leadingByteOrderMark() throws {
+        let mark: [UInt8] = [0xEF, 0xBB, 0xBF]
+        let data = Data(mark + Array("A.swift".utf8) + [0] + mark + mark + [UInt8(ascii: "B"), 0])
+        let repository = try HistoryRepository()
+        defer { repository.remove() }
+        try repository.write(["\u{FEFF}C.swift": "let c = 1\n", "D.swift": "let d = 1\n"])
+        let base = try repository.commit("Two files", day: 0)
+        try repository.write(["\u{FEFF}C.swift": "let c = 2\n"])
+
+        let paths = try MutationWorkCopy.decodedPaths(data)
+        let selection = try MutationChanges.read(in: repository.root, since: base).selection
+
+        #expect(paths.map { Array($0.unicodeScalars) } == [
+            Array("\u{FEFF}A.swift".unicodeScalars), Array("\u{FEFF}\u{FEFF}B".unicodeScalars)
+        ])
+        #expect(selection.map { Array($0.unicodeScalars) } == [Array("\u{FEFF}C.swift".unicodeScalars)])
+    }
+
     @Test(
         "SwiftMutator lists Swift files, pins and the root or a workspace's Package.resolved however git ignores them",
         arguments: [
