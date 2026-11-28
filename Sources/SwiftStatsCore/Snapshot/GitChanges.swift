@@ -116,7 +116,7 @@ enum GitChanges {
     /// splitting on `Character("\n")` would join a CRLF file's changed line
     /// to the hunk or file header after it (design B5).
     static func hunks(inDiff text: String, packagePath: String) -> [String: [DiffHunk]] {
-        let prefix = packagePath.isEmpty ? "a/" : "a/\(packagePath)/"
+        let prefix = ["a"] + (packagePath.isEmpty ? [] : components(of: packagePath))
         var hunks: [String: [DiffHunk]] = [:]
         var path: String?
         var inHeader = false
@@ -125,8 +125,7 @@ enum GitChanges {
             if line.hasPrefix(fileMarker) {
                 (path, inHeader) = (nil, true)
             } else if inHeader, line.hasPrefix(oldPathMarker) {
-                let old = unquoted(String(line.dropFirst(oldPathMarker.count)))
-                path = old.hasPrefix(prefix) ? String(old.dropFirst(prefix.count)) : nil
+                path = relative(unquoted(String(line.dropFirst(oldPathMarker.count))), below: prefix)
             } else if line.hasPrefix(hunkMarker) {
                 inHeader = false
                 if let path, let hunk = hunk(line) {
@@ -135,6 +134,27 @@ enum GitChanges {
             }
         }
         return hunks
+    }
+
+    /// The components of `path`, split at each `/` scalar.
+    private static func components(of path: String) -> [String] {
+        path.unicodeScalars.split(separator: "/", omittingEmptySubsequences: false).map { String($0) }
+    }
+
+    /// The header path `old` from below the folder whose components are
+    /// `prefix` (`a` and the package path's), or nil when it doesn't lie
+    /// below it. Compared component by component, the `/`s found among
+    /// Unicode scalars: a component starting with a combining mark, a
+    /// joiner or a spacing mark joins the `/` before it into one
+    /// `Character`, which a `Character` prefix test would miss (design
+    /// B35). Each component compares as Swift strings do, so a package path
+    /// spelled in the other normalization form than git's still matches.
+    private static func relative(_ old: String, below prefix: [String]) -> String? {
+        let parts = components(of: old)
+        guard parts.count > prefix.count, zip(parts, prefix).allSatisfy(==) else {
+            return nil
+        }
+        return parts.dropFirst(prefix.count).joined(separator: "/")
     }
 
     /// The old side of the hunk header `line` (`@@ -start[,count] …`).
