@@ -35,6 +35,14 @@ enum GitChanges {
     private static let octalDigits = 3
     /// The base of an octal escape.
     private static let octalRadix = 8
+    /// The byte git writes as `\a`.
+    private static let bell: UInt8 = 0x07
+    /// The byte git writes as `\b`.
+    private static let backspace: UInt8 = 0x08
+    /// The byte git writes as `\v`.
+    private static let verticalTab: UInt8 = 0x0B
+    /// The byte git writes as `\f`.
+    private static let formFeed: UInt8 = 0x0C
     /// The package's Swift files, at any depth below the working directory.
     static let swiftFiles = ":(glob)**/*.swift"
     /// The environment settings that would change the diff's hunks, or the
@@ -146,7 +154,9 @@ enum GitChanges {
     }
 
     /// A header path as git wrote it, without the tab git adds after a
-    /// name with spaces, and unquoted when git quoted it (`"a/x\ty"`).
+    /// name with spaces, and unquoted when git quoted it (`"a/x\ty"`),
+    /// through every escape git writes: the letters `a b t n v f r`, a
+    /// quote and a backslash, and octal ones (design B34).
     private static func unquoted(_ written: String) -> String {
         let path = written.hasSuffix("\t") ? String(written.dropLast()) : written
         guard path.count > 1, path.hasPrefix("\""), path.hasSuffix("\"") else {
@@ -168,11 +178,26 @@ enum GitChanges {
     /// an octal escape from `rest`.
     private static func unescaped(_ escaped: UInt8, rest: inout ArraySlice<UInt8>) -> [UInt8] {
         switch escaped {
+        case UInt8(ascii: "a"):
+            return [bell]
+
+        case UInt8(ascii: "b"):
+            return [backspace]
+
+        case UInt8(ascii: "f"):
+            return [formFeed]
+
         case UInt8(ascii: "n"):
             return [UInt8(ascii: "\n")]
 
+        case UInt8(ascii: "r"):
+            return [UInt8(ascii: "\r")]
+
         case UInt8(ascii: "t"):
             return [UInt8(ascii: "\t")]
+
+        case UInt8(ascii: "v"):
+            return [verticalTab]
 
         case UInt8(ascii: "0")...UInt8(ascii: "7"):
             let octal = UInt8(ascii: "0")...UInt8(ascii: "7")
