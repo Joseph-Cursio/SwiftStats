@@ -103,13 +103,17 @@ enum GitChanges {
 
     /// The old-side ranges of the zero-context diff `text`, by old path
     /// relative to the package at `packagePath`. Files new in the later
-    /// commit, and files outside the package, have none.
+    /// commit, and files outside the package, have none. Lines end at each
+    /// LF scalar, as git ends them: a CR LF pair is one `Character`, so
+    /// splitting on `Character("\n")` would join a CRLF file's changed line
+    /// to the hunk or file header after it (design B5).
     static func hunks(inDiff text: String, packagePath: String) -> [String: [DiffHunk]] {
         let prefix = packagePath.isEmpty ? "a/" : "a/\(packagePath)/"
         var hunks: [String: [DiffHunk]] = [:]
         var path: String?
         var inHeader = false
-        for line in text.split(separator: "\n", omittingEmptySubsequences: false) {
+        for scalars in text.unicodeScalars.split(separator: "\n", omittingEmptySubsequences: false) {
+            let line = Substring(scalars)
             if line.hasPrefix(fileMarker) {
                 (path, inHeader) = (nil, true)
             } else if inHeader, line.hasPrefix(oldPathMarker) {

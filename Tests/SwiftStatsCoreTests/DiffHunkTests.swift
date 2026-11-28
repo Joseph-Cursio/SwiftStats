@@ -5,7 +5,7 @@
 //  The diff hunks divergent clones reads (PRD §8): the old side of each
 //  hunk of a zero-context diff, by the earlier path, and when a hunk lies
 //  in a copy's lines, even when a header's count is the largest an Int
-//  holds.
+//  holds, and when the file's lines end in CR LF.
 //
 
 import Foundation
@@ -102,6 +102,72 @@ struct DiffHunkTests {
         #expect(hunks["Sources/Café.swift"] == [DiffHunk(start: 5, count: 2)])
         #expect(hunks["Fixtures/legacy.txt"] == [DiffHunk(start: 1, count: 1)])
         #expect(text.contains("-café\n"))
+    }
+
+    @Test("a CRLF file keeps every hunk, and the file after it keeps its own hunks under its own path (design B5)")
+    func carriageReturns() {
+        // Each removed or added line of a CRLF file ends in CR LF, as git
+        // writes it; headers and hunk headers end in LF alone.
+        let diff = """
+        diff --git a/Pkg/A.swift b/Pkg/A.swift
+        index 39a9e75..86e946c 100644
+        --- a/Pkg/A.swift
+        +++ b/Pkg/A.swift
+        @@ -2 +2 @@ let a = 1
+        -let b = 2\r
+        +let b = 20\r
+        @@ -4,2 +4 @@ let c = 3
+        -\r
+        -let e = 5\r
+        +let e = 50\r
+        @@ -8 +7 @@ let g = 7
+        -let h = 8\r
+        +let h = 80\r
+        diff --git a/Pkg/B.swift b/Pkg/B.swift
+        index b2feae4..cfc65c7 100644
+        --- a/Pkg/B.swift
+        +++ b/Pkg/B.swift
+        @@ -3 +3 @@ let y = 2
+        -let z = 3\r
+        +let z = 30\r
+
+        """
+        let expected = [
+            "A.swift": [DiffHunk(start: 2, count: 1), DiffHunk(start: 4, count: 2), DiffHunk(start: 8, count: 1)],
+            "B.swift": [DiffHunk(start: 3, count: 1)]
+        ]
+
+        #expect(GitChanges.hunks(inDiff: diff, packagePath: "Pkg") == expected)
+        #expect(GitChanges.hunks(inDiff: GitChanges.text(of: Data(diff.utf8)), packagePath: "Pkg") == expected)
+    }
+
+    @Test("git's diff of two CRLF files gives every changed line's hunk, each under its own file (design B5)")
+    func carriageReturnsFromGit() throws {
+        let repository = try HistoryRepository()
+        defer { repository.remove() }
+        // Kept as written, whatever the user's own settings: core.autocrlf
+        // off, and a `-text` attribute in .git/info/attributes, which
+        // outranks a `text` attribute from a global attributes file.
+        try repository.git(["config", "core.autocrlf", "false"])
+        try repository.write([".git/info/attributes": "* -text\n"])
+        let crlf = { (lines: [String]) in lines.map { $0 + "\r\n" }.joined() }
+        var first = (1...8).map { "let value\($0) = \($0)" }
+        var second = (1...3).map { "let other\($0) = \($0)" }
+        try repository.write(["A.swift": crlf(first), "B.swift": crlf(second)])
+        let before = try repository.commit("CRLF files", day: 0)
+        for line in [1, 4, 7] {
+            first[line] = "let value\(line + 1) = \((line + 1) * 10)"
+        }
+        second[2] = "let other3 = 30"
+        try repository.write(["A.swift": crlf(first), "B.swift": crlf(second)])
+        let after = try repository.commit("Change lines 2, 5 and 8, and line 3", day: 1)
+
+        let hunks = try GitChanges.hunks(from: before, to: after, packagePath: "", in: repository.root)
+
+        #expect(hunks == [
+            "A.swift": [DiffHunk(start: 2, count: 1), DiffHunk(start: 5, count: 1), DiffHunk(start: 8, count: 1)],
+            "B.swift": [DiffHunk(start: 3, count: 1)]
+        ])
     }
 
     @Test("a replacement overlaps the lines it meets; an insertion only lines it falls inside")
