@@ -109,13 +109,13 @@ def c99_name(name):
     return "_" + text[1:] if text[:1].isdigit() else text
 
 
-# ICU's line terminators, which PRD §10.1's globs read as line breaks: its
-# `.` matches none of them, and its `$` also matches before one that ends
-# the text, `\r\n` counting as one.
+# The line breaks of PRD §10.1's globs (U+000A to U+000D, U+0085, U+2028
+# and U+2029): `**` and the folder extension stop at one, and one ending the
+# path is ignored, `\r\n` counting as one.
 LINE_BREAKS = "\n\x0b\x0c\r\x85\u2028\u2029"
-# Any run of characters but line breaks: ICU's `.*`.
+# Any run of characters but line breaks: what `**` matches.
 ANY_RUN = "[^" + LINE_BREAKS + "]*"
-# One line break, or none, ending the path: what ICU's `$` lets go. A `\n`
+# One line break, or none, ending the path: PRD §10.1's end rule. A `\n`
 # after `\r` is the end of `\r\n`, so it can't be the break alone.
 FINAL_BREAK = "(?:\r\n|(?<!\r)\n|[\x0b\x0c\r\x85\u2028\u2029])?"
 
@@ -125,7 +125,7 @@ def glob_regex(pattern):
     PRD §10.1 says: one leading `./` and any trailing `/` are ignored, and
     every match extends to the paths under it, so `Gen*` matches
     `Generated/x.swift`. `**` and that extension stop at a line break, and
-    one line break ending the path is ignored, as in Swift's ICU reading."""
+    one line break ending the path is ignored, CR LF counting as one."""
     if pattern.startswith("./"):
         pattern = pattern[2:]
     pattern = pattern.rstrip("/")
