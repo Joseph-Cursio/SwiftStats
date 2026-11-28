@@ -100,14 +100,17 @@ struct MutationConfigurationTests {
 
     @Test(
         """
-        workers written in base 60 reads as YAML 1.1 reads it, ten places at most, and one of more places, or whose \
-        value, a place's value or its sign would pass Int, is refused naming the key, not a trap (design B30)
+        workers written in base 60 reads as YAML 1.1 reads it, plain only, underscores dropped, the sign applying \
+        to the whole sum, ten places at most, and one quoted, of more places, or whose value, a place's value or \
+        its sign would pass Int, is refused naming the key, not a trap (design B30)
         """,
         arguments: [
             ("1:30", 90), ("+1:30", 90), ("1:-5", 55), ("2:0:0", 7_200),
             ("1:0:0:0:0:0:0:0:0:0", 10_077_696_000_000_000), ("1:0:0:0:0:0:0:0:0:0:0", nil),
             ("9223372036854775807:0", nil), ("153722867280912931:0", nil),
-            ("--153722867280912930:-8", nil), ("01:30", nil), ("1::30", nil)
+            ("--153722867280912930:-8", nil), ("01:30", nil), ("1::30", nil),
+            ("'1:30'", nil), ("\"1:30\"", nil), ("1_0:30", 630), ("1_000:0", 60_000),
+            ("-1:30", nil), ("-1:-120", 60)
         ]
     )
     func baseSixtyWorkers(text: String, workers: Int?) throws {
