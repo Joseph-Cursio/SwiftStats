@@ -12,7 +12,8 @@
 //  members are ignored. Otherwise it fails with the reason for the first
 //  check it fails, in the decoder's order: the type and version must
 //  decode, then be the ones read; then the data must decode, then hold
-//  one element; then each file's segments must not go back. A changed
+//  one element; then each file's segments must not go back, the first
+//  that does named (the last file, by the draft's construction). A changed
 //  byte, or a count whose spelling isn't labelled, may give anything but a
 //  trap or another error.
 //
@@ -47,11 +48,12 @@ extension ExportDraft {
             return .refused("`llvm-cov export` wrote \(count) data elements; SwiftStats reads one")
 
         case .misordered:
-            let positions = positions(of: files[0])
+            let file = files[files.count - 1]
+            let positions = positions(of: file)
             let back = Self.backward(after: positions)
             let last = positions.last ?? back
             return .refused(
-                "`llvm-cov export` wrote the segments of \(CoverageExportGen.filenames[files[0].name]) out of order "
+                "`llvm-cov export` wrote the segments of \(CoverageExportGen.filenames[file.name]) out of order "
                     + "(\(back.line):\(back.column) after \(last.line):\(last.column)); "
                     + "SwiftStats reads them sorted by line, then column"
             )

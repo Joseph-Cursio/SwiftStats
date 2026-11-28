@@ -12,8 +12,11 @@
 //  wrong type or version, no data element or two, a file whose segments go
 //  back, a key missing or of the wrong type, a row too short, a count past
 //  `UInt64.max` or below `Int64.min`, the document cut short, or one byte
-//  changed. A fault's target is the first file, segment, entry or region;
-//  one is added when there is none (`normalized`). `expected` is what the
+//  changed. A fault's target is the first file, segment, entry or region,
+//  but a file whose segments go back is the last of at least two files,
+//  so that the decoder's check is seen past the first file (a sorted
+//  file is added before a lone one); a target is added when there is
+//  none (`normalized`). `expected` is what the
 //  decoder's documented reading gives: the export, with every count past
 //  `Int64.max` read as `Int64.max` (`CoverageCount`), one of its reasons,
 //  or, for a changed byte or an unlabelled spelling, anything but a trap
@@ -40,7 +43,8 @@ struct ExportDraft: Hashable, Sendable {
         case badByte(offset: Int, byte: UInt8)
         /// The data array holds this many elements, not one.
         case dataCount(Int)
-        /// The first file's segments end with one before the last.
+        /// The last file's segments, after a sorted file, end with one
+        /// before the last.
         case misordered
         /// The first object holding this key lacks it.
         case missing(String)
@@ -149,6 +153,9 @@ struct ExportDraft: Hashable, Sendable {
         kind: CoverageRegion.codeKind,
         extras: 0
     )
+    /// The fewest files a document whose last file's segments go back has
+    /// (forced: one before it).
+    static let misorderedFiles = 2
     /// The keys and fields whose fault needs a file.
     static let fileTargets: Set<String> = ["filename", "segments", "segmentLine", "segmentFlag", "segment"]
     /// Those whose fault needs a segment.
@@ -188,8 +195,19 @@ struct ExportDraft: Hashable, Sendable {
     }
 
     /// The draft with a file, segment, entry or region added first where
-    /// its fault needs one and there is none.
+    /// its fault needs one and there is none; for segments going back, a
+    /// sorted file before a lone file, and a segment in the last file.
     var normalized: Self {
+        if fault == .misordered {
+            var files = files
+            while files.count < Self.misorderedFiles {
+                files.insert(File(name: 0, segments: [Self.addedSegment]), at: 0)
+            }
+            if let last = files.last, last.segments.isEmpty {
+                files[files.count - 1] = File(name: last.name, segments: [Self.addedSegment])
+            }
+            return Self(files: files, functions: functions, extraKeys: extraKeys, fault: fault)
+        }
         guard let target else {
             return self
         }

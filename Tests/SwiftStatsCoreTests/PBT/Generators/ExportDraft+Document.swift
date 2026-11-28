@@ -6,7 +6,7 @@
 //  The document is built as `JSONText`, with the draft's fault written in:
 //  a member left out, a value of the wrong type, a row one element short,
 //  a count spelled out of range, a segment going back appended to the
-//  first file; then cut short or one byte changed. Each count reads as
+//  last file; then cut short or one byte changed. Each count reads as
 //  `CoverageCount` documents: as spelled within `Int64`, `Int64.max` past
 //  it up to `UInt64.max`, and a decoding failure past that or below
 //  `Int64.min`. The reasons are the decoder's (PRD §7.8).
@@ -62,7 +62,9 @@ extension ExportDraft {
             [
                 member(
                     "files",
-                    .array(files.enumerated().map { fileObject($0.element, isFirst: $0.offset == 0) }),
+                    .array(files.enumerated().map { index, file in
+                        fileObject(file, isFirst: index == 0, isLast: index == files.count - 1)
+                    }),
                     applies: true
                 ),
                 member(
@@ -101,8 +103,8 @@ extension ExportDraft {
         return SourcePosition(line: last.line, column: last.column - 1)
     }
 
-    /// The first file's segments as the decoder reads them, before any
-    /// fault is written in.
+    /// A file's segments as the decoder reads them, before any fault is
+    /// written in.
     func positions(of file: File) -> [SourcePosition] {
         var positions: [SourcePosition] = []
         for segment in file.segments {
@@ -161,12 +163,13 @@ extension ExportDraft {
         return .array(row + Array(repeating: .integer(0), count: extras))
     }
 
-    /// `file` as an object; the fault applies to it when `isFirst`.
-    func fileObject(_ file: File, isFirst: Bool) -> JSONText {
+    /// `file` as an object; the fault applies to it when `isFirst`, but a
+    /// segment going back when `isLast`.
+    func fileObject(_ file: File, isFirst: Bool, isLast: Bool) -> JSONText {
         var rows = zip(file.segments, positions(of: file)).enumerated().map { index, pair in
             segmentRow(pair.0, at: pair.1, applies: isFirst && index == 0)
         }
-        if isFirst, fault == .misordered {
+        if isLast, fault == .misordered {
             let back = Self.backward(after: positions(of: file))
             rows.append(.array([
                 .integer(back.line), .integer(back.column), .integer(1), .bool(true), .bool(true), .bool(false)

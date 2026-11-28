@@ -140,6 +140,21 @@ struct CoverageExportTests {
             + "SwiftStats reads them sorted by line, then column")
     }
 
+    @Test("a file after the first whose segments go back fails the export, naming that file, and so does a first file")
+    func unsortedLaterFile() {
+        let sorted = #"{"filename":"/p/Sources/A.swift","segments":"#
+            + #"[[1,1,1,true,true,false],[2,1,0,false,false,false]]}"#
+        let backLine = #"{"filename":"/p/Sources/B.swift","segments":"#
+            + #"[[1,1,1,true,true,false],[9,2,0,false,false,false],[8,30,0,false,false,false]]}"#
+
+        #expect(Self.failure(Self.document(files: sorted + "," + backLine))
+            == "`llvm-cov export` wrote the segments of /p/Sources/B.swift out of order (8:30 after 9:2); "
+            + "SwiftStats reads them sorted by line, then column")
+        #expect(Self.failure(Self.document(files: backLine + "," + sorted))
+            == "`llvm-cov export` wrote the segments of /p/Sources/B.swift out of order (8:30 after 9:2); "
+            + "SwiftStats reads them sorted by line, then column")
+    }
+
     @Test("segments sharing a position are in order, as llvm's segment builder may write an uncounted one first")
     func samePosition() throws {
         let file = #"{"filename":"/p/Sources/A.swift","segments":[[2,1,0,false,true,false],[2,1,4,true,true,false]]}"#

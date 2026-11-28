@@ -22,12 +22,15 @@ extension CoveragePBT {
 
     /// P2.6's base runs, over the engine's 100: one decode of a document of
     /// a few hundred bytes costs well under a millisecond. The rarest
-    /// antecedent, a row longer than llvm writes, comes in 179 of the
-    /// meta-test's 1,000 documents, which 100 runs would meet; but a wrong
-    /// version, the one input on which a type check that ignores the
-    /// version fails, comes in 71 (design D14: `(1 - 0.071)^200`, about
-    /// 4 * 10^-7, is the most a run misses it).
-    static let exportRuns = 200
+    /// antecedent, a file after the first refused for segments going back,
+    /// the one input on which an order check of the first file alone
+    /// fails, came in 11,823 of 200,000 documents drawn from 200 seeds
+    /// (5.9%; at least 5.7% at 99.9% confidence), and a wrong version, on
+    /// which a type check that ignores the version fails, is drawn in one
+    /// document of 16 (design D14: `(1 - 0.057)^300`, about 2 * 10^-8, is
+    /// the most a run misses either; 200 runs would miss the first about
+    /// 6 * 10^-6 of the time).
+    static let exportRuns = 300
     /// What P2.6's tally counts when a document should decode.
     static let decodes = "a document that decodes"
     /// What it counts when one that decodes holds a count past `Int64.max`.
@@ -39,8 +42,11 @@ extension CoveragePBT {
     static let refusedWithReason = "a document refused with a reason of its own"
     /// What it counts when a document fails as unreadable.
     static let unreadable = "a document that can't be read"
+    /// What it counts when a document fails because a file after the
+    /// first has segments going back.
+    static let laterMisordered = "a file after the first refused for segments going back"
     /// The antecedents P2.6 must reach at least once each.
-    static let exportAntecedents = [decodes, saturates, longRow, refusedWithReason, unreadable]
+    static let exportAntecedents = [decodes, saturates, longRow, refusedWithReason, unreadable, laterMisordered]
 
     /// The classes `draft` falls in, for P2.6's tally and the generator's
     /// meta-test.
@@ -59,7 +65,7 @@ extension CoveragePBT {
             return [(true, decodes), (saturated, saturates), (long, longRow)].filter(\.0).map(\.1)
 
         case .refused:
-            return [refusedWithReason]
+            return normalized.fault == .misordered ? [refusedWithReason, laterMisordered] : [refusedWithReason]
 
         case .unknown:
             return []
@@ -133,8 +139,9 @@ extension CoveragePBT {
     /// negative count, which llvm never writes, reads as spelled.
     /// Oracle: the generating model (`ExportDraft.expected`); planted
     /// defects: a count past `Int64.max` refused, an export with unsorted
-    /// segments read, a decoding error passed through unwrapped, and a
-    /// type check that ignores the version, each detected.
+    /// segments read, the order checked in the first file only, a decoding
+    /// error passed through unwrapped, and a type check that ignores the
+    /// version, each detected.
     /// Tier: Strict (stop-ship).
     @Test(
         "decoding any document returns or throws CoverageFailure, reading counts past Int64.max as Int64.max",
@@ -215,6 +222,10 @@ extension CoveragePBT {
         let function = ExportDraft.Function(name: 1, count: .clamped(UInt64.max), files: [0], regions: [])
         let sound = ExportDraft(files: [file], functions: [function], extraKeys: false, fault: .sound)
         let misordered = ExportDraft(files: [file], functions: [function], extraKeys: false, fault: .misordered)
+        let firstOnly = ExportDraft(files: [file, file], functions: [], extraKeys: false, fault: .misordered)
+        let twoFiles = try CoverageExport.decode(
+            ExportDraft(files: [file, file], functions: [], extraKeys: false, fault: .sound).data
+        )
         let newer = ExportDraft(files: [file], functions: [function], extraKeys: false, fault: .wrongVersion("3.0.2"))
         let cut = ExportDraft(files: [file], functions: [function], extraKeys: false, fault: .truncated(9))
         let export = try CoverageExport.decode(sound.data)
@@ -228,6 +239,9 @@ extension CoveragePBT {
         }
         PlantedDefect.expectDetected("unsorted segments read", sourceLocation: #_sourceLocation) {
             Self.checkDecoded(misordered.expected, decoded: .success(export))
+        }
+        PlantedDefect.expectDetected("the order checked in the first file only", sourceLocation: #_sourceLocation) {
+            Self.checkDecoded(firstOnly.expected, decoded: .success(twoFiles))
         }
         PlantedDefect.expectDetected("a decoding error passed through", sourceLocation: #_sourceLocation) {
             Self.checkDecoded(cut.expected, decoded: .failure(raw))

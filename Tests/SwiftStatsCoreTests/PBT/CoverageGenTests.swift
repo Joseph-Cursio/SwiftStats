@@ -12,7 +12,8 @@ import Testing
 /// between regions), their changes (a raise raising a line, a skipped
 /// region hiding one, an untouched line), mapped lines (shared runs and
 /// each way a run splits), pooled regions (repeated ranges with differing
-/// counts and kinds), and export documents (each outcome and each fault).
+/// counts and kinds), and export documents (each outcome, each fault, and
+/// a file after the first whose segments go back).
 /// The counts hold under this engine's generator code and this standard
 /// library; a change to either, or to a weight or list in the generators,
 /// redraws them.
@@ -193,6 +194,7 @@ struct CoverageGenTests {
             "a document refused with a reason of its own": 207,
             "a document that can't be read": 332,
             "a document that decodes": 347,
+            "a file after the first refused for segments going back": 49,
             "a row longer than llvm writes": 179,
             "an outcome left open": 114,
             "fault: badByte": 67,
