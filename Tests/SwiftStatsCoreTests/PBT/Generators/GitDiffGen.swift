@@ -42,11 +42,12 @@ enum GitDiffGen {
     /// Folder names a path is built of: plain, holding a space, accented
     /// both ways, quoted for a tab, a quote, a backslash, a CR, a BEL, a
     /// backspace, a vertical tab, a form feed, a line feed, another control
-    /// and the delete, starting with a Prepend scalar, and shaped like diff
-    /// syntax.
+    /// before an octal digit (which its octal escape's three digits must not
+    /// take) and the delete, starting with a Prepend scalar, and shaped like
+    /// diff syntax.
     static let folderNames = [
         "Sources", "Core", "a b", "R\u{E9}sum\u{E9}", "Re\u{301}sume\u{301}", "x\ty", "q\"r", "back\\slash", "x\ry",
-        "b\u{7}z", "s\u{8}", "v\u{B}", "f\u{C}", "x\ny", "c\u{1}d", "del\u{7F}", "\u{600}x", "@@ -1 +1 @@", "-", "dev"
+        "b\u{7}z", "s\u{8}", "v\u{B}", "f\u{C}", "x\ny", "c\u{1}7d", "del\u{7F}", "\u{600}x", "@@ -1 +1 @@", "-", "dev"
     ]
     /// What may start the first component below a file's folder: a
     /// combining mark, a joiner, a variation selector and a spacing mark,

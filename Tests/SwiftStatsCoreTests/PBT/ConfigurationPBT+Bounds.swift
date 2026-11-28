@@ -17,17 +17,20 @@ import Testing
 /// P11.2's walk, check, examples and planted defects.
 extension ConfigurationPBT {
     /// P11.2's base runs per edge, under the engine's 100: each run draws
-    /// the edge or the value outside it, half the time each, so a side
-    /// never drawn in 24 runs has chance 2^-24, about 6 * 10^-8 (design
-    /// D14), and 41 edges read 984 texts in all, about half a second. The
-    /// styles (block or flow, plain or quoted) are sampled, not required:
-    /// the law doesn't depend on them (in the meta-test's 1,000 cases of
-    /// one edge, 661 are quoted and 151 in flow style).
-    static let boundRuns = 24
+    /// the edge, the value one step outside it or the value far outside
+    /// it, a third of the time each, so a side never drawn in 36 runs has
+    /// chance (2/3)^36, about 5 * 10^-7 (design D14), and 41 edges read
+    /// 1,476 texts in all, under a second. The styles (block or flow, plain
+    /// or quoted) are sampled, not required: the law doesn't depend on
+    /// them (in the meta-test's 1,000 cases of one edge, 675 are quoted
+    /// and 162 in flow style).
+    static let boundRuns = 36
     /// What P11.2's tally counts for the edge.
     static let atEdge = "the edge"
     /// What it counts for the value one step outside.
     static let outsideEdge = "one step outside"
+    /// What it counts for the value far outside.
+    static let farOutside = "far outside"
     /// What it counts for a quoted value.
     static let quotedValue = "a quoted value"
     /// What it counts for a value in flow style.
@@ -38,7 +41,8 @@ extension ConfigurationPBT {
     static func boundLabels(of draft: BoundCase) -> [String] {
         [
             (draft.isOutside == false, atEdge),
-            (draft.isOutside, outsideEdge),
+            (draft.isOutside && draft.isFar == false, outsideEdge),
+            (draft.isFar, farOutside),
             (draft.quote != .plain, quotedValue),
             (draft.layout.flowDepth < draft.bound.path.count, flowValue)
         ]
@@ -46,10 +50,10 @@ extension ConfigurationPBT {
         .map(\.1)
     }
 
-    /// Whether `read`, what reading a text holding `bound`'s edge (or the
-    /// value outside it, when `isOutside`) gave, is the edge read as
-    /// written, or exactly the bound's refusal. Records an issue for each
-    /// law that fails.
+    /// Whether `read`, what reading a text holding `bound`'s edge (or a
+    /// value outside it, one step or far, when `isOutside`) gave, is the
+    /// edge read as written, or exactly the bound's refusal. Records an
+    /// issue for each law that fails.
     static func checkBound(_ bound: ConfigBound, isOutside: Bool, read: Read) -> Bool {
         let subject = "reading \(bound.name)"
         switch (isOutside, read) {
@@ -65,12 +69,12 @@ extension ConfigurationPBT {
             return holds([(false, "refuses the edge \(bound.edge): \(error)")], subject: subject)
 
         case (true, .success):
-            return holds([(false, "accepts \(bound.outside), one step outside")], subject: subject)
+            return holds([(false, "accepts a value outside the edge \(bound.edge)")], subject: subject)
 
         case (true, .failure(let error)):
             let found = reason(of: error)
             return holds(
-                [(found == bound.reason, "refuses \(bound.outside) with \(error), expected: \(bound.reason)")],
+                [(found == bound.reason, "refuses a value outside with \(error), expected: \(bound.reason)")],
                 subject: subject
             )
         }
@@ -84,9 +88,9 @@ extension ConfigurationPBT {
     // MARK: P11.2
 
     /// Invariant: each bound PRD §10.1 states accepts the value at its
-    /// edge, read as written, and refuses the value one step outside it
-    /// with the reason naming the key, in block or flow style, plain or
-    /// quoted, among any valid keys.
+    /// edge, read as written, and refuses the value one step outside it,
+    /// and one far outside it, with the reason naming the key, in block or
+    /// flow style, plain or quoted, among any valid keys.
     /// Why it holds: PRD §10.1 (durations at most 106,751,991,167,300
     /// days; thresholds a percent; the M6 and M7 limits' table: percents
     /// 0 to 100, counts 1 to 1,000,000, a ratio above 0, `high` above
@@ -95,7 +99,8 @@ extension ConfigurationPBT {
     /// day, `bulk_files` at least 1, `min_support` at least 2) and for the
     /// thresholds' (0, 100].
     /// Why it might not: one step is a day, one, or the next `Double`, as
-    /// the key is read; `workers` and `timeout` are written plain only
+    /// the key is read, and far is one value past it (`ConfigBounds`);
+    /// `workers` and `timeout` are written plain only
     /// (assumed: a quoted number there is refused, design B33, awaiting
     /// U22, pinned in `ConfigurationKeyTests`); the walk's cases are the
     /// edges, the styles are sampled.
@@ -105,7 +110,7 @@ extension ConfigurationPBT {
     /// wrong key named, each detected.
     /// Tier: Strict (stop-ship).
     @Test(
-        "each bound PRD 10.1 states accepts its edge as written and refuses one step outside, naming the key",
+        "each bound PRD 10.1 states accepts its edge as written, refuses one step outside and beyond, naming the key",
         .timeLimit(PBTBudget.timeLimit),
         arguments: ConfigBounds.all
     )
@@ -121,7 +126,11 @@ extension ConfigurationPBT {
             }
         }
         tally.report()
-        tally.requireFired([Self.atEdge, Self.outsideEdge], unlessFailed: latch, sourceLocation: #_sourceLocation)
+        tally.requireFired(
+            [Self.atEdge, Self.outsideEdge, Self.farOutside],
+            unlessFailed: latch,
+            sourceLocation: #_sourceLocation
+        )
     }
 
     @Test("swiftmutator's timeout reads at a day and the least positive number, in block and flow style")

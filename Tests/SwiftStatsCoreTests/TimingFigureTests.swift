@@ -236,6 +236,41 @@ struct TimingFigureTests {
         #expect(mapped.totals.milliseconds == 0)
     }
 
+    @Test("records come sorted by key, and types and files by what they attach to, then owner, whatever the order")
+    func sortedFigures() throws {
+        let files = (1...4).map { index in
+            (
+                "Sources/Lib/Part\(index).swift",
+                "struct Box\(index) {\n    var stored = 1\n}\nlet global\(index) = [1, 2].map { $0 }\n"
+            )
+        }
+        let parts = try Library(TemporaryPackage(Dictionary(uniqueKeysWithValues: files)))
+        defer { parts.package.remove() }
+        let library = try Self.library()
+        defer { library.package.remove() }
+        let root = library.root
+        let places = [(19, 14), (16, 13), (12, 9), (11, 9), (5, 10), (4, 13), (3, 13), (2, 13), (1, 13)]
+        let entries = files.reversed().flatMap { file, _ in
+            [(TimingEntry.Kind.function, 2, 9), (.expression, 4, 14)].map { kind, line, column in
+                TimingEntry(
+                    kind: kind,
+                    hundredths: 100,
+                    place: BuildPlace(path: parts.root + "/" + file, line: line, column: column),
+                    declaration: nil
+                )
+            }
+        }
+
+        let timed = places.map { Self.entry(.function, 100, line: $0.0, column: $0.1, root: root) }
+        let records = library.mapper.map(timed).records
+        let attachments = parts.mapper.map(entries).attachments
+
+        #expect(records.count == places.count)
+        #expect(records.map(\.key) == records.map(\.key).sorted())
+        #expect(attachments.map(\.owner) == files.map(\.0) + (1...4).map { "Lib::Box\($0)" })
+        #expect(attachments.map(\.attachedTo) == Array(repeating: .file, count: 4) + Array(repeating: .type, count: 4))
+    }
+
     @Test("entries left out are counted by class with their time, function and expression entries alike")
     func leftOut() throws {
         let library = try Self.library()

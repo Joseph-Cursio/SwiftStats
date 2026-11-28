@@ -4,15 +4,19 @@ import Testing
 
 /// What the configuration generator draws (design D14): from a fixed seed,
 /// a thousand texts reach each antecedent of P11.1 an exact number of
-/// times (a valid configuration; a value spelled oddly, a base-60
-/// `workers` past `Int` among them; a value of another type; unknown or
-/// repeated keys; a key that isn't plain text; a section and its alias;
-/// text that isn't a configuration; flow style from the top, CRLF line
-/// ends, something before the first key), a thousand key faults reach
+/// times (a valid configuration, an empty one after a document start, and
+/// one with a collector's `arguments` or swiftmutator's `options` given no
+/// value or a two-digit base-60 `workers`; a value spelled oddly, a
+/// base-60 `workers` past `Int` among them; a value of another type;
+/// `arguments` that aren't `--skip` pairs; unknown or repeated keys; a key
+/// that isn't plain text; a section and its alias; text that isn't a
+/// configuration; flow style from the top, CRLF line ends, something
+/// before the first key), a thousand key faults reach
 /// each antecedent of P11.3 (unknown keys at each level, two in one
 /// mapping, a key repeated as written, in other quotes, read as two types
 /// at the top and nested, a collector named twice), and a thousand of one
-/// edge's cases reach each class of P11.2. Every valid configuration of a
+/// edge's cases reach each class of P11.2 (the edge, one step outside, far
+/// outside, quoted, flow style). Every valid configuration of a
 /// thousand reads. The counts hold under this engine's generator code and
 /// this standard library; a change to either, or to a weight or list in
 /// `ConfigGen`, redraws them. Hand-worked examples pin the drafts'
@@ -39,17 +43,22 @@ struct ConfigGenTests {
         }
 
         #expect(counts == [
-            "a base-60 workers past Int": 52,
-            "a key that isn't plain text": 91,
-            "a section and its alias": 51,
-            "a valid configuration": 195,
-            "a value of another type": 108,
-            "a value spelled oddly": 258,
-            "an unknown or repeated key": 91,
-            "flow style from the top": 38,
-            "lines ending in CRLF": 211,
-            "something before the first key": 187,
-            "text that isn't a configuration": 206
+            "a base-60 workers past Int": 38,
+            "a key that isn't plain text": 71,
+            "a section and its alias": 42,
+            "a valid configuration": 267,
+            "a valid configuration with a two-digit base-60 workers": 55,
+            "a valid configuration with arguments given no value": 71,
+            "a valid configuration with options given no value": 44,
+            "a value of another type": 75,
+            "a value spelled oddly": 218,
+            "an empty configuration after a document start": 91,
+            "an unknown or repeated key": 84,
+            "arguments that aren't --skip pairs": 55,
+            "flow style from the top": 27,
+            "lines ending in CRLF": 167,
+            "something before the first key": 285,
+            "text that isn't a configuration": 188
         ])
     }
 
@@ -92,10 +101,11 @@ struct ConfigGenTests {
         }
 
         #expect(counts == [
-            "a quoted value": 661,
-            "a value in flow style": 151,
-            "one step outside": 518,
-            "the edge": 482
+            "a quoted value": 675,
+            "a value in flow style": 162,
+            "far outside": 323,
+            "one step outside": 346,
+            "the edge": 331
         ])
     }
 
@@ -179,16 +189,21 @@ struct ConfigGenTests {
         #expect(YAMLDraft.members(at: ["signals"], in: removed).compactMap(\.key.keyText) == ["x"])
     }
 
-    @Test("each edge's value outside is one step past it: a day, one, or the next Double, the right way")
+    @Test("""
+        each edge's value outside is one step past it, a day, one, or the next Double, the right way, and its far \
+        value lies beyond that
+        """)
     func boundsStepOnce() {
         for bound in ConfigBounds.all {
             let isDays = bound.edge.hasSuffix("d")
             let edge = Double(isDays ? String(bound.edge.dropLast()) : bound.edge) ?? .nan
             let outside = Double(isDays ? String(bound.outside.dropLast()) : bound.outside) ?? .nan
+            let far = Double(isDays ? String(bound.far.dropLast()) : bound.far) ?? .nan
             let isWhole = isDays || (Int(bound.edge) != nil && Int(bound.outside) != nil)
             let steps = isWhole ? [edge - 1, edge + 1] : [edge.nextDown, edge.nextUp]
 
             #expect(steps.contains(outside), "\(bound.name)")
+            #expect(outside < edge ? far < outside : far > outside, "\(bound.name)")
         }
         #expect(ConfigBounds.all.count == 41)
     }

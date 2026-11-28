@@ -55,6 +55,30 @@ struct SwiftLintAdapterTests {
         #expect(arguments.last?.hasPrefix("lint --reporter json --quiet --force-exclude --config /") == true)
         #expect(arguments.last?.hasSuffix("/swiftlint.yml Sources/Lib") == true)
         #expect(report.warnings.isEmpty)
+        let config = try #require(FakeTool.configPaths(of: tool).last)
+        let scratch = URL(fileURLWithPath: config).deletingLastPathComponent()
+        #expect(scratch.lastPathComponent.hasPrefix("SwiftStats-"))
+        #expect(FileManager.default.fileExists(atPath: scratch.path) == false)
+    }
+
+    @Test("the scratch folder of SwiftStats' empty configuration is registered for an interrupt while SwiftLint runs")
+    func scratchRegistered() async throws {
+        let package = try TemporaryPackage(["Sources/Lib/Store.swift": Self.source])
+        defer { package.remove() }
+        let tool = try FakeTool.make(outputs: ["0.65.1\n", "[]"], errorText: "", statuses: [0])
+        let hold = try FakeTool.hold(tool)
+        defer { try? FileManager.default.removeItem(at: hold) }
+        let root = package.root
+        let run = Task.detached { _ = SwiftLintAdapter.run(executable: tool, root: root, targets: []) }
+
+        let started = try await FakeTool.firstRun(of: tool)
+        let registered = ScratchRegistry.shared.registeredPaths.map(\.path)
+        try FileManager.default.removeItem(at: hold)
+        await run.value
+
+        let config = try #require(FakeTool.configPaths(of: tool).last)
+        #expect(started)
+        #expect(registered.contains(URL(fileURLWithPath: config).deletingLastPathComponent().path))
     }
 
     @Test("the package's own configuration is named, and nested ones are reported as not applied")

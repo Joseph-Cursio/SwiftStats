@@ -69,6 +69,10 @@ struct CoverageConfigurationTests {
             Self.argumentsError(["--skip", "--filter"])
                 == .configurationInvalid("c.yml", "\(key): `--filter` is not a regex for `--skip`; \(allowed)")
         )
+        #expect(
+            Self.argumentsError(["--skip", ""])
+                == .configurationInvalid("c.yml", "\(key): `` is not a regex for `--skip`; \(allowed)")
+        )
         for null in ["null", "~", "NULL"] {
             let result = Self.parsed("collectors:\n  coverage:\n    arguments: [\"--skip\", \(null)]\n")
             guard case .failure(let error) = result else {

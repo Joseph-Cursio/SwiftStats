@@ -10,7 +10,9 @@
 //  as set, else its default). One step is a day for a duration, one for a
 //  whole number, and the next `Double` for a number read as one
 //  (`100.00000000000001` past 100, `5e-324` above 0), so an off-by-one or
-//  a `<` for a `<=` shows on one side of the edge or the other.
+//  a `<` for a `<=` shows on one side of the edge or the other. A value
+//  far outside (below 0 for a floor, double a ceiling, `high` 10 under its
+//  `low`) is refused alike, so a `!=` for a `>` shows too.
 //
 
 @testable import SwiftStatsCore
@@ -26,6 +28,8 @@ struct ConfigBound: Sendable, CustomTestStringConvertible {
     let edge: String
     /// The value one step outside the edge, as written plain.
     let outside: String
+    /// A value far outside the edge, beyond `outside`, as written plain.
+    let far: String
     /// The reason the reader refuses the value outside.
     let reason: String
     /// The bounded key's value in a configuration, nil when it isn't set.

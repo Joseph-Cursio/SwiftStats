@@ -28,6 +28,7 @@ extension DiffHunkTests {
             ("x\\\"y", "x\"y"),
             ("x\\\\y", "x\\y"),
             ("x\\001y", "x\u{1}y"),
+            ("x\\0017y", "x\u{1}7y"),
             ("x\\177y", "x\u{7F}y"),
             ("Caf\\303\\251", "Caf\u{E9}")
         ]
@@ -87,17 +88,17 @@ extension DiffHunkTests {
 
     @Test(
         """
-        a file whose old path is the package folder itself, a file there in the older commit, lies outside the \
-        package, so its hunks are dropped, not filed under an empty path
+        a file whose old path is the package folder itself, or a folder above it, a file there in the older \
+        commit, lies outside the package, so its hunks are dropped, not filed under an empty path
         """,
-        arguments: ["Pkg", "Sub/Pkg.swift"]
+        arguments: [("Pkg", "Pkg"), ("Sub/Pkg.swift", "Sub/Pkg.swift"), ("Pkg/Kit", "Pkg")]
     )
-    func packageFolderItself(package: String) {
+    func packageFolderItself(package: String, old: String) {
         let diff = """
-        diff --git a/\(package) b/\(package)
+        diff --git a/\(old) b/\(old)
         deleted file mode 100644
         index 7898192..0000000
-        --- a/\(package)
+        --- a/\(old)
         +++ /dev/null
         @@ -1 +0,0 @@
         diff --git a/\(package)/x.swift b/\(package)/x.swift

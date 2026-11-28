@@ -58,6 +58,7 @@ struct GitOutputGenTests {
             "a removed line like an old-path line before a later hunk of its file": 88,
             "a renamed file in the package with hunks": 47,
             "an added file with hunks": 61,
+            "an octal escape followed by an octal digit in a path in the package": 44,
             "an octal escape in a path in the package": 213,
             "an old-path line in the package ending in a tab": 146,
             "the largest start or count": 199,

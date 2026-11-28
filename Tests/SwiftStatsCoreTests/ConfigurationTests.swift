@@ -30,12 +30,28 @@ struct ConfigurationTests {
         #expect(configuration.excluded == ["Sources/Generated"])
         #expect(configuration.unusedKeys.isEmpty)
         #expect(configuration.history.windowDays == 30)
+        #expect(configuration.history.couplingMinSupport == 3)
+        #expect(configuration.history.recorded.first == "window: 30d")
         #expect(configuration.store == "stats.sqlite")
         #expect(try SwiftStatsConfiguration.parse("", path: "c.yml").store == nil)
         #expect(try SwiftStatsConfiguration.parse("", path: "c.yml").excluded.isEmpty)
         #expect(try SwiftStatsConfiguration.parse("---\n# nothing yet\n", path: "c.yml").excluded.isEmpty)
         let commentedOut = "excluded:\n#  - Sources/Generated\n"
         #expect(try SwiftStatsConfiguration.parse(commentedOut, path: "c.yml").excluded.isEmpty)
+    }
+
+    @Test("the history options record every value in a fixed order, the defaults among them")
+    func recordedHistoryOptions() {
+        #expect(HistoryOptions.standard.recorded == [
+            "window: 90d",
+            #"fix_patterns: ^(fix|fixes|fixed)\b | \bbug\b | \bregression\b | ^hotfix\b"#,
+            #"fix_exclude_patterns: \b(swiftlint|lint|violations?|warnings?)\b | ^(style|chore)(\(.*\))?:"#,
+            "repeat_window: 14d",
+            "half_life: 90d",
+            "bulk_files: 30",
+            "ignore_revs: ",
+            "coupling.min_support: 3"
+        ])
     }
 
     @Test("unknown keys, a non-list excluded, a non-path store, invalid YAML and a non-mapping are errors")

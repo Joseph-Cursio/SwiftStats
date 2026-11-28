@@ -38,6 +38,12 @@
 //    earlier line than it has reached (`CoverageLineIterator.lines(of:)`'s
 //    doc comment, design B3): so over any list the rule applies to the
 //    longest prefix whose lines never go back.
+//  - Flags: a region starting at a position is innermost there when it
+//    ends earliest, then comes first in kind order; P2.2's flag laws read
+//    a segment's entry, gap and count flags from that region and from the
+//    innermost region holding the segment's position (llvm's segment
+//    builder comments, and `CoverageSegmentBuilder`'s header, quoted where
+//    the laws are).
 //
 
 @testable import SwiftStatsCore
@@ -121,18 +127,50 @@ enum BruteForceCoverage {
     /// largest count of that kind; nil when no region holds it or that
     /// region is skipped.
     static func count(at position: SourcePosition, regions: [CoverageRegion]) -> Int64? {
-        let holding = regions.filter { $0.start <= position && position < $0.end }
-        guard let start = holding.map(\.start).max() else {
-            return nil
-        }
-        let latest = holding.filter { $0.start == start }
-        guard let end = latest.map(\.end).min() else {
-            return nil
-        }
-        let innermost = latest.filter { $0.end == end }
+        let innermost = innermostRange(holding: position, regions: regions)
         guard let kind = innermost.map(\.kind).min(), kind != CoverageRegion.skippedKind else {
             return nil
         }
         return innermost.filter { $0.kind == kind }.map(\.executionCount).max()
+    }
+
+    /// The innermost region holding `position`: of those holding it, the
+    /// latest start, then the earliest end, then the first in kind order;
+    /// nil when no region holds it. An empty region holds no position.
+    static func innermostRegion(holding position: SourcePosition, regions: [CoverageRegion]) -> CoverageRegion? {
+        firstInKindOrder(innermostRange(holding: position, regions: regions))
+    }
+
+    /// The innermost region starting at `position`: of those starting
+    /// there, the earliest end, then the first in kind order; nil when none
+    /// starts there.
+    static func innermostRegion(starting position: SourcePosition, regions: [CoverageRegion]) -> CoverageRegion? {
+        let starting = regions.filter { $0.start == position }
+        guard let end = starting.map(\.end).min() else {
+            return nil
+        }
+        return firstInKindOrder(starting.filter { $0.end == end })
+    }
+
+    /// The regions holding `position` with the latest start, then the
+    /// earliest end: one range, of any kinds.
+    private static func innermostRange(
+        holding position: SourcePosition,
+        regions: [CoverageRegion]
+    ) -> [CoverageRegion] {
+        let holding = regions.filter { $0.start <= position && position < $0.end }
+        guard let start = holding.map(\.start).max() else {
+            return []
+        }
+        let latest = holding.filter { $0.start == start }
+        guard let end = latest.map(\.end).min() else {
+            return []
+        }
+        return latest.filter { $0.end == end }
+    }
+
+    /// The first of `regions`, one range, in kind order.
+    private static func firstInKindOrder(_ regions: [CoverageRegion]) -> CoverageRegion? {
+        regions.min { $0.kind < $1.kind }
     }
 }

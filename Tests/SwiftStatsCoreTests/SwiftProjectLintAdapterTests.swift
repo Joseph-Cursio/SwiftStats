@@ -100,6 +100,31 @@ struct SwiftProjectLintAdapterTests {
         let runs = FakeTool.arguments(of: tool)
         #expect(runs.count == 2)
         #expect(runs.allSatisfy { $0.hasPrefix(package.root.path + " --format json --config ") })
+        let configs = tool.deletingLastPathComponent().appendingPathComponent("configs.log")
+        #expect((try? String(contentsOf: configs, encoding: .utf8)) == SwiftProjectLintAdapter.configs.joined())
+        let scratch = Set(FakeTool.configPaths(of: tool).map { URL(fileURLWithPath: $0).deletingLastPathComponent() })
+        #expect(scratch.count == 1)
+        #expect(scratch.allSatisfy { FileManager.default.fileExists(atPath: $0.path) == false })
+    }
+
+    @Test("the scratch folder of the two configurations is registered for an interrupt while SwiftProjectLint runs")
+    func scratchRegistered() async throws {
+        let package = try TemporaryPackage(["Sources/Lib/Store.swift": Self.source])
+        defer { package.remove() }
+        let tool = try FakeTool.make(outputs: [Self.report([])], errorText: "", statuses: [0])
+        let hold = try FakeTool.hold(tool)
+        defer { try? FileManager.default.removeItem(at: hold) }
+        let root = package.root
+        let run = Task.detached { _ = SwiftProjectLintAdapter.run(executable: tool, root: root) }
+
+        let started = try await FakeTool.firstRun(of: tool)
+        let registered = ScratchRegistry.shared.registeredPaths.map(\.path)
+        try FileManager.default.removeItem(at: hold)
+        await run.value
+
+        let config = try #require(FakeTool.configPaths(of: tool).first)
+        #expect(started)
+        #expect(registered.contains(URL(fileURLWithPath: config).deletingLastPathComponent().path))
     }
 
     @Test("roll-ups count findings by rule and kind; files outside the scan count nowhere")

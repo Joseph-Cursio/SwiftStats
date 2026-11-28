@@ -10,6 +10,33 @@ import Testing
 /// error naming the key.
 @Suite("Mutation signal configuration")
 struct MutationSignalConfigurationTests {
+    /// A faulty limit of each limit-taking signal, as `limit: value`, and
+    /// the reason it is refused.
+    private static let faultySignals: [String: (setting: String, reason: String)] = [
+        "genuinely-under-tested": ("coverage: 200", "`signals.genuinely-under-tested.coverage` \(percentReason)"),
+        "hidden-coupling": ("confidence: 200", "`signals.hidden-coupling.confidence` \(percentReason)"),
+        "uneven-clone-mutation": ("high: 200", "`signals.uneven-clone-mutation.high` \(percentReason)"),
+        "weak-tests": ("coverage: 200", "`signals.weak-tests.coverage` \(percentReason)")
+    ]
+    /// A faulty value of each of genuinely under-tested's limits, and the
+    /// reason it is refused.
+    private static let faultyLimits: [String: (value: String, reason: String)] = [
+        "coverage": ("200", percentReason),
+        "mutants": ("0", "must be a whole number from 1 to 1000000"),
+        "ratio": ("0", "must be a number above 0"),
+        "score": ("200", percentReason)
+    ]
+    /// Why a percent limit is refused.
+    private static let percentReason = "must be a percent from 0 to 100"
+
+    /// Every pair of `names`, sorted, the alphabetically first first.
+    private static func pairs(_ names: [String]) -> [(String, String)] {
+        let sorted = names.sorted()
+        return sorted.indices.flatMap { first in
+            sorted[(first + 1)...].map { (sorted[first], $0) }
+        }
+    }
+
     /// The error parsing `text`, or nil when it parses.
     private static func error(_ text: String) -> ScanError? {
         do {
@@ -119,5 +146,33 @@ struct MutationSignalConfigurationTests {
     )
     func invalid(text: String, message: String) {
         #expect(Self.error(text) == .configurationInvalid("c.yml", message))
+    }
+
+    @Test(
+        "of two faulty limit-taking signals, written last first, the error names the first alphabetically",
+        arguments: pairs(Array(faultySignals.keys))
+    )
+    func firstFaultySignal(first: String, second: String) throws {
+        let faults = try [second, first].map { signal in
+            (signal, try #require(Self.faultySignals[signal]))
+        }
+        let text = "signals:\n" + faults.map { "  \($0.0):\n    \($0.1.setting)\n" }.joined()
+        let reason = try #require(Self.faultySignals[first]).reason
+
+        #expect(Self.error(text) == .configurationInvalid("c.yml", reason))
+    }
+
+    @Test(
+        "of two faulty limits of genuinely under-tested, written last first, the error names the first alphabetically",
+        arguments: pairs(Array(faultyLimits.keys))
+    )
+    func firstFaultyLimit(first: String, second: String) throws {
+        let faults = try [second, first].map { limit in
+            (limit, try #require(Self.faultyLimits[limit]))
+        }
+        let text = "signals:\n  genuinely-under-tested:\n" + faults.map { "    \($0.0): \($0.1.value)\n" }.joined()
+        let reason = "`signals.genuinely-under-tested.\(first)` " + (try #require(Self.faultyLimits[first]).reason)
+
+        #expect(Self.error(text) == .configurationInvalid("c.yml", reason))
     }
 }

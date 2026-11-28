@@ -7,7 +7,9 @@
 //  error, never traps: a value spelled oddly (out of its range, a YAML 1.1
 //  integer, a special float, a tag, an anchor, a quoted number, and the
 //  base-60 numbers whose places pass `Int`, design B30), a value of
-//  another type, unknown or repeated keys, a key that isn't plain text (a
+//  another type, an `arguments` list that isn't `--skip <regex>` pairs (a
+//  `--skip` last, an empty or flag-like regex, another flag), unknown or
+//  repeated keys, a key that isn't plain text (a
 //  tag, a sequence or mapping, a merge, an alias, an anchor), or one
 //  section anchored and another its alias.
 //
@@ -16,6 +18,8 @@
 enum ConfigFlaw: Hashable, Sendable, CustomStringConvertible {
     /// The first top-level key's value anchored, the second's an alias of it.
     case aliased(anchored: String, alias: String)
+    /// An `arguments` list at a path, holding these tokens.
+    case arguments(path: [String], tokens: [String])
     /// A raw key put in at a level, at a position.
     case exoticKey(level: [String], key: String, position: Int)
     /// Unknown or repeated keys.
@@ -33,6 +37,9 @@ enum ConfigFlaw: Hashable, Sendable, CustomStringConvertible {
         switch self {
         case let .aliased(anchored, alias):
             return "\(alias) an alias of \(anchored)"
+
+        case let .arguments(path, tokens):
+            return "\(path.joined(separator: ".")) given \(tokens)"
 
         case let .exoticKey(level, key, _):
             return "key \(key.debugDescription) at \(level)"
@@ -56,6 +63,9 @@ enum ConfigFlaw: Hashable, Sendable, CustomStringConvertible {
             let value = members.last { $0.key.keyText == anchored }?.value?.flowText ?? "{}"
             return [YAMLDraft.member(anchored, .raw("&\(Self.anchorName) " + value))] + others
                 + [YAMLDraft.member(alias, .raw("*" + Self.anchorName))]
+
+        case let .arguments(path, tokens):
+            return YAMLDraft.setting(.sequence(tokens.map(YAMLDraft.text)), at: path, in: members)
 
         case let .exoticKey(level, key, position):
             let member = YAMLDraft.Member(key: .raw(key), value: .text("1"))

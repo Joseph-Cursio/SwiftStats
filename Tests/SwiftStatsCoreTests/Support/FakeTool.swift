@@ -3,10 +3,17 @@ import Foundation
 /// An executable shell script standing in for an external tool, so adapter
 /// tests don't depend on what is installed.
 enum FakeTool {
+    /// The longest a test waits for a held fake tool to start, in seconds.
+    static let holdWaitSeconds = 10
+    /// How often it looks whether the tool has started, in milliseconds.
+    static let pollMilliseconds = 10
+
     /// A new script that, on its run with 0-based index `n`, prints
     /// `outputs[n]`, writes `errorText` to stderr and exits with
     /// `statuses[n]`, the last entry of each list repeating. It also appends
-    /// its arguments to `arguments.log` beside it.
+    /// its arguments to `arguments.log` beside it, and the text of the file
+    /// an argument after `--config` names, when there is one, to
+    /// `configs.log`; then it waits while a file `hold` is beside it.
     static func make(outputs: [String], errorText: String, statuses: [Int32]) throws -> URL {
         let directory = FileManager.default.temporaryDirectory
             .appendingPathComponent("FakeTool-\(UUID().uuidString)")
@@ -25,6 +32,12 @@ enum FakeTool {
         #!/bin/sh
         here="$(dirname "$0")"
         echo "$@" >> "$here/arguments.log"
+        previous=""
+        for argument in "$@"; do
+            if [ "$previous" = "--config" ] && [ -f "$argument" ]; then cat "$argument" >> "$here/configs.log"; fi
+            previous="$argument"
+        done
+        while [ -f "$here/hold" ]; do sleep 0.01; done
         count=$(wc -l < "$here/arguments.log" | tr -d ' ')
         run=$((count - 1))
         index=$run
@@ -150,6 +163,38 @@ enum FakeTool {
         let file = tool.deletingLastPathComponent().appendingPathComponent(name)
         let text = (try? String(contentsOf: file, encoding: .utf8)) ?? ""
         return text.split(separator: "\n").map(String.init)
+    }
+
+    /// Makes the fake tool at `tool` wait, once it has logged its
+    /// arguments, until the file this returns is removed.
+    static func hold(_ tool: URL) throws -> URL {
+        let hold = tool.deletingLastPathComponent().appendingPathComponent("hold")
+        try Data().write(to: hold)
+        return hold
+    }
+
+    /// Waits until the fake tool at `tool` has logged a run, polling for up
+    /// to `holdWaitSeconds`; whether it has.
+    static func firstRun(of tool: URL) async throws -> Bool {
+        let deadline = ContinuousClock.now + .seconds(holdWaitSeconds)
+        while arguments(of: tool).isEmpty {
+            guard ContinuousClock.now < deadline else {
+                return false
+            }
+            try await Task.sleep(for: .milliseconds(pollMilliseconds))
+        }
+        return true
+    }
+
+    /// The paths each run of the fake tool at `tool` was given after
+    /// `--config`, in run order.
+    static func configPaths(of tool: URL) -> [String] {
+        arguments(of: tool).compactMap { line in
+            let words = line.split(separator: " ").map(String.init)
+            return words.firstIndex(of: "--config").flatMap { index in
+                index + 1 < words.count ? words[index + 1] : nil
+            }
+        }
     }
 
     /// The argument lines the fake tool at `tool` was run with.

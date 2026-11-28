@@ -113,6 +113,17 @@ struct CoverageLineRuleTests {
         #expect(CoverageRecordLines.tally(of: regions) == CoverageTally(covered: 2, total: 2))
     }
 
+    @Test("a line or region counted 0 or below 0 isn't covered in a tally; the decoder reads such counts as spelled")
+    func nonPositiveCounts() {
+        let regions = [Self.code((1, 1), (1, 5), 0), Self.code((2, 1), (2, 5), -1), Self.code((3, 1), (3, 5), 2)]
+        let lines = [0, -1, 2].enumerated().map { index, count in
+            CoverageLineIterator.Line(line: index + 1, executionCount: Int64(count), partlyRun: false)
+        }
+
+        #expect(CoverageRecordLines.tally(of: regions) == CoverageTally(covered: 1, total: 3))
+        #expect(CoverageRecordLines.tally(of: lines) == CoverageTally(covered: 1, total: 3))
+    }
+
     @Test("an empty region never becomes active: it takes its enclosing count, and the enclosing one goes on")
     func emptyRegion() {
         let regions = [Self.code((1, 10), (3, 2), 4), Self.code((2, 5), (2, 5), 0), Self.code((2, 9), (2, 12), 0)]

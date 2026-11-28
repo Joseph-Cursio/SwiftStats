@@ -7,10 +7,11 @@ import Testing
 /// any YAML text reads as a configuration or a configuration error naming
 /// the file, never traps, and a valid configuration reads (P11.1); each
 /// bound PRD §10.1 states accepts its edge, read as written, and refuses
-/// one step outside it, naming the key, whatever the style (P11.2); and an
-/// unknown key, or a key given twice, at any level is refused, naming it
-/// (P11.3). Each is asserted on `SwiftStatsConfiguration.parse(_:path:)`,
-/// the reader `load` calls once the file is read as UTF-8. The fixed
+/// one step outside it and beyond, naming the key, whatever the style
+/// (P11.2); and an unknown key, or a key given twice, at any level is
+/// refused, naming it (P11.3). Each is asserted on
+/// `SwiftStatsConfiguration.parse(_:path:)`, the reader `load` calls once
+/// the file is read as UTF-8. The fixed
 /// examples are in `ConfigurationTests` and the per-collector suites;
 /// each property here has its own, calling its shared check, and
 /// meta-tests that feed a planted defect's reading to that check.
@@ -24,12 +25,14 @@ struct ConfigurationPBT {
 
     /// P11.1's base runs, over the engine's 100: drawing and reading one
     /// text costs about a third of a millisecond. The rarest antecedent, a
-    /// configuration written in flow style from the top, comes in 38 of
-    /// the meta-test's 1,000 texts (design D14: `(1 - 0.038)^400`, about
-    /// 2 * 10^-7, is the most a run misses it); an anchored section and
-    /// its alias comes in 51, and a base-60 `workers` past `Int`, the input
-    /// on which Yams' reading trapped (B30), in 52.
-    static let anyRuns = 400
+    /// configuration written in flow style from the top, comes in 27 of
+    /// the meta-test's 1,000 texts (design D14: `(1 - 0.027)^560`, about
+    /// 2 * 10^-7, is the most a run misses it; 400 runs would miss it about
+    /// 2 * 10^-5 of the time); a base-60 `workers` past `Int`, the input on
+    /// which Yams' reading trapped (B30), comes in 38, an anchored section
+    /// and its alias in 42, and swiftmutator's `options` given no value in
+    /// 44.
+    static let anyRuns = 560
     /// What P11.1's tally counts for a valid configuration.
     static let validText = "a valid configuration"
     /// What it counts for a value spelled oddly.
@@ -38,6 +41,19 @@ struct ConfigurationPBT {
     static let baseSixtyWorkers = "a base-60 workers past Int"
     /// What it counts for a value of another type.
     static let otherType = "a value of another type"
+    /// What it counts for an `arguments` list that isn't `--skip` pairs.
+    static let badArguments = "arguments that aren't --skip pairs"
+    /// What it counts for a valid configuration with a collector's
+    /// `arguments` given no value.
+    static let nullArguments = "a valid configuration with arguments given no value"
+    /// What it counts for one with swiftmutator's `options` given no value.
+    static let nullOptions = "a valid configuration with options given no value"
+    /// What it counts for one with a base-60 `workers` whose first place
+    /// has two digits.
+    static let wideWorkers = "a valid configuration with a two-digit base-60 workers"
+    /// What it counts for an empty configuration after a document start,
+    /// which YAML reads as a null document.
+    static let emptyDocument = "an empty configuration after a document start"
     /// What it counts for unknown or repeated keys.
     static let faultyKey = "an unknown or repeated key"
     /// What it counts for a key that isn't plain text.
@@ -54,8 +70,8 @@ struct ConfigurationPBT {
     static let prefixed = "something before the first key"
     /// The antecedents P11.1 must reach at least once each.
     static let anyAntecedents = [
-        validText, oddSpelling, baseSixtyWorkers, otherType, faultyKey, exoticKey, aliasedSection, soupText,
-        flowFromTop, crlfLines, prefixed
+        validText, oddSpelling, baseSixtyWorkers, otherType, badArguments, faultyKey, exoticKey, aliasedSection,
+        soupText, flowFromTop, crlfLines, prefixed, nullArguments, nullOptions, wideWorkers, emptyDocument
     ]
 
     /// Records an issue naming `subject`, in ASCII, for each law in `laws`
@@ -84,6 +100,9 @@ struct ConfigurationPBT {
         case .aliased:
             labels.append(aliasedSection)
 
+        case .arguments:
+            labels.append(badArguments)
+
         case .exoticKey:
             labels.append(exoticKey)
 
@@ -109,6 +128,31 @@ struct ConfigurationPBT {
             (draft.layout.flowDepth == 0, flowFromTop),
             (draft.layout.endsInCRLF, crlfLines),
             (draft.layout.prefix.isEmpty == false, prefixed)
+        ]
+        .filter(\.0)
+        .map(\.1) + (draft.isValid ? validLabels(of: draft) : [])
+    }
+
+    /// The classes a valid configuration falls in: empty after a document
+    /// start, a collector's `arguments` with no value, swiftmutator's
+    /// `options` with no value, a base-60 `workers` whose first place has
+    /// two digits.
+    static func validLabels(of draft: ConfigCase) -> [String] {
+        let members = draft.members
+        let entries = ConfigGen.argumentTaking.sorted().map { name in
+            YAMLDraft.members(at: ["collectors", name], in: members)
+        }
+        let options = YAMLDraft.members(at: ["collectors", ConfigGen.mutator], in: members)
+            .last { $0.key.keyText == "options" }
+        let workers = YAMLDraft.members(at: Array(ConfigGen.workersPath.dropLast()), in: members)
+            .last { $0.key.keyText == "workers" }?.value
+        let isEmptyDocument = members.isEmpty && draft.layout.flowDepth > 0
+            && draft.layout.prefix.hasSuffix(ConfigGen.documentStart)
+        return [
+            (isEmptyDocument, emptyDocument),
+            (entries.contains { $0.contains { $0.key.keyText == "arguments" && $0.value == nil } }, nullArguments),
+            (options.map { $0.value == nil } == true, nullOptions),
+            (ConfigGen.wideBaseSixty.contains { workers == .text($0) }, wideWorkers)
         ]
         .filter(\.0)
         .map(\.1)

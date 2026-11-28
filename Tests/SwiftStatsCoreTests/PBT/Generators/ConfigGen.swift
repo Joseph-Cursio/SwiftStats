@@ -10,13 +10,16 @@
 //  threshold and each limit-taking signal's limits, uneven clone
 //  mutation's `high` above its `low`) and `collectors` (built and unbuilt
 //  names; `enabled` in YAML's six spellings, `path` where one is taken,
-//  `--skip` pairs for coverage and swiftmutator, swiftmutator's `workers`
-//  and `timeout`, and anything as another collector's `options`). The key
+//  `--skip` pairs or no value for coverage and swiftmutator, swiftmutator's
+//  `workers` and `timeout` or no value, and anything as another
+//  collector's `options`; half the `collectors` sections drawn are focused
+//  on coverage and swiftmutator, both always there with `arguments` and
+//  `options`, and `workers` a base-60 number past one digit). The key
 //  names are written here from PRD §10.1, not taken from the reader's own
 //  lists, so a key the reader forgets is a valid configuration refused.
 //  Values come from short lists holding the edges (`1d`, the longest
 //  duration, `5e-324`, a million), and YAML 1.1's integer spellings for
-//  `workers` (`0x10`, `1:30`). `ConfigGen+Cases` adds flaws and text
+//  `workers` (`0x10`, `1:30`, `10:30`). `ConfigGen+Cases` adds flaws and text
 //  that isn't a configuration; `ConfigGen+Keys` adds unknown and repeated
 //  keys; `ConfigGen+Bounds` draws the styles a bound is written in. Every
 //  draw is a list of decisions a pure interpreter turns into a draft, so a
@@ -64,7 +67,10 @@ enum ConfigGen {
     /// `--skip` regular expressions.
     static let skipPatterns = ["Slow", "a b", "^Live.*$", "(?i)flaky"]
     /// swiftmutator's `workers`, as YAML 1.1 integers.
-    static let workerCounts = ["4", "1", "0x10", "1:30"]
+    static let workerCounts = ["4", "1", "0x10", "1:30", "10:30", "1_0:30"]
+    /// Base-60 `workers` whose first place has two digits (630), which a
+    /// focused `collectors` section gives swiftmutator.
+    static let wideBaseSixty = ["10:30", "1_0:30"]
     /// swiftmutator's `timeout`, in seconds.
     static let timeouts = ["30", "0.25", "86400", "1:30"]
     /// Other collectors' `options`, accepted with a warning whatever they
@@ -84,6 +90,8 @@ enum ConfigGen {
     static let argumentTaking: Set<String> = ["coverage", "swiftmutator"]
     /// The collector whose `options` hold `workers` and `timeout`.
     static let mutator = "swiftmutator"
+    /// The coverage collector.
+    static let coverage = "coverage"
     /// The ranked signals.
     static let rankedSignals = ["hotspot", "bug-prone", "clone-hotspot"]
     /// The limit keys drawn independently, each as its signal and limit
@@ -221,6 +229,36 @@ enum ConfigGen {
         return YAMLDraft.member("collectors", .mapping(entries))
     }
 
+    /// `collectors` focused on the readers of `arguments` and `options`:
+    /// coverage's and swiftmutator's entries mappings, each with
+    /// `arguments` (no value half the time) and `options` (swiftmutator's
+    /// no value half the time, else `workers` from `wideBaseSixty`), among
+    /// the other entries drawn, in a rotated order.
+    static let focusedCollectorsMember = zip(
+        collectorsMember,
+        collectorDecision,
+        collectorDecision,
+        Pick.element(of: wideBaseSixty),
+        Gen<Int>.value(in: 0...choiceSpread)
+    )
+    .map { drawn, coverageDecision, mutatorDecision, workers, rotation -> YAMLDraft.Member in
+        let others = YAMLDraft.members(at: ["collectors"], in: [drawn]).filter { member in
+            member.key.keyText.map(argumentTaking.contains) != true
+        }
+        let focused = [
+            YAMLDraft.member(coverage, coverageDecision.focused(workers: nil).entry(for: coverage)),
+            YAMLDraft.member(mutator, mutatorDecision.focused(workers: workers).entry(for: mutator))
+        ]
+        return YAMLDraft.member("collectors", .mapping(rotated(focused + others, by: rotation)))
+    }
+
+    /// The `collectors` section: none, drawn, or focused, half the time.
+    static let collectorsSection = Gen.frequency(
+        (classWeight, Gen.always(YAMLDraft.Member?.none)),
+        (classWeight, collectorsMember.map(Optional.some)),
+        (literalWeight, focusedCollectorsMember.map(Optional.some))
+    )
+
     /// A valid configuration's top-level members: each section present or
     /// not, in a rotated order.
     static let valid = zip(
@@ -229,7 +267,7 @@ enum ConfigGen {
         storeMember.optional(valueRate: presentRate),
         historyMember.optional(valueRate: presentRate),
         signalsMember.optional(valueRate: presentRate),
-        collectorsMember.optional(valueRate: presentRate),
+        collectorsSection,
         Gen<Int>.value(in: 0...choiceSpread)
     )
     .map { excluded, generated, store, history, signals, collectors, rotation in

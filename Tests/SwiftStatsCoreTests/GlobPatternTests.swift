@@ -88,6 +88,12 @@ struct GlobPatternTests {
         #expect(GlobPattern("Sources/**").matches("Sources/Lib/Deep/A.swift"))
     }
 
+    @Test("two globs are the same exactly when their cores are, a leading ./ and trailing slashes dropped")
+    func sameGlob() {
+        #expect(GlobPattern("./a/") == GlobPattern("a"))
+        #expect(GlobPattern("a") != GlobPattern("b"))
+    }
+
     @Test("a plain path matches itself and everything under it")
     func folders() {
         #expect(GlobPattern("Sources/Generated").matches("Sources/Generated/A.swift"))

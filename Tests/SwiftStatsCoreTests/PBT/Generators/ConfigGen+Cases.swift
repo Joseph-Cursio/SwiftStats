@@ -5,13 +5,15 @@
 //  P11.1's inputs: "parsing any YAML text" (design §4.1.6), from all of
 //  the generator's branches. A valid configuration, laid out in block or
 //  flow style, after a document start, a comment or a version directive,
-//  with `\n` or `\r\n` line ends; the same with one
-//  flaw put in (`ConfigFlaw`); or text that isn't a configuration, a run
-//  of YAML's syntax, the configuration's words and any text fragment. An
+//  with `\n` or `\r\n` line ends; an empty one after a document start,
+//  which YAML reads as a null document (PRD §10.1 makes every section
+//  optional); the same with one flaw put in (`ConfigFlaw`); or text that
+//  isn't a configuration, a run of YAML's syntax, the configuration's
+//  words and any text fragment. An
 //  odd spelling goes at swiftmutator's `workers` half the time, and a
 //  third of spellings are base-60 numbers whose places, a place's value
 //  or its sign pass `Int`, since Yams' base-60 reading trapped on those
-//  (design B30): about one draw in twenty puts one at `workers`.
+//  (design B30): about one draw in twenty-five puts one at `workers`.
 //
 
 import PropertyBased
@@ -20,6 +22,8 @@ import PropertyBased
 extension ConfigGen {
     /// Which branch a text comes from.
     enum Branch: Sendable {
+        /// A valid configuration with no members, after a document start.
+        case empty
         /// A valid configuration with a flaw put in.
         case flawed
         /// Text that isn't a configuration.
@@ -79,6 +83,12 @@ extension ConfigGen {
         ["collectors", "swiftmutator", "options"], ["collectors", "coverage", "arguments"], ["history", "window"],
         ["collectors", "swiftlint", "enabled"]
     ]
+    /// The `arguments` lists a flaw goes at.
+    static let argumentPaths = [["collectors", "coverage", "arguments"], ["collectors", "swiftmutator", "arguments"]]
+    /// `arguments` lists that aren't `--skip <regex>` pairs: a `--skip`
+    /// with no regex, alone or after a pair; an empty regex; another flag;
+    /// a regex that is a flag.
+    static let argumentFlaws = [["--skip"], ["--skip", "a", "--skip"], ["--skip", ""], ["-x"], ["--skip", "-x"]]
     /// Nodes of another type: none, a sequence, a mapping, a scalar, and
     /// an empty sequence.
     static let otherTypes: [YAMLDraft?] = [
@@ -133,6 +143,10 @@ extension ConfigGen {
     static let wrongType = zip(Pick.element(of: typePaths), Pick.element(of: otherTypes))
         .map { path, value in ConfigFlaw.wrongType(path: path, value: value) }
 
+    /// An `arguments` list that isn't `--skip <regex>` pairs.
+    static let badArguments = zip(Pick.element(of: argumentPaths), Pick.element(of: argumentFlaws))
+        .map { path, tokens in ConfigFlaw.arguments(path: path, tokens: tokens) }
+
     /// A key that isn't plain text, at a level.
     static let exoticKey = zip(
         Pick.element(of: Array(keyLevels.indices)),
@@ -158,6 +172,7 @@ extension ConfigGen {
     static let flaw = Gen.frequency(
         (commonWeight, spelling),
         (classWeight, wrongType),
+        (classWeight, badArguments),
         (classWeight, keyFault.map(ConfigFlaw.keyFault)),
         (classWeight, exoticKey),
         (rareWeight, aliased)
@@ -168,7 +183,10 @@ extension ConfigGen {
         .array(of: soupLength)
         .map { $0.joined() }
 
-    /// Any configuration text: valid, flawed (most), or not a
+    /// The document start an empty configuration comes after.
+    static let documentStart = "---\n"
+
+    /// Any configuration text: valid, empty, flawed (most), or not a
     /// configuration.
     static let anyCase = zip(
         valid,
@@ -178,11 +196,17 @@ extension ConfigGen {
         Gen.frequency(
             (classWeight, Gen.always(Branch.valid)),
             (commonWeight, Gen.always(Branch.flawed)),
-            (classWeight, Gen.always(Branch.soup))
+            (classWeight, Gen.always(Branch.soup)),
+            (rareWeight, Gen.always(Branch.empty))
         )
     )
     .map { members, layout, flaw, soup, branch in
-        ConfigCase(
+        guard branch != .empty else {
+            let prefix = layout.prefix.hasSuffix(documentStart) ? layout.prefix : documentStart
+            let blockLayout = ConfigLayout(flowDepth: blockDepth, prefix: prefix, endsInCRLF: layout.endsInCRLF)
+            return ConfigCase(members: [], flaw: nil, soup: nil, layout: blockLayout)
+        }
+        return ConfigCase(
             members: members,
             flaw: branch == .flawed ? flaw : nil,
             soup: branch == .soup ? soup : nil,

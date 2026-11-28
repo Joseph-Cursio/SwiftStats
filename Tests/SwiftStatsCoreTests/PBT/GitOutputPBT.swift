@@ -28,13 +28,14 @@ struct GitOutputPBT {
 
     /// P14.1's base runs, over the engine's 100: rendering, reading and
     /// labelling a diff of at most four files costs under a millisecond.
-    /// The rarest antecedent, a renamed file in the package with hunks,
-    /// comes in 47 of the meta-test's 1,000 diffs (design D14: `(1 -
-    /// 0.047)^300`, about 5.5 * 10^-7, is the most a run misses it; 100
-    /// runs would miss it about 8 * 10^-3 of the time); a sibling folder's
-    /// file with hunks, the one input on which a package test matching a
-    /// folder by its name's start shows, comes in 69.
-    static let diffRuns = 300
+    /// The rarest antecedent, an octal escape followed by an octal digit,
+    /// comes in 44 of the meta-test's 1,000 diffs (design D14: `(1 -
+    /// 0.044)^330`, about 4 * 10^-7, is the most a run misses it; 100 runs
+    /// would miss it about 10^-2 of the time), and a renamed file in the
+    /// package with hunks in 47; a sibling folder's file with hunks, the
+    /// one input on which a package test matching a folder by its name's
+    /// start shows, comes in 69.
+    static let diffRuns = 330
     /// What P14.1's tally counts when a changed line ending in CR comes
     /// just before another hunk of a file in the package.
     static let crBeforeHunk = "a CR-ended changed line before another hunk of a file in the package"
@@ -48,6 +49,9 @@ struct GitOutputPBT {
     static let letterEscape = "a path in the package holding a control git writes as a letter, not t or n"
     /// What it counts when a path in the package holds an octal escape.
     static let octalEscape = "an octal escape in a path in the package"
+    /// What it counts when an octal escape is followed by an octal digit,
+    /// which the escape's three digits must not take.
+    static let octalThenDigit = "an octal escape followed by an octal digit in a path in the package"
     /// What it counts when an old-path line in the package ends in a tab.
     static let tabbedPath = "an old-path line in the package ending in a tab"
     /// What it counts when a path's first component below the package
@@ -85,8 +89,9 @@ struct GitOutputPBT {
     static let atTop = "a package at the top with hunks"
     /// The antecedents P14.1 must reach at least once each.
     static let diffAntecedents = [
-        crBeforeHunk, crBeforeFile, quotedPath, letterEscape, octalEscape, tabbedPath, markFirst, sibling, outside,
-        added, deleted, renamed, noHunks, omittedOne, zeroCount, largest, fakePathLine, notUTF8, otherForm, atTop
+        crBeforeHunk, crBeforeFile, quotedPath, letterEscape, octalEscape, octalThenDigit, tabbedPath, markFirst,
+        sibling, outside, added, deleted, renamed, noHunks, omittedOne, zeroCount, largest, fakePathLine, notUTF8,
+        otherForm, atTop
     ]
     /// The controls git writes as a letter other than `t` and `n`.
     static let letterControls: Set<UInt8> = [0x07, 0x08, 0x0B, 0x0C, 0x0D]
@@ -181,6 +186,14 @@ struct GitOutputPBT {
         DiffDraft.needsQuoting(byte, octalHigh: file.octalHigh) && DiffDraft.letter(for: byte) == nil
     }
 
+    /// Whether a byte of `bytes`, `file`'s path, that git writes in octal
+    /// is followed by an octal digit.
+    static func octalBeforeDigit(_ bytes: [UInt8], _ file: DiffFileDraft) -> Bool {
+        zip(bytes, bytes.dropFirst()).contains { byte, next in
+            needsOctal(byte, file) && (UInt8(ascii: "0")...UInt8(ascii: "7")).contains(next)
+        }
+    }
+
     /// The files of `draft` that give hunks, by index: in the package,
     /// with hunks to give.
     static func givingFiles(of draft: DiffDraft) -> [Int] {
@@ -253,6 +266,7 @@ struct GitOutputPBT {
             (quoted.contains { $0.hasPrefix("\"") }, quotedPath),
             (pathBytes.contains { $0.contains(where: letterControls.contains) }, letterEscape),
             (zip(giving, pathBytes).contains { file, bytes in bytes.contains { needsOctal($0, file) } }, octalEscape),
+            (zip(giving, pathBytes).contains { file, bytes in octalBeforeDigit(bytes, file) }, octalThenDigit),
             (quoted.contains { $0.contains(" ") }, tabbedPath),
             (giving.contains { draft.key(of: $0)?.unicodeScalars.first.map(markScalars.contains) == true }, markFirst),
             (outsideFiles.contains { $0.place == .sibling && draft.package.isEmpty == false }, sibling),

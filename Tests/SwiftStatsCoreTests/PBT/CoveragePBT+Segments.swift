@@ -8,8 +8,9 @@
 //  enclosing region's count. Empty regions no region holds are left out
 //  of the domain: llvm's builder gives such a region its own count until
 //  the next region starts, a quirk `unheldEmptyRegion` pins without the
-//  law. The kind-first rule for identical ranges of different kinds is
-//  pinned by an example.
+//  law. The segments' entry, gap and count flags follow the laws in
+//  `CoveragePBT+Flags.swift`. The kind-first rule for identical ranges of
+//  different kinds is pinned by an example.
 //
 
 import PropertyBased
@@ -18,12 +19,13 @@ import Testing
 
 /// P2.2.
 extension CoveragePBT {
-    /// P2.2's base runs: the engine's default (a grid of a few hundred
-    /// points, each answered by both sides, costs about a millisecond); the
-    /// rarest antecedent, a point between regions, comes in 159 of the
-    /// meta-test's 1,000 lists (design D14: `(1 - 0.159)^100`, about
-    /// 3 * 10^-8, is the most a run misses it).
-    static let pointwiseRuns = 100
+    /// P2.2's base runs, over the engine's 100 (a grid of a few hundred
+    /// points, each answered by both sides, costs about a millisecond): the
+    /// rarest antecedent, an empty region in a skipped region, comes in 126
+    /// of the meta-test's 1,000 lists (design D14: `(1 - 0.126)^110`, about
+    /// 4 * 10^-7, is the most a run misses it; 100 runs would miss it about
+    /// 1.4 * 10^-6 of the time); a point between regions comes in 159.
+    static let pointwiseRuns = 110
     /// What P2.2's tally counts when a region is empty.
     static let emptyRegion = "an empty region"
     /// What it counts when two regions share a range.
@@ -34,8 +36,19 @@ extension CoveragePBT {
     static let gapPoint = "a point in a gap region"
     /// What it counts when no region holds a point between two that do.
     static let uncoveredPoint = "a point between regions"
+    /// What it counts when an empty region starts where the last region
+    /// starts, so its entry has no count (a flag law's antecedent).
+    static let emptyLast = "an empty region starting last"
+    /// What it counts when an empty region lies in a skipped region, so
+    /// its entry has no count (a flag law's antecedent).
+    static let emptyInSkipped = "an empty region in a skipped region"
+    /// What it counts when the innermost region starting somewhere is a
+    /// gap, so no segment enters a region there (a flag law's antecedent).
+    static let gapStart = "a start whose innermost region is a gap"
     /// The antecedents P2.2 must reach at least once each.
-    static let pointwiseAntecedents = [emptyRegion, repeatedRange, skippedPoint, gapPoint, uncoveredPoint]
+    static let pointwiseAntecedents = [
+        emptyRegion, repeatedRange, skippedPoint, gapPoint, uncoveredPoint, emptyLast, emptyInSkipped, gapStart
+    ]
 
     /// `segment`'s position.
     static func position(of segment: CoverageSegment) -> SourcePosition {
@@ -69,12 +82,23 @@ extension CoveragePBT {
         let between = zip(positions, innermost).contains { position, region in
             region == nil && first.map { $0 < position } == true && last.map { position < $0 } == true
         }
+        let empties = regions.filter { $0.start == $0.end }
+        let lastStart = regions.map(\.start).max()
+        let gapStarts = Set(regions.map(\.start)).contains { start in
+            BruteForceCoverage.innermostRegion(starting: start, regions: regions)?.kind == CoverageRegion.gapKind
+        }
+        let emptiesInSkipped = empties.contains { empty in
+            BruteForceCoverage.innermostRegion(holding: empty.start, regions: regions)?.isSkipped == true
+        }
         return [
-            (regions.contains { $0.start == $0.end }, emptyRegion),
+            (empties.isEmpty == false, emptyRegion),
             (Set(ranges).count < ranges.count, repeatedRange),
             (innermost.contains { $0?.isSkipped == true }, skippedPoint),
             (innermost.contains { $0?.kind == CoverageRegion.gapKind }, gapPoint),
-            (between, uncoveredPoint)
+            (between, uncoveredPoint),
+            (empties.contains { $0.start == lastStart }, emptyLast),
+            (emptiesInSkipped, emptyInSkipped),
+            (gapStarts, gapStart)
         ]
         .filter(\.0)
         .map(\.1)
@@ -138,7 +162,11 @@ extension CoveragePBT {
     /// the built segments are sorted and give each (line, column) the
     /// count of the innermost region holding it, half-open at the end;
     /// none in a skipped region or outside every region; an empty region
-    /// takes its enclosing region's count.
+    /// takes its enclosing region's count. Their flags follow the builder's
+    /// header: entries exactly at the starts of regions other than gaps, a
+    /// gap flag exactly where the innermost region is a gap, and no count
+    /// on an entry into a skipped region or an empty one that comes last
+    /// or lies in a skipped region (`checkFlags`).
     /// Why it holds: `CoverageSegmentBuilder`'s header (llvm's
     /// `SegmentBuilder`: a segment where each region starts, one resuming
     /// the enclosing region where an inner one ends, one without a count
@@ -150,10 +178,12 @@ extension CoveragePBT {
     /// until the next region starts (a quirk, pinned by
     /// `unheldEmptyRegion`); positions are at most `CoverageRegionGen.width`
     /// columns to a line (assumed).
-    /// Oracle: reference (`BruteForceCoverage`, a grid scan); planted
-    /// defects: no resuming segment, regions of one range summed, an empty
-    /// region starting its own count, and the end column inclusive, each
-    /// detected.
+    /// Oracle: reference (`BruteForceCoverage`, a grid scan, and its
+    /// innermost regions for the flags); planted defects: no resuming
+    /// segment, regions of one range summed, an empty region starting its
+    /// own count, and the end column inclusive, each detected, and for the
+    /// flags every counted segment a gap, an entry cleared, a resuming
+    /// segment entered, and an empty last region's entry counted.
     /// Tier: Strict (stop-ship).
     @Test(
         "the segments of well-nested regions give each point the innermost region's count, half-open at the end",
@@ -166,7 +196,9 @@ extension CoveragePBT {
             PBTTrace.note(input)
             let regions = input.regions
             Self.pointwiseLabels(of: regions).forEach(tally.fire)
-            if Self.checkPointwise(regions, segments: CoverageSegmentBuilder.segments(of: regions)) == false {
+            let segments = CoverageSegmentBuilder.segments(of: regions)
+            let pointwise = Self.checkPointwise(regions, segments: segments)
+            if (Self.checkFlags(regions, segments: segments) && pointwise) == false {
                 PBTTrace.firstFailure(input, latch: latch)
             }
         }
@@ -181,20 +213,26 @@ extension CoveragePBT {
         #expect(entries.count == 140)
         for entry in entries {
             let regions = entry.regions.filter { $0.fileID == 0 }
+            let segments = CoverageSegmentBuilder.segments(of: regions)
 
-            #expect(Self.checkPointwise(regions, segments: CoverageSegmentBuilder.segments(of: regions)))
+            #expect(Self.checkPointwise(regions, segments: segments))
+            #expect(Self.checkFlags(regions, segments: segments))
         }
     }
 
     @Test("""
-        identical ranges of different kinds count as the first in kind order, the largest count of that kind: \
-        code over gap, skipped over gap
+        identical ranges of different kinds, given in either order, count as the first in kind order, the largest \
+        count of that kind: code over gap, code over skipped, skipped over gap
         """)
     func kindFirstRule() {
         let codeOverGap = [
-            Self.region((1, 1), (3, 1), 2, kind: CoverageRegion.gapKind),
+            Self.region((1, 1), (3, 1), 9, kind: CoverageRegion.gapKind),
             Self.region((1, 1), (3, 1), 1, kind: CoverageRegion.codeKind),
             Self.region((1, 1), (3, 1), 5, kind: CoverageRegion.codeKind)
+        ]
+        let codeOverSkipped = [
+            Self.region((1, 1), (3, 1), 4, kind: CoverageRegion.codeKind),
+            Self.region((1, 1), (3, 1), 0, kind: CoverageRegion.skippedKind)
         ]
         let skippedOverGap = [
             Self.region((1, 1), (5, 1), 4, kind: CoverageRegion.codeKind),
@@ -202,13 +240,21 @@ extension CoveragePBT {
             Self.region((2, 1), (3, 1), 0, kind: CoverageRegion.skippedKind)
         ]
 
-        let codeSegments = CoverageSegmentBuilder.segments(of: codeOverGap)
-        let skippedSegments = CoverageSegmentBuilder.segments(of: skippedOverGap)
+        for regions in [codeOverGap, codeOverSkipped, skippedOverGap] {
+            for ordered in [regions, Array(regions.reversed())] {
+                let segments = CoverageSegmentBuilder.segments(of: ordered)
 
-        #expect(Self.checkPointwise(codeOverGap, segments: codeSegments))
-        #expect(Self.checkPointwise(skippedOverGap, segments: skippedSegments))
-        #expect(codeSegments.first?.executionCount == 5)
-        #expect(codeSegments.first?.isGapRegion == false)
+                #expect(Self.checkPointwise(ordered, segments: segments))
+                #expect(Self.checkFlags(ordered, segments: segments))
+            }
+        }
+        for ordered in [codeOverGap, Array(codeOverGap.reversed())] {
+            let codeSegments = CoverageSegmentBuilder.segments(of: ordered)
+
+            #expect(codeSegments.first?.executionCount == 5)
+            #expect(codeSegments.first?.isGapRegion == false)
+        }
+        let skippedSegments = CoverageSegmentBuilder.segments(of: skippedOverGap)
         #expect(BruteForceCoverage.count(at: SourcePosition(line: 2, column: 4), segments: skippedSegments) == nil)
     }
 

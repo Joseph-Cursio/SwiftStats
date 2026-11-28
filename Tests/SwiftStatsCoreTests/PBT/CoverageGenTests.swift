@@ -9,7 +9,8 @@ import Testing
 /// counted below 0 starts, walks a segment going back ends, gaps past the
 /// cap, each source and anchor), well-nested regions
 /// (empty regions, repeated ranges, points in skipped and gap regions and
-/// between regions), their changes (a raise raising a line, a skipped
+/// between regions, an empty region starting last or lying in a skipped
+/// region, a start whose innermost region is a gap), their changes (a raise raising a line, a skipped
 /// region hiding one, an untouched line), mapped lines (shared runs and
 /// each way a run splits), pooled regions (repeated ranges with differing
 /// counts and kinds), and export documents (each outcome, each fault, and
@@ -141,7 +142,10 @@ struct CoverageGenTests {
             "a point in a skipped region": 387,
             "a range held twice": 484,
             "a saturated count": 338,
+            "a start whose innermost region is a gap": 381,
             "an empty region": 430,
+            "an empty region in a skipped region": 126,
+            "an empty region starting last": 221,
             "an expansion region": 259,
             "reversed": 504
         ])

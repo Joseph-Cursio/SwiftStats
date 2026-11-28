@@ -104,6 +104,23 @@ struct CloneRunTests {
         #expect(MarkdownClones.render(failed).first?.hasPrefix("Not collected: failed, `swift-clone-detector") == true)
     }
 
+    @Test("a failed run over one file says so in the singular")
+    func oneFileFailed() throws {
+        let package = try TemporaryPackage(["Sources/Lib/One.swift": "func one() -> Int {\n    1\n}\n"])
+        defer { package.remove() }
+        let tool = try FakeTool.makeCloneDetector(
+            outputs: [:],
+            errors: ["default": "Error: unreadable\n"],
+            statuses: ["default": 64]
+        )
+        defer { CloneHarness.remove(tool) }
+
+        let report = try Self.scan(package, tool)
+
+        #expect(CloneHarness.status(report)?.reason
+            == "`swift-clone-detector` over 1 file exited with status 64: Error: unreadable")
+    }
+
     @Test("with no file to read the tool isn't run, and the collector ran with no classes; disabled, it is skipped")
     func nothingToRead() throws {
         let package = try TemporaryPackage([
