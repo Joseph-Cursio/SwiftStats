@@ -2,9 +2,13 @@ import Foundation
 @testable import SwiftStatsCore
 import Testing
 
-/// outskirts' JSON read on Unicode scalars (design B23, decided U13): a
-/// hint's parentheses are found among scalars, so a combining mark or a
-/// Prepend scalar beside one stays in the text.
+/// outskirts' JSON read on Unicode scalars and through `JSONSerialization`
+/// (design B23, decided U13): a hint's parentheses are found among
+/// scalars, so a combining mark or a Prepend scalar beside one stays in
+/// the text; and a string's leading byte order mark is lost as
+/// `JSONSerialization` reads the output, where JSON (RFC 8259) and the
+/// checker's `json.loads` keep it (B29, awaiting U17: pinned as a known
+/// issue).
 extension PeripheryOutputTests {
     /// An entry's JSON object at `location`, of `kind`, holding `hints`,
     /// its other fields sound.
@@ -39,5 +43,37 @@ extension PeripheryOutputTests {
 
         #expect(entry.hint.unicodeScalars.elementsEqual(name.unicodeScalars))
         #expect(entry.hintText.map { $0.unicodeScalars.elementsEqual(text.unicodeScalars) } == true)
+    }
+
+    @Test("""
+        a string value starting with a byte order mark loses it as JSONSerialization reads the output, where \
+        JSON and the checker keep it (B29, awaiting U17: a known issue), and one later in a string stays
+        """)
+    func leadingByteOrderMark() throws {
+        let entries = try PeripheryOutput.decode(
+            try Self.json([
+                Self.scalarEntry(
+                    location: "/NoSuchPeripheryPackage/a.swift:1:1",
+                    kind: "\u{FEFF}var.global",
+                    hints: ["\u{FEFF}"]
+                ),
+                Self.scalarEntry(
+                    location: "/NoSuchPeripheryPackage/a\u{FEFF}.swift:1:1",
+                    kind: "function.free",
+                    hints: ["unused"]
+                )
+            ]),
+            run: .roots,
+            context: try Self.plainContext()
+        )
+        let path = "/NoSuchPeripheryPackage/a\u{FEFF}.swift"
+
+        #expect(entries.count == 2)
+        #expect(entries.last?.path.unicodeScalars.elementsEqual(path.unicodeScalars) == true)
+        #expect(entries.last?.kind == "function.free")
+        withKnownIssue("B29: awaiting U17 (JSONSerialization drops a string's leading U+FEFF)") {
+            #expect(entries.first?.kind.unicodeScalars.elementsEqual("\u{FEFF}var.global".unicodeScalars) == true)
+            #expect(entries.first?.hint.unicodeScalars.elementsEqual("\u{FEFF}".unicodeScalars) == true)
+        }
     }
 }

@@ -2,13 +2,14 @@
 //  JSONText.swift
 //  SwiftStatsCoreTests
 //
-//  A JSON value written out exactly as built, for P2.6's exports: numbers
-//  keep the spelling they were given (`18446744073709551616`, `3.0`,
-//  `1e2`), members keep their order, and nothing is added. Strings are
-//  escaped as JSON requires (a quote, a backslash, and the control
-//  characters), everything else written as UTF-8. Writing it by hand,
-//  rather than through `JSONSerialization` or `JSONEncoder`, is what lets
-//  a count be spelled past what a 64-bit integer holds.
+//  A JSON value written out exactly as built, for P2.6's exports and
+//  P9.2's outskirts entries: numbers keep the spelling they were given
+//  (`18446744073709551616`, `3.0`, `1e2`), members keep their order, and
+//  nothing is added. Strings are escaped as JSON requires (a quote, a
+//  backslash, and the control characters), everything else written as
+//  UTF-8. Writing it by hand, rather than through `JSONSerialization` or
+//  `JSONEncoder`, is what lets a count be spelled past what a 64-bit
+//  integer holds, and a value be of any type, `null` included.
 //
 
 /// A JSON value, written as built.
@@ -17,6 +18,8 @@ enum JSONText: Hashable, Sendable {
     case array([Self])
     /// `true` or `false`.
     case bool(Bool)
+    /// `null`.
+    case null
     /// A number, spelled as given.
     case number(String)
     /// An object of these members, in order.
@@ -47,6 +50,9 @@ enum JSONText: Hashable, Sendable {
 
         case .bool(let value):
             return value ? "true" : "false"
+
+        case .null:
+            return "null"
 
         case .number(let spelling):
             return spelling

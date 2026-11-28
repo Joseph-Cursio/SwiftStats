@@ -9,11 +9,11 @@
 //  later release's `range`) are ignored. An entry lacking a key, a value of
 //  another type, a `hints` list without exactly one hint or a location
 //  that isn't `path:line:column` is a format failure the collector reports
-//  naming outskirts' version and hash. A hint written `name(text)`, the
-//  name ASCII letters, is read as the name with the text kept, its
-//  parentheses found among Unicode scalars (design B23). A location is
-//  read from the right, its path made real (NFC) and looked up among the
-//  scanned files' real paths,
+//  naming outskirts' version and hash; the first fault in an entry is
+//  named, in that order. A hint written `name(text)`, the name ASCII
+//  letters, is read as the name with the text kept, its parentheses found
+//  among Unicode scalars (design B23). A location is read from the right, its
+//  path made real (NFC) and looked up among the scanned files' real paths,
 //  then the describe's other sources' (`SourcePaths`): a scanned file's
 //  spelling, else a source's manifest spelling, else, under the package
 //  root, a path in the package. Modules, C99 names in the JSON, become
@@ -215,7 +215,7 @@ struct PeripheryOutput: Sendable {
     /// Characters, so a combining mark after the opening one or a Prepend
     /// scalar before the closing one, which joins it into one Character,
     /// stays in the text (design B23, decided U13).
-    private static func split(_ hint: String) -> (String, String?) {
+    static func split(_ hint: String) -> (String, String?) {
         let scalars = hint.unicodeScalars
         guard scalars.last == ")", let open = scalars.firstIndex(of: "(") else {
             return (hint, nil)
@@ -229,9 +229,11 @@ struct PeripheryOutput: Sendable {
     }
 
     /// The nine fields of `element`, the `ordinal`th entry of `run`'s
-    /// output, checked; a `FormatFailure` naming the first that is missing
-    /// or of another type.
-    private static func fields(of element: Any, ordinal: Int, run: PeripheryCommand.Run) throws -> PeripheryFields {
+    /// output, checked; a `FormatFailure` naming the first fault, in this
+    /// order: an entry that isn't an object, then each key of `keys` in
+    /// turn missing or of another type, then a `hints` list without
+    /// exactly one hint, then a location that isn't `path:line:column`.
+    static func fields(of element: Any, ordinal: Int, run: PeripheryCommand.Run) throws -> PeripheryFields {
         let place = "in entry \(ordinal) of the \(run.rawValue) run"
         guard let object = element as? [String: Any] else {
             throw FormatFailure(description: "JSON has an entry that isn't an object \(place)")

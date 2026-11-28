@@ -7,8 +7,8 @@ import Testing
 /// `name(text)`, locations read from the right on scalars (design B23),
 /// modules made target names; then each entry's class, the first that
 /// applies, on the Index fixture's recorded runs and on hand-written
-/// entries placed in it. Hints read on scalars are in
-/// `PeripheryOutputTests+Scalars`.
+/// entries placed in it. Hints read on scalars and a string's leading byte
+/// order mark are in `PeripheryOutputTests+Scalars`.
 @Suite("outskirts output")
 struct PeripheryOutputTests {
     /// One entry's JSON object, its fields as given.
