@@ -140,7 +140,7 @@ enum SwiftCloneDetectorAdapter {
     /// tool's name checked, and every copy's positions checked; throws
     /// naming the pass when the JSON doesn't decode, names another tool,
     /// or holds a copy the mapper can't place.
-    private static func read(_ data: Data, pass: CloneDetectorPass) throws -> CloneDetectorOutput {
+    static func read(_ data: Data, pass: CloneDetectorPass) throws -> CloneDetectorOutput {
         let output: CloneDetectorOutput
         do {
             output = try JSONDecoder().decode(CloneDetectorOutput.self, from: data)
